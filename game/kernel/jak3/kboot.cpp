@@ -94,7 +94,7 @@ s32 goal_main(int argc, const char* const* argv) {
 
 void KernelDispatch(u32 dispatcher_func) {
   // place our stack at the end of EE memory
-  u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
+  u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - GOAL_STACK_TOP_OFFSET;
 
   // try to get a message from the listener, and process it if needed
   Ptr<char> new_message = WaitForMessageAndAck();

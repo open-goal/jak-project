@@ -46,7 +46,7 @@ IOP_Kernel::IOP_Kernel() {
 
 u32 IOP_Kernel::GetSystemTimeLow() {
   auto delta_time = time_point_cast<microseconds>(steady_clock::now()) - m_start_time;
-  return delta_time.count() * 36.864;
+  return static_cast<u32>(static_cast<u64>(delta_time.count() * 36.864));
 }
 
 /*!

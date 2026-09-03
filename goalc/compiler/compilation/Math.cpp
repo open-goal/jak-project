@@ -459,18 +459,23 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
           env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHR_64, result, power_of_two);
         }
       } else {
-        IRegConstraint result_rax_constraint;
-        result_rax_constraint.instr_idx = fe->code().size();
-        result_rax_constraint.ireg = result->ireg();
-        result_rax_constraint.desired_register = emitter::RAX;
-        fe->constrain(result_rax_constraint);
+        // x86 IDIV needs the quotient in RAX
+        if (m_instr_set == emitter::InstructionSet::X86) {
+          IRegConstraint result_rax_constraint;
+          result_rax_constraint.instr_idx = fe->code().size();
+          result_rax_constraint.ireg = result->ireg();
+          result_rax_constraint.desired_register = emitter::RAX;
+          fe->constrain(result_rax_constraint);
+        }
 
         if (is_singed_integer_or_binteger(first_type)) {
           env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IDIV_32, result,
-                                       to_math_type(form, val, math_type, env)->to_gpr(form, env));
+                                       to_math_type(form, val, math_type, env)->to_gpr(form, env),
+                                       m_instr_set);
         } else {
           env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::UDIV_32, result,
-                                       to_math_type(form, val, math_type, env)->to_gpr(form, env));
+                                       to_math_type(form, val, math_type, env)->to_gpr(form, env),
+                                       m_instr_set);
         }
 
         auto result_moved = env->make_gpr(first_type);
@@ -522,6 +527,8 @@ Val* Compiler::compile_variable_shift(const goos::Object& form,
   env->emit_ir<IR_RegSet>(form, sa_in, sa);
   auto fenv = env->function_env();
 
+  // x86 variable shifts need RCX
+  bool needs_shift_amount_in_rcx = m_instr_set == emitter::InstructionSet::X86;
   IRegConstraint sa_con;
   sa_con.ireg = sa_in->ireg();
   sa_con.instr_idx = fenv->code().size();
@@ -532,7 +539,9 @@ Val* Compiler::compile_variable_shift(const goos::Object& form,
     throw_compiler_error(form, "Cannot shift a {} by a {}", in->type().print(), sa->type().print());
   }
 
-  fenv->constrain(sa_con);
+  if (needs_shift_amount_in_rcx) {
+    fenv->constrain(sa_con);
+  }
   env->emit_ir<IR_IntegerMath>(form, kind, result, sa_in);
   return result;
 }
@@ -626,17 +635,19 @@ Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, E
   auto result = env->make_gpr(first->type());
   env->emit_ir<IR_RegSet>(form, result, first);
 
-  IRegConstraint con;
-  con.ireg = result->ireg();
-  con.instr_idx = fenv->code().size();
-  con.desired_register = emitter::RAX;
-
-  fenv->constrain(con);
+  // x86 IDIV needs the dividend in RAX
+  if (m_instr_set == emitter::InstructionSet::X86) {
+    IRegConstraint con;
+    con.ireg = result->ireg();
+    con.instr_idx = fenv->code().size();
+    con.desired_register = emitter::RAX;
+    fenv->constrain(con);
+  }
   env->emit_ir<IR_IntegerMath>(form,
                                is_singed_integer_or_binteger(first->type())
                                    ? IntegerMathKind::IMOD_32
                                    : IntegerMathKind::UMOD_32,
-                               result, second);
+                               result, second, m_instr_set);
 
   auto result_moved = env->make_gpr(first->type());
   env->emit_ir<IR_RegSet>(form, result_moved, result);

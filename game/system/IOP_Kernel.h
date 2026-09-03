@@ -21,7 +21,7 @@
 class IOP_Kernel;
 namespace iop {
 struct sceSifQueueData;
-}
+}  // namespace iop
 
 using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;
 

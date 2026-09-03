@@ -249,7 +249,13 @@ enum class IntegerMathKind {
 class IR_IntegerMath : public IR {
  public:
   IR_IntegerMath(IntegerMathKind kind, RegVal* dest, RegVal* arg);
+  // division register requirements depend on the target instruction set
+  IR_IntegerMath(IntegerMathKind kind,
+                 RegVal* dest,
+                 RegVal* arg,
+                 emitter::InstructionSet instr_set);
   IR_IntegerMath(IntegerMathKind kind, RegVal* dest, u8 shift_amount);
+  static bool is_division(IntegerMathKind kind);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen_x86(emitter::ObjectGenerator* gen,
@@ -265,6 +271,7 @@ class IR_IntegerMath : public IR {
   RegVal* m_dest;
   RegVal* m_arg = nullptr;
   u8 m_shift_amount = 0;
+  emitter::InstructionSet m_instr_set = emitter::InstructionSet::X86;
 };
 
 enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS, SQRT_SS };
@@ -564,6 +571,19 @@ class IR_AsmAdd : public IR_Asm {
  private:
   const RegVal* m_dst = nullptr;
   const RegVal* m_src = nullptr;
+};
+
+class IR_AsmBreak : public IR_Asm {
+ public:
+  IR_AsmBreak();
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen_x86(emitter::ObjectGenerator* gen,
+                      const AllocationResult& allocs,
+                      emitter::IR_Record irec) override;
+  void do_codegen_arm64(emitter::ObjectGenerator* gen,
+                        const AllocationResult& allocs,
+                        emitter::IR_Record irec) override;
 };
 
 class IR_AsmFNop : public IR_Asm {

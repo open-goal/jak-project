@@ -24,6 +24,9 @@
 #elif _WIN32
 #include "third-party/mman/mman.h"
 #endif
+#if defined(__APPLE__) && defined(__aarch64__)
+#include <pthread.h>  // pthread_jit_write_protect_np
+#endif
 
 namespace emitter {
 class CodeTester {
@@ -70,12 +73,10 @@ class CodeTester {
 #endif
     // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
-  // TODO - we may need to switch to using pthread_jit_write_protect_np
-  // there may also be issues if multiple threasd are involved
-  // but this seems to work so keep it simple until something proves otherwise.
-  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  // block writes while generated code runs
+  pthread_jit_write_protect_np(1);
   u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
-  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  pthread_jit_write_protect_np(0);
   T result_T;
   memcpy(&result_T, &result_u64, sizeof(T));
   return result_T;
@@ -110,7 +111,7 @@ class CodeTester {
 
   int get_simd_reg_count() {
     if (m_gen.instr_set() == InstructionSet::ARM64) {
-      return 16;  // TODO - check if platform has 16 or 32
+      return 32;
     } else {
       return -1;  // TODO
     }
@@ -158,7 +159,7 @@ class CodeTester {
           throw std::runtime_error("Invalid ARM64 arg register index");
       }
     }
-    // TODO ARM64 - x86 specific
+    // x86 ABI registers differ by platform.
 #ifdef _WIN32
     switch (i) {
       case 0:

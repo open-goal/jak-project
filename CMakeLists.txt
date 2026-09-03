@@ -228,8 +228,9 @@ set(CURL_USE_LIBSSH2 OFF)
 set(CURL_USE_LIBPSL OFF)
 set(CURL_ZLIB OFF)
 # these default to AUTO since curl 8.10 and would silently pick up system libs
-set(CURL_BROTLI OFF)
-set(CURL_ZSTD OFF)
+set(CURL_BROTLI OFF CACHE BOOL "Disable Brotli support" FORCE)
+set(CURL_ZSTD OFF CACHE BOOL "Disable zstd support" FORCE)
+set(USE_NGHTTP2 OFF CACHE BOOL "Disable nghttp2 support" FORCE)
 # curl's BUILD_EXAMPLES cache option (default ON) would otherwise leak into
 # discord-rpc's identically named option and break its examples add_subdirectory
 set(BUILD_EXAMPLES OFF)

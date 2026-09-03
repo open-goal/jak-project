@@ -11,7 +11,7 @@
   (file "$DECOMP/assets/game_text.txt") ;; this is the decompiler-generated file!
   ;; built-in languages
   (file-json 0 jak3 "common" '("game/assets/jak3/text/game_custom_text_en-US.json"))
-  (file-json 1 jak3 "common" '("game/assets/jak3/text/game_custom_text_fr-FR.json"))
+  (file-json 1 jak3 "common" '("game/assets/jak3/text/game_custom_text_fr-FR.json" "game/assets/jak3/text/game_base_text_fr-FR.json"))
   (file-json 2 jak3 "common" '("game/assets/jak3/text/game_custom_text_de-DE.json"))
   (file-json 3 jak2 "common" '("game/assets/jak3/text/game_custom_text_es-ES.json"))
   (file-json 4 jak3 "common" '("game/assets/jak3/text/game_custom_text_it-IT.json"))

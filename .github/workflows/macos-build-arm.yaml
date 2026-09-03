@@ -22,16 +22,24 @@ jobs:
 
     steps:
       - name: Checkout Repository
+        if: ${{ ! inputs.uploadArtifacts }}
         uses: actions/checkout@v7
+
+      - name: Checkout Repository with Tags
+        if: ${{ inputs.uploadArtifacts }}
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Package Dependencies
         env:
           HOMEBREW_NO_INSTALL_CLEANUP: 1
           HOMEBREW_NO_ANALYTICS: 1
         run: |
-          if ! brew install ninja nasm openssl@3; then
+          if ! brew install ninja nasm openssl@3 brotli nghttp2; then
             brew update
-            brew install ninja nasm openssl@3
+            brew install ninja nasm openssl@3 brotli nghttp2
           fi
           # keg-only, so give CMake's FindOpenSSL an explicit hint
           echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
@@ -74,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ inputs.uploadArtifacts }}
         with:
-          name: opengoal-macos-arm-${{ inputs.cachePrefix }}
+          name: opengoal-macos-${{ inputs.cachePrefix }}
           if-no-files-found: error
           path: |
             ./build/goalc/goalc

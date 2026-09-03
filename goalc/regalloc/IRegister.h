@@ -23,5 +23,5 @@ struct IRegConstraint {
   int instr_idx = -1;
   bool contrain_everywhere = false;
   emitter::Register desired_register;
-  std::string to_string() const;
+  std::string to_string(emitter::InstructionSet instr_set) const;
 };

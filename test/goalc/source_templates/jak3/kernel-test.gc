@@ -107,7 +107,7 @@
     )
 
   (format 0 "proc-deactivate ~D~%" a0)
-  (rlet ((pp :reg r13 :reset-here #t :type process))
+  (rlet ((pp :reg pp :reset-here #t :type process))
         ;; (deactivate pp)
         (format 0 "  proc is: #x~X~%" pp)
         )
@@ -145,6 +145,23 @@
             )
     )
 
+(defun arm64-suspend-vector-check ()
+  (let ((src (new 'stack-no-clear 'array 'uint64 4))
+        (dst (new 'stack-no-clear 'array 'uint64 4)))
+    (set! (-> src 0) #x0808080808080808)
+    (set! (-> src 1) #x1818181818181818)
+    (set! (-> src 2) #x0909090909090909)
+    (set! (-> src 3) #x1919191919191919)
+    (rlet ((vf :class vf)
+           (i128 :class i128 :type uint128))
+      (.lvf vf src)
+      (set! i128 (-> (the (pointer uint128) src) 1))
+      (suspend)
+      (.svf dst vf)
+      (set! (-> (the (pointer uint128) dst) 1) i128))
+    (format #t "suspend vectors #x~16X~16X #x~16X~16X~%"
+            (-> dst 1) (-> dst 0) (-> dst 3) (-> dst 2))))
+
 (defun xmm-check-code (ax ay az aw)
   "This function relies on saved xmm register being backed up on a context switch"
   ;; (declare (print-asm))
@@ -156,6 +173,9 @@
       ;; should preserve xmm8 and xmm9
       (suspend)
       )
+    (#cond
+     ((eq? INSTRUCTION_SET 'arm64) (arm64-suspend-vector-check))
+     (#t (none)))
     ;; get the wreck process and make it go to die state.
     (go-process (process-by-name "wreck-proc" *active-pool*) die-state)
     (go die-state)
@@ -165,17 +185,32 @@
 
 (defun xmm-wreck-code (ax ay az aw)
   "This function intentionally overwrites xmm8 and xmm9 and suspends"
-  (while #t
-    (rlet ((x :class fpr :type float :reg xmm8)
-           (y :class fpr :type float :reg xmm9))
-      (set! x 99.0)
-      (set! y 101.0)
-      (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
-      (suspend)
-      (set! x (+ x 1.0))
-      (set! y (+ y 1.0))
-      )
-    )
+  ;; :reg needs a literal, so use the saved register for this backend
+  (#cond
+   ((eq? INSTRUCTION_SET 'arm64)
+    (while #t
+      (rlet ((x :class fpr :type float :reg v8)
+             (y :class fpr :type float :reg v9))
+        (set! x 99.0)
+        (set! y 101.0)
+        (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
+        (suspend)
+        (set! x (+ x 1.0))
+        (set! y (+ y 1.0))
+        )
+      ))
+   (#t
+    (while #t
+      (rlet ((x :class fpr :type float :reg xmm8)
+             (y :class fpr :type float :reg xmm9))
+        (set! x 99.0)
+        (set! y 101.0)
+        (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
+        (suspend)
+        (set! x (+ x 1.0))
+        (set! y (+ y 1.0))
+        )
+      )))
   )
 
 ;; a state.
@@ -206,22 +241,75 @@
   0
   )
 
-(defun throw-backup-test ()
-  (rlet ((x :reg xmm10 :class fpr :type float))
-    (set! x 10.10)
-    (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
-      (activate proc *active-pool* "asdf" *kernel-dram-stack*)
-      (format #t "value now is ~f~%" x)
-      (run-now-in-process proc (lambda ()
-                                 (rlet ((x2 :reg xmm10 :class fpr :type float))
-                                   (set! x2 -1.0)
-                                   )
-                                 ;; this will throw back.
-                                 (process-deactivate)
-                                 )
-                          )
-      (format #t "now its ~f~%" x)
+(#cond
+ ((eq? INSTRUCTION_SET 'arm64)
+(defun arm64-throw-vector-check ()
+  (let ((src (new 'stack-no-clear 'array 'uint64 4))
+        (dst (new 'stack-no-clear 'array 'uint64 4)))
+    (set! (-> src 0) #x0808080808080808)
+    (set! (-> src 1) #x1818181818181818)
+    (set! (-> src 2) #x0909090909090909)
+    (set! (-> src 3) #x1919191919191919)
+    (rlet ((vf :class vf)
+           (i128 :class i128 :type uint128))
+      (.lvf vf src)
+      (set! i128 (-> (the (pointer uint128) src) 1))
+      (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+        (activate proc *active-pool* "vector-throw" *kernel-dram-stack*)
+        (run-now-in-process proc
+                            (lambda ()
+                              (let ((wreck (new 'stack-no-clear 'array 'uint64 4)))
+                                (set! (-> wreck 0) #x6060606060606060)
+                                (set! (-> wreck 1) #x7070707070707070)
+                                (set! (-> wreck 2) #x6161616161616161)
+                                (set! (-> wreck 3) #x7171717171717171)
+                                (rlet ((wreck-vf :reg v8 :class vf)
+                                       (wreck-i128 :reg v9 :class i128 :type uint128))
+                                  (.lvf wreck-vf wreck)
+                                  (set! wreck-i128 (-> (the (pointer uint128) wreck) 1))
+                                  (process-deactivate))))))
+      (.svf dst vf)
+      (set! (-> (the (pointer uint128) dst) 1) i128))
+    (format #t "throw vectors #x~16X~16X #x~16X~16X~%"
+            (-> dst 1) (-> dst 0) (-> dst 3) (-> dst 2))))))
 
+(defun throw-backup-test ()
+  (#cond
+   ((eq? INSTRUCTION_SET 'arm64)
+    (rlet ((x :reg v10 :class fpr :type float))
+      (set! x 10.10)
+      (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+        (activate proc *active-pool* "asdf" *kernel-dram-stack*)
+        (format #t "value now is ~f~%" x)
+        (run-now-in-process proc (lambda ()
+                                   (rlet ((x2 :reg v10 :class fpr :type float))
+                                     (set! x2 -1.0)
+                                     )
+                                   ;; this will throw back.
+                                   (process-deactivate)
+                                   )
+                            )
+        (format #t "now its ~f~%" x)
+
+        )
       )
-    )
+    (arm64-throw-vector-check))
+   (#t
+    (rlet ((x :reg xmm10 :class fpr :type float))
+      (set! x 10.10)
+      (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+        (activate proc *active-pool* "asdf" *kernel-dram-stack*)
+        (format #t "value now is ~f~%" x)
+        (run-now-in-process proc (lambda ()
+                                   (rlet ((x2 :reg xmm10 :class fpr :type float))
+                                     (set! x2 -1.0)
+                                     )
+                                   ;; this will throw back.
+                                   (process-deactivate)
+                                   )
+                            )
+        (format #t "now its ~f~%" x)
+
+        )
+      )))
   )
