@@ -227,6 +227,9 @@ void link() {
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_18_nav_engine {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -238,30 +241,34 @@ u64 execute(void* ctxt) {
   c->ori(a1, a1, 53248);                            // ori a1, a1, 53248
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
   
-block_1:
-  c->lw(a3, 0, a1);                                 // lw a3, 0(a1)
-  c->andi(a3, a3, 256);                             // andi a3, a3, 256
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L44
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
+// block_1:
+//   c->lw(a3, 0, a1);                                 // lw a3, 0(a1)
+//   c->andi(a3, a3, 256);                             // andi a3, a3, 256
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L43
+//   // nop                                            // sll r0, r0, 0
+//   if (bc) {goto block_1;}                           // branch non-likely
 
   // Unknown instr: sync.l
   c->lui(a3, 4095);                                 // lui a3, 4095
   c->ori(a3, a3, 65535);                            // ori a3, a3, 65535
   c->and_(a2, a3, a2);                              // and a2, a3, a2
-  c->sw(a2, 16, a1);                                // sw a2, 16(a1)
+  // c->sw(a2, 16, a1);                             // sw a2, 16(a1)
+  u32 madr = c->sgpr64(a2);
   c->lui(a2, 4095);                                 // lui a2, 4095
   c->ori(a2, a2, 65535);                            // ori a2, a2, 65535
   c->and_(v1, a2, v1);                              // and v1, a2, v1
-  c->sw(v1, 128, a1);                               // sw v1, 128(a1)
-  c->sw(a0, 32, a1);                                // sw a0, 32(a1)
+  // c->sw(v1, 128, a1);                            // sw v1, 128(a1)
+  u32 sadr = c->sgpr64(v1);
+  // c->sw(a0, 32, a1);                             // sw a0, 32(a1)
+  u32 qwc = c->sgpr64(a0);
   // Unknown instr: sync.l
   c->addiu(v1, r0, 256);                            // addiu v1, r0, 256
-  c->sw(v1, 0, a1);                                 // sw v1, 0(a1)
+  // c->sw(v1, 0, a1);                              // sw v1, 0(a1)
+  spad_from_dma(cache.fake_scratchpad_data, madr, sadr, qwc);
   // Unknown instr: sync.l
   c->gprs[v1].du64[0] = 0;                          // or v1, r0, r0
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
@@ -290,6 +297,9 @@ void link() {
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_17_nav_engine {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -301,30 +311,34 @@ u64 execute(void* ctxt) {
   c->ori(a1, a1, 54272);                            // ori a1, a1, 54272
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
   
-block_1:
-  c->lw(a3, 0, a1);                                 // lw a3, 0(a1)
-  c->andi(a3, a3, 256);                             // andi a3, a3, 256
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L46
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
+// block_1:
+//   c->lw(a3, 0, a1);                                 // lw a3, 0(a1)
+//   c->andi(a3, a3, 256);                             // andi a3, a3, 256
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L45
+//   // nop                                            // sll r0, r0, 0
+//   if (bc) {goto block_1;}                           // branch non-likely
 
   // Unknown instr: sync.l
   c->lui(a3, 4095);                                 // lui a3, 4095
   c->ori(a3, a3, 65535);                            // ori a3, a3, 65535
   c->and_(a2, a3, a2);                              // and a2, a3, a2
-  c->sw(a2, 16, a1);                                // sw a2, 16(a1)
+  // c->sw(a2, 16, a1);                             // sw a2, 16(a1)
+  u32 madr = c->sgpr64(a2);
   c->lui(a2, 4095);                                 // lui a2, 4095
   c->ori(a2, a2, 65535);                            // ori a2, a2, 65535
   c->and_(v1, a2, v1);                              // and v1, a2, v1
-  c->sw(v1, 128, a1);                               // sw v1, 128(a1)
-  c->sw(a0, 32, a1);                                // sw a0, 32(a1)
+  // c->sw(v1, 128, a1);                            // sw v1, 128(a1)
+  u32 sadr = c->sgpr64(v1);
+  // c->sw(a0, 32, a1);                             // sw a0, 32(a1)
+  u32 qwc = c->sgpr64(a0);
   // Unknown instr: sync.l
   c->addiu(v1, r0, 256);                            // addiu v1, r0, 256
-  c->sw(v1, 0, a1);                                 // sw v1, 0(a1)
+  // c->sw(v1, 0, a1);                                 // sw v1, 0(a1)
+  spad_to_dma(cache.fake_scratchpad_data, madr, sadr, qwc);
   // Unknown instr: sync.l
   c->gprs[v1].du64[0] = 0;                          // or v1, r0, r0
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
@@ -406,6 +420,9 @@ void link() {
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace nav_dma_send_from_spr_no_flush {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -414,30 +431,34 @@ u64 execute(void* ctxt) {
   c->ori(v1, v1, 53248);                            // ori v1, v1, 53248
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
   
-block_1:
-  c->lw(a3, 0, v1);                                 // lw a3, 0(v1)
-  c->andi(a3, a3, 256);                             // andi a3, a3, 256
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L50
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
+// block_1:
+//   c->lw(a3, 0, v1);                                 // lw a3, 0(v1)
+//   c->andi(a3, a3, 256);                             // andi a3, a3, 256
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L49
+//   // nop                                            // sll r0, r0, 0
+//   if (bc) {goto block_1;}                           // branch non-likely
 
   // Unknown instr: sync.l
   c->lui(a3, 4095);                                 // lui a3, 4095
   c->ori(a3, a3, 65535);                            // ori a3, a3, 65535
   c->and_(a0, a3, a0);                              // and a0, a3, a0
-  c->sw(a0, 16, v1);                                // sw a0, 16(v1)
+  // c->sw(a0, 16, v1);                             // sw a0, 16(v1)
+  u32 madr = c->sgpr64(a0);
   c->lui(a0, 4095);                                 // lui a0, 4095
   c->ori(a0, a0, 65535);                            // ori a0, a0, 65535
   c->and_(a0, a0, a1);                              // and a0, a0, a1
-  c->sw(a0, 128, v1);                               // sw a0, 128(v1)
-  c->sw(a2, 32, v1);                                // sw a2, 32(v1)
+  // c->sw(a0, 128, v1);                            // sw a0, 128(v1)
+  u32 sadr = c->sgpr64(a0);
+  // c->sw(a2, 32, v1);                             // sw a2, 32(v1)
+  u32 qwc = c->sgpr64(a2);
   // Unknown instr: sync.l
   c->addiu(a0, r0, 256);                            // addiu a0, r0, 256
-  c->sw(a0, 0, v1);                                 // sw a0, 0(v1)
+  // c->sw(a0, 0, v1);                              // sw a0, 0(v1)
+  spad_from_dma(cache.fake_scratchpad_data, madr, sadr, qwc);
   // Unknown instr: sync.l
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
   //jr ra                                           // jr ra
@@ -465,6 +486,9 @@ void link() {
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace nav_dma_send_to_spr_no_flush {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+} cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -473,30 +497,34 @@ u64 execute(void* ctxt) {
   c->ori(v1, v1, 54272);                            // ori v1, v1, 54272
   c->addiu(a3, r0, 0);                              // addiu a3, r0, 0
   
-block_1:
-  c->lw(a3, 0, v1);                                 // lw a3, 0(v1)
-  c->andi(a3, a3, 256);                             // andi a3, a3, 256
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L52
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
+// block_1:
+//   c->lw(a3, 0, v1);                                 // lw a3, 0(v1)
+//   c->andi(a3, a3, 256);                             // andi a3, a3, 256
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L51
+//   // nop                                            // sll r0, r0, 0
+//   if (bc) {goto block_1;}                           // branch non-likely
 
   // Unknown instr: sync.l
   c->lui(a3, 4095);                                 // lui a3, 4095
   c->ori(a3, a3, 65535);                            // ori a3, a3, 65535
   c->and_(a1, a3, a1);                              // and a1, a3, a1
-  c->sw(a1, 16, v1);                                // sw a1, 16(v1)
+  // c->sw(a1, 16, v1);                             // sw a1, 16(v1)
+  u32 madr = c->sgpr64(a1);
   c->lui(a1, 4095);                                 // lui a1, 4095
   c->ori(a1, a1, 65535);                            // ori a1, a1, 65535
   c->and_(a0, a1, a0);                              // and a0, a1, a0
-  c->sw(a0, 128, v1);                               // sw a0, 128(v1)
-  c->sw(a2, 32, v1);                                // sw a2, 32(v1)
+  // c->sw(a0, 128, v1);                            // sw a0, 128(v1)
+  u32 sadr = c->sgpr64(a0);
+  // c->sw(a2, 32, v1);                             // sw a2, 32(v1)
+  u32 qwc = c->sgpr64(a2);
   // Unknown instr: sync.l
   c->addiu(a0, r0, 256);                            // addiu a0, r0, 256
-  c->sw(a0, 0, v1);                                 // sw a0, 0(v1)
+  // c->sw(a0, 0, v1);                              // sw a0, 0(v1)
+  spad_to_dma(cache.fake_scratchpad_data, madr, sadr, qwc);
   // Unknown instr: sync.l
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
   //jr ra                                           // jr ra

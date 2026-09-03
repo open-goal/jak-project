@@ -15,6 +15,7 @@ u64 execute(void* ctxt) {
   bool bc = false;
   u32 call_addr = 0;
   bool cop1_bc = false;
+  u32 Clipping = 0;
   c->daddiu(sp, sp, -80);                           // daddiu sp, sp, -80
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s3, 16, sp);                                // sq s3, 16(sp)
@@ -57,12 +58,14 @@ u64 execute(void* ctxt) {
   c->vmadd_bc(DEST::xyzw, BC::x, vf1, vf4, vf5);    // vmaddx.xyzw vf1, vf4, vf5
   c->vdiv(vf0, BC::w, vf12, BC::w);                 // vdiv Q, vf0.w, vf12.w
   // Unknown instr: vclip.xyz vf12, vf12
+  Clipping = c->clip(vf12, vf12, Clipping);         // Unknown instr: vclip.xyz vf12, vf12
   c->vmula_bc(DEST::xyzw, BC::x, vf24, vf1);        // vmulax.xyzw acc, vf24, vf1
   c->vmadda_bc(DEST::xyzw, BC::y, vf25, vf1);       // vmadday.xyzw acc, vf25, vf1
   c->vmadda_bc(DEST::xyzw, BC::z, vf26, vf1);       // vmaddaz.xyzw acc, vf26, vf1
   c->vmadd_bc(DEST::xyzw, BC::w, vf11, vf27, vf0);  // vmaddw.xyzw vf11, vf27, vf0
   c->vwaitq();                                      // vwaitq
-  // TODO FIX - c->gprs[v1].du64[0] = Clipping;                   // cfc2.i v1, Clipping
+  // c->gprs[v1].du64[0] = Clipping;                   // cfc2.i v1, Clipping
+  c->gprs[v1].du64[0] = Clipping;
   c->vmulq(DEST::xyz, vf10, vf10);                  // vmulq.xyz vf10, vf10, Q
   c->vmul(DEST::xyzw, vf13, vf11, vf29);            // vmul.xyzw vf13, vf11, vf29
   c->andi(v1, v1, 63);                              // andi v1, v1, 63
@@ -72,11 +75,13 @@ u64 execute(void* ctxt) {
 
   c->vdiv(vf0, BC::w, vf13, BC::w);                 // vdiv Q, vf0.w, vf13.w
   // Unknown instr: vclip.xyz vf13, vf13
+  Clipping = c->clip(vf13, vf13, Clipping);
   c->vmax_bc(DEST::w, BC::x, vf10, vf10, vf0);      // vmaxx.w vf10, vf10, vf0
   c->vftoi4(DEST::xyzw, vf2, vf10);                 // vftoi4.xyzw vf2, vf10
   c->vwaitq();                                      // vwaitq
   c->vmulq(DEST::xyz, vf11, vf11);                  // vmulq.xyz vf11, vf11, Q
-  // TODO - fix c->gprs[v1].du64[0] = Clipping;                   // cfc2.i v1, Clipping
+  // c->gprs[v1].du64[0] = Clipping;                   // cfc2.i v1, Clipping
+  c->gprs[v1].du64[0] = Clipping;
   c->vitof0(DEST::xyzw, vf6, vf2);                  // vitof0.xyzw vf6, vf2
   c->vadd(DEST::xyzw, vf11, vf11, vf30);            // vadd.xyzw vf11, vf11, vf30
   c->andi(v1, v1, 63);                              // andi v1, v1, 63
@@ -126,6 +131,11 @@ u64 execute(void* ctxt) {
   c->mtc1(f4, s5);                                  // mtc1 f4, s5
   // Unknown instr: mula.s f3, f3
   // Unknown instr: madd.s f3, f4, f4
+  {
+    float f3 = c->fprs[3];
+    float f4 = c->fprs[4];
+    c->fprs[3] = (f3 * f3) + (f4 * f4);
+  }
   c->maxs(f2, f2, f1);                              // max.s f2, f2, f1
   c->sqrts(f1, f3);                                 // sqrt.s f1, f3
   c->mins(f2, f2, f0);                              // min.s f2, f2, f0
@@ -137,6 +147,13 @@ u64 execute(void* ctxt) {
   c->mtc1(f4, v1);                                  // mtc1 f4, v1
   // Unknown instr: mula.s f0, f3
   // Unknown instr: madd.s f0, f2, f5
+  {
+    float f0 = c->fprs[0];
+    float f2 = c->fprs[2];
+    float f3 = c->fprs[3];
+    float f5 = c->fprs[5];
+    c->fprs[0] = (f0 * f3) + (f2 * f5);
+  }
   c->muls(f0, f0, f1);                              // mul.s f0, f0, f1
   c->muls(f0, f0, f4);                              // mul.s f0, f0, f4
   //beq r0, r0, L69                                 // beq r0, r0, L69
@@ -211,6 +228,8 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
+  u16 vis[16];
+
   c->mov64(v1, a0);                                 // or v1, a0, r0
   c->mov64(v1, a1);                                 // or v1, a1, r0
   c->mov64(v1, a2);                                 // or v1, a2, r0
@@ -275,7 +294,8 @@ block_8:
   // nop                                            // sll r0, r0, 0
   c->lh(v1, 0, v1);                                 // lh v1, 0(v1)
   // nop                                            // sll r0, r0, 0
-  // TODO FIX - vi14 = c->gpr_src(v1).du16[0];                    // ctc2.i vi14, v1
+  // vi14 = c->gpr_src(v1).du16[0];                    // ctc2.i vi14, v1
+  vis[14] = c->gpr_src(v1).du16[0];
   // nop                                            // sll r0, r0, 0
   c->lqc2(vf30, 0, a2);                             // lqc2 vf30, 0(a2)
   c->sqc2(vf30, 80, sp);                            // sqc2 vf30, 80(sp)

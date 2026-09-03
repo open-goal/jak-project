@@ -192,6 +192,11 @@ block_11:
 block_16:
   c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
   // Unknown instr: ld t0, L218(fp)
+  // L218:
+  // .word 0x80808080
+  // .word 0x0
+  c->gprs[t0].du32[0] = 0x80808080;
+  c->gprs[t0].du32[1] = 0x0;
   c->dsll(t1, a3, 3);                               // dsll t1, a3, 3
   c->daddu(t1, v1, t1);                             // daddu t1, v1, t1
   c->sw(t0, 124, t1);                               // sw t0, 124(t1)
@@ -324,6 +329,7 @@ u64 execute(void* ctxt) {
   bool bc = false;
   u32 call_addr = 0;
   bool cop1_bc = false;
+  float acc;
   c->daddiu(sp, sp, -64);                           // daddiu sp, sp, -64
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s4, 16, sp);                                // sq s4, 16(sp)
@@ -427,45 +433,45 @@ block_10:
   
 block_12:
   cop1_bc = c->fprs[f0] < c->fprs[f9];              // c.lt.s f0, f9
-  bc = cop1_bc;                                     // bc1t L101
+  bc = cop1_bc;                                     // bc1t L100
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_36;}                          // branch non-likely
 
   c->abss(f14, f7);                                 // abs.s f14, f7
-  c->movs(f12, f5);                                 // mov.s f12, f5
-  // Unknown instr: mula.s f14, f14
-  // Unknown instr: madd.s f15, f12, f12
+  c->movs(f12, f6);                                 // mov.s f12, f6
+  acc = c->fprs[f14] * c->fprs[f14]; // Unknown instr: mula.s f14, f14
+  c->fprs[f15] = acc + c->fprs[f12] * c->fprs[f12]; // Unknown instr: madd.s f15, f12, f12
   c->lwc1(f9, 76, v1);                              // lwc1 f9, 76(v1)
   c->lwc1(f13, 80, v1);                             // lwc1 f13, 80(v1)
   c->lwc1(f10, 84, v1);                             // lwc1 f10, 84(v1)
   c->lwc1(f11, 88, v1);                             // lwc1 f11, 88(v1)
-  // Unknown instr: rsqrt.s f16, f6, f15
+  c->fprs[f16] = c->fprs[f5] / (std::sqrt(std::abs(c->fprs[f15]))); // Unknown instr: rsqrt.s f16, f5, f15
   c->muls(f15, f14, f16);                           // mul.s f15, f14, f16
   c->muls(f16, f12, f16);                           // mul.s f16, f12, f16
-  // Unknown instr: mula.s f9, f16
-  // Unknown instr: msub.s f12, f13, f15
-  // Unknown instr: mula.s f10, f16
-  // Unknown instr: msub.s f14, f11, f15
-  // Unknown instr: mula.s f9, f15
-  // Unknown instr: madd.s f9, f13, f16
-  // Unknown instr: mula.s f10, f15
-  // Unknown instr: madd.s f10, f11, f16
+  acc = c->fprs[f9] * c->fprs[f16]; // Unknown instr: mula.s f9, f16
+  c->fprs[f12] = acc - c->fprs[f13] * c->fprs[f15]; // Unknown instr: msub.s f12, f13, f15
+  acc = c->fprs[f10] * c->fprs[f16]; // Unknown instr: mula.s f10, f16
+  c->fprs[f14] = acc - c->fprs[f11] * c->fprs[f15];// Unknown instr: msub.s f14, f11, f15
+  acc = c->fprs[f9] * c->fprs[f15];// Unknown instr: mula.s f9, f15
+  c->fprs[f9] = acc + c->fprs[f13] * c->fprs[f16];// Unknown instr: madd.s f9, f13, f16
+  acc = c->fprs[f10] * c->fprs[f15];// Unknown instr: mula.s f10, f15
+  c->fprs[f10] = acc + c->fprs[f11] * c->fprs[f16];// Unknown instr: madd.s f10, f11, f16
   cop1_bc = c->fprs[f8] < c->fprs[f12];             // c.lt.s f8, f12
-  bc = cop1_bc;                                     // bc1t L91
+  bc = cop1_bc;                                     // bc1t L90
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_17;}                          // branch non-likely
 
   cop1_bc = c->fprs[f8] < c->fprs[f14];             // c.lt.s f8, f14
-  bc = cop1_bc;                                     // bc1t L92
+  bc = cop1_bc;                                     // bc1t L91
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_18;}                          // branch non-likely
 
   cop1_bc = c->fprs[f8] < c->fprs[f9];              // c.lt.s f8, f9
-  bc = cop1_bc;                                     // bc1t L93
+  bc = cop1_bc;                                     // bc1t L92
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_19;}                          // branch non-likely
 
-  //beq r0, r0, L95                                 // beq r0, r0, L95
+  //beq r0, r0, L94                                 // beq r0, r0, L94
   // nop                                            // sll r0, r0, 0
   goto block_23;                                    // branch always
 
@@ -511,47 +517,47 @@ block_22:
   c->divs(f3, f3, f9);                              // div.s f3, f3, f9
   
 block_23:
-  cop1_bc = c->fprs[f0] < c->fprs[f3];              // c.lt.s f0, f3
-  bc = cop1_bc;                                     // bc1t L101
+  cop1_bc = c->fprs[f0] < c->fprs[f2];              // c.lt.s f0, f2
+  bc = cop1_bc;                                     // bc1t L100
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_36;}                          // branch non-likely
 
-  c->abss(f10, f2);                                 // abs.s f10, f2
-  c->movs(f12, f5);                                 // mov.s f12, f5
-  // Unknown instr: mula.s f10, f10
-  // Unknown instr: madd.s f9, f12, f12
+  c->abss(f10, f3);                                 // abs.s f10, f3
+  c->movs(f12, f6);                                 // mov.s f12, f6
+  acc = c->fprs[10] * c->fprs[10]; // Unknown instr: mula.s f10, f10
+  c->fprs[9] = acc + c->fprs[12] * c->fprs[12]; // Unknown instr: madd.s f9, f12, f12
   c->lwc1(f7, 96, v1);                              // lwc1 f7, 96(v1)
   c->lwc1(f8, 100, v1);                             // lwc1 f8, 100(v1)
-  c->lwc1(f5, 104, v1);                             // lwc1 f5, 104(v1)
-  // Unknown instr: rsqrt.s f6, f6, f9
+  c->lwc1(f6, 104, v1);                             // lwc1 f6, 104(v1)
+  c->fprs[f5] = c->fprs[f5] / (std::sqrt(std::abs(c->fprs[f9]))); // Unknown instr: rsqrt.s f5, f5, f9
   c->lwc1(f11, 108, v1);                            // lwc1 f11, 108(v1)
   c->mtc1(f9, r0);                                  // mtc1 f9, r0
-  c->muls(f13, f10, f6);                            // mul.s f13, f10, f6
-  c->muls(f14, f12, f6);                            // mul.s f14, f12, f6
-  // Unknown instr: mula.s f7, f14
-  // Unknown instr: msub.s f10, f8, f13
-  // Unknown instr: mula.s f5, f14
-  // Unknown instr: msub.s f12, f11, f13
-  // Unknown instr: mula.s f7, f13
-  // Unknown instr: madd.s f6, f8, f14
-  // Unknown instr: mula.s f5, f13
-  // Unknown instr: madd.s f5, f11, f14
+  c->muls(f13, f10, f5);                            // mul.s f13, f10, f5
+  c->muls(f14, f12, f5);                            // mul.s f14, f12, f5
+  acc = c->fprs[f7] * c->fprs[f14];// Unknown instr: mula.s f7, f14
+  c->fprs[f10] = acc - c->fprs[f8] * c->fprs[f13];// Unknown instr: msub.s f10, f8, f13
+  acc = c->fprs[f6] * c->fprs[f14];// Unknown instr: mula.s f6, f14
+  c->fprs[f12] = acc - c->fprs[f11] * c->fprs[f13];// Unknown instr: msub.s f12, f11, f13
+  acc = c->fprs[f7] * c->fprs[f13];// Unknown instr: mula.s f7, f13
+  c->fprs[f5] = acc + c->fprs[f8] * c->fprs[f14];// Unknown instr: madd.s f5, f8, f14
+  acc = c->fprs[f6] * c->fprs[f13];// Unknown instr: mula.s f6, f13
+  c->fprs[f6] = acc + c->fprs[f11] * c->fprs[f14];// Unknown instr: madd.s f6, f11, f14
   cop1_bc = c->fprs[f9] < c->fprs[f10];             // c.lt.s f9, f10
-  bc = cop1_bc;                                     // bc1t L96
+  bc = cop1_bc;                                     // bc1t L95
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_28;}                          // branch non-likely
 
   cop1_bc = c->fprs[f9] < c->fprs[f12];             // c.lt.s f9, f12
-  bc = cop1_bc;                                     // bc1t L97
+  bc = cop1_bc;                                     // bc1t L96
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_29;}                          // branch non-likely
 
-  cop1_bc = c->fprs[f9] < c->fprs[f6];              // c.lt.s f9, f6
-  bc = cop1_bc;                                     // bc1t L98
+  cop1_bc = c->fprs[f9] < c->fprs[f5];              // c.lt.s f9, f5
+  bc = cop1_bc;                                     // bc1t L97
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_30;}                          // branch non-likely
 
-  //beq r0, r0, L100                                // beq r0, r0, L100
+  //beq r0, r0, L99                                 // beq r0, r0, L99
   // nop                                            // sll r0, r0, 0
   goto block_34;                                    // branch always
 
@@ -648,10 +654,27 @@ struct Cache {
   void* merc_global_stats; // *merc-global-stats*
 } cache;
 
+struct MercEffectBucketInfo {
+  u8 color_fade[4];
+  u8 merc_path;
+  u8 ignore_alpha;
+  u8 disable_draw;
+  u8 disable_envmap;
+};
+
+struct MercBucketInfo {
+  u8 lights[0x70];
+  u32 needs_clip;
+  u32 mercprime;
+  u32 mercneric;
+  MercEffectBucketInfo effects[64];
+};
+static_assert(sizeof(MercBucketInfo) == 0x27c);
+
+// TODO: hack this up for pc merc rendering.
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)
@@ -661,6 +684,7 @@ u64 execute(void* ctxt) {
   c->sq(s4, 80, sp);                                // sq s4, 80(sp)
   c->sq(s5, 96, sp);                                // sq s5, 96(sp)
   c->sq(gp, 112, sp);                               // sq gp, 112(sp)
+  const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(t1));
   c->mov64(t7, a3);                                 // or t7, a3, r0
   c->mov64(v1, t0);                                 // or v1, t0, r0
   c->lui(t0, 4096);                                 // lui t0, 4096
@@ -670,7 +694,7 @@ u64 execute(void* ctxt) {
   c->lui(a3, 12288);                                // lui a3, 12288
   c->lui(t8, 19201);                                // lui t8, 19201
   c->pcpyld(t0, a3, t0);                            // pcpyld t0, a3, t0
-  c->lbu(a3, 82, a0);                               // lbu a3, 82(a0)
+  c->lbu(a3, 78, a0);                               // lbu a3, 78(a0)
   c->pcpyld(t1, t8, t1);                            // pcpyld t1, t8, t1
   c->lui(t2, 28160);                                // lui t2, 28160
   c->addiu(t8, r0, 8);                              // addiu t8, r0, 8
@@ -684,7 +708,7 @@ u64 execute(void* ctxt) {
   c->daddiu(t3, t3, 1);                             // daddiu t3, t3, 1
   c->daddu(a0, a3, a0);                             // daddu a0, a3, a0
   c->pcpyld(t2, t2, r0);                            // pcpyld t2, t2, r0
-  c->lw(a0, 32, a0);                                // lw a0, 32(a0)
+  c->lw(a0, 28, a0);                                // lw a0, 28(a0)
   c->pcpyld(t3, t3, r0);                            // pcpyld t3, t3, r0
   c->pcpyld(t4, t4, r0);                            // pcpyld t4, t4, r0
   c->lui(t5, 12288);                                // lui t5, 12288
@@ -699,22 +723,22 @@ u64 execute(void* ctxt) {
   c->lwu(t7, 68, a0);                               // lwu t7, 68(a0)
   c->pcpyld(t6, t8, t6);                            // pcpyld t6, t8, t6
   c->daddiu(t8, a0, 172);                           // daddiu t8, a0, 172
-  bc = c->sgpr64(t7) == 0;                          // beq t7, r0, L119
+  bc = c->sgpr64(t7) == 0;                          // beq t7, r0, L118
   c->load_symbol2(a3, cache.foreground);            // lw a3, *foreground*(s7)
   if (bc) {goto block_16;}                          // branch non-likely
 
-  c->daddiu(t9, a3, 9276);                          // daddiu t9, a3, 9276
-  
+  c->daddiu(t9, a3, 3852);                          // daddiu t9, a3, 3852
+
 block_2:
   c->mov64(ra, a2);                                 // or ra, a2, r0
   c->lbu(a3, 6, t9);                                // lbu a3, 6(t9)
   c->lbu(gp, 4, t9);                                // lbu gp, 4(t9)
-  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L119
+  bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L118
   c->load_symbol2(a3, cache.merc_global_stats);     // lw a3, *merc-global-stats*(s7)
   if (bc) {goto block_16;}                          // branch non-likely
 
   c->daddu(a3, r0, a3);                             // daddu a3, r0, a3
-  bc = c->sgpr64(gp) != 0;                          // bne gp, r0, L119
+  bc = c->sgpr64(gp) != 0;                          // bne gp, r0, L118
   c->lhu(s4, 2, a3);                                // lhu s4, 2(a3)
   if (bc) {goto block_16;}                          // branch non-likely
 
@@ -736,12 +760,12 @@ block_2:
   c->or_(t2, t2, s4);                               // or t2, t2, s4
   c->lhu(s5, 18, t8);                               // lhu s5, 18(t8)
   c->addiu(s4, r0, 0);                              // addiu s4, r0, 0
-  bc = c->sgpr64(s5) == 0;                          // beq s5, r0, L119
+  bc = c->sgpr64(s5) == 0;                          // beq s5, r0, L118
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_16;}                          // branch non-likely
 
   // nop                                            // sll r0, r0, 0
-  
+
 block_6:
   c->lbu(s0, 0, gp);                                // lbu s0, 0(gp)
   // nop                                            // sll r0, r0, 0
@@ -764,6 +788,23 @@ block_6:
   c->sw(a3, 12, a2);                                // sw a3, 12(a2)
   c->srl(s0, s0, 2);                                // srl s0, s0, 2
   c->sq(t1, 16, a2);                                // sq t1, 16(a2)
+
+  // pc hack
+  {
+    u16 use_pc_merc_bits = 0;
+    u16 ignore_alpha_bits = 0;
+    for (int i = 0; i < 16; i++) {
+      if (!mbi->effects[i].disable_draw) {
+        use_pc_merc_bits |= (1 << i);
+      }
+      if (mbi->effects[i].ignore_alpha) {
+        ignore_alpha_bits |= (1 << i);
+      }
+    }
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 28, &use_pc_merc_bits, 2);
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 30, &ignore_alpha_bits, 2);
+  }
+
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
   c->sq(t3, 48, a2);                                // sq t3, 48(a2)
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
@@ -783,7 +824,7 @@ block_6:
   c->daddu(t2, t4, s3);                             // daddu t2, t4, s3
   c->lbu(s3, 3, gp);                                // lbu s3, 3(gp)
   c->daddiu(gp, gp, 4);                             // daddiu gp, gp, 4
-  bc = c->sgpr64(s4) != 0;                          // bne s4, r0, L115
+  bc = c->sgpr64(s4) != 0;                          // bne s4, r0, L114
   c->daddiu(a2, a2, 80);                            // daddiu a2, a2, 80
   if (bc) {goto block_8;}                           // branch non-likely
 
@@ -794,7 +835,7 @@ block_6:
   c->sb(s2, 0, a2);                                 // sb s2, 0(a2)
   c->daddiu(a3, a3, 132);                           // daddiu a3, a3, 132
   c->load_symbol2(s2, cache.foreground);            // lw s2, *foreground*(s7)
-  c->daddiu(s1, s2, 9152);                          // daddiu s1, s2, 9152
+  c->daddiu(s1, s2, 3728);                          // daddiu s1, s2, 3728
   c->sw(a3, 12, a2);                                // sw a3, 12(a2)
   c->lq(a3, 0, s1);                                 // lq a3, 0(s1)
   c->lq(s2, 16, s1);                                // lq s2, 16(s1)
@@ -819,43 +860,62 @@ block_6:
   c->sq(s0, 128, a2);                               // sq s0, 128(a2)
   c->sw(a3, 28, a2);                                // sw a3, 28(a2)
   c->daddiu(a2, a2, 144);                           // daddiu a2, a2, 144
-  
+
+  // PC ADD BONUS DATA (bonus!)
+  {
+    // 10 qw test
+    u64 dmatag = 5 | (1 << 28);
+    memcpy(g_ee_main_mem + c->sgpr64(a2), &dmatag, 8);
+    u32 vif = (0b1001 << 24);
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 8, &vif, 4);
+
+    for (int i = 0; i < 16; i++) {
+      memcpy(g_ee_main_mem + c->sgpr64(a2) + 16 + i * 4, mbi->effects[i].color_fade, 4);
+    }
+
+    c->gprs[a2].du32[0] += 6 * 16;
+  }
+
 block_8:
-  bc = c->sgpr64(s3) == 0;                          // beq s3, r0, L117
+  bc = c->sgpr64(s3) == 0;                          // beq s3, r0, L116
   c->addiu(s2, r0, 128);                            // addiu s2, r0, 128
   if (bc) {goto block_11;}                          // branch non-likely
 
   c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)
   // nop                                            // sll r0, r0, 0
-  
+
 block_10:
   c->multu3(s1, a3, s2);                            // multu3 s1, a3, s2
   c->sq(t5, 0, a2);                                 // sq t5, 0(a2)
   c->lbu(s0, 1, gp);                                // lbu s0, 1(gp)
   c->daddiu(gp, gp, 2);                             // daddiu gp, gp, 2
+
+  // HACK for PC PORT: stash the source matrix number in the unused bits of nop viftag.
+  c->sb(a3, 8, a2);
+
   c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)
   c->daddiu(s3, s3, -1);                            // daddiu s3, s3, -1
   c->sb(s0, 12, a2);                                // sb s0, 12(a2)
   c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
   c->daddu(s1, s1, a1);                             // daddu s1, s1, a1
   // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(s3) != 0;                          // bne s3, r0, L116
+  bc = c->sgpr64(s3) != 0;                          // bne s3, r0, L115
   c->sw(s1, -12, a2);                               // sw s1, -12(a2)
   if (bc) {goto block_10;}                          // branch non-likely
 
-  
+
 block_11:
   c->sq(t6, 0, a2);                                 // sq t6, 0(a2)
   c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
-  bc = c->sgpr64(s4) != 0;                          // bne s4, r0, L118
+  bc = c->sgpr64(s4) != 0;                          // bne s4, r0, L117
   c->daddiu(s4, s4, 1);                             // daddiu s4, s4, 1
   if (bc) {goto block_13;}                          // branch non-likely
 
   c->mov64(a3, v1);                                 // or a3, v1, r0
   c->sb(a3, -4, a2);                                // sb a3, -4(a2)
-  
+
 block_13:
-  bc = c->sgpr64(s4) != c->sgpr64(s5);              // bne s4, s5, L114
+  bc = c->sgpr64(s4) != c->sgpr64(s5);              // bne s4, s5, L113
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_6;}                           // branch non-likely
 
@@ -877,18 +937,18 @@ block_13:
   c->mov64(s4, a2);                                 // or s4, a2, r0
   c->sw(s5, 0, a2);                                 // sw s5, 0(a2)
   c->daddiu(a2, a2, 16);                            // daddiu a2, a2, 16
-  bc = c->sgpr64(gp) == 0;                          // beq gp, r0, L119
+  bc = c->sgpr64(gp) == 0;                          // beq gp, r0, L118
   c->sw(s4, 4, a3);                                 // sw s4, 4(a3)
   if (bc) {goto block_16;}                          // branch non-likely
 
   // nop                                            // sll r0, r0, 0
   c->sw(ra, 4, gp);                                 // sw ra, 4(gp)
-  
+
 block_16:
   c->daddiu(t8, t8, 32);                            // daddiu t8, t8, 32
   c->daddiu(t9, t9, 8);                             // daddiu t9, t9, 8
   c->daddiu(t7, t7, -1);                            // daddiu t7, t7, -1
-  bc = c->sgpr64(t7) != 0;                          // bne t7, r0, L113
+  bc = c->sgpr64(t7) != 0;                          // bne t7, r0, L112
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_2;}                           // branch non-likely
 
@@ -915,7 +975,7 @@ void link() {
   cache.fake_scratchpad_data = intern_from_c(-1, 0, "*fake-scratchpad-data*").c();
   cache.foreground = intern_from_c(-1, 0, "*foreground*").c();
   cache.merc_global_stats = intern_from_c(-1, 0, "*merc-global-stats*").c();
-  gLinkedFunctionTable.reg("foreground-merc", execute, 512);
+  gLinkedFunctionTable.reg("foreground-merc", execute, 256);
 }
 
 } // namespace foreground_merc

@@ -8,8 +8,8 @@ namespace method_39_nav_state {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
+  float acc;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->swc1(f20, 80, sp);                             // swc1 f20, 80(sp)
   c->swc1(f22, 84, sp);                             // swc1 f22, 84(sp)
@@ -36,7 +36,7 @@ u64 execute(void* ctxt) {
   c->lwu(a2, 0, a2);                                // lwu a2, 0(a2)
   c->lwc1(f2, 28, a2);                              // lwc1 f2, 28(a2)
   cop1_bc = c->fprs[f2] < c->fprs[f0];              // c.lt.s f2, f0
-  bc = !cop1_bc;                                    // bc1f L198
+  bc = !cop1_bc;                                    // bc1f L192
   c->mov64(v0, s7);                                 // or v0, s7, r0
   if (bc) {goto block_6;}                           // branch non-likely
 
@@ -79,6 +79,7 @@ u64 execute(void* ctxt) {
   c->mtc1(f14, t0);                                 // mtc1 f14, t0
   c->ori(t0, a3, 41599);                            // ori t0, a3, 41599
   // Unknown instr: mula.s f1, f10
+  acc = c->fprs[f1] * c->fprs[f10];
   c->lui(a3, 16256);                                // lui a3, 16256
   c->muls(f3, f2, f1);                              // mul.s f3, f2, f1
   c->mov64(a3, a3);                                 // or a3, a3, r0
@@ -102,12 +103,16 @@ u64 execute(void* ctxt) {
   c->muls(f9, f5, f4);                              // mul.s f9, f5, f4
   c->lui(a3, 15658);                                // lui a3, 15658
   // Unknown instr: madda.s f3, f11
+  acc += c->fprs[f3] * c->fprs[f11];
   c->ori(a3, a3, 31272);                            // ori a3, a3, 31272
   // Unknown instr: madda.s f5, f12
+  acc += c->fprs[f5] * c->fprs[f12];
   c->lui(t0, -17742);                               // lui t0, -17742
   // Unknown instr: madda.s f7, f14
+  acc += c->fprs[f7] * c->fprs[f14];
   c->ori(t0, t0, 48177);                            // ori t0, t0, 48177
   // Unknown instr: madd.s f21, f9, f15
+  c->fprs[f21] = acc + (c->fprs[f9] * c->fprs[f15]);
   c->lui(t1, 14249);                                // lui t1, 14249
   c->mtc1(f18, a3);                                 // mtc1 f18, a3
   c->ori(a3, t1, 13291);                            // ori a3, t1, 13291
@@ -116,14 +121,19 @@ u64 execute(void* ctxt) {
   c->mtc1(f20, a3);                                 // mtc1 f20, a3
   // nop                                            // sll r0, r0, 0
   // Unknown instr: mula.s f16, f16
+  acc = c->fprs[f16] * c->fprs[f16];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f2, f17
+  acc += c->fprs[f2] * c->fprs[f17];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f4, f18
+  acc += c->fprs[f4] * c->fprs[f18];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madda.s f6, f19
+  acc += c->fprs[f6] * c->fprs[f19];
   // nop                                            // sll r0, r0, 0
   // Unknown instr: madd.s f22, f8, f20
+  c->fprs[f22] = acc + (c->fprs[f8] * c->fprs[f20]);
   // nop                                            // sll r0, r0, 0
   c->swc1(f21, 0, a2);                              // swc1 f21, 0(a2)
   // nop                                            // sll r0, r0, 0
@@ -140,11 +150,12 @@ u64 execute(void* ctxt) {
   // Unknown instr: mula.s f1, f4
   // Unknown instr: madda.s f2, f5
   // Unknown instr: madd.s f1, f3, f6
+  c->fprs[f1] = (c->fprs[f3] * c->fprs[f6]) + (c->fprs[f2] * c->fprs[f5]) + (c->fprs[f1] * c->fprs[f4]);
   c->mfc1(a2, f1);                                  // mfc1 a2, f1
   c->mtc1(f1, a2);                                  // mtc1 f1, a2
   c->lwc1(f2, 4, a1);                               // lwc1 f2, 4(a1)
   cop1_bc = c->fprs[f1] < c->fprs[f2];              // c.lt.s f1, f2
-  bc = !cop1_bc;                                    // bc1f L198
+  bc = !cop1_bc;                                    // bc1f L192
   c->mov64(v0, s7);                                 // or v0, s7, r0
   if (bc) {goto block_6;}                           // branch non-likely
 
@@ -196,6 +207,7 @@ u64 execute(void* ctxt) {
   // Unknown instr: mula.s f1, f4
   // Unknown instr: madda.s f2, f5
   // Unknown instr: madd.s f1, f3, f6
+  c->fprs[f1] = (c->fprs[f3] * c->fprs[f6]) + (c->fprs[f2] * c->fprs[f5]) + (c->fprs[f1] * c->fprs[f4]);
   c->mfc1(a1, f1);                                  // mfc1 a1, f1
   c->mtc1(f1, a1);                                  // mtc1 f1, a1
   c->mov64(t0, a3);                                 // or t0, a3, r0
@@ -209,26 +221,27 @@ u64 execute(void* ctxt) {
   // Unknown instr: mula.s f2, f5
   // Unknown instr: madda.s f3, f6
   // Unknown instr: madd.s f2, f4, f7
+  c->fprs[f2] = (c->fprs[f4] * c->fprs[f7]) + (c->fprs[f3] * c->fprs[f6]) + (c->fprs[f2] * c->fprs[f5]);
   c->mfc1(a1, f2);                                  // mfc1 a1, f2
   c->mtc1(f2, a1);                                  // mtc1 f2, a1
   cop1_bc = c->fprs[f2] < c->fprs[f1];              // c.lt.s f2, f1
-  bc = !cop1_bc;                                    // bc1f L196
+  bc = !cop1_bc;                                    // bc1f L190
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_4;}                           // branch non-likely
 
   c->mov64(a1, v1);                                 // or a1, v1, r0
   c->lq(a2, 0, a2);                                 // lq a2, 0(a2)
   c->sq(a2, 0, a1);                                 // sq a2, 0(a1)
-  //beq r0, r0, L197                                // beq r0, r0, L197
+  //beq r0, r0, L191                                // beq r0, r0, L191
   // nop                                            // sll r0, r0, 0
   goto block_5;                                     // branch always
 
-  
+
 block_4:
   c->mov64(a1, v1);                                 // or a1, v1, r0
   c->lq(a2, 0, a3);                                 // lq a2, 0(a3)
   c->sq(a2, 0, a1);                                 // sq a2, 0(a1)
-  
+
 block_5:
   c->daddiu(a0, a0, 48);                            // daddiu a0, a0, 48
   c->lqc2(vf1, 0, v1);                              // lqc2 vf1, 0(v1)
@@ -238,7 +251,7 @@ block_5:
   c->vmul_bc(DEST::xyz, BC::x, vf1, vf1, vf2);      // vmulx.xyz vf1, vf1, vf2
   c->sqc2(vf1, 0, a0);                              // sqc2 vf1, 0(a0)
   c->daddiu(v0, s7, 4);                             // daddiu v0, s7, #t
-  
+
 block_6:
   c->lwc1(f22, 84, sp);                             // lwc1 f22, 84(sp)
   c->lwc1(f20, 80, sp);                             // lwc1 f20, 80(sp)

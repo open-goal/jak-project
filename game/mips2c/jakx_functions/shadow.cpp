@@ -1,4 +1,214 @@
 //--------------------------MIPS2C---------------------
+#include "game/kernel/jak3/kscheme.h"
+#include "game/mips2c/mips2c_private.h"
+namespace Mips2C::jakx {
+// clang-format off
+namespace {
+void exec_0(ExecutionContext* c) {
+  // nop                        |  sub.xyzw vf05, vf03, vf02      0
+  c->vfs[vf05].vf.sub(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf02).vf);
+  // nop                        |  sub.xyzw vf06, vf04, vf02      1
+  c->vfs[vf06].vf.sub(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf02).vf);
+  // nop                        |  sub.xyzw vf10, vf08, vf07      2
+  c->vfs[vf10].vf.sub(Mask::xyzw, c->vf_src(vf08).vf, c->vf_src(vf07).vf);
+  // nop                        |  sub.xyzw vf11, vf09, vf07      3
+  c->vfs[vf11].vf.sub(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf07).vf);
+  // nop                        |  sub.xyzw vf15, vf13, vf12      4
+  c->vfs[vf15].vf.sub(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf12).vf);
+  // nop                        |  sub.xyzw vf16, vf14, vf12      5
+  c->vfs[vf16].vf.sub(Mask::xyzw, c->vf_src(vf14).vf, c->vf_src(vf12).vf);
+  // nop                        |  sub.xyzw vf20, vf18, vf17      6
+  c->vfs[vf20].vf.sub(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf17).vf);
+  // nop                        |  sub.xyzw vf21, vf19, vf17      7
+  c->vfs[vf21].vf.sub(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf17).vf);
+  // nop                        |  opmula.xyz ACC, vf05, vf06     8
+  c->vopmula(vf05, vf06); // ASSERT(false);
+  // nop                        |  opmsub.xyz vf05, vf06, vf05    9
+  c->vopmsub(vf05, vf06, vf05); //ASSERT(false);
+  // nop                        |  opmula.xyz ACC, vf10, vf11     10
+  c->vopmula(vf10, vf11); // ASSERT(false);
+  // nop                        |  opmsub.xyz vf10, vf11, vf10    11
+  c->vopmsub(vf10, vf11, vf10); // ASSERT(false);
+  // nop                        |  opmula.xyz ACC, vf15, vf16     12
+  c->vopmula(vf15, vf16); // ASSERT(false);
+  // nop                        |  opmsub.xyz vf15, vf16, vf15    13
+  c->vopmsub(vf15, vf16, vf15); // ASSERT(false);
+  // nop                        |  opmula.xyz ACC, vf20, vf21     14
+  c->vopmula(vf20, vf21); // ASSERT(false);
+  // nop                        |  opmsub.xyz vf20, vf21, vf20    15
+  c->vopmsub(vf20, vf21, vf20); // ASSERT(false);
+  // nop                        |  mul.xyz vf05, vf05, vf01       16
+  c->vfs[vf05].vf.mul(Mask::xyz, c->vf_src(vf05).vf, c->vf_src(vf01).vf);
+  // nop                        |  mul.xyz vf10, vf10, vf01       17
+  c->vfs[vf10].vf.mul(Mask::xyz, c->vf_src(vf10).vf, c->vf_src(vf01).vf);
+  // nop                        |  mul.xyz vf15, vf15, vf01       18
+  c->vfs[vf15].vf.mul(Mask::xyz, c->vf_src(vf15).vf, c->vf_src(vf01).vf);
+  // nop                        |  mul.xyz vf20, vf20, vf01       19
+  c->vfs[vf20].vf.mul(Mask::xyz, c->vf_src(vf20).vf, c->vf_src(vf01).vf);
+  // nop                        |  addx.y vf05, vf05, vf05        20
+  c->vfs[vf05].vf.add(Mask::y, c->vf_src(vf05).vf, c->vf_src(vf05).vf.x());
+  // nop                        |  addx.y vf10, vf10, vf10        21
+  c->vfs[vf10].vf.add(Mask::y, c->vf_src(vf10).vf, c->vf_src(vf10).vf.x());
+  // nop                        |  addx.y vf15, vf15, vf15        22
+  c->vfs[vf15].vf.add(Mask::y, c->vf_src(vf15).vf, c->vf_src(vf15).vf.x());
+  // nop                        |  addx.y vf20, vf20, vf20        23
+  c->vfs[vf20].vf.add(Mask::y, c->vf_src(vf20).vf, c->vf_src(vf20).vf.x());
+  // nop                        |  addz.y vf22, vf05, vf05        24
+  c->vfs[vf22].vf.add(Mask::y, c->vf_src(vf05).vf, c->vf_src(vf05).vf.z());
+  // nop                        |  addz.y vf23, vf10, vf10        25
+  c->vfs[vf23].vf.add(Mask::y, c->vf_src(vf10).vf, c->vf_src(vf10).vf.z());
+  // nop                        |  addz.y vf24, vf15, vf15 :e     26
+  c->vfs[vf24].vf.add(Mask::y, c->vf_src(vf15).vf, c->vf_src(vf15).vf.z());
+  // nop                        |  addz.y vf25, vf20, vf20        27
+  c->vfs[vf25].vf.add(Mask::y, c->vf_src(vf20).vf, c->vf_src(vf20).vf.z());
+}
+
+void exec_28(ExecutionContext* c) {
+// nop                        |  mul.xyzw vf27, vf20, Q         28
+  c->vfs[vf27].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->Q);
+  // div Q, vf13.x, vf17.x      |  sub.xyzw vf19, vf01, vf03      29
+  c->vfs[vf19].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf03).vf);   c->Q = c->vfs[vf13].vf.x() / c->vfs[vf17].vf.x();
+  // move.xyzw vf23, vf07       |  sub.xyzw vf20, vf01, vf04      30
+  c->vfs[vf20].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf04).vf);   c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf07).vf);
+  // nop                        |  sub.xyzw vf21, vf01, vf05      31
+  c->vfs[vf21].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf05).vf);
+  // move.xyzw vf25, vf09       |  sub.xyzw vf22, vf01, vf06      32
+  c->vfs[vf22].vf.sub(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf06).vf);   c->vfs[vf25].vf.move(Mask::xyzw, c->vf_src(vf09).vf);
+  // move.xyzw vf26, vf10       |  sub.xyzw vf24, vf08, vf27      33
+  c->vfs[vf24].vf.sub(Mask::xyzw, c->vf_src(vf08).vf, c->vf_src(vf27).vf);   c->vfs[vf26].vf.move(Mask::xyzw, c->vf_src(vf10).vf);
+  // nop                        |  mul.xyzw vf11, vf03, vf02      34
+  c->vfs[vf11].vf.mul(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf02).vf);
+  // nop                        |  mul.xyz vf15, vf19, vf02       35
+  c->vfs[vf15].vf.mul(Mask::xyz, c->vf_src(vf19).vf, c->vf_src(vf02).vf);
+  // div Q, vf14.x, vf18.x      |  mul.xyzw vf12, vf04, vf02      36
+  float oldQ = c->Q;
+  c->vfs[vf12].vf.mul(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf02).vf);   c->Q = c->vfs[vf14].vf.x() / c->vfs[vf18].vf.x();
+  // move.xyzw vf07, vf03       |  mul.xyzw vf28, vf28, Q         37
+  c->vfs[vf28].vf.mul(Mask::xyzw, c->vf_src(vf28).vf, oldQ);   c->vfs[vf07].vf.move(Mask::xyzw, c->vf_src(vf03).vf);
+  // move.xyzw vf08, vf04       |  mul.xyz vf16, vf20, vf02       38
+  c->vfs[vf16].vf.mul(Mask::xyz, c->vf_src(vf20).vf, c->vf_src(vf02).vf);   c->vfs[vf08].vf.move(Mask::xyzw, c->vf_src(vf04).vf);
+  // move.xyzw vf09, vf05       |  addy.x vf11, vf11, vf11        39
+  c->vfs[vf11].vf.add(Mask::x, c->vf_src(vf11).vf, c->vf_src(vf11).vf.y());   c->vfs[vf09].vf.move(Mask::xyzw, c->vf_src(vf05).vf);
+  // move.xyzw vf10, vf06       |  addy.x vf15, vf15, vf15        40
+  c->vfs[vf15].vf.add(Mask::x, c->vf_src(vf15).vf, c->vf_src(vf15).vf.y());   c->vfs[vf10].vf.move(Mask::xyzw, c->vf_src(vf06).vf);
+  // nop                        |  sub.xyzw vf25, vf25, vf28      41
+  c->vfs[vf25].vf.sub(Mask::xyzw, c->vf_src(vf25).vf, c->vf_src(vf28).vf);
+  // nop                        |  addy.x vf12, vf12, vf12        42
+  c->vfs[vf12].vf.add(Mask::x, c->vf_src(vf12).vf, c->vf_src(vf12).vf.y());
+  // nop                        |  mul.xyzw vf29, vf29, Q         43
+  c->vfs[vf29].vf.mul(Mask::xyzw, c->vf_src(vf29).vf, c->Q);
+  // nop                        |  addy.x vf16, vf16, vf16        44
+  c->vfs[vf16].vf.add(Mask::x, c->vf_src(vf16).vf, c->vf_src(vf16).vf.y());
+  // nop                        |  addz.x vf11, vf11, vf11        45
+  c->vfs[vf11].vf.add(Mask::x, c->vf_src(vf11).vf, c->vf_src(vf11).vf.z());
+  // nop                        |  addz.x vf15, vf15, vf15        46
+  c->vfs[vf15].vf.add(Mask::x, c->vf_src(vf15).vf, c->vf_src(vf15).vf.z());
+  // nop                        |  sub.xyzw vf26, vf26, vf29      47
+  c->vfs[vf26].vf.sub(Mask::xyzw, c->vf_src(vf26).vf, c->vf_src(vf29).vf);
+  // nop                        |  addz.x vf12, vf12, vf12        48
+  c->vfs[vf12].vf.add(Mask::x, c->vf_src(vf12).vf, c->vf_src(vf12).vf.z());
+  // nop                        |  addz.x vf16, vf16, vf16        49
+  c->vfs[vf16].vf.add(Mask::x, c->vf_src(vf16).vf, c->vf_src(vf16).vf.z());
+  // nop                        |  addw.x vf11, vf11, vf11        50
+  c->vfs[vf11].vf.add(Mask::x, c->vf_src(vf11).vf, c->vf_src(vf11).vf.w());
+  // nop                        |  mul.xyzw vf13, vf09, vf02      51
+
+  c->vfs[vf13].vf.mul(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf02).vf);
+  c->vfs[vf13].vf.saturate_infs();
+
+  // nop                        |  addw.x vf12, vf12, vf12        52
+  c->vfs[vf12].vf.add(Mask::x, c->vf_src(vf12).vf, c->vf_src(vf12).vf.w());
+  // nop                        |  mul.xyz vf17, vf21, vf02       53
+  c->vfs[vf17].vf.mul(Mask::xyz, c->vf_src(vf21).vf, c->vf_src(vf02).vf);
+  // nop                        |  mul.xyzw vf14, vf10, vf02      54
+  c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf02).vf);
+  c->vfs[vf14].vf.saturate_infs();
+
+  // div Q, vf11.x, vf15.x      |  mul.xyz vf18, vf22, vf02       55
+  c->vfs[vf18].vf.mul(Mask::xyz, c->vf_src(vf22).vf, c->vf_src(vf02).vf);   c->Q = c->vfs[vf11].vf.x() / c->vfs[vf15].vf.x();
+  // nop                        |  addy.x vf13, vf13, vf13        56
+  c->vfs[vf13].vf.add(Mask::x, c->vf_src(vf13).vf, c->vf_src(vf13).vf.y());
+
+  // nop                        |  addy.x vf17, vf17, vf17        57
+  c->vfs[vf17].vf.add(Mask::x, c->vf_src(vf17).vf, c->vf_src(vf17).vf.y());
+  // nop                        |  addy.x vf14, vf14, vf14        58
+  c->vfs[vf14].vf.add(Mask::x, c->vf_src(vf14).vf, c->vf_src(vf14).vf.y());
+
+  // nop                        |  addy.x vf18, vf18, vf18        59
+  c->vfs[vf18].vf.add(Mask::x, c->vf_src(vf18).vf, c->vf_src(vf18).vf.y());
+  // nop                        |  addz.x vf13, vf13, vf13        60
+  c->vfs[vf13].vf.add(Mask::x, c->vf_src(vf13).vf, c->vf_src(vf13).vf.z());
+
+  // nop                        |  addz.x vf17, vf17, vf17        61
+  c->vfs[vf17].vf.add(Mask::x, c->vf_src(vf17).vf, c->vf_src(vf17).vf.z());
+  // div Q, vf12.x, vf16.x      |  addz.x vf14, vf14, vf14        62
+  oldQ = c->Q;
+  c->vfs[vf14].vf.add(Mask::x, c->vf_src(vf14).vf, c->vf_src(vf14).vf.z());   c->Q = c->vfs[vf12].vf.x() / c->vfs[vf16].vf.x();
+
+  // nop                        |  mul.xyzw vf19, vf19, Q         63
+  c->vfs[vf19].vf.mul(Mask::xyzw, c->vf_src(vf19).vf, oldQ);
+  // move.xyzw vf28, vf21       |  addz.x vf18, vf18, vf18        64
+  c->vfs[vf18].vf.add(Mask::x, c->vf_src(vf18).vf, c->vf_src(vf18).vf.z());   c->vfs[vf28].vf.move(Mask::xyzw, c->vf_src(vf21).vf);
+  // move.xyzw vf29, vf22       |  addw.x vf13, vf13, vf13        65
+  c->vfs[vf13].vf.add(Mask::x, c->vf_src(vf13).vf, c->vf_src(vf13).vf.w());   c->vfs[vf29].vf.move(Mask::xyzw, c->vf_src(vf22).vf);
+  c->vfs[vf13].vf.saturate_infs();
+
+  // nop                        |  addw.x vf14, vf14, vf14 :e     66
+  c->vfs[vf14].vf.add(Mask::x, c->vf_src(vf14).vf, c->vf_src(vf14).vf.w());
+  c->vfs[vf14].vf.saturate_infs();
+
+  // nop                        |  sub.xyzw vf07, vf07, vf19      67
+  c->vfs[vf07].vf.sub(Mask::xyzw, c->vf_src(vf07).vf, c->vf_src(vf19).vf);
+}
+
+void exec_68(ExecutionContext* c) {
+  // nop                        |  mul.xyzw vf27, vf20, Q         68
+  c->vfs[vf27].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->Q);
+  // div Q, vf13.x, vf17.x      |  nop                            69
+  c->Q = c->vfs[vf13].vf.x() / c->vfs[vf17].vf.x();
+  // move.xyzw vf23, vf07       |  nop                            70
+  c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf07).vf);
+  // nop                        |  nop                            71
+
+  // move.xyzw vf25, vf09       |  nop                            72
+  c->vfs[vf25].vf.move(Mask::xyzw, c->vf_src(vf09).vf);
+  // move.xyzw vf26, vf10       |  sub.xyzw vf24, vf08, vf27      73
+  c->vfs[vf24].vf.sub(Mask::xyzw, c->vf_src(vf08).vf, c->vf_src(vf27).vf);   c->vfs[vf26].vf.move(Mask::xyzw, c->vf_src(vf10).vf);
+  // nop                        |  nop                            74
+
+  // nop                        |  nop                            75
+
+  // div Q, vf14.x, vf18.x      |  nop                            76
+  float oldQ = c->Q;
+  c->Q = c->vfs[vf14].vf.x() / c->vfs[vf18].vf.x();
+  // nop                        |  mul.xyzw vf28, vf28, Q         77
+  c->vfs[vf28].vf.mul(Mask::xyzw, c->vf_src(vf28).vf, oldQ);
+  // nop                        |  nop                            78
+
+  // nop                        |  nop                            79
+
+  // nop                        |  nop                            80
+
+  // nop                        |  sub.xyzw vf25, vf25, vf28      81
+  c->vfs[vf25].vf.sub(Mask::xyzw, c->vf_src(vf25).vf, c->vf_src(vf28).vf); // was bad
+  // nop                        |  nop                            82
+
+  // nop                        |  mul.xyzw vf29, vf29, Q         83
+  c->vfs[vf29].vf.mul(Mask::xyzw, c->vf_src(vf29).vf, c->Q);
+  // nop                        |  nop                            84
+
+  // nop                        |  nop                            85
+
+  // nop                        |  nop :e                         86
+
+  // nop                        |  sub.xyzw vf26, vf26, vf29      87
+  c->vfs[vf26].vf.sub(Mask::xyzw, c->vf_src(vf26).vf, c->vf_src(vf29).vf);
+
+}
+} // namespace
+} // namespace Mips2C::jak3
+
+//--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/jakx/kscheme.h"
@@ -1398,7 +1608,7 @@ block_2:
   // nop                                            // sll r0, r0, 0
   c->lq(t0, 16, v1);                                // lq t0, 16(v1)
   c->daddiu(a1, a1, -4);                            // daddiu a1, a1, -4
-  // Unknown instr: vcallms 0
+  exec_0(c);
   c->pextub(a3, r0, t0);                            // pextub a3, r0, t0
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pextlb(t0, r0, t0);                            // pextlb t0, r0, t0
@@ -1790,7 +2000,7 @@ block_2:
   // nop                                            // sll r0, r0, 0
   c->lq(t3, 16, a3);                                // lq t3, 16(a3)
   c->daddiu(t0, t0, -4);                            // daddiu t0, t0, -4
-  // Unknown instr: vcallms 0
+  exec_0(c);
   c->pextub(t2, r0, t3);                            // pextub t2, r0, t3
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pextlb(t3, r0, t3);                            // pextlb t3, r0, t3
@@ -2265,7 +2475,7 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf5, t1);                        // qmtc2.ni vf5, t1
   // nop                                            // sll r0, r0, 0
   c->mov128_vf_gpr(vf6, t2);                        // qmtc2.ni vf6, t2
-  // Unknown instr: vcallms 28
+  exec_28(c);
   // nop                                            // sll r0, r0, 0
   c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
   c->lq(a3, 0, a2);                                 // lq a3, 0(a2)
@@ -2287,7 +2497,7 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf6, t2);                        // qmtc2.ni vf6, t2
   
 block_3:
-  // Unknown instr: vcallms 28
+  exec_28(c);
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
@@ -2375,7 +2585,7 @@ block_3:
 
   
 block_4:
-  // Unknown instr: vcallms 68
+  exec_68(c);
   // nop                                            // sll r0, r0, 0
   // nop                                            // vnop
   // nop                                            // sll r0, r0, 0

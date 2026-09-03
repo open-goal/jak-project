@@ -4,6 +4,19 @@
 #include "game/kernel/jakx/kscheme.h"
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
+
+struct RippleVu0 {
+  Vf data_mem[256];
+  void sq(const Vf& reg, u16 addr) {
+    ASSERT(addr < 256);
+    data_mem[addr] = reg;
+  }
+  Vf lq(u16 addr) {
+    ASSERT(addr < 256);
+    return data_mem[addr];
+  }
+} gRippleVu0;
+
 namespace ripple_matrix_scale {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -187,6 +200,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
+  u16 vi1, vi2;
   u32 call_addr = 0;
   c->daddiu(sp, sp, -80);                           // daddiu sp, sp, -80
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
@@ -375,7 +389,8 @@ block_12:
   c->mov128_vf_gpr(vf3, a2);                        // qmtc2.i vf3, a2
   c->mfc1(a2, f3);                                  // mfc1 a2, f3
   c->mov128_vf_gpr(vf4, a2);                        // qmtc2.i vf4, a2
-  // TODO - fix vi1 = c->gpr_src(a1).du16[0];                     // ctc2.i vi1, a1
+  // vi1 = c->gpr_src(a1).du16[0];                     // ctc2.i vi1, a1
+  vi1 = c->gpr_src(a1).du16[0];
   c->mov64(a1, v1);                                 // or a1, v1, r0
   c->addiu(a2, r0, 16);                             // addiu a2, r0, 16
   c->vmove(DEST::xyzw, vf6, vf0);                   // vmove.xyzw vf6, vf0
@@ -393,9 +408,10 @@ block_14:
   c->vadd_bc(DEST::xyzw, BC::w, vf5, vf5, vf0);     // vaddw.xyzw vf5, vf5, vf0
   c->vftoi0(DEST::xyzw, vf8, vf7);                  // vftoi0.xyzw vf8, vf7
   // Unknown instr: vmtirx vi2, vf8
+  vi2 = c->vfs[vf8].vf.x_as_u16();                  // vmtirx vi2, vf8
   c->vitof0(DEST::xyzw, vf8, vf8);                  // vitof0.xyzw vf8, vf8
-  // Unknown instr: viand vi2, vi2, vi1
-  // Unknown instr: vlqi.xyzw vf9, vi2
+  vi2 &= vi1;                                       // viand vi2, vi2, vi1
+  c->vfs[vf9].vf = gRippleVu0.lq(vi2++);            // vlqi.xyzw vf9, vi2
   c->vsub(DEST::xyzw, vf7, vf7, vf8);               // vsub.xyzw vf7, vf7, vf8
   c->vadda_bc(DEST::xyzw, BC::x, vf0, vf9);         // vaddax.xyzw acc, vf0, vf9
   c->vmadd_bc(DEST::xyzw, BC::y, vf9, vf7, vf9);    // vmaddy.xyzw vf9, vf7, vf9
@@ -537,14 +553,17 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf6, v1);                        // qmtc2.i vf6, v1
   c->mov128_gpr_vf(v1, vf6);                        // qmfc2.i v1, vf6
   c->addiu(v1, r0, 128);                            // addiu v1, r0, 128
-  // TODO fix - vi2 = c->gpr_src(v1).du16[0];                     // ctc2.i vi2, v1
-  // TODO fix - c->gprs[v1].du64[0] = vi2;                        // cfc2.i v1, vi2
+  // vi2 = c->gpr_src(v1).du16[0];                     // ctc2.i vi2, v1
+  // c->gprs[v1].du64[0] = vi2;                        // cfc2.i v1, vi2
+  u16 vi2 = c->gpr_src(v1).du16[0];                 // ctc2.i vi2, v1
+  c->gprs[v1].du64[0] = vi2;                        // cfc2.i v1, vi2
   c->lui(v1, 16256);                                // lui v1, 16256
   c->mtc1(f0, v1);                                  // mtc1 f0, v1
   c->mfc1(v1, f0);                                  // mfc1 v1, f0
   c->mov128_vf_gpr(vf9, v1);                        // qmtc2.i vf9, v1
   c->mov128_gpr_vf(v1, vf9);                        // qmfc2.i v1, vf9
   // Unknown instr: viaddi vi1, vi0, 0
+  u16 vi1 = 0;
   c->addiu(v1, r0, 128);                            // addiu v1, r0, 128
   c->vmove(DEST::xyzw, vf5, vf6);                   // vmove.xyzw vf5, vf6
   
@@ -564,9 +583,10 @@ block_1:
   c->vadd_bc(DEST::y, BC::x, vf9, vf9, vf8);        // vaddx.y vf9, vf9, vf8
   c->vsub(DEST::xyzw, vf10, vf0, vf9);              // vsub.xyzw vf10, vf0, vf9
   // Unknown instr: vsqi.xyzw vf9, vi1
+  gRippleVu0.sq(c->vfs[vf9].vf, vi1++);             // vsqi.xyzw vf9, vi1
   c->vmove(DEST::xyzw, vf9, vf8);                   // vmove.xyzw vf9, vf8
   bc = c->sgpr64(v1) != 0;                          // bne v1, r0, L40
-  // Unknown instr: vsqi.xyzw vf10, vi2
+  gRippleVu0.sq(c->vfs[vf10].vf, vi2++);            // vsqi.xyzw vf10, vi2
   if (bc) {goto block_1;}                           // branch non-likely
 
   c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0

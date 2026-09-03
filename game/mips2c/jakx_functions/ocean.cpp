@@ -4,353 +4,6 @@
 #include "game/kernel/jakx/kscheme.h"
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
-namespace method_16_ocean {
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
-  c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
-  c->mov64(fp, t9);                                 // or fp, t9, r0
-  c->mov64(v1, a1);                                 // or v1, a1, r0
-  c->lwu(a0, 4, v1);                                // lwu a0, 4(v1)
-  c->lui(a2, 4096);                                 // lui a2, 4096
-  c->ori(a2, a2, 2);                                // ori a2, a2, 2
-  c->sd(a2, 0, a0);                                 // sd a2, 0(a0)
-  c->sw(r0, 8, a0);                                 // sw r0, 8(a0)
-  c->lui(a2, 20480);                                // lui a2, 20480
-  c->ori(a2, a2, 2);                                // ori a2, a2, 2
-  c->sw(a2, 12, a0);                                // sw a2, 12(a0)
-  c->daddiu(a0, a0, 16);                            // daddiu a0, a0, 16
-  c->sw(a0, 4, v1);                                 // sw a0, 4(v1)
-  c->mov64(v1, a1);                                 // or v1, a1, r0
-  c->lwu(a0, 4, v1);                                // lwu a0, 4(v1)
-  // Unknown instr: ld a2, L142(fp)
-  c->pcpyld(a2, r0, a2);                            // pcpyld a2, r0, a2
-  c->sd(a2, 0, a0);                                 // sd a2, 0(a0)
-  // Unknown instr: ld a2, L140(fp)
-  c->sd(a2, 8, a0);                                 // sd a2, 8(a0)
-  c->daddiu(a0, a0, 16);                            // daddiu a0, a0, 16
-  c->sw(a0, 4, v1);                                 // sw a0, 4(v1)
-  c->mov64(v1, a1);                                 // or v1, a1, r0
-  c->lwu(a0, 4, v1);                                // lwu a0, 4(v1)
-  c->addiu(a1, r0, 128);                            // addiu a1, r0, 128
-  c->dsll32(a1, a1, 0);                             // dsll32 a1, a1, 0
-  c->sd(a1, 0, a0);                                 // sd a1, 0(a0)
-  c->addiu(a1, r0, 59);                             // addiu a1, r0, 59
-  c->sd(a1, 8, a0);                                 // sd a1, 8(a0)
-  c->daddiu(a0, a0, 16);                            // daddiu a0, a0, 16
-  c->sw(a0, 4, v1);                                 // sw a0, 4(v1)
-  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
-  c->ld(fp, 8, sp);                                 // ld fp, 8(sp)
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  gLinkedFunctionTable.reg("(method 16 ocean)", execute, 256);
-}
-
-} // namespace method_16_ocean
-} // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jakx/kscheme.h"
-using ::jakx::intern_from_c;
-namespace Mips2C::jakx {
-namespace method_14_ocean {
-struct Cache {
-  void* vector_normalize; // vector-normalize!
-  void* vector4_madd; // vector4-madd!
-  void* vector4_scale; // vector4-scale!
-} cache;
-
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
-  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
-  c->sq(s3, 48, sp);                                // sq s3, 48(sp)
-  c->sq(s4, 64, sp);                                // sq s4, 64(sp)
-  c->sq(s5, 80, sp);                                // sq s5, 80(sp)
-  c->sq(gp, 96, sp);                                // sq gp, 96(sp)
-  c->swc1(f28, 112, sp);                            // swc1 f28, 112(sp)
-  c->swc1(f30, 116, sp);                            // swc1 f30, 116(sp)
-  c->mov64(gp, a1);                                 // or gp, a1, r0
-  c->daddiu(s3, sp, 16);                            // daddiu s3, sp, 16
-  c->daddiu(s4, a0, 896);                           // daddiu s4, a0, 896
-  c->mov64(v1, s3);                                 // or v1, s3, r0
-  c->mov64(a0, a2);                                 // or a0, a2, r0
-  c->lq(a0, 0, a0);                                 // lq a0, 0(a0)
-  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
-  c->mtc1(f0, r0);                                  // mtc1 f0, r0
-  c->swc1(f0, 4, s3);                               // swc1 f0, 4(s3)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->mov64(a0, s3);                                 // or a0, s3, r0
-  c->lui(a1, 16256);                                // lui a1, 16256
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->lui(v1, 15820);                                // lui v1, 15820
-  c->ori(v1, v1, 52429);                            // ori v1, v1, 52429
-  c->mtc1(f0, v1);                                  // mtc1 f0, v1
-  c->lwc1(f1, 4, s3);                               // lwc1 f1, 4(s3)
-  c->adds(f0, f0, f1);                              // add.s f0, f0, f1
-  c->swc1(f0, 4, s3);                               // swc1 f0, 4(s3)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->mov64(a0, s3);                                 // or a0, s3, r0
-  c->lui(a1, 16256);                                // lui a1, 16256
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->daddiu(s5, sp, 32);                            // daddiu s5, sp, 32
-  c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
-  c->mov64(v1, s3);                                 // or v1, s3, r0
-  c->lwc1(f0, 0, a0);                               // lwc1 f0, 0(a0)
-  c->lwc1(f1, 4, a0);                               // lwc1 f1, 4(a0)
-  c->lwc1(f2, 8, a0);                               // lwc1 f2, 8(a0)
-  c->lwc1(f3, 0, v1);                               // lwc1 f3, 0(v1)
-  c->lwc1(f4, 4, v1);                               // lwc1 f4, 4(v1)
-  c->lwc1(f5, 8, v1);                               // lwc1 f5, 8(v1)
-  // Unknown instr: mula.s f0, f3
-  // Unknown instr: madda.s f1, f4
-  // Unknown instr: madd.s f0, f2, f5
-  c->mfc1(v1, f0);                                  // mfc1 v1, f0
-  c->mtc1(f0, v1);                                  // mtc1 f0, v1
-  c->daddiu(a0, s4, 16);                            // daddiu a0, s4, 16
-  c->mov64(v1, s3);                                 // or v1, s3, r0
-  c->lwc1(f1, 0, a0);                               // lwc1 f1, 0(a0)
-  c->lwc1(f2, 4, a0);                               // lwc1 f2, 4(a0)
-  c->lwc1(f3, 8, a0);                               // lwc1 f3, 8(a0)
-  c->lwc1(f4, 0, v1);                               // lwc1 f4, 0(v1)
-  c->lwc1(f5, 4, v1);                               // lwc1 f5, 4(v1)
-  c->lwc1(f6, 8, v1);                               // lwc1 f6, 8(v1)
-  // Unknown instr: mula.s f1, f4
-  // Unknown instr: madda.s f2, f5
-  // Unknown instr: madd.s f1, f3, f6
-  c->mfc1(v1, f1);                                  // mfc1 v1, f1
-  c->mtc1(f1, v1);                                  // mtc1 f1, v1
-  c->daddiu(v1, s4, 32);                            // daddiu v1, s4, 32
-  c->lwc1(f2, 0, v1);                               // lwc1 f2, 0(v1)
-  c->lwc1(f3, 4, v1);                               // lwc1 f3, 4(v1)
-  c->lwc1(f4, 8, v1);                               // lwc1 f4, 8(v1)
-  c->lwc1(f5, 0, s3);                               // lwc1 f5, 0(s3)
-  c->lwc1(f6, 4, s3);                               // lwc1 f6, 4(s3)
-  c->lwc1(f7, 8, s3);                               // lwc1 f7, 8(s3)
-  // Unknown instr: mula.s f2, f5
-  // Unknown instr: madda.s f3, f6
-  // Unknown instr: madd.s f2, f4, f7
-  c->mfc1(v1, f2);                                  // mfc1 v1, f2
-  c->mtc1(f2, v1);                                  // mtc1 f2, v1
-  c->mtc1(f3, r0);                                  // mtc1 f3, r0
-  c->maxs(f0, f3, f0);                              // max.s f0, f3, f0
-  c->mtc1(f3, r0);                                  // mtc1 f3, r0
-  c->maxs(f30, f3, f1);                             // max.s f30, f3, f1
-  c->mtc1(f1, r0);                                  // mtc1 f1, r0
-  c->maxs(f28, f1, f2);                             // max.s f28, f1, f2
-  c->mov64(v1, s5);                                 // or v1, s5, r0
-  c->daddiu(a0, s4, 48);                            // daddiu a0, s4, 48
-  c->lq(a0, 0, a0);                                 // lq a0, 0(a0)
-  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
-  c->load_symbol2(t9, cache.vector4_madd);          // lw t9, vector4-madd!(s7)
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  c->mov64(a1, s5);                                 // or a1, s5, r0
-  c->daddiu(a2, s4, 64);                            // daddiu a2, s4, 64
-  c->mfc1(a3, f0);                                  // mfc1 a3, f0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->load_symbol2(t9, cache.vector4_madd);          // lw t9, vector4-madd!(s7)
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  c->mov64(a1, s5);                                 // or a1, s5, r0
-  c->daddiu(a2, s4, 80);                            // daddiu a2, s4, 80
-  c->mfc1(a3, f30);                                 // mfc1 a3, f30
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->load_symbol2(t9, cache.vector4_madd);          // lw t9, vector4-madd!(s7)
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  c->mov64(a1, s5);                                 // or a1, s5, r0
-  c->daddiu(a2, s4, 96);                            // daddiu a2, s4, 96
-  c->mfc1(a3, f28);                                 // mfc1 a3, f28
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->load_symbol2(t9, cache.vector4_scale);         // lw t9, vector4-scale!(s7)
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  c->mov64(a1, s5);                                 // or a1, s5, r0
-  c->lui(a2, 17152);                                // lui a2, 17152
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->mtc1(f0, r0);                                  // mtc1 f0, r0
-  c->lui(v1, 17279);                                // lui v1, 17279
-  c->mtc1(f1, v1);                                  // mtc1 f1, v1
-  c->lwc1(f2, 0, s5);                               // lwc1 f2, 0(s5)
-  c->mins(f1, f1, f2);                              // min.s f1, f1, f2
-  c->maxs(f0, f0, f1);                              // max.s f0, f0, f1
-  c->swc1(f0, 0, gp);                               // swc1 f0, 0(gp)
-  c->mtc1(f0, r0);                                  // mtc1 f0, r0
-  c->lui(v1, 17279);                                // lui v1, 17279
-  c->mtc1(f1, v1);                                  // mtc1 f1, v1
-  c->lwc1(f2, 4, s5);                               // lwc1 f2, 4(s5)
-  c->mins(f1, f1, f2);                              // min.s f1, f1, f2
-  c->maxs(f0, f0, f1);                              // max.s f0, f0, f1
-  c->swc1(f0, 4, gp);                               // swc1 f0, 4(gp)
-  c->mtc1(f0, r0);                                  // mtc1 f0, r0
-  c->lui(v1, 17279);                                // lui v1, 17279
-  c->mtc1(f1, v1);                                  // mtc1 f1, v1
-  c->lwc1(f2, 8, s5);                               // lwc1 f2, 8(s5)
-  c->mins(f1, f1, f2);                              // min.s f1, f1, f2
-  c->maxs(f0, f0, f1);                              // max.s f0, f0, f1
-  c->swc1(f0, 8, gp);                               // swc1 f0, 8(gp)
-  c->mfc1(v1, f0);                                  // mfc1 v1, f0
-  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
-  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
-  c->lwc1(f30, 116, sp);                            // lwc1 f30, 116(sp)
-  c->lwc1(f28, 112, sp);                            // lwc1 f28, 112(sp)
-  c->lq(gp, 96, sp);                                // lq gp, 96(sp)
-  c->lq(s5, 80, sp);                                // lq s5, 80(sp)
-  c->lq(s4, 64, sp);                                // lq s4, 64(sp)
-  c->lq(s3, 48, sp);                                // lq s3, 48(sp)
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 128);                           // daddiu sp, sp, 128
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  cache.vector_normalize = intern_from_c(-1, 0, "vector-normalize!").c();
-  cache.vector4_madd = intern_from_c(-1, 0, "vector4-madd!").c();
-  cache.vector4_scale = intern_from_c(-1, 0, "vector4-scale!").c();
-  gLinkedFunctionTable.reg("(method 14 ocean)", execute, 512);
-}
-
-} // namespace method_14_ocean
-} // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jakx/kscheme.h"
-using ::jakx::intern_from_c;
-namespace Mips2C::jakx {
-namespace render_ocean_quad {
-struct Cache {
-  void* fake_scratchpad_data; // *fake-scratchpad-data*
-  void* draw_large_polygon_ocean; // draw-large-polygon-ocean
-} cache;
-
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  c->mov64(v1, a0);                                 // or v1, a0, r0
-  get_fake_spad_addr2(t5, cache.fake_scratchpad_data, 0, c);// lui t5, 28672
-  c->ori(t5, t5, 12288);                            // ori t5, t5, 12288
-  get_fake_spad_addr2(t6, cache.fake_scratchpad_data, 0, c);// lui t6, 28672
-  c->ori(t6, t6, 14336);                            // ori t6, t6, 14336
-  c->mov64(t0, t5);                                 // or t0, t5, r0
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf1, 0, a0);                              // lqc2 vf1, 0(a0)
-  c->addiu(t1, r0, 4);                              // addiu t1, r0, 4
-  c->lqc2(vf2, 16, a0);                             // lqc2 vf2, 16(a0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf3, 32, a0);                             // lqc2 vf3, 32(a0)
-  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf1);        // vmulax.xyzw acc, vf31, vf1
-  c->lqc2(vf4, 48, a0);                             // lqc2 vf4, 48(a0)
-  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf1);       // vmadday.xyzw acc, vf30, vf1
-  c->lqc2(vf5, 64, a0);                             // lqc2 vf5, 64(a0)
-  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf1);       // vmaddaz.xyzw acc, vf29, vf1
-  c->lqc2(vf6, 80, a0);                             // lqc2 vf6, 80(a0)
-  c->vmadd_bc(DEST::xyzw, BC::w, vf15, vf28, vf1);  // vmaddw.xyzw vf15, vf28, vf1
-  c->lqc2(vf7, 96, a0);                             // lqc2 vf7, 96(a0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf8, 112, a0);                            // lqc2 vf8, 112(a0)
-  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf4);        // vmulax.xyzw acc, vf31, vf4
-  c->lqc2(vf9, 128, a0);                            // lqc2 vf9, 128(a0)
-  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf4);       // vmadday.xyzw acc, vf30, vf4
-  c->lqc2(vf10, 144, a0);                           // lqc2 vf10, 144(a0)
-  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf4);       // vmaddaz.xyzw acc, vf29, vf4
-  c->lqc2(vf11, 160, a0);                           // lqc2 vf11, 160(a0)
-  c->vmadd_bc(DEST::xyzw, BC::w, vf16, vf28, vf4);  // vmaddw.xyzw vf16, vf28, vf4
-  c->lqc2(vf12, 176, a0);                           // lqc2 vf12, 176(a0)
-  c->vmul(DEST::xyzw, vf1, vf15, vf14);             // vmul.xyzw vf1, vf15, vf14
-  c->sqc2(vf2, 16, t0);                             // sqc2 vf2, 16(t0)
-  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf7);        // vmulax.xyzw acc, vf31, vf7
-  c->sqc2(vf3, 32, t0);                             // sqc2 vf3, 32(t0)
-  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf7);       // vmadday.xyzw acc, vf30, vf7
-  c->sqc2(vf5, 64, t0);                             // sqc2 vf5, 64(t0)
-  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf7);       // vmaddaz.xyzw acc, vf29, vf7
-  c->sqc2(vf6, 80, t0);                             // sqc2 vf6, 80(t0)
-  c->vmadd_bc(DEST::xyzw, BC::w, vf17, vf28, vf7);  // vmaddw.xyzw vf17, vf28, vf7
-  c->sqc2(vf8, 112, t0);                            // sqc2 vf8, 112(t0)
-  c->vmul(DEST::xyzw, vf4, vf16, vf14);             // vmul.xyzw vf4, vf16, vf14
-  c->sqc2(vf9, 128, t0);                            // sqc2 vf9, 128(t0)
-  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf10);       // vmulax.xyzw acc, vf31, vf10
-  c->sqc2(vf11, 160, t0);                           // sqc2 vf11, 160(t0)
-  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf10);      // vmadday.xyzw acc, vf30, vf10
-  c->sqc2(vf12, 176, t0);                           // sqc2 vf12, 176(t0)
-  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf10);      // vmaddaz.xyzw acc, vf29, vf10
-  c->sqc2(vf2, 208, t0);                            // sqc2 vf2, 208(t0)
-  c->vmadd_bc(DEST::xyzw, BC::w, vf18, vf28, vf10); // vmaddw.xyzw vf18, vf28, vf10
-  c->sqc2(vf3, 224, t0);                            // sqc2 vf3, 224(t0)
-  c->vmul(DEST::xyzw, vf7, vf17, vf14);             // vmul.xyzw vf7, vf17, vf14
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf1, 0, t0);                              // sqc2 vf1, 0(t0)
-  c->vmul(DEST::xyzw, vf10, vf18, vf14);            // vmul.xyzw vf10, vf18, vf14
-  c->sqc2(vf1, 192, t0);                            // sqc2 vf1, 192(t0)
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf4, 48, t0);                             // sqc2 vf4, 48(t0)
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf7, 96, t0);                             // sqc2 vf7, 96(t0)
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf10, 144, t0);                           // sqc2 vf10, 144(t0)
-  c->load_symbol2(t9, cache.draw_large_polygon_ocean);// lw t9, draw-large-polygon-ocean(s7)
-  // Unknown instr: jr t9
-  // nop                                            // sll r0, r0, 0
-  //jr ra                                           // jr ra
-  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  cache.fake_scratchpad_data = intern_from_c(-1, 0, "*fake-scratchpad-data*").c();
-  cache.draw_large_polygon_ocean = intern_from_c(-1, 0, "draw-large-polygon-ocean").c();
-  gLinkedFunctionTable.reg("render-ocean-quad", execute, 256);
-}
-
-} // namespace render_ocean_quad
-} // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jakx/kscheme.h"
-using ::jakx::intern_from_c;
-namespace Mips2C::jakx {
 namespace draw_large_polygon_ocean {
 struct Cache {
   void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
@@ -533,6 +186,109 @@ void link() {
 }
 
 } // namespace draw_large_polygon_ocean
+} // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jakx/kscheme.h"
+using ::jakx::intern_from_c;
+namespace Mips2C::jakx {
+namespace render_ocean_quad {
+struct Cache {
+  void* fake_scratchpad_data; // *fake-scratchpad-data*
+  void* draw_large_polygon_ocean; // draw-large-polygon-ocean
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->mov64(v1, a0);                                 // or v1, a0, r0
+  get_fake_spad_addr2(t5, cache.fake_scratchpad_data, 0, c);// lui t5, 28672
+  c->ori(t5, t5, 12288);                            // ori t5, t5, 12288
+  get_fake_spad_addr2(t6, cache.fake_scratchpad_data, 0, c);// lui t6, 28672
+  c->ori(t6, t6, 14336);                            // ori t6, t6, 14336
+  c->mov64(t0, t5);                                 // or t0, t5, r0
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf1, 0, a0);                              // lqc2 vf1, 0(a0)
+  c->addiu(t1, r0, 4);                              // addiu t1, r0, 4
+  c->lqc2(vf2, 16, a0);                             // lqc2 vf2, 16(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf3, 32, a0);                             // lqc2 vf3, 32(a0)
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf1);        // vmulax.xyzw acc, vf31, vf1
+  c->lqc2(vf4, 48, a0);                             // lqc2 vf4, 48(a0)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf1);       // vmadday.xyzw acc, vf30, vf1
+  c->lqc2(vf5, 64, a0);                             // lqc2 vf5, 64(a0)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf1);       // vmaddaz.xyzw acc, vf29, vf1
+  c->lqc2(vf6, 80, a0);                             // lqc2 vf6, 80(a0)
+  c->vmadd_bc(DEST::xyzw, BC::w, vf15, vf28, vf1);  // vmaddw.xyzw vf15, vf28, vf1
+  c->lqc2(vf7, 96, a0);                             // lqc2 vf7, 96(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf8, 112, a0);                            // lqc2 vf8, 112(a0)
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf4);        // vmulax.xyzw acc, vf31, vf4
+  c->lqc2(vf9, 128, a0);                            // lqc2 vf9, 128(a0)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf4);       // vmadday.xyzw acc, vf30, vf4
+  c->lqc2(vf10, 144, a0);                           // lqc2 vf10, 144(a0)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf4);       // vmaddaz.xyzw acc, vf29, vf4
+  c->lqc2(vf11, 160, a0);                           // lqc2 vf11, 160(a0)
+  c->vmadd_bc(DEST::xyzw, BC::w, vf16, vf28, vf4);  // vmaddw.xyzw vf16, vf28, vf4
+  c->lqc2(vf12, 176, a0);                           // lqc2 vf12, 176(a0)
+  c->vmul(DEST::xyzw, vf1, vf15, vf14);             // vmul.xyzw vf1, vf15, vf14
+  c->sqc2(vf2, 16, t0);                             // sqc2 vf2, 16(t0)
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf7);        // vmulax.xyzw acc, vf31, vf7
+  c->sqc2(vf3, 32, t0);                             // sqc2 vf3, 32(t0)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf7);       // vmadday.xyzw acc, vf30, vf7
+  c->sqc2(vf5, 64, t0);                             // sqc2 vf5, 64(t0)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf7);       // vmaddaz.xyzw acc, vf29, vf7
+  c->sqc2(vf6, 80, t0);                             // sqc2 vf6, 80(t0)
+  c->vmadd_bc(DEST::xyzw, BC::w, vf17, vf28, vf7);  // vmaddw.xyzw vf17, vf28, vf7
+  c->sqc2(vf8, 112, t0);                            // sqc2 vf8, 112(t0)
+  c->vmul(DEST::xyzw, vf4, vf16, vf14);             // vmul.xyzw vf4, vf16, vf14
+  c->sqc2(vf9, 128, t0);                            // sqc2 vf9, 128(t0)
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf10);       // vmulax.xyzw acc, vf31, vf10
+  c->sqc2(vf11, 160, t0);                           // sqc2 vf11, 160(t0)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf10);      // vmadday.xyzw acc, vf30, vf10
+  c->sqc2(vf12, 176, t0);                           // sqc2 vf12, 176(t0)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf10);      // vmaddaz.xyzw acc, vf29, vf10
+  c->sqc2(vf2, 208, t0);                            // sqc2 vf2, 208(t0)
+  c->vmadd_bc(DEST::xyzw, BC::w, vf18, vf28, vf10); // vmaddw.xyzw vf18, vf28, vf10
+  c->sqc2(vf3, 224, t0);                            // sqc2 vf3, 224(t0)
+  c->vmul(DEST::xyzw, vf7, vf17, vf14);             // vmul.xyzw vf7, vf17, vf14
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf1, 0, t0);                              // sqc2 vf1, 0(t0)
+  c->vmul(DEST::xyzw, vf10, vf18, vf14);            // vmul.xyzw vf10, vf18, vf14
+  c->sqc2(vf1, 192, t0);                            // sqc2 vf1, 192(t0)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf4, 48, t0);                             // sqc2 vf4, 48(t0)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf7, 96, t0);                             // sqc2 vf7, 96(t0)
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf10, 144, t0);                           // sqc2 vf10, 144(t0)
+  c->load_symbol2(t9, cache.draw_large_polygon_ocean);// lw t9, draw-large-polygon-ocean(s7)
+  // Unknown instr: jr t9
+  return draw_large_polygon_ocean::execute(c);
+  // nop                                            // sll r0, r0, 0
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.fake_scratchpad_data = intern_from_c(-1, 0, "*fake-scratchpad-data*").c();
+  cache.draw_large_polygon_ocean = intern_from_c(-1, 0, "draw-large-polygon-ocean").c();
+  gLinkedFunctionTable.reg("render-ocean-quad", execute, 256);
+}
+
+} // namespace render_ocean_quad
 } // namespace Mips2C
 
 //--------------------------MIPS2C---------------------

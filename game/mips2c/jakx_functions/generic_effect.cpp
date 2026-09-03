@@ -379,6 +379,7 @@ u64 execute(void* ctxt) {
   c->dsll(t0, a3, 16);                              // dsll t0, a3, 16
   c->or_(a3, a3, t0);                               // or a3, a3, t0
   // Unknown instr: ld t0, L111(fp)
+  c->gprs[t0].du64[0] = 0xffff'ffff;
   
 block_1:
   c->lwu(t1, 12, a0);                               // lwu t1, 12(a0)
@@ -459,6 +460,7 @@ u64 execute(void* ctxt) {
   c->lqc2(vf3, 7168, at);                           // lqc2 vf3, 7168(at)
   c->lqc2(vf4, 7184, at);                           // lqc2 vf4, 7184(at)
   // Unknown instr: ld a1, L111(fp)
+  c->gprs[a1].du64[0] = 0xffff'ffff;
   
 block_1:
   c->lqc2(vf9, 0, s5);                              // lqc2 vf9, 0(s5)
@@ -989,6 +991,122 @@ struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
 } cache;
 
+void vcallms48(ExecutionContext* c) {
+  // nop                        |  mulx.xyzw vf13, vf09, vf31
+  c->vfs[vf13].vf.mul(Mask::xyzw, c->vf_src(vf09).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf21, vf21, vf00
+  c->vfs[vf21].vf.sub(Mask::z, c->vf_src(vf21).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf08, vf08, vf30
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf05, vf05, vf31
+  c->vfs[vf05].vf.add(Mask::xy, c->vf_src(vf05).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf21, vf13
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf21).vf, c->vf_src(vf13).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf08, vf08, vf16
+  c->vfs[vf08].vf.add(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf16).vf);
+  // move.xyzw vf28, vf27       |  ftoi12.xy vf17, vf05
+  c->vfs[vf17].vf.ftoi12(Mask::xy, c->vf_src(vf05).vf);   c->vfs[vf28].vf.move(Mask::xyzw, c->vf_src(vf27).vf);
+  // move.xyzw vf02, vf22       |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());   c->vfs[vf02].vf.move(Mask::xyzw, c->vf_src(vf22).vf);
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf06, vf06, Q
+  c->vfs[vf06].vf.mul(Mask::xyz, c->vf_src(vf06).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // nop                        |  mul.xyz vf29, vf08, vf08
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->vf_src(vf08).vf);
+  // nop                        |  mulx.xyz vf01, vf21, vf28
+  c->vfs[vf01].vf.mul(Mask::xyz, c->vf_src(vf21).vf, c->vf_src(vf28).vf.x());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf14, vf10, vf31
+  c->vfs[vf14].vf.mul(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf02, vf02, vf00
+  c->vfs[vf02].vf.sub(Mask::z, c->vf_src(vf02).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf01, vf01, vf30
+  c->vfs[vf01].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf06, vf06, vf31
+  c->vfs[vf06].vf.add(Mask::xy, c->vf_src(vf06).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf02, vf14
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf14).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf01, vf01, vf13
+  c->vfs[vf01].vf.add(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf13).vf);
+  // nop                        |  ftoi12.xy vf18, vf06
+  c->vfs[vf18].vf.ftoi12(Mask::xy, c->vf_src(vf06).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf07, vf07, Q
+  c->vfs[vf07].vf.mul(Mask::xyz, c->vf_src(vf07).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf03, vf23       |  mul.xyz vf29, vf01, vf01
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->vf_src(vf01).vf);   c->vfs[vf03].vf.move(Mask::xyzw, c->vf_src(vf23).vf);
+  // nop                        |  muly.xyz vf02, vf02, vf28
+  c->vfs[vf02].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf28).vf.y());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf15, vf11, vf31
+  c->vfs[vf15].vf.mul(Mask::xyzw, c->vf_src(vf11).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf03, vf03, vf00
+  c->vfs[vf03].vf.sub(Mask::z, c->vf_src(vf03).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf02, vf02, vf30
+  c->vfs[vf02].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf07, vf07, vf31
+  c->vfs[vf07].vf.add(Mask::xy, c->vf_src(vf07).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf03, vf15
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf15).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf02, vf02, vf14
+  c->vfs[vf02].vf.add(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf14).vf);
+  // nop                        |  ftoi12.xy vf19, vf07
+  c->vfs[vf19].vf.ftoi12(Mask::xy, c->vf_src(vf07).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf08, vf08, Q
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf08).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf04, vf24       |  mul.xyz vf29, vf02, vf02
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf02).vf, c->vf_src(vf02).vf);   c->vfs[vf04].vf.move(Mask::xyzw, c->vf_src(vf24).vf);
+  // nop                        |  mulz.xyz vf03, vf03, vf28
+  c->vfs[vf03].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf28).vf.z());
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+  // nop                        |  mulx.xyzw vf16, vf12, vf31
+  c->vfs[vf16].vf.mul(Mask::xyzw, c->vf_src(vf12).vf, c->vf_src(vf31).vf.x());
+  // nop                        |  subw.z vf04, vf04, vf00
+  c->vfs[vf04].vf.sub(Mask::z, c->vf_src(vf04).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  addy.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.y());
+  // nop                        |  mulx.xyz vf03, vf03, vf30
+  c->vfs[vf03].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf30).vf.x());
+  // nop                        |  addw.xy vf08, vf08, vf31
+  c->vfs[vf08].vf.add(Mask::xy, c->vf_src(vf08).vf, c->vf_src(vf31).vf.w());
+  // nop                        |  mul.xyz vf30, vf04, vf16
+  c->vfs[vf30].vf.mul(Mask::xyz, c->vf_src(vf04).vf, c->vf_src(vf16).vf);
+  // nop                        |  addz.x vf29, vf29, vf29
+  c->vfs[vf29].vf.add(Mask::x, c->vf_src(vf29).vf, c->vf_src(vf29).vf.z());
+  // nop                        |  add.xyz vf03, vf03, vf15
+  c->vfs[vf03].vf.add(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf15).vf);
+  // nop                        |  ftoi12.xy vf20, vf08
+  c->vfs[vf20].vf.ftoi12(Mask::xy, c->vf_src(vf08).vf);
+  // nop                        |  addy.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.y());
+  // rsqrt Q, vf31.z, vf29.x    |  mul.xyz vf05, vf01, Q
+  c->vfs[vf05].vf.mul(Mask::xyz, c->vf_src(vf01).vf, c->Q);   c->Q = c->vf_src(vf31).vf.z() / std::sqrt(c->vf_src(vf29).vf.x());
+  // move.xyzw vf06, vf02       |  mul.xyz vf29, vf03, vf03
+  c->vfs[vf29].vf.mul(Mask::xyz, c->vf_src(vf03).vf, c->vf_src(vf03).vf);   c->vfs[vf06].vf.move(Mask::xyzw, c->vf_src(vf02).vf);
+  // move.xyzw vf07, vf03       |  mulw.xyz vf08, vf04, vf28 :e
+  c->vfs[vf08].vf.mul(Mask::xyz, c->vf_src(vf04).vf, c->vf_src(vf28).vf.w());   c->vfs[vf07].vf.move(Mask::xyzw, c->vf_src(vf03).vf);
+  // nop                        |  addz.x vf30, vf30, vf30
+  c->vfs[vf30].vf.add(Mask::x, c->vf_src(vf30).vf, c->vf_src(vf30).vf.z());
+
+}
+
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -1209,6 +1327,7 @@ block_6:
   c->mov128_vf_gpr(vf27, t9);                       // qmtc2.ni vf27, t9
   c->lq(t2, 96, at);                                // lq t2, 96(at)
   // Unknown instr: vcallms 48
+  vcallms48(c);
   // nop                                            // sll r0, r0, 0
   c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
   // nop                                            // sll r0, r0, 0
@@ -1333,6 +1452,7 @@ block_6:
   c->mov128_vf_gpr(vf27, t1);                       // qmtc2.ni vf27, t1
   c->lq(t2, 96, at);                                // lq t2, 96(at)
   // Unknown instr: vcallms 48
+  vcallms48(c);
   // nop                                            // sll r0, r0, 0
   c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
   // nop                                            // sll r0, r0, 0
@@ -1461,6 +1581,7 @@ block_6:
 block_7:
   c->lq(t2, 96, at);                                // lq t2, 96(at)
   // Unknown instr: vcallms 48
+  vcallms48(c);
   c->daddiu(a0, a0, -4);                            // daddiu a0, a0, -4
   c->ld(t1, 0, t0);                                 // ld t1, 0(t0)
   // nop                                            // sll r0, r0, 0
@@ -1641,6 +1762,110 @@ struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
 } cache;
 
+void vcallms0(ExecutionContext* c) {
+  // move.xyzw vf21, vf17       |  mulax.xyzw ACC, vf10, vf01
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf01).vf.x());   c->vfs[vf21].vf.move(Mask::xyzw, c->vf_src(vf17).vf);
+  // move.xyzw vf22, vf18       |  madday.xyzw ACC, vf11, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf01].vf.y());   c->vfs[vf22].vf.move(Mask::xyzw, c->vf_src(vf18).vf);
+  // move.xyzw vf23, vf19       |  maddz.xyzw vf01, vf12, vf01
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf01].vf, c->vf_src(vf12).vf, c->vf_src(vf01).vf.z());   c->vfs[vf23].vf.move(Mask::xyzw, c->vf_src(vf19).vf);
+  // move.xyzw vf24, vf20       |  mulax.xyzw ACC, vf10, vf02
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf02).vf.x());   c->vfs[vf24].vf.move(Mask::xyzw, c->vf_src(vf20).vf);
+  // nop                        |  itof0.xyzw vf17, vf05
+  c->vfs[vf17].vf.itof0(Mask::xyzw, c->vf_src(vf05).vf);
+  // nop                        |  itof0.xyzw vf18, vf06
+  c->vfs[vf18].vf.itof0(Mask::xyzw, c->vf_src(vf06).vf);
+  // nop                        |  itof0.xyzw vf19, vf07
+  c->vfs[vf19].vf.itof0(Mask::xyzw, c->vf_src(vf07).vf);
+  // nop                        |  itof0.xyzw vf20, vf08
+  c->vfs[vf20].vf.itof0(Mask::xyzw, c->vf_src(vf08).vf);
+
+  // nop                        |  madday.xyzw ACC, vf11, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf02].vf.y());
+  // nop                        |  maddz.xyzw vf02, vf12, vf02
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf02].vf, c->vf_src(vf12).vf, c->vf_src(vf02).vf.z());
+  // nop                        |  mulax.xyzw ACC, vf10, vf03
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf03).vf.x());
+  // nop                        |  madday.xyzw ACC, vf11, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf03].vf.y());
+  // nop                        |  maddz.xyzw vf03, vf12, vf03
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf03].vf, c->vf_src(vf12).vf, c->vf_src(vf03).vf.z());
+  // nop                        |  mulax.xyzw ACC, vf10, vf04
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf10).vf, c->vf_src(vf04).vf.x());
+  // nop                        |  madday.xyzw ACC, vf11, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf11].vf, c->vfs[vf04].vf.y());
+  // nop                        |  maddz.xyzw vf04, vf12, vf04
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf04].vf, c->vf_src(vf12).vf, c->vf_src(vf04).vf.z());
+  // nop                        |  maxx.xyzw vf01, vf01, vf00
+  c->vfs[vf01].vf.max(Mask::xyzw, c->vf_src(vf01).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf02, vf02, vf00
+  c->vfs[vf02].vf.max(Mask::xyzw, c->vf_src(vf02).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf03, vf03, vf00
+  c->vfs[vf03].vf.max(Mask::xyzw, c->vf_src(vf03).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  maxx.xyzw vf04, vf04, vf00
+  c->vfs[vf04].vf.max(Mask::xyzw, c->vf_src(vf04).vf, c->vf_src(vf00).vf.x());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf01].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf01
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf01].vf.y());
+  // nop                        |  maddz.xyzw vf01, vf16, vf01
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf01].vf, c->vf_src(vf16).vf, c->vf_src(vf01).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf02].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf02
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf02].vf.y());
+  // nop                        |  maddz.xyzw vf02, vf16, vf02
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf02].vf, c->vf_src(vf16).vf, c->vf_src(vf02).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf03].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf03
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf03].vf.y());
+  // nop                        |  maddz.xyzw vf03, vf16, vf03
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf03].vf, c->vf_src(vf16).vf, c->vf_src(vf03).vf.z());
+  // nop                        |  mulaw.xyzw ACC, vf13, vf00
+  c->acc.vf.mula(Mask::xyzw, c->vf_src(vf13).vf, c->vf_src(vf00).vf.w());
+  // nop                        |  maddax.xyzw ACC, vf14, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf14].vf, c->vfs[vf04].vf.x());
+  // nop                        |  madday.xyzw ACC, vf15, vf04
+  c->acc.vf.madda(Mask::xyzw, c->vfs[vf15].vf, c->vfs[vf04].vf.y());
+  // nop                        |  maddz.xyzw vf04, vf16, vf04
+  c->acc.vf.madd(Mask::xyzw, c->vfs[vf04].vf, c->vf_src(vf16).vf, c->vf_src(vf04).vf.z());
+  // nop                        |  mul.xyzw vf17, vf17, vf01
+  c->vfs[vf17].vf.mul(Mask::xyzw, c->vf_src(vf17).vf, c->vf_src(vf01).vf);
+  // nop                        |  mul.xyzw vf18, vf18, vf02
+  c->vfs[vf18].vf.mul(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf02).vf);
+  // nop                        |  mul.xyzw vf19, vf19, vf03
+  c->vfs[vf19].vf.mul(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf03).vf);
+  // nop                        |  mul.xyzw vf20, vf20, vf04
+  c->vfs[vf20].vf.mul(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf04).vf);
+  // nop                        |  minix.xyzw vf17, vf17, vf09
+  c->vfs[vf17].vf.mini(Mask::xyzw, c->vf_src(vf17).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf18, vf18, vf09
+  c->vfs[vf18].vf.mini(Mask::xyzw, c->vf_src(vf18).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf19, vf19, vf09
+  c->vfs[vf19].vf.mini(Mask::xyzw, c->vf_src(vf19).vf, c->vf_src(vf09).vf.x());
+  // nop                        |  minix.xyzw vf20, vf20, vf09
+  c->vfs[vf20].vf.mini(Mask::xyzw, c->vf_src(vf20).vf, c->vf_src(vf09).vf.x());
+  //fmt::print("light:\n {}\n {}\n {}\n {}\n\n", c->vf_src(vf17).vf.print(), c->vf_src(vf18).vf.print(), c->vf_src(vf19).vf.print(), c->vf_src(vf20).vf.print());
+
+
+
+  // nop                        |  ftoi0.xyzw vf17, vf17
+  c->vfs[vf17].vf.ftoi0(Mask::xyzw, c->vf_src(vf17).vf);
+  // nop                        |  ftoi0.xyzw vf18, vf18
+  c->vfs[vf18].vf.ftoi0(Mask::xyzw, c->vf_src(vf18).vf);
+  // nop                        |  ftoi0.xyzw vf19, vf19 :e
+  c->vfs[vf19].vf.ftoi0(Mask::xyzw, c->vf_src(vf19).vf);
+  // nop                        |  ftoi0.xyzw vf20, vf20
+  c->vfs[vf20].vf.ftoi0(Mask::xyzw, c->vf_src(vf20).vf);
+}
+
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
@@ -1744,6 +1969,7 @@ u64 execute(void* ctxt) {
   c->mov128_vf_gpr(vf8, ra);                        // qmtc2.ni vf8, ra
   c->prot3w(t7, t7);                                // prot3w t7, t7
   // Unknown instr: vcallms 0
+  vcallms0(c);
   c->pextuw(t9, t7, t6);                            // pextuw t9, t7, t6
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pcpyld(t7, t5, t7);                            // pcpyld t7, t5, t7
@@ -1848,6 +2074,7 @@ block_1:
   c->mov128_vf_gpr(vf8, ra);                        // qmtc2.ni vf8, ra
   c->prot3w(t7, t7);                                // prot3w t7, t7
   // Unknown instr: vcallms 0
+  vcallms0(c);
   c->pextuw(t9, t7, t6);                            // pextuw t9, t7, t6
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->pcpyld(t7, t5, t7);                            // pcpyld t7, t5, t7

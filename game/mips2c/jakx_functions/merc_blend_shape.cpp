@@ -201,6 +201,7 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
+  u32 madr, sadr, qwc, tadr;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s2, 16, sp);                                // sq s2, 16(sp)
@@ -234,26 +235,30 @@ u64 execute(void* ctxt) {
   c->ori(a0, a0, 54272);                            // ori a0, a0, 54272
   c->andi(a1, a1, 16383);                           // andi a1, a1, 16383
   
-block_2:
-  c->lw(a2, 0, a0);                                 // lw a2, 0(a0)
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  c->andi(a2, a2, 256);                             // andi a2, a2, 256
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(a2) != 0;                          // bne a2, r0, L37
-  c->lw(a2, 0, v1);                                 // lw a2, 0(v1)
-  if (bc) {goto block_2;}                           // branch non-likely
+// block_2:
+//   c->lw(a2, 0, a0);                                 // lw a2, 0(a0)
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   c->andi(a2, a2, 256);                             // andi a2, a2, 256
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(a2) != 0;                          // bne a2, r0, L37
+//   c->lw(a2, 0, v1);                                 // lw a2, 0(v1)
+//   if (bc) {goto block_2;}                           // branch non-likely
+  c->lw(a2, 0, v1);
 
   bc = c->sgpr64(a2) == 0;                          // beq a2, r0, L38
-  c->sw(a1, 128, a0);                               // sw a1, 128(a0)
+  // c->sw(a1, 128, a0);                            // sw a1, 128(a0)
+  sadr = c->sgpr64(a1);
   if (bc) {goto block_5;}                           // branch non-likely
 
   c->addiu(v1, r0, 324);                            // addiu v1, r0, 324
-  c->sw(a2, 48, a0);                                // sw a2, 48(a0)
-  c->sw(r0, 32, a0);                                // sw r0, 32(a0)
+  // c->sw(a2, 48, a0);                             // sw a2, 48(a0)
+  tadr = c->sgpr64(a2);
+  // c->sw(r0, 32, a0);                             // sw r0, 32(a0)
   // Unknown instr: sync.l
-  c->sw(v1, 0, a0);                                 // sw v1, 0(a0)
+  // c->sw(v1, 0, a0);                              // sw v1, 0(a0)
+  spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr, tadr);
   // Unknown instr: sync.l
   
 block_5:
@@ -308,27 +313,33 @@ block_12:
   c->ori(a2, a2, 54272);                            // ori a2, a2, 54272
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   
-block_13:
-  c->lw(t0, 0, a2);                                 // lw t0, 0(a2)
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  c->andi(t0, t0, 256);                             // andi t0, t0, 256
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t0) != 0;                          // bne t0, r0, L44
-  c->lw(t0, 0, a1);                                 // lw t0, 0(a1)
-  if (bc) {goto block_13;}                          // branch non-likely
+// block_13:
+//   c->lw(t0, 0, a2);                                 // lw t0, 0(a2)
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   c->andi(t0, t0, 256);                             // andi t0, t0, 256
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(t0) != 0;                          // bne t0, r0, L44
+//   c->lw(t0, 0, a1);                                 // lw t0, 0(a1)
+//   if (bc) {goto block_13;}                          // branch non-likely
+
+  c->lw(t0, 0, a1);
 
   bc = c->sgpr64(t0) == 0;                          // beq t0, r0, L45
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  // c->sw(a3, 128, a2);                            // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   if (bc) {goto block_16;}                          // branch non-likely
 
   c->addiu(a1, r0, 324);                            // addiu a1, r0, 324
-  c->sw(t0, 48, a2);                                // sw t0, 48(a2)
-  c->sw(r0, 32, a2);                                // sw r0, 32(a2)
+  // c->sw(t0, 48, a2);                             // sw t0, 48(a2)
+  tadr = c->sgpr64(t0);
+  // c->sw(r0, 32, a2);                                // sw r0, 32(a2)
   // Unknown instr: sync.l
-  c->sw(a1, 0, a2);                                 // sw a1, 0(a2)
+  // c->sw(a1, 0, a2);                                 // sw a1, 0(a2)
   // Unknown instr: sync.l
+  // tadr here is bogus, it's reading something uploaded by the other transfer.
+  spad_to_dma_blerc_chain(cache.fake_scratchpad_data, sadr, tadr);
   
 block_16:
   c->gprs[a1].du64[0] = 0;                          // or a1, r0, r0
@@ -420,6 +431,10 @@ block_24:
   if (bc) {goto block_23;}                          // branch non-likely
 
   // Unknown instr: pmfhl.uw t5
+  c->gprs[t5].du32[0] = c->lo.du32[1];
+  c->gprs[t5].du32[1] = c->hi.du32[1];
+  c->gprs[t5].du32[2] = c->lo.du32[3];
+  c->gprs[t5].du32[3] = c->hi.du32[3];
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
   c->psraw(t7, t7, 13);                             // psraw t7, t7, 13
   c->mfc1(r0, f31);                                 // mfc1 r0, f31
@@ -490,24 +505,31 @@ block_28:
   c->ori(a2, a2, 53248);                            // ori a2, a2, 53248
   c->andi(a3, a3, 16383);                           // andi a3, a3, 16383
   
-block_29:
-  c->lw(t0, 0, a2);                                 // lw t0, 0(a2)
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  c->andi(t0, t0, 256);                             // andi t0, t0, 256
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t0) != 0;                          // bne t0, r0, L53
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_29;}                          // branch non-likely
+// block_29:
+//   c->lw(t0, 0, a2);                                 // lw t0, 0(a2)
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   // nop                                            // sll r0, r0, 0
+//   c->andi(t0, t0, 256);                             // andi t0, t0, 256
+//   // nop                                            // sll r0, r0, 0
+//   bc = c->sgpr64(t0) != 0;                          // bne t0, r0, L53
+//   // nop                                            // sll r0, r0, 0
+//   if (bc) {goto block_29;}                          // branch non-likely
 
-  c->sw(a3, 128, a2);                               // sw a3, 128(a2)
+  // c->sw(a3, 128, a2);                            // sw a3, 128(a2)
+  sadr = c->sgpr64(a3);
   c->addiu(a3, r0, 256);                            // addiu a3, r0, 256
-  c->sw(a1, 16, a2);                                // sw a1, 16(a2)
+  // c->sw(a1, 16, a2);                             // sw a1, 16(a2)
+  madr = c->sgpr64(a1);
   // nop                                            // sll r0, r0, 0
-  c->sw(a0, 32, a2);                                // sw a0, 32(a2)
+  // c->sw(a0, 32, a2);                             // sw a0, 32(a2)
+  qwc = c->sgpr64(a0);
   // Unknown instr: sync.l
-  c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // c->sw(a3, 0, a2);                                 // sw a3, 0(a2)
+  // fmt::print("blerc download 0x{:x} <- 0x{:x} ({} qwc)\n", madr, sadr, qwc);
+  {
+    spad_from_dma_no_sadr_off(cache.fake_scratchpad_data, madr, sadr, qwc);
+  }
   // Unknown instr: sync.l
   c->gprs[a0].du64[0] = 0;                          // or a0, r0, r0
   c->addiu(a0, r0, 1);                              // addiu a0, r0, 1

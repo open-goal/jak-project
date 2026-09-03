@@ -689,16 +689,32 @@ block_4:
   }
   
 block_7:
-//   daddiu a0, fp, L217                               // daddiu a0, fp, L217
+  // daddiu a0, fp, L217                               // daddiu a0, fp, L217
+  // L217:
+  //   .word 0x0
+  //   .word 0x45800000
+  //   .word 0x0
+  //   .word 0x3f800000
+  //   .word 0x0
+  //   .word 0xc5800000
+  //   .word 0x45800000
+  //   .word 0x3f800000
+  //   .word 0x0
+  //   .word 0xc5800000
+  //   .word 0xc5800000
+  //   .word 0x3f800000
   // nop                                            // sll r0, r0, 0
   c->vmul(DEST::xyzw, vf12, vf1, vf1);              // vmul.xyzw vf12, vf1, vf1
   c->sqc2(vf4, 48, gp);                             // sqc2 vf4, 48(gp)
   c->vmula_bc(DEST::w, BC::x, vf0, vf12);           // vmulax.w acc, vf0, vf12
-  c->lqc2(vf9, 0, a0);                              // lqc2 vf9, 0(a0)
+  // c->lqc2(vf9, 0, a0);                              // lqc2 vf9, 0(a0)
+  c->vfs[9].vf.set_u32s(0, 0x45800000, 0, 0x3f800000);
   c->vmadda_bc(DEST::w, BC::y, vf0, vf12);          // vmadday.w acc, vf0, vf12
-  c->lqc2(vf10, 16, a0);                            // lqc2 vf10, 16(a0)
+  // c->lqc2(vf10, 16, a0);                            // lqc2 vf10, 16(a0)
+  c->vfs[10].vf.set_u32s(0, 0xc5800000, 0x45800000, 0x3f800000);
   c->vmadd_bc(DEST::w, BC::z, vf12, vf0, vf12);     // vmaddz.w vf12, vf0, vf12
-  c->lqc2(vf11, 32, a0);                            // lqc2 vf11, 32(a0)
+  // c->lqc2(vf11, 32, a0);                            // lqc2 vf11, 32(a0)
+  c->vfs[11].vf.set_u32s(0, 0xc5800000, 0xc5800000, 0x3f800000);
   c->vrsqrt(vf0, BC::w, vf12, BC::w);               // vrsqrt Q, vf0.w, vf12.w
   // nop                                            // sll r0, r0, 0
   c->vwaitq();                                      // vwaitq
@@ -1166,10 +1182,11 @@ u64 execute(void* ctxt) {
 block_2:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  // TODO FIX daddiu a1, fp, L222                               // daddiu a1, fp, L222
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // daddiu a1, fp, L222                               // daddiu a1, fp, L222
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  printf("ERROR: Exceeded max number of collide-cache prims!\n");
   
 block_3:
   c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
@@ -1377,10 +1394,11 @@ block_9:
 block_11:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  // TODO FIX daddiu a1, fp, L222                               // daddiu a1, fp, L222
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // daddiu a1, fp, L222                               // daddiu a1, fp, L222
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  printf("ERROR: Exceeded max number of collide-cache prims!\n");
   //beq r0, r0, L63                                 // beq r0, r0, L63
   // nop                                            // sll r0, r0, 0
   goto block_14;                                    // branch always
@@ -1590,10 +1608,11 @@ u64 execute(void* ctxt) {
 block_2:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  // TODO FIX daddiu a1, fp, L222                               // daddiu a1, fp, L222
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // daddiu a1, fp, L222                               // daddiu a1, fp, L222
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  printf("ERROR: Exceeded max number of collide-cache prims!\n");
   
 block_3:
   c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
@@ -1798,10 +1817,11 @@ block_9:
 block_11:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  // TODO FIX daddiu a1, fp, L222                               // daddiu a1, fp, L222
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // daddiu a1, fp, L222                               // daddiu a1, fp, L222
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
+  // c->jalr(call_addr);                               // jalr ra, t9
+  printf("ERROR: Exceeded max number of collide-cache prims!\n");
   //beq r0, r0, L93                                 // beq r0, r0, L93
   // nop                                            // sll r0, r0, 0
   goto block_18;                                    // branch always

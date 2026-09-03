@@ -4,6 +4,143 @@
 #include "game/kernel/jakx/kscheme.h"
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
+namespace draw_boundary_polygon {
+struct Cache {
+  void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
+  void* clip_polygon_against_positive_hyperplane; // clip-polygon-against-positive-hyperplane
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  // nop                                            // sll r0, r0, 0
+  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
+  // nop                                            // sll r0, r0, 0
+  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
+  c->load_symbol2(t9, cache.clip_polygon_against_positive_hyperplane);// lw t9, clip-polygon-against-positive-hyperplane(s7)
+  c->mov64(a3, t5);                                 // or a3, t5, r0
+  c->mov64(t0, t6);                                 // or t0, t6, r0
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->daddu(t3, a3, r0);                             // daddu t3, a3, r0
+  c->jalr(call_addr);                               // jalr ra, t9
+  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_7;}                           // branch non-likely
+
+  c->mov64(a3, t6);                                 // or a3, t6, r0
+  c->mov64(t0, t5);                                 // or t0, t5, r0
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->daddiu(t3, a3, 4);                             // daddiu t3, a3, 4
+  c->jalr(call_addr);                               // jalr ra, t9
+  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
+  c->load_symbol2(t9, cache.clip_polygon_against_negative_hyperplane);// lw t9, clip-polygon-against-negative-hyperplane(s7)
+  if (bc) {goto block_7;}                           // branch non-likely
+
+  c->mov64(a3, t5);                                 // or a3, t5, r0
+  c->mov64(t0, t6);                                 // or t0, t6, r0
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->daddu(t3, a3, r0);                             // daddu t3, a3, r0
+  c->jalr(call_addr);                               // jalr ra, t9
+  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_7;}                           // branch non-likely
+
+  c->mov64(a3, t6);                                 // or a3, t6, r0
+  c->mov64(t0, t5);                                 // or t0, t5, r0
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->daddiu(t3, a3, 4);                             // daddiu t3, a3, 4
+  c->jalr(call_addr);                               // jalr ra, t9
+  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
+  c->lw(t0, 4, a1);                                 // lw t0, 4(a1)
+  if (bc) {goto block_7;}                           // branch non-likely
+
+  c->mov64(a3, t5);                                 // or a3, t5, r0
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf27, 0, t0);                             // sqc2 vf27, 0(t0)
+  c->daddiu(t0, t0, 16);                            // daddiu t0, t0, 16
+  c->sw(t1, -16, t0);                               // sw t1, -16(t0)
+  // nop                                            // sll r0, r0, 0
+  
+block_5:
+  c->lqc2(vf1, 0, a3);                              // lqc2 vf1, 0(a3)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf2, 16, a3);                             // lqc2 vf2, 16(a3)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf3, 32, a3);                             // lqc2 vf3, 32(a3)
+  c->vdiv(vf0, BC::w, vf1, BC::w);                  // vdiv Q, vf0.w, vf1.w
+  c->vmul(DEST::xyzw, vf1, vf1, vf26);              // vmul.xyzw vf1, vf1, vf26
+  // nop                                            // sll r0, r0, 0
+  c->vftoi0(DEST::xyzw, vf3, vf3);                  // vftoi0.xyzw vf3, vf3
+  // nop                                            // sll r0, r0, 0
+  c->vadd(DEST::xyzw, vf2, vf2, vf24);              // vadd.xyzw vf2, vf2, vf24
+  // nop                                            // sll r0, r0, 0
+  c->vwaitq();                                      // vwaitq
+  // nop                                            // sll r0, r0, 0
+  c->vmulq(DEST::xyz, vf1, vf1);                    // vmulq.xyz vf1, vf1, Q
+  c->sqc2(vf3, 16, t0);                             // sqc2 vf3, 16(t0)
+  c->vmulq(DEST::xyzw, vf2, vf2);                   // vmulq.xyzw vf2, vf2, Q
+  c->daddiu(a3, a3, 48);                            // daddiu a3, a3, 48
+  c->vadd(DEST::xyzw, vf1, vf1, vf25);              // vadd.xyzw vf1, vf1, vf25
+  c->daddiu(t0, t0, 48);                            // daddiu t0, t0, 48
+  c->vmax_bc(DEST::z, BC::z, vf1, vf1, vf0);        // vmaxz.z vf1, vf1, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmini_bc(DEST::w, BC::z, vf1, vf1, vf13);      // vminiz.w vf1, vf1, vf13
+  // nop                                            // sll r0, r0, 0
+  c->vmax_bc(DEST::w, BC::y, vf1, vf1, vf13);       // vmaxy.w vf1, vf1, vf13
+  // nop                                            // sll r0, r0, 0
+  c->sqc2(vf2, -48, t0);                            // sqc2 vf2, -48(t0)
+  c->daddiu(t1, t1, -1);                            // daddiu t1, t1, -1
+  c->vftoi4(DEST::xyzw, vf1, vf1);                  // vftoi4.xyzw vf1, vf1
+  // nop                                            // sll r0, r0, 0
+  bc = c->sgpr64(t1) != 0;                          // bne t1, r0, L35
+  c->sqc2(vf1, -16, t0);                            // sqc2 vf1, -16(t0)
+  if (bc) {goto block_5;}                           // branch non-likely
+
+  c->sw(t0, 4, a1);                                 // sw t0, 4(a1)
+  // nop                                            // sll r0, r0, 0
+  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
+  c->daddiu(v0, s7, 4);                             // daddiu v0, s7, 4
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
+  goto end_of_function;                             // return
+
+  
+block_7:
+  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
+  c->mov64(v0, s7);                                 // or v0, s7, r0
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
+  goto end_of_function;                             // return
+
+  //jr ra                                           // jr ra
+  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.clip_polygon_against_negative_hyperplane = intern_from_c(-1, 0, "clip-polygon-against-negative-hyperplane").c();
+  cache.clip_polygon_against_positive_hyperplane = intern_from_c(-1, 0, "clip-polygon-against-positive-hyperplane").c();
+  gLinkedFunctionTable.reg("draw-boundary-polygon", execute, 512);
+}
+
+} // namespace draw_boundary_polygon
+} // namespace Mips2C
+// add draw_boundary_polygon::link to the link callback table for the object file.
+// FWD DEC:
+namespace draw_boundary_polygon { extern void link(); }
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jakx/kscheme.h"
+using ::jakx::intern_from_c;
+namespace Mips2C::jakx {
 namespace render_boundary_tri {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -84,6 +221,8 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_2;}                           // branch non-likely
 
   // Unknown instr: jr t9
+  draw_boundary_polygon::execute(ctxt);
+  goto end_of_function;
   // nop                                            // sll r0, r0, 0
   
 block_2:
@@ -96,6 +235,7 @@ block_2:
   c->sqc2(vf6, 176, t0);                            // sqc2 vf6, 176(t0)
   // nop                                            // sll r0, r0, 0
   // Unknown instr: jr t9
+  draw_boundary_polygon::execute(ctxt);
   // nop                                            // sll r0, r0, 0
   //jr ra                                           // jr ra
   c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
@@ -254,140 +394,6 @@ void link() {
 #include "game/kernel/jakx/kscheme.h"
 using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
-namespace draw_boundary_polygon {
-struct Cache {
-  void* clip_polygon_against_negative_hyperplane; // clip-polygon-against-negative-hyperplane
-  void* clip_polygon_against_positive_hyperplane; // clip-polygon-against-positive-hyperplane
-} cache;
-
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  // nop                                            // sll r0, r0, 0
-  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
-  // nop                                            // sll r0, r0, 0
-  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
-  c->load_symbol2(t9, cache.clip_polygon_against_positive_hyperplane);// lw t9, clip-polygon-against-positive-hyperplane(s7)
-  c->mov64(a3, t5);                                 // or a3, t5, r0
-  c->mov64(t0, t6);                                 // or t0, t6, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->daddu(t3, a3, r0);                             // daddu t3, a3, r0
-  c->jalr(call_addr);                               // jalr ra, t9
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_7;}                           // branch non-likely
-
-  c->mov64(a3, t6);                                 // or a3, t6, r0
-  c->mov64(t0, t5);                                 // or t0, t5, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->daddiu(t3, a3, 4);                             // daddiu t3, a3, 4
-  c->jalr(call_addr);                               // jalr ra, t9
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
-  c->load_symbol2(t9, cache.clip_polygon_against_negative_hyperplane);// lw t9, clip-polygon-against-negative-hyperplane(s7)
-  if (bc) {goto block_7;}                           // branch non-likely
-
-  c->mov64(a3, t5);                                 // or a3, t5, r0
-  c->mov64(t0, t6);                                 // or t0, t6, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->daddu(t3, a3, r0);                             // daddu t3, a3, r0
-  c->jalr(call_addr);                               // jalr ra, t9
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_7;}                           // branch non-likely
-
-  c->mov64(a3, t6);                                 // or a3, t6, r0
-  c->mov64(t0, t5);                                 // or t0, t5, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->daddiu(t3, a3, 4);                             // daddiu t3, a3, 4
-  c->jalr(call_addr);                               // jalr ra, t9
-  bc = c->sgpr64(t1) == 0;                          // beq t1, r0, L36
-  c->lw(t0, 4, a1);                                 // lw t0, 4(a1)
-  if (bc) {goto block_7;}                           // branch non-likely
-
-  c->mov64(a3, t5);                                 // or a3, t5, r0
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf27, 0, t0);                             // sqc2 vf27, 0(t0)
-  c->daddiu(t0, t0, 16);                            // daddiu t0, t0, 16
-  c->sw(t1, -16, t0);                               // sw t1, -16(t0)
-  // nop                                            // sll r0, r0, 0
-  
-block_5:
-  c->lqc2(vf1, 0, a3);                              // lqc2 vf1, 0(a3)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf2, 16, a3);                             // lqc2 vf2, 16(a3)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf3, 32, a3);                             // lqc2 vf3, 32(a3)
-  c->vdiv(vf0, BC::w, vf1, BC::w);                  // vdiv Q, vf0.w, vf1.w
-  c->vmul(DEST::xyzw, vf1, vf1, vf26);              // vmul.xyzw vf1, vf1, vf26
-  // nop                                            // sll r0, r0, 0
-  c->vftoi0(DEST::xyzw, vf3, vf3);                  // vftoi0.xyzw vf3, vf3
-  // nop                                            // sll r0, r0, 0
-  c->vadd(DEST::xyzw, vf2, vf2, vf24);              // vadd.xyzw vf2, vf2, vf24
-  // nop                                            // sll r0, r0, 0
-  c->vwaitq();                                      // vwaitq
-  // nop                                            // sll r0, r0, 0
-  c->vmulq(DEST::xyz, vf1, vf1);                    // vmulq.xyz vf1, vf1, Q
-  c->sqc2(vf3, 16, t0);                             // sqc2 vf3, 16(t0)
-  c->vmulq(DEST::xyzw, vf2, vf2);                   // vmulq.xyzw vf2, vf2, Q
-  c->daddiu(a3, a3, 48);                            // daddiu a3, a3, 48
-  c->vadd(DEST::xyzw, vf1, vf1, vf25);              // vadd.xyzw vf1, vf1, vf25
-  c->daddiu(t0, t0, 48);                            // daddiu t0, t0, 48
-  c->vmax_bc(DEST::z, BC::z, vf1, vf1, vf0);        // vmaxz.z vf1, vf1, vf0
-  // nop                                            // sll r0, r0, 0
-  c->vmini_bc(DEST::w, BC::z, vf1, vf1, vf13);      // vminiz.w vf1, vf1, vf13
-  // nop                                            // sll r0, r0, 0
-  c->vmax_bc(DEST::w, BC::y, vf1, vf1, vf13);       // vmaxy.w vf1, vf1, vf13
-  // nop                                            // sll r0, r0, 0
-  c->sqc2(vf2, -48, t0);                            // sqc2 vf2, -48(t0)
-  c->daddiu(t1, t1, -1);                            // daddiu t1, t1, -1
-  c->vftoi4(DEST::xyzw, vf1, vf1);                  // vftoi4.xyzw vf1, vf1
-  // nop                                            // sll r0, r0, 0
-  bc = c->sgpr64(t1) != 0;                          // bne t1, r0, L35
-  c->sqc2(vf1, -16, t0);                            // sqc2 vf1, -16(t0)
-  if (bc) {goto block_5;}                           // branch non-likely
-
-  c->sw(t0, 4, a1);                                 // sw t0, 4(a1)
-  // nop                                            // sll r0, r0, 0
-  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
-  c->daddiu(v0, s7, 4);                             // daddiu v0, s7, 4
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
-  goto end_of_function;                             // return
-
-  
-block_7:
-  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
-  c->mov64(v0, s7);                                 // or v0, s7, r0
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 16);                            // daddiu sp, sp, 16
-  goto end_of_function;                             // return
-
-  //jr ra                                           // jr ra
-  c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  cache.clip_polygon_against_negative_hyperplane = intern_from_c(-1, 0, "clip-polygon-against-negative-hyperplane").c();
-  cache.clip_polygon_against_positive_hyperplane = intern_from_c(-1, 0, "clip-polygon-against-positive-hyperplane").c();
-  gLinkedFunctionTable.reg("draw-boundary-polygon", execute, 512);
-}
-
-} // namespace draw_boundary_polygon
-} // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jakx/kscheme.h"
-using ::jakx::intern_from_c;
-namespace Mips2C::jakx {
 namespace init_boundary_regs {
 struct Cache {
   void* sky_work; // *sky-work*
@@ -463,6 +469,19 @@ namespace debug_line_clip {
 struct Cache {
   void* view_get_active_math_camera; // view-get-active-math-camera
 } cache;
+
+void qfsrv_same_mtsab_4(ExecutionContext* c, int reg) {
+  u32 temp[4];
+  auto& val = c->gprs[reg];
+  temp[0] = val.du32[1];
+  temp[1] = val.du32[2];
+  temp[2] = val.du32[3];
+  temp[3] = val.du32[0];
+  val.du32[0] = temp[0];
+  val.du32[1] = temp[1];
+  val.du32[2] = temp[2];
+  val.du32[3] = temp[3];
+}
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -548,7 +567,9 @@ block_5:
   
 block_7:
   // Unknown instr: qfsrv a0, a0, a0
+  qfsrv_same_mtsab_4(c, a0);
   // Unknown instr: qfsrv a1, a1, a1
+  qfsrv_same_mtsab_4(c, a1);
   bc = c->sgpr64(a2) != 0;                          // bne a2, r0, L254
   c->daddiu(a2, a2, -1);                            // daddiu a2, a2, -1
   if (bc) {goto block_3;}                           // branch non-likely
