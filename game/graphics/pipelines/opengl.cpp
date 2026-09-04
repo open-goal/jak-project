@@ -726,6 +726,10 @@ void GLDisplay::render() {
     g_gfx_data->debug_gui.want_reboot_in_debug = false;
     MasterExit = RuntimeExitStatus::RESTART_IN_DEBUG;
   }
+  if (g_gfx_data->debug_gui.want_reboot_in_retail) {
+    g_gfx_data->debug_gui.want_reboot_in_retail = false;
+    MasterExit = RuntimeExitStatus::RESTART_IN_RETAIL;
+  }
 
   {
     auto p = scoped_prof("check-close-window");
