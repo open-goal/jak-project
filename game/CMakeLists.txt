@@ -242,6 +242,31 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/ocean.cpp
         mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/jak3_functions/generic_merc.cpp
+        mips2c/jakx_functions/collide_func.cpp
+        mips2c/jakx_functions/debug.cpp
+        mips2c/jakx_functions/font.cpp
+        mips2c/jakx_functions/foreground.cpp
+        mips2c/jakx_functions/generic_effect.cpp
+        mips2c/jakx_functions/joint.cpp
+        mips2c/jakx_functions/lights.cpp
+        mips2c/jakx_functions/sky.cpp
+        mips2c/jakx_functions/texture.cpp
+        mips2c/jakx_functions/particle_curves.cpp
+        mips2c/jakx_functions/cloth.cpp
+        mips2c/jakx_functions/collide_cache.cpp
+        mips2c/jakx_functions/collide_hash.cpp
+        mips2c/jakx_functions/collide_mesh.cpp
+        mips2c/jakx_functions/spatial_hash.cpp
+        mips2c/jakx_functions/sparticle.cpp
+        mips2c/jakx_functions/sparticle_launcher.cpp
+        mips2c/jakx_functions/nav_control.cpp
+        mips2c/jakx_functions/nav_engine.cpp
+        mips2c/jakx_functions/merc_blend_shape.cpp
+        mips2c/jakx_functions/wvehicle_part.cpp
+        mips2c/jakx_functions/ripple.cpp
+        mips2c/jakx_functions/shadow.cpp
+        mips2c/jakx_functions/ocean.cpp
+        mips2c/jakx_functions/generic_merc.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

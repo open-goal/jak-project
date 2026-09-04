@@ -277,3 +277,32 @@
 
 ;; DECOMP BEGINS
 
+(defun send-event-function ((arg0 process-tree) (arg1 event-message-block))
+  (with-pp
+    ;; og:preserve-this check that we have a _valid_ process. originally this just checked
+    ;; that type != process-tree, but sometimes we might get stale process ref (jak1 qbert-plat-master)
+    (when (and (valid? arg0 process (the-as string #f) #f 0)
+               (nonzero? (-> (the-as process arg0) pid))
+               (-> (the-as process arg0) event-hook) (-> arg1 from))
+      (let ((gp-0 pp))
+        (set! pp (the-as process arg0))
+        (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from 0) (-> arg1 num-params) (-> arg1 message) arg1)))
+          (set! pp gp-0)
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
+
