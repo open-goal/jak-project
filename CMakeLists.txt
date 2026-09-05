@@ -278,9 +278,6 @@ build_third_party_lib(fmt fmt)
 # build common library
 add_subdirectory(common)
 
-# build decompiler
-add_subdirectory(decompiler)
-
 # cubeb - audio
 build_third_party_lib(cubeb cubeb)
 
@@ -312,6 +309,9 @@ add_subdirectory(goalc)
 
 # build standalone tools
 add_subdirectory(tools)
+
+# build decompiler
+add_subdirectory(decompiler)
 
 # build the gtest libraries
 if(WIN32)
