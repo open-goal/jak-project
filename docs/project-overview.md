@@ -47,7 +47,7 @@ The decompiler will output code and other data intended to be inspected by human
 
 You must have a copy of the PS2 game and place all files from the DVD inside a folder corresponding to the game within `iso_data` folder (`jak1` for Jak 1 Black Label, etc.), as seen in this picture:
 
-![](./docs/img/iso_data-help.png)
+![](./img/iso_data-help.png)
 
 The decompiler will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once.
 
