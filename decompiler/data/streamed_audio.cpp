@@ -328,7 +328,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
   std::vector<fs::path> musFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.MUS"));
   double audio_len = 0.f;
 
-  const flava::FlavaSet dummyFlava = {0,{{"default",0}},false};
+  const flava::FlavaSet dummyFlava = {0, {{"default", 0}}, false};
 
   // Create a fake player that will generate the samples to play the music tracks exactly as they
   // are in the games :)
@@ -359,7 +359,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
         (snd::MusicBank*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
     auto flava_set = flava::lookup(mus_name);
-    if(!flava_set)
+    if (!flava_set)
       flava_set = &dummyFlava;
     for (auto& flavaVariant : flava_set->variants) {
       const auto variantName = std::string(flavaVariant.name);
