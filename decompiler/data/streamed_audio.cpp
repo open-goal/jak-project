@@ -328,6 +328,8 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
   std::vector<fs::path> musFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.MUS"));
   double audio_len = 0.f;
 
+  const flava::FlavaSet dummyFlava = {0,{{"default",0}},false};
+
   // Create a fake player that will generate the samples to play the music tracks exactly as they
   // are in the games :)
   snd::FakePlayer fakeplayer;
@@ -356,47 +358,35 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
     snd::MusicBank* bank =
         (snd::MusicBank*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
-    const auto flava_set = flava::lookup(mus_name);
-    if (flava_set) {
-      for (auto& flavaVariant : flava_set->variants) {
-        const auto variantName = std::string(flavaVariant.name);
-        if (variantName == "none")
-          continue;
-        // Turn off repetition for music. 0 means sound will repeat, 1 means it won't.
-        bank->Sounds[0].Repeats = 1;
-        fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-        if (flavaVariant.value > 0) {
-          // Play for a tenth of a second before setting the register, then clear left/right samples
-          // so they don't get added to track. This seems to help ensure that the correct flava
-          // actually plays.
-          fakeplayer.Tick(left_samples, right_samples, snd::SAMPLE_RATE / 10);
-          fakeplayer.SetSoundReg(flava_set->reg, flavaVariant.value);
-          left_samples.clear();
-          right_samples.clear();
-        }
-        fakeplayer.Tick(left_samples, right_samples, FIVE_MINUTES);
-
-        auto file_name = variantName == "default" ? mus_name : mus_name + '_' + variantName;
-        file_name = fmt::format("{}.wav", file_name);
-        write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE, output_folder / file_name);
-        audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
-
+    auto flava_set = flava::lookup(mus_name);
+    if(!flava_set)
+      flava_set = &dummyFlava;
+    for (auto& flavaVariant : flava_set->variants) {
+      const auto variantName = std::string(flavaVariant.name);
+      if (variantName == "none")
+        continue;
+      // Turn off repetition for music. 0 means sound will repeat, 1 means it won't.
+      bank->Sounds[0].Repeats = 1;
+      fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+      if (flavaVariant.value > 0) {
+        // Play for a tenth of a second before setting the register, then clear left/right samples
+        // so they don't get added to track. This seems to help ensure that the correct flava
+        // actually plays.
+        fakeplayer.Tick(left_samples, right_samples, snd::SAMPLE_RATE / 10);
+        fakeplayer.SetSoundReg(flava_set->reg, flavaVariant.value);
         left_samples.clear();
         right_samples.clear();
-        fakeplayer.StopSound();
       }
-    }
-    // If no flavaset, just convert sound 0 with no fuss
-    else {
-      fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
       fakeplayer.Tick(left_samples, right_samples, FIVE_MINUTES);
 
-      auto file_name = fmt::format("{}.wav", mus_name);
+      auto file_name = variantName == "default" ? mus_name : mus_name + '_' + variantName;
+      file_name = fmt::format("{}.wav", file_name);
       write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE, output_folder / file_name);
       audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
 
       left_samples.clear();
       right_samples.clear();
+      fakeplayer.StopSound();
     }
 
     fakeplayer.UnloadBank(bank);
