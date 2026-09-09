@@ -1,4 +1,5 @@
 set(SOUND_SOURCES
+  989snd/fakeplayer.cpp
   989snd/player.cpp
   989snd/midi_handler.cpp
   989snd/ame_handler.cpp
@@ -19,6 +20,7 @@ set(SOUND_SOURCES
   )
 
 add_library(sound STATIC ${SOUND_SOURCES})
+set_target_properties(sound PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(sound PRIVATE fmt cubeb common)
 
 add_executable(sndplay 989snd/sndplay.cpp)
