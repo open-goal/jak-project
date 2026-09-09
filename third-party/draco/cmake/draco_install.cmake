@@ -60,7 +60,7 @@ macro(draco_setup_install_target)
               DESTINATION "${target_directory}")
     endforeach()
 
-    install(FILES "${draco_build}/draco/draco_features.h"
+    install(FILES "${draco_features_file_name}"
             DESTINATION "${includes_path}/draco/")
 
     install(TARGETS draco_decoder DESTINATION "${bin_path}")
