@@ -179,6 +179,23 @@
   },
   "rules": [
     {
+      // The original code conditionally mutates the measured axis component before rebuilding.
+      // Express the unchanged branch explicitly because the macro takes a replacement expression.
+      "name": "remap-vector-about-axis-conditional-axis",
+      "match":
+        "(let (($lateral (new-stack-vector0)) ($axis-component (vector-dot $axis $value))) 0.0 (vector-! $lateral $value (vector-float*! $lateral $axis $axis-component)) (let* (($lateral-length (vector-length $lateral)) ($old-lateral-length $lateral-length)) (if $condition (set! $axis-component $axis-replacement)) (vector+! $value (vector-float*! $value $axis $axis-component) (vector-float*! $lateral $lateral (/ $lateral-length $old-lateral-length)))))",
+      "rewrite":
+        "(remap-vector-about-axis! $value $axis ($axis-component (if $condition $axis-replacement $axis-component)) ($lateral-length $lateral-length))"
+    },
+    {
+      // This variant gives the rebuilt axis component a separate compiler-generated local.
+      "name": "remap-vector-about-axis-replaced-axis",
+      "match":
+        "(let (($lateral (new-stack-vector0))) (let (($axis-component (vector-dot $axis $value))) 0.0 (vector-! $lateral $value (vector-float*! $lateral $axis $axis-component))) (let* (($lateral-length (vector-length $lateral)) ($old-lateral-length $lateral-length) ($new-axis-component $axis-replacement)) (vector+! $value (vector-float*! $value $axis $new-axis-component) (vector-float*! $lateral $lateral (/ $lateral-length $old-lateral-length)))))",
+      "rewrite":
+        "(remap-vector-about-axis! $value $axis ($axis-component $axis-replacement) ($lateral-length $lateral-length))"
+    },
+    {
       "name": "unwrap-angle",
       "match": "(the float (sar (shl (the int $angle) 48) 48))",
       "rewrite": "(unwrap-angle $angle)"

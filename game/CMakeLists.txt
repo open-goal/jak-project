@@ -43,6 +43,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/CollideMeshRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
+        graphics/opengl_renderer/GoalProfiler.cpp
         graphics/opengl_renderer/DepthCue.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/DirectRenderer2.cpp
@@ -159,8 +160,6 @@ set(RUNTIME_SOURCE
 
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
-        mips2c/jak1_functions/collide_edge_grab.cpp
-        mips2c/jak1_functions/collide_mesh.cpp
         mips2c/jak1_functions/generic_merc.cpp
         mips2c/jak1_functions/merc_blend_shape.cpp
         mips2c/jak1_functions/ocean_vu0.cpp

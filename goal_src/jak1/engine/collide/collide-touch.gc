@@ -27,7 +27,13 @@
 (defmethod get-free-node-count ((this touching-prims-entry-pool))
   "Count the entries currently available in the free list."
   (let ((free-count 0))
-    (let ((node (-> this head))) (while node (+! free-count 1) (set! node (-> node next)) (nop!) (nop!) (nop!)))
+    (let ((node (-> this head)))
+      (while node
+        (+! free-count 1)
+        (set! node (-> node next))
+        (nop!)
+        (nop!)
+        (nop!)))
     free-count))
 
 (defmethod alloc-node ((this touching-prims-entry-pool))
@@ -35,11 +41,15 @@
   (let ((node (-> this head)))
     (cond
       (node
-       (let ((next-node (-> node next))) (set! (-> this head) next-node) (if next-node (set! (-> next-node prev) #f)))
+       (let ((next-node (-> node next)))
+         (set! (-> this head) next-node)
+         (if next-node
+             (set! (-> next-node prev) #f)))
        (set! (-> node allocated?) #t)
        (set! (-> node next) #f)
        (set! (-> node prev) #f))
-      (else (format 0 "ERROR: touching-prims-entry-pool::alloc-node() failed!~%")))
+      (else
+       (format 0 "ERROR: touching-prims-entry-pool::alloc-node() failed!~%")))
     node))
 
 (defmethod free-node ((this touching-prims-entry-pool) (node touching-prims-entry))
@@ -71,7 +81,9 @@
         (set! (-> this head) #f)
         (let ((pool *touching-prims-entry-pool*))
           (while node
-            (let ((node-to-free node)) (set! node (-> node-to-free next)) (free-node pool node-to-free))))
+            (let ((node-to-free node))
+              (set! node (-> node-to-free next))
+              (free-node pool node-to-free))))
         #f))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -149,12 +161,15 @@
       (when shape-entry
         ;; Match the primitive order to the order selected for the owning shape entry.
         (when (= (-> shape-entry cshape1) (-> prim-b cshape))
-          (let ((swap-prim prim-a)) (set! prim-a prim-b) (set! prim-b swap-prim)))
+          (let ((swap-prim prim-a))
+            (set! prim-a prim-b)
+            (set! prim-b swap-prim)))
         (let ((node (-> shape-entry head)))
           (while node
             (when (and (= (-> node prim1 cprim) prim-a) (= (-> node prim2 cprim) prim-b))
               (when (< step-u (-> node u))
                 ;; A nearer duplicate refreshes its triangle payload but leaves the first recorded u.
+                ;; This is very likely a bug, but seems like it would happen extremely rarely.
                 (-> node u)
                 (let ((stored-prim-a (-> node prim1))
                       (tri-a-result (-> work tri1)))
@@ -326,16 +341,20 @@
   "Return the other shape in this touching pair, or #f when shape is not in
    the pair."
   (cond
-    ((= (-> this cshape1) shape) (return (-> this cshape2)))
-    ((= (-> this cshape2) shape) (return (-> this cshape1))))
+    ((= (-> this cshape1) shape)
+     (return (-> this cshape2)))
+    ((= (-> this cshape2) shape)
+     (return (-> this cshape1))))
   (the-as collide-shape #f))
 
 (defmethod get-touched-prim ((this touching-prims-entry) (shape collide-shape) (shape-entry touching-shapes-entry))
   "Return the primitive in this pair that belongs to shape, or #f when shape is
    not one of the owning shape entry's two shapes."
   (cond
-    ((= (-> shape-entry cshape1) shape) (return (-> this prim1 cprim)))
-    ((= (-> shape-entry cshape2) shape) (return (-> this prim2 cprim))))
+    ((= (-> shape-entry cshape1) shape)
+     (return (-> this prim1 cprim)))
+    ((= (-> shape-entry cshape2) shape)
+     (return (-> this prim2 cprim))))
   (the-as collide-shape-prim #f))
 
 (defmethod get-touched-tri ((this touching-prims-entry) (shape collide-shape) (shape-entry touching-shapes-entry))
@@ -344,9 +363,11 @@
   (let ((triangle (the-as collide-tri-result #f)))
     (cond
       ((= (-> shape-entry cshape1) shape)
-       (let ((prim (-> this prim1))) (if (-> prim has-tri?) (set! triangle (-> prim tri)))))
+       (let ((prim (-> this prim1)))
+         (if (-> prim has-tri?) (set! triangle (-> prim tri)))))
       ((= (-> shape-entry cshape2) shape)
-       (let ((prim (-> this prim2))) (if (-> prim has-tri?) (set! triangle (-> prim tri))))))
+       (let ((prim (-> this prim2)))
+         (if (-> prim has-tri?) (set! triangle (-> prim tri))))))
     triangle))
 
 (defmethod get-middle-of-bsphere-overlap ((this touching-prims-entry) (output vector))

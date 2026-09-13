@@ -3,6 +3,15 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/sprite/sparticle/sparticle-launcher.gc")
 
+;; Enemies dissolve when they are killed.
+;; Particles are spawned at enemy mesh vertex locations. The mesh disappears underneath the particles,
+;; which then fade out, making the enemy dissolve into thin air.
+
+;; This is handled in generic-merc renderer directly, since it needs to sample mesh positions
+;; this file contains the particle-system connection.
+
+;; The effect is reused for entering/exiting the warp gate.
+
 ;; DECOMP BEGINS
 
 (define *merc-death-globals* (new 'global 'vector))
@@ -59,8 +68,7 @@
   :init-specs ((:scalevel-x (meters 0)) (:fade-a -0.21333334) (:timer (seconds 0) (seconds 0.987))))
 
 (defun merc-death-spawn ((effect-id int) (position vector) (surface-normal vector))
-  "Launch the death particle selected by effect-id at position when that part-table entry is a
-   particle launcher. surface-normal is reserved for the sampled MERC normal and is currently unused."
+  "Launch the death particle. The surface normal is unused."
   (let ((launcher (-> *part-id-table* effect-id)))
     (if (and (nonzero? launcher) (= (-> launcher type) sparticle-launcher))
       (sp-launch-particles-death *sp-particle-system-2d* launcher position)))

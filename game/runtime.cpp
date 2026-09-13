@@ -31,6 +31,7 @@
 
 #include "game/external/discord.h"
 #include "game/graphics/gfx.h"
+#include "game/graphics/opengl_renderer/GoalProfiler.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kdsnetm.h"
@@ -226,6 +227,7 @@ void ee_runner(SystemThreadInterface& iface) {
 
   // Added for OpenGOAL's debugger
   xdbg::allow_debugging();
+  GoalProfiler::register_goal_thread();
 
   switch (g_game_version) {
     case GameVersion::Jak1:
@@ -243,6 +245,7 @@ void ee_runner(SystemThreadInterface& iface) {
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }
+  GoalProfiler::unregister_goal_thread();
   lg::debug("[EE] Done!");
 
   //  // kill the IOP todo

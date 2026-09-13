@@ -77,6 +77,7 @@ class OpenGlDebugGui {
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
   bool m_draw_profiler = false;
+  bool m_draw_goal_profiler = false;
   bool m_draw_debug = false;
   bool m_draw_loader = false;
   bool m_draw_overlord = false;

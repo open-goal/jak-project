@@ -339,6 +339,30 @@
   (with-gensyms (vec)
     `(let ((,vec ,v)) (set! (-> ,vec x) ,xv) (set! (-> ,vec y) ,yv) (set! (-> ,vec z) ,zv) ,vec)))
 
+(defmacro remap-vector-about-axis! (value-form axis-form axis-binding lateral-binding)
+  "Decompose value around axis, replace its signed axis component and lateral length, and rebuild it.
+   Each binding has the form (original-name replacement-expression); both replacement expressions
+   can refer to both original component names. The lateral rescale intentionally preserves the EE's
+   unguarded new-length / old-length division."
+  (let ((axis-name (car axis-binding))
+        (axis-expression (cadr axis-binding))
+        (lateral-name (car lateral-binding))
+        (lateral-expression (cadr lateral-binding)))
+    (with-gensyms (value axis lateral new-axis-component new-lateral-length)
+      `(let ((,value ,value-form)
+            (,axis ,axis-form)
+            (,lateral (new-stack-vector0)))
+        ;; Split value into its signed projection on axis and the perpendicular remainder.
+        (let ((,axis-name (vector-dot ,axis ,value)))
+          (vector-! ,lateral ,value (vector-float*! ,lateral ,axis ,axis-name))
+          (let ((,lateral-name (vector-length ,lateral)))
+            ;; Evaluate both remaps while the names still denote the original components.
+            (let ((,new-axis-component ,axis-expression)
+                  (,new-lateral-length ,lateral-expression))
+              (vector+! ,value
+                        (vector-float*! ,value ,axis ,new-axis-component)
+                        (vector-float*! ,lateral ,lateral (/ ,new-lateral-length ,lateral-name))))))))))
+
 (defun vector-dot ((a vector) (b vector))
   "Return the xyz dot product using the EE scalar floating-point accumulator."
   (declare (inline))

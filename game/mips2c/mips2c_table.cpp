@@ -23,24 +23,7 @@ void _mips2c_call_windows();
 namespace Mips2C {
 
 namespace jak1 {
-namespace draw_large_polygon { extern void link(); }
-namespace init_sky_regs { extern void link(); }
-namespace clip_polygon_against_positive_hyperplane { extern void link(); }
-namespace render_sky_quad { extern void link(); }
-namespace render_sky_tri { extern void link(); }
-namespace set_tex_offset { extern void link(); }
-namespace set_sky_vf27 { extern void link(); }
-namespace set_sky_vf23_value { extern void link(); }
 namespace adgif_shader_texture_with_update { extern void link(); }
-namespace init_boundary_regs { extern void link(); }
-namespace render_boundary_quad { extern void link(); }
-namespace render_boundary_tri { extern void link(); }
-namespace draw_boundary_polygon { extern void link(); }
-namespace time_of_day_interp_colors_scratch { extern void link(); }
-namespace method_12_collide_mesh { extern void link(); }
-namespace method_11_collide_mesh { extern void link(); }
-namespace collide_probe_node { extern void link(); }
-namespace collide_probe_instance_tie { extern void link(); }
 namespace method_26_collide_cache { extern void link(); }
 namespace method_32_collide_cache { extern void link(); }
 namespace pc_upload_collide_frag { extern void link(); }
@@ -57,10 +40,6 @@ namespace method_10_collide_puss_work { extern void link(); }
 namespace method_9_collide_puss_work { extern void link(); }
 namespace method_15_collide_mesh { extern void link(); }
 namespace method_14_collide_mesh { extern void link(); }
-namespace method_16_collide_edge_work { extern void link(); }
-namespace method_15_collide_edge_work { extern void link(); }
-namespace method_10_collide_edge_hold_list { extern void link(); }
-namespace method_18_collide_edge_work { extern void link(); }
 namespace bones_mtx_calc { extern void link(); }
 namespace draw_bones_merc { extern void link(); }
 namespace draw_bones_check_longest_edge_asm { extern void link(); }
@@ -377,19 +356,6 @@ Rng gRng;
 PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2CLinkCallbacks = {
     //////// JAK 1
     {{"texture", {jak1::adgif_shader_texture_with_update::link}},
-     {"sky-tng",
-      {jak1::draw_large_polygon::link, jak1::init_sky_regs::link,
-       jak1::clip_polygon_against_positive_hyperplane::link, jak1::render_sky_quad::link,
-       jak1::render_sky_tri::link, jak1::set_tex_offset::link, jak1::set_sky_vf27::link,
-       jak1::set_sky_vf23_value::link}},
-     {"load-boundary",
-      {jak1::init_boundary_regs::link, jak1::render_boundary_quad::link,
-       jak1::render_boundary_tri::link, jak1::draw_boundary_polygon::link}},
-     {"time-of-day", {jak1::time_of_day_interp_colors_scratch::link}},
-     {"collide-probe", {jak1::collide_probe_node::link, jak1::collide_probe_instance_tie::link}},
-     {"collide-mesh",
-      {jak1::method_12_collide_mesh::link, jak1::method_11_collide_mesh::link,
-       jak1::method_15_collide_mesh::link, jak1::method_14_collide_mesh::link}},
      {"collide-cache",
       {jak1::method_26_collide_cache::link, jak1::method_32_collide_cache::link,
        jak1::pc_upload_collide_frag::link, jak1::method_28_collide_cache::link,
@@ -398,9 +364,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::method_13_collide_shape_prim_mesh::link, jak1::method_30_collide_cache::link,
        jak1::method_9_collide_cache_prim::link, jak1::method_10_collide_cache_prim::link,
        jak1::method_10_collide_puss_work::link, jak1::method_9_collide_puss_work::link}},
-     {"collide-edge-grab",
-      {jak1::method_16_collide_edge_work::link, jak1::method_15_collide_edge_work::link,
-       jak1::method_10_collide_edge_hold_list::link, jak1::method_18_collide_edge_work::link}},
      {"bones",
       {jak1::bones_mtx_calc::link, jak1::draw_bones_merc::link,
        jak1::draw_bones_check_longest_edge_asm::link}},

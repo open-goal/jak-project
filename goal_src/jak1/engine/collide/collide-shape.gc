@@ -36,7 +36,7 @@
 
 ;; DECOMP BEGINS
 
-;; The collide shape system is used to handle collision reactions.
+;; Collide-shapes are the foreground collision objects.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Should Push Away
@@ -77,28 +77,27 @@
     ;; grab the roots
     (let ((our-root (-> this root-prim))
           (their-root (-> other-shape root-prim)))
-      (let ((our-with (-> our-root collide-with)) ;; this object's collide with
-            (their-as (-> their-root prim-core collide-as)) ;; the incoming object's as
-            (our-action (-> our-root prim-core action)) ;; our action
+      (let ((our-with (-> our-root collide-with))
+            (their-as (-> their-root prim-core collide-as))
+            (our-action (-> our-root prim-core action))
             )
-        (let ((their-action (-> their-root prim-core action))) ;; their action
+        (let ((their-action (-> their-root prim-core action)))
           ;; reject if (logand with as) fails
-          (b! (zero? (logand our-with their-as)) reject :delay (set! their-solid (logand their-action (collide-action solid))))
+          (b! (zero? (logand our-with their-as)) reject 
+              :delay (set! their-solid (logand their-action (collide-action solid))))
           ;; reject if non-solid
-          (b! (zero? their-solid) reject :delay (set! their-edgegrab (logand their-action (collide-action edgegrab-active)))))
-        ;; reject if edgegrab-active on us fails (not sure what this means yet)
-        (b! (nonzero? their-edgegrab) reject :delay (set! our-solid (logand our-action (collide-action solid)))))
+          (b! (zero? their-solid) reject
+              :delay (set! their-edgegrab (logand their-action (collide-action edgegrab-active)))))
+        ;; reject if edgegrab-active on us fails (don't do push-aways on jak when he's edgegrabbing)
+        (b! (nonzero? their-edgegrab) reject
+            :delay (set! our-solid (logand our-action (collide-action solid)))))
       ;; reject if non-solid
-      (b! (zero? our-solid) reject :delay (nop!))
+      (b! (zero? our-solid) reject
+          :delay (nop!))
       ;; if we're here, our collision types allow us to collide
       (.lvf our-sphere (&-> our-root prim-core world-sphere quad))
       (.lvf their-sphere (&-> their-root prim-core world-sphere quad))
-      ;; see if bsphere's overlap
-      ;; The bsphere test used by every method in this file. delta starts as the center difference,
-      ;; the three multiply-accumulates fold its squared length into w, and the last subtract leaves
-      ;; d^2 - (r1+r2)^2 there, which is negative exactly when the spheres overlap. The final
-      ;; .add.w.vf.x copies that w lane into x so the .mov can read it as an ordinary float; the .mov
-      ;; would otherwise pick up the stale x lane.
+      ;; see if bsphere's overlap: check sign of d^2 - (r1+r2)^2
       (.sub.vf delta our-sphere their-sphere)
       (.add.w.vf.w radius-sum our-sphere their-sphere)
       (.mul.vf.xyz delta delta delta)
@@ -123,9 +122,6 @@
       (label done)
       result)))
 
-;; the should-push-away-test will update the collide-overlap-result. The best-dist will be negative if they overlap.
-;; it works on collide prims.
-
 (defmethod should-push-away-test ((this collide-shape-prim) (other-prim collide-shape-prim) (overlap-result collide-overlap-result))
   "Should be impossible to call - collide-shape-prim is abstract."
   (format 0 "ERROR: collide-shape-prim::should-push-away-test was called illegally!~%")
@@ -133,7 +129,7 @@
 
 (defmethod should-push-away-test ((this collide-shape-prim-group) (other-prim collide-shape-prim) (overlap-result collide-overlap-result))
   "Update test for a group against an unknown prim.
-   The grouip prims use their collide with "
+   The group prims use their collide with "
   (local-vars (spheres-apart float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -321,10 +317,8 @@
       (label not-a-group)
       (b! (> other-prim-type 0) other-is-mesh :delay (nop!)))
     ;; if we're here, it's sphere->sphere.
-    ;; Unlike the bsphere reject elsewhere in this file, this one needs the signed distance rather than
-    ;; its square, because best-dist is a penetration depth. center-distance holds the componentwise
-    ;; squares, then d^2 in w, then d itself in x once the square root comes back from the scalar
-    ;; pipeline. separation is d - (r1 + r2), negative when the spheres overlap.
+    ;; Unlike the bsphere reject elsewhere in this file, this one needs the signed distance to set
+    ;; the actual penetration depth.
     (.lvf our-sphere (&-> this prim-core world-sphere quad))
     (.lvf their-sphere (&-> other-prim prim-core world-sphere quad))
     (.sub.vf.xyz to-other their-sphere our-sphere)
@@ -341,11 +335,6 @@
       (nop!)
       (.add.vf.x center-distance vf0 Q)
       (.sub.x.vf.x separation-vf center-distance radius-sum)
-      ;; This scales the center difference by d, so the vector stored as the contact normal has
-      ;; magnitude d^2 instead of one, and the contact point derived from it below sits nowhere near
-      ;; the sphere surface. Only the normal's sign is read by do-push-aways!, which then normalizes
-      ;; the push vector, so the error does not show up there; anything that wants a real normal or a
-      ;; real contact point out of a sphere/sphere push-away cannot use these fields.
       (.mul.x.vf.xyz to-other to-other center-distance)
       (.mov separation-gpr separation-vf)
       (let ((separation separation-gpr))
@@ -354,11 +343,13 @@
           (set! (-> overlap-result best-dist) separation)
           (set! (-> overlap-result best-from-prim) this)
           (set! (-> overlap-result best-to-prim) other-prim)
+          ;; this looks like a bug: this is not normalized
           (.svf (&-> overlap-result best-from-tri normal quad) to-other)
           (set! (-> overlap-result best-from-tri pat) sphere-pat))))
     ;; make up a triangle.
-    (let ((hit-normal (-> overlap-result best-from-tri normal))
+    (let ((hit-normal (-> overlap-result best-from-tri normal)) ;; not normalized!
           (hit-point (-> overlap-result best-from-tri intersect)))
+      ;; this hit-point is probably bogus since it uses the un-normalized normal.
       (vector-float*! hit-point hit-normal (-> this prim-core world-sphere w))
       (vector+! hit-point hit-point (the-as vector (-> this prim-core)))
       (vector-copy! (-> overlap-result best-from-tri vertex 0) hit-point)
@@ -464,15 +455,14 @@
       (when (>= hit-u 0.0)
         ;; yup.
         (let ((hit-prim (the-as collide-shape-prim #f)))
-          ;; not really sure why we do this, need to learn more about the stuff in the collide cache
-          ;; prim-type 2 is the background and water pseudo-prims, so hit-prim stays #f for those and
-          ;; only a foreground actor ends up on the touching list.
+          ;; prim-type 2 is the background and water pseudo-prims, they don't get added to touching list.
           (let ((cache-prim-type (-> cache-prim prim-core prim-type))
                 (background-prim-type 2)
                 (cache-prim (-> cache-prim prim))
                 (zero-offense 0)
                 (cache-offense (-> cache-prim prim-core offense)))
-            (b! (!= cache-prim-type background-prim-type) prim-chosen :likely-delay (set! hit-prim cache-prim))
+            (b! (!= cache-prim-type background-prim-type) prim-chosen
+                :likely-delay (set! hit-prim cache-prim))
             (label prim-chosen)
             (nop!)
             (let ((our-offense (-> this prim-core offense)))
@@ -480,7 +470,8 @@
               (let ((our-action (-> this prim-core action)))
                 (nop!)
                 (let ((cache-action (-> cache-prim prim-core action)))
-                  (b! (= cache-offense zero-offense) skip-record :delay (set! offense-difference (- our-offense cache-offense)))
+                  (b! (= cache-offense zero-offense) skip-record
+                      :delay (set! offense-difference (- our-offense cache-offense)))
                   (let ((action-overlap (logand our-action cache-action))
                         (hit-pat (-> tri-result pat)))
                     (let ((solid-bits (logand action-overlap (collide-action solid))))
@@ -522,7 +513,8 @@
   (let ((cache-as (-> cache-prim prim-core collide-as)))
     (dotimes (i (-> this num-prims))
       (let ((child-prim (-> this prims i)))
-        (if (logtest? (-> child-prim collide-with) cache-as) (collide-with-collide-cache-prim-mesh child-prim isect cache-prim)))))
+        (if (logtest? (-> child-prim collide-with) cache-as)
+            (collide-with-collide-cache-prim-mesh child-prim isect cache-prim)))))
   (none))
 
 (defmethod collide-with-collide-cache-prim-sphere ((this collide-shape-prim) (isect collide-shape-intersect) (cache-prim collide-cache-prim))
@@ -591,15 +583,13 @@
   (let ((cache-as (-> cache-prim prim-core collide-as)))
     (dotimes (i (-> this num-prims))
       (let ((child-prim (-> this prims i)))
-        (if (logtest? (-> child-prim collide-with) cache-as) (collide-with-collide-cache-prim-sphere child-prim isect cache-prim)))))
+        (if (logtest? (-> child-prim collide-with) cache-as)
+            (collide-with-collide-cache-prim-sphere child-prim isect cache-prim)))))
   (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Target Specific Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; This implements the default collision reaction function.
-;; This is a target-specific reaction.
 
 (defun find-ground-point ((target-ctrl control-info) (ground-result vector) (start-length float) (max-length float))
   "Search eight alternating headings around target-ctrl for safe ground. Each ray begins
@@ -780,85 +770,86 @@
   (none))
 
 (defun default-collision-reaction ((cshape collide-shape-moving) (isect collide-shape-intersect) (vel-out vector) (vel-in vector))
-  "Move cshape to the earliest intersection, process its surface material, classify the contact,
-   and remove velocity directed into the surface. Store the adjusted velocity in vel-out and
-   return the collide-status bits produced by the contact."
-  (local-vars
-    (center-direction vector)
-    (surface-normal vector)
-    (adjusted-input-velocity vector)
-    (status-mask collide-status)
-    (wall? symbol))
-  (set! center-direction (new-stack-vector0))
-  (set! surface-normal (new-stack-vector0))
-  (set! adjusted-input-velocity (new 'stack-no-clear 'vector))
-  (set! status-mask (collide-status))
-  (vector-copy! adjusted-input-velocity vel-in)
-  ;; move along the vector by the best move-vec
-  ;; this will hit the best-tri
-  (let ((move-amount (new 'stack-no-clear 'vector)))
-    (vector-float*! move-amount (-> isect move-vec) (-> isect best-u))
-    (move-by-vector! cshape move-amount))
-  ;; so handle hitting that tri
-  (set-and-handle-pat! cshape (-> isect best-tri pat))
-  (vector-! center-direction (the-as vector (-> isect best-from-prim prim-core)) (-> isect best-tri intersect))
-  (set! (-> center-direction w) 1.0)
-  (vector-normalize! center-direction 1.0)
-  (set! (-> cshape coverage) (vector-dot center-direction (-> isect best-tri normal)))
-  (let ((center-direction-quad (-> center-direction quad))) (set! (-> surface-normal quad) center-direction-quad))
-  ;; ?
-  (if (= (-> isect best-u) 0.0) (move-by-vector! cshape surface-normal))
-  ;;
-  (vector-copy! (-> cshape surface-normal) surface-normal)
-  (vector-copy! (-> cshape poly-normal) (-> isect best-tri normal))
-  (set! (-> cshape surface-angle) (vector-dot surface-normal (-> cshape dynam gravity-normal)))
-  (set! (-> cshape poly-angle) (vector-dot (-> cshape poly-normal) (-> cshape dynam gravity-normal)))
-  (set! (-> cshape touch-angle)
-        (vector-dot surface-normal (vector-normalize! (vector-negate! (new-stack-vector0) adjusted-input-velocity) 1.0)))
-  (if (< (-> cshape poly-angle) COLLIDE-CEILING-POLY-ANGLE)
-    (set! status-mask (logior status-mask (collide-status touch-ceiling))))
-  (set! wall? (< (fabs (-> cshape surface-angle)) (-> *pat-mode-info* (-> cshape cur-pat mode) wall-angle)))
-  (when (zero? (logand (-> cshape prev-status) (collide-status on-surface)))
-    ;; hit the ground!
-    (set! (-> cshape ground-impact-vel) (- (vector-dot (-> cshape transv) (-> cshape dynam gravity-normal))))
-    (when (not wall?)
-      (let ((remaining-impact-fraction (- 1.0 (-> cshape surf impact-fric))))
-        (when (< remaining-impact-fraction 1.0)
-          (let ((lateral-velocity (new-stack-vector0))
-                (gravity-speed (vector-dot (-> cshape dynam gravity-normal) adjusted-input-velocity)))
-            0.0
-            (vector-! lateral-velocity
-                      adjusted-input-velocity
-                      (vector-float*! lateral-velocity (-> cshape dynam gravity-normal) gravity-speed))
-            (let* ((lateral-speed (vector-length lateral-velocity))
-                   (lateral-speed-copy lateral-speed))
-              (if (< gravity-speed 0.0) (set! gravity-speed (* gravity-speed remaining-impact-fraction)))
-              (vector+! adjusted-input-velocity
-                        (vector-float*! adjusted-input-velocity (-> cshape dynam gravity-normal) gravity-speed)
-                        (vector-float*! lateral-velocity lateral-velocity (/ lateral-speed lateral-speed-copy)))))))))
-  ;; set t-surf (touching a surface)
-  (set! status-mask (logior status-mask (collide-status touch-surface)))
-  ;; Bit five is touch-actor rather than touch-ceiling. best-to-prim is only filled in when the cached
-  ;; primitive that was hit belongs to a foreground actor, so this marks actor contact.
-  (if (-> isect best-to-prim)
-    (set! status-mask (logior status-mask (collide-status touch-actor))) ;; t-ceil. not sure why this is the case.
-    )
-  (cond
-    (wall?
-     (set! status-mask (logior status-mask (collide-status touch-wall))) ;; using it as a wall
-     (set! (-> cshape cur-pat mode) (pat-mode wall)))
-    (else
-     (set! status-mask (logior status-mask (collide-status on-surface))) ;; on.
-     (vector-copy! (-> cshape local-normal) surface-normal)))
-  (vector-reflect-flat! vel-out adjusted-input-velocity surface-normal)
-  (when (and (not wall?) (>= (-> cshape coverage) COLLIDE-GROUND-COVERAGE))
-    (set! status-mask (logior status-mask (collide-status on-ground)))
-    (vector-copy! (-> cshape ground-poly-normal) (-> cshape poly-normal))
-    (when (!= (-> cshape poly-pat mode) (pat-mode wall))
-      (set! (-> cshape ground-pat) (-> cshape poly-pat))
-      (vector-copy! (-> cshape ground-touch-point) (-> isect best-tri intersect))))
-  (logior! (-> cshape status) status-mask)
-  (the-as collide-status status-mask))
+  "Move shape to the earliest intersection, process its surface material, classify the contact as
+   ground, wall, ceiling, or actor contact, and remove velocity directed into the surface. Store the
+   adjusted velocity in velocity-out and return the collide-status bits produced by the contact."
+  (let ((center-direction (new-stack-vector0))
+        (surface-normal (new-stack-vector0))
+        (adjusted-input-velocity (new 'stack-no-clear 'vector))
+        (status-mask (collide-status)))
+    ;; copy the input velocity so we don't modify it 
+    (set! (-> adjusted-input-velocity quad) (-> vel-in quad))
+    ;; Advance only to the earliest hit, then install and react to that triangle's material.
+    (let ((move-amount (new 'stack-no-clear 'vector)))
+      (vector-float*! move-amount (-> isect move-vec) (-> isect best-u))
+      (move-by-vector! cshape move-amount))
+    (set-and-handle-pat! cshape (-> isect best-tri pat))
+    ;; The sphere-center-to-contact direction drives the response. Its agreement with the polygon
+    ;; normal measures how fully the triangle supports the sphere rather than merely clipping it with an edge
+    (vector-! center-direction (-> isect best-from-prim prim-core world-sphere) (-> isect best-tri intersect))
+    (set! (-> center-direction w) 1.0)
+    (vector-normalize! center-direction 1.0)
+    (set! (-> cshape coverage) (vector-dot center-direction (-> isect best-tri normal)))
+    (set! (-> surface-normal quad) (-> center-direction quad))
+    ;; A hit at the start of the sweep is already penetrating, so nudge the shape one unit outward.
+    ;; Note: this is a very small move and could be a bug. Maybe it was supposed to move it out of
+    ;; collision??
+    (if (= (-> isect best-u) 0.0)
+        (move-by-vector! cshape surface-normal))
+    ;; Store normals and angles
+    (set! (-> cshape surface-normal quad) (-> surface-normal quad))
+    (vector-copy! (-> cshape poly-normal) (-> isect best-tri normal))
+    (set! (-> cshape surface-angle) (vector-dot surface-normal (-> cshape dynam gravity-normal)))
+    (set! (-> cshape poly-angle) (vector-dot (-> cshape poly-normal) (-> cshape dynam gravity-normal)))
+    (set! (-> cshape touch-angle)
+          (vector-dot surface-normal (vector-normalize! (vector-negate! (new-stack-vector0) adjusted-input-velocity) 1.0)))
+    ;; determine ceiling/wall based on angles
+    (if (< (-> cshape poly-angle) COLLIDE-CEILING-POLY-ANGLE)
+        (logior! status-mask (collide-status touch-ceiling)))
+    (let ((wall? (< (fabs (-> cshape surface-angle)) (-> *pat-mode-info* (-> cshape cur-pat mode) wall-angle))))
+      ;; Record the impact speed when acquiring a surface. A new non-wall contact also damps the
+      ;; downward gravity component while preserving the lateral component's original magnitude.
+      (when (not (logtest? (-> cshape prev-status) (collide-status on-surface)))
+        (set! (-> cshape ground-impact-vel) (- (vector-dot (-> cshape transv) (-> cshape dynam gravity-normal))))
+        (when (not wall?)
+          (let ((remaining-impact-fraction (- 1.0 (-> cshape surf impact-fric))))
+            (when (< remaining-impact-fraction 1.0)
+              (let ((lateral-velocity (new-stack-vector0))
+                    (gravity-speed (vector-dot (-> cshape dynam gravity-normal) adjusted-input-velocity)))
+                0.0
+                (vector-! lateral-velocity
+                          adjusted-input-velocity
+                          (vector-float*! lateral-velocity (-> cshape dynam gravity-normal) gravity-speed))
+                (let* ((lateral-speed (vector-length lateral-velocity))
+                       (lateral-speed-copy lateral-speed))
+                  (if (< gravity-speed 0.0)
+                      (set! gravity-speed (* gravity-speed remaining-impact-fraction)))
+                  ;; same weird divide... maybe some vector-decompose macro gone wrong?
+                  (vector+! adjusted-input-velocity
+                            (vector-float*! adjusted-input-velocity (-> cshape dynam gravity-normal) gravity-speed)
+                            (vector-float*! lateral-velocity lateral-velocity (/ lateral-speed lateral-speed-copy)))))))))
+      ;; Set touch bits
+      (logior! status-mask (collide-status touch-surface))
+      (if (-> isect best-to-prim)
+          (logior! status-mask (collide-status touch-actor)))
+      (cond
+        (wall?
+         (logior! status-mask (collide-status touch-wall))
+         (set! (-> cshape cur-pat mode) (pat-mode wall)))
+        (else
+         (logior! status-mask (collide-status on-surface))
+         (set! (-> cshape local-normal quad) (-> surface-normal quad))))
+      ;; Remove velocity into the response plane. A broad supporting contact also becomes ground
+      ;; and updates the persistent ground material, normal, and touch point.
+      (vector-reflect-flat! vel-out adjusted-input-velocity surface-normal)
+      (when (and (not wall?) (>= (-> cshape coverage) COLLIDE-GROUND-COVERAGE))
+        (logior! status-mask (collide-status on-ground))
+        (vector-copy! (-> cshape ground-poly-normal) (-> cshape poly-normal))
+        (when (!= (-> cshape poly-pat mode) (pat-mode wall))
+          (set! (-> cshape ground-pat) (-> cshape poly-pat))
+          (vector-copy! (-> cshape ground-touch-point) (-> isect best-tri intersect)))))
+    (logior! (-> cshape status) status-mask)
+    status-mask))
 
 (defun simple-collision-reaction ((cshape collide-shape-moving) (isect collide-shape-intersect) (vel-out vector) (vel-in vector))
   "Move cshape to the earliest intersection and reflect its velocity by one-and-a-half times the
@@ -910,7 +901,7 @@
            ;; if debugging, remember our input velocity.
            (if *display-collision-marks* (vector-copy! debug-in-vel vel-in))
            ;; do the collision reaction! this function should move the collide shape.
-           (set! (-> this prev-status) (the-as collide-status ((-> this reaction) this isect vel-out vel-in)))
+           (set! (-> this prev-status) ((-> this reaction) this isect vel-out vel-in))
            ;; debug draw collision marks.
            (when *display-collision-marks*
              (let ((tri-color (-> *pat-mode-info* (-> isect best-tri pat mode) hilite-color)))
@@ -958,20 +949,18 @@
   "For a non-moving collide shape, we just move ourself. We have no reaction to anything we hit."
   (local-vars (seconds-per-frame-bits int))
   (rlet ((vf0 :class vf)
-         (move-amount-vf :class vf)
-         (seconds-vf :class vf))
+         (vf1 :class vf)
+         (vf2 :class vf))
     (init-vf0-vector)
-    ;; velocity times seconds-per-frame, with w forced to one so the result is a usable vector. The
-    ;; scalar has to cross through an integer register on its way to VU0, since there is no move from
-    ;; an FPU register into a vf lane.
     (let ((move-function (method-of-object this move-by-vector!))
           (move-amount (new 'stack-no-clear 'vector)))
-      (.lvf move-amount-vf (&-> velocity quad))
-      (let ((seconds-per-frame (-> *display* seconds-per-frame))) (.mov seconds-per-frame-bits seconds-per-frame))
-      (.mov seconds-vf seconds-per-frame-bits)
-      (.mov.vf.w move-amount-vf vf0)
-      (.mul.x.vf.xyz move-amount-vf move-amount-vf seconds-vf)
-      (.svf (&-> move-amount quad) move-amount-vf)
+      (.lvf vf1 (&-> velocity quad))
+      (let ((spf (seconds-per-frame)))
+        (.mov seconds-per-frame-bits spf))
+      (.mov vf2 seconds-per-frame-bits)
+      (.mov.vf.w vf1 vf0)
+      (.mul.x.vf.xyz vf1 vf1 vf2)
+      (.svf (&-> move-amount quad) vf1)
       (move-function this move-amount))
     (none)))
 
@@ -1034,56 +1023,68 @@
   (when (< 1638400.0 (vector-length velocity))
     (format 0 "WARNING: target vel is ~M m/s, reseting to zero.~%" (vector-length velocity))
     (vector-reset! velocity))
-  ;; The animation collision track moves the body independently of its ordinary velocity. Rotate
-  ;; that offset to world space, feed its per-frame delta into collision, and cancel the same
-  ;; displacement from the drawn model because the animation already contains it.
+  
+  ;; There's a trick applied here for jumping animations, very similar to aligner.
+  ;; When Jak jumps, his root would normally follow a ballistic trajectory computed by the control code.
+  ;; This does the right thing for the model: Jak's skeleton starts at the upper body, so his
+  ;; torso (containing his center-of-mass) follows a plausible ballistic trajectory.
+  ;; Jak's animated jump pulls up his feet, which would normally leave the collision spheres sticking out
+  ;; too low. The feet-tuck trajectory is described by an additional res-lump, almost like an `align` channel,
+  ;; and is used to pull up the collision spheres to be closer to Jak's body, adding this velocity to the
+  ;; ballistic trajectory.
+  ;; We do the same aligner trick of comparing deltas and adding it as a velocity to the cshape.
+  ;; However, unlike aligner, this shouldn't apply to the drawn model position, so we shift the draw position.
+  ;; Unlike the collision offset, this is done by applying an absolute offset - in the case of blocked velocity,
+  ;; these diverge and, if jak's upward motion is blocked, lead to the model rising into the air.
+  ;; This seems mostly like a workaround for a single, strangely exported animation.
+  ;; Jak2/3 have it as well, but have yet another workaround to revert any velocity changes caused by collisions
+  ;; caused by this extra alignment velocity.
+  ;; The details here are likely why jak sometimes appears to rise strangely when a jump's vertical velocity is
+  ;; blocked.
+  
+  ;; Compute collide-offset change in world space
   (vector-copy! (-> this old-anim-collide-offset-world) (-> this anim-collide-offset-world))
   (vector-matrix*! (-> this anim-collide-offset-world) (-> this anim-collide-offset-local) (-> this root-orientation))
   (vector-! (-> this anim-collide-offset-delta-world)
             (-> this anim-collide-offset-world)
             (-> this old-anim-collide-offset-world))
+  
+  ;; Smoothly shift the draw offset.
   (let ((total-draw-offset (vector-! (new 'stack-no-clear 'vector) (-> this draw-offset) (-> this anim-collide-offset-world))))
     (vector-seek! (-> this cspace-offset) total-draw-offset (* 16384.0 (-> *display* seconds-per-frame))))
+  
+  ;; hard-coded 60.0...
   (let ((velocity-with-anim-offset (vector+float*! (new-stack-vector0) velocity (-> this anim-collide-offset-delta-world) 60.0))
         (saved-input-velocity (new 'stack-no-clear 'vector)))
     (vector-copy! saved-input-velocity velocity)
     ;; call the normal integrate.
     (let ((parent-integrate (method-of-type collide-shape-moving integrate-and-collide!)))
       (parent-integrate this velocity-with-anim-offset))
+    
+    ;; Get velocity directions
     (let ((before-direction (new-stack-vector0)))
-      (set! (-> before-direction quad) (-> saved-input-velocity quad))
+      (vector-copy! before-direction saved-input-velocity)
       (let ((after-direction (new-stack-vector0)))
-        (set! (-> after-direction quad) (-> velocity-with-anim-offset quad))
-        (let ((lateral-before (new-stack-vector0)))
-          (let ((gravity-speed-before (vector-dot (-> this dynam gravity-normal) before-direction)))
-            0.0
-            (vector-! lateral-before
-                      before-direction
-                      (vector-float*! lateral-before (-> this dynam gravity-normal) gravity-speed-before)))
-          (let* ((lateral-length-before (vector-length lateral-before))
-                 (lateral-length-before-copy lateral-length-before)
-                 (gravity-weight-before 0.0))
-            (vector+! before-direction
-                      (vector-float*! before-direction (-> this dynam gravity-normal) gravity-weight-before)
-                      (vector-float*! lateral-before lateral-before (/ lateral-length-before lateral-length-before-copy)))))
-        (let ((lateral-after (new-stack-vector0)))
-          (let ((gravity-speed-after (vector-dot (-> this dynam gravity-normal) after-direction)))
-            0.0
-            (vector-! lateral-after
-                      after-direction
-                      (vector-float*! lateral-after (-> this dynam gravity-normal) gravity-speed-after)))
-          (let* ((lateral-length-after (vector-length lateral-after))
-                 (lateral-length-after-copy lateral-length-after)
-                 (gravity-weight-after 0.0))
-            (vector+! after-direction
-                      (vector-float*! after-direction (-> this dynam gravity-normal) gravity-weight-after)
-                      (vector-float*! lateral-after lateral-after (/ lateral-length-after lateral-length-after-copy)))))
+        (vector-copy! after-direction velocity-with-anim-offset)
+        ;; remove gravity components from velocity direction.
+        (remap-vector-about-axis! before-direction
+                                  (-> this dynam gravity-normal)
+                                  (gravity-speed-before 0.0)
+                                  (lateral-length-before lateral-length-before))
+        (remap-vector-about-axis! after-direction
+                                  (-> this dynam gravity-normal)
+                                  (gravity-speed-after 0.0)
+                                  (lateral-length-after lateral-length-after))
         (vector-normalize! before-direction 1.0)
         (vector-normalize! after-direction 1.0)
+        
+        ;; Check if we're blocked (deflected) by something
         (let ((before-after-dot (vector-dot before-direction after-direction)))
           (cond
             ((and (!= (vector-length (-> this target-transv)) 0.0)
-                  (if (logtest? (-> this status) (collide-status touch-wall)) (< before-after-dot 0.9999) (< before-after-dot 0.95)))
+                  (if (logtest? (-> this status) (collide-status touch-wall))
+                      (< before-after-dot 0.9999) (< before-after-dot 0.95)))
+             ;; if so, increase the block factors, set blocked flag
              (set! (-> this blocked-factor) (seek (-> this blocked-factor) 1.0 (* 4.0 (-> *display* seconds-per-frame))))
              (set! (-> this blocked-in-air-factor)
                    (seek (-> this blocked-in-air-factor)
@@ -1091,20 +1092,27 @@
                          (* 4.0 (-> *display* seconds-per-frame))))
              (logior! (-> this status) (collide-status blocked)))
             (else
+              ;; otherwise, decrease block factors
              (set! (-> this blocked-factor) (seek (-> this blocked-factor) 0.0 (* 2.0 (-> *display* seconds-per-frame))))
              (set! (-> this blocked-in-air-factor)
                    (seek (-> this blocked-in-air-factor) 0.0 (* 2.0 (-> *display* seconds-per-frame)))))))))
+    ;; another spectacular hack to cancel the animated collision velocity
     (if (logtest? (-> this status) (collide-status on-surface))
       (vector-copy! velocity velocity-with-anim-offset)
       (vector--float*! velocity velocity-with-anim-offset (-> this anim-collide-offset-delta-world) 60.0))
+    
+    ;; if blocked, remember our velocity. If we get un-blocked, we'll boost ourselves in this direction.
     (if (and (logtest? (-> this status) (collide-status on-surface))
              (and (not (logtest? (-> this status) (collide-status touch-wall blocked)))
                   (< (vector-length (-> this btransv)) (vector-length saved-input-velocity))))
       (vector-copy! (-> this btransv) saved-input-velocity)))
+  ;; check how well we're achieving our alignment's xz velocity
   (let ((align-xz-direction (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this align-xz-vel) 1.0))
         (align-xz-speed (vector-length (-> this align-xz-vel))))
     (set! (-> this zx-vel-frac)
-          (if (= align-xz-speed 0.0) 0.0 (fmax 0.0 (/ (vector-dot (-> this transv) align-xz-direction) align-xz-speed)))))
+          (if (= align-xz-speed 0.0)
+              0.0
+              (fmax 0.0 (/ (vector-dot (-> this transv) align-xz-direction) align-xz-speed)))))
   (stopwatch-stop (-> *collide-stats* total-target))
   0
   (none))
@@ -1163,7 +1171,8 @@
            (move-function (method-of-object shape-to-move move-by-vector!))
            (move-amount (new 'stack-no-clear 'vector)))
       (.lvf move-amount-vf (&-> velocity quad))
-      (let ((seconds-per-frame (-> *display* seconds-per-frame))) (.mov seconds-per-frame-bits seconds-per-frame))
+      (let ((seconds-per-frame (-> *display* seconds-per-frame)))
+        (.mov seconds-per-frame-bits seconds-per-frame))
       (.mov seconds-vf seconds-per-frame-bits)
       (.mov.vf.w move-amount-vf vf0)
       (.mul.x.vf.xyz move-amount-vf move-amount-vf seconds-vf)
@@ -1177,7 +1186,6 @@
   "Move one frame without a sweep, then run a solid exact-overlap
    query. Restore trans-old[0] and return true when an overlap is found; shadow-pos remains at the
    attempted destination."
-  ;; not sure yet. moves shadow-pos, but possibly not trans.
   (integrate-no-collide! this velocity)
   (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
     (set! (-> overlap-params options) (overlaps-others-options solid-only))
@@ -1209,80 +1217,63 @@
    found, and optionally restore the old position when foreground collision is blocked.
    use-misty-ground? selects the analytic Misty height probe, which returns a fraction without
    filling the triangle result."
-  (local-vars (probe-start-height float) (ground-triangle collide-tri-result))
-  (set! probe-start-height probe-y-offset)
-  (let ((revert-when-blocked? revert-when-blocked?))
-    (let ((hover-without-ground? hover-without-ground?)
-          (use-misty-ground? use-misty-ground?))
-      (if *debug-segment*
-        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                   'draw
-                   (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-      ;; move us forward!
-      (integrate-no-collide! this velocity)
-      ;; set our position to shadow (not sure why)
-      (let ((probe-position (-> this shadow-pos)))
-        (vector-copy! probe-position (-> this trans))
-        (set! ground-triangle (new 'stack-no-clear 'collide-tri-result))
-        ;; move off the ground by the given height probe offset
+  (let ((probe-start-height probe-y-offset))
+    (add-profile-frame! #x40 0 #x40 #x80 'draw)
+    ;; move
+    (integrate-no-collide! this velocity)
+    
+    ;; probe ground
+    (let ((probe-position (-> this shadow-pos)))
+      (vector-copy! probe-position (-> this trans))
+      (let ((ground-triangle (new 'stack-no-clear 'collide-tri-result)))
         (+! (-> probe-position y) probe-start-height)
         0.0
-        ;; Probe the ground. The analytic Misty probe returns only a height fraction; unlike the
-        ;; mesh probe, it does not fill ground-triangle.
         (let ((probe-u (if use-misty-ground?
-                         (misty-ambush-height-probe probe-position 81920.0)
-                         (fill-and-probe-using-line-sphere *collide-cache*
-                                                           probe-position
-                                                           (new 'static 'vector :y -81920.0 :w 1.0) ;; probe down.
-                                                           40.96
-                                                           ground-kind
-                                                           (-> this process)
-                                                           ground-triangle
-                                                           (new 'static 'pat-surface :noentity #x1)))))
+                           (misty-ambush-height-probe probe-position 81920.0)
+                           (fill-and-probe-using-line-sphere *collide-cache*
+                                                             probe-position
+                                                             (new 'static 'vector :y -81920.0 :w 1.0)
+                                                             (meters 0.01)
+                                                             ground-kind
+                                                             (-> this process)
+                                                             ground-triangle
+                                                             (new 'static 'pat-surface :noentity #x1)))))
           (cond
             ((>= probe-u 0.0)
-             ;; found the ground!
+             ;; compute intersection
              (let ((probe-direction (new 'static 'vector :y -81920.0 :w 1.0)))
-               ;; set probe-position to the ground.
                (vector+float*! probe-position probe-position probe-direction probe-u))
+             ;; raise up enemy to be on the ground
              (when (>= (-> probe-position y) (-> this trans y))
-               ;; we're in the ground, move us out of the ground.
                (move-to-tri! this ground-triangle probe-position)
-               ;; remember how hard we hit
                (set! (-> this ground-impact-vel) (- (vector-dot velocity (-> this dynam gravity-normal))))
-               ;; and kill our vertical velocity.
                (set! (-> velocity y) 0.0)))
+            ;; if hovering, restore y. otherwise, gravity acceleration will pull enemy to ground.
             (hover-without-ground?
-             ;; no ground. if the hover flag is set, we just hover.
-             (set! (-> this trans y) (-> this trans-old 0 y)))))))
-    ;; if we need to collide with things.
-    (when (logtest? (-> this root-prim collide-with) (collide-kind hit-by-player usually-hit-by-player hit-by-others target))
-      (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
-        (set! (-> overlap-params options) (overlaps-others-options solid-only))
-        (set! (-> overlap-params tlist) *touching-list*)
-        ;; compute overlaps.
-        (when (find-overlapping-shapes this overlap-params)
-          ;; if we have the revert move if blocked, go back to our old point.
-          (if revert-when-blocked? (move-to-point! this (the-as vector (-> this trans-old))))))))
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0) 'draw (new 'static 'rgba :g #xff :a #x80)))
+             (set! (-> this trans y) (-> this trans-old 0 y))))))))
+  ;; check if we should revert due to collision
+  (when (logtest? (-> this root-prim collide-with) (collide-kind hit-by-player usually-hit-by-player hit-by-others target))
+    (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> overlap-params options) (overlaps-others-options solid-only))
+      (set! (-> overlap-params tlist) *touching-list*)
+      (when (find-overlapping-shapes this overlap-params)
+        (if revert-when-blocked?
+            (move-to-point! this (-> this trans-old 0))))))
+  (add-profile-frame! 0 #xff 0 #x80 'draw)
   0
   (none))
 
 (defmethod move-to-ground ((this collide-shape-moving) (snap-up-height float) (search-below float) (warn-on-fail? symbol) (ground-kind collide-kind))
   "Probe from snap-up-height above the shape to search-below beneath it, move to the first triangle
    matching ground-kind, and return true. Return false and optionally warn when no ground is found."
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-               'draw
-               (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
+  (add-profile-frame! #x40 0 #x40 #x80 'draw)
   (let ((probe-position (new 'stack-no-clear 'vector))
         (ground-triangle (new 'stack-no-clear 'collide-tri-result)))
+    ;; probe ground
     (let ((probe-length (+ snap-up-height search-below)))
       (vector-copy! probe-position (-> this trans))
       (+! (-> probe-position y) snap-up-height)
       0.0
-      ;; find the ground
       (let ((probe-u (fill-and-probe-using-y-probe *collide-cache*
                                                    probe-position
                                                    probe-length
@@ -1292,39 +1283,34 @@
                                                    (new 'static 'pat-surface :noentity #x1))))
         (when (< probe-u 0.0)
           (if warn-on-fail?
-            (format 0
-                    "WARNING: move-to-ground: (~f ~f) failed to locate ground [~S type ~S]~%"
-                    (* 0.00024414062 (-> probe-position y))
-                    (* 0.00024414062 probe-length)
-                    (-> this process name)
-                    (-> this process type symbol)))
+              (format 0
+                      "WARNING: move-to-ground: (~f ~f) failed to locate ground [~S type ~S]~%"
+                      (/ (-> probe-position y) METER_LENGTH)
+                      (/ probe-length METER_LENGTH)
+                      (-> this process name)
+                      (-> this process type symbol)))
           (return #f))
-        ;; calulate the ground position.
         (set! (-> probe-position y) (- (-> probe-position y) (* probe-u probe-length)))))
-    ;; move our shadow there too
     (vector-copy! (-> this shadow-pos) probe-position)
-    ;; and move us there!
     (move-to-tri! this ground-triangle probe-position))
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-               'draw
-               (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)))
+  (add-profile-frame! #xff #xff #xff #x80 'draw)
   #t)
 
 (defmethod compute-acc-due-to-gravity ((this collide-shape-moving) (acceleration-out vector) (slopiness float))
-  "Store gravity plus the slope-parallel acceleration selected by slopiness in acceleration-out
-   and return that vector."
-  (let* ((negative-gravity (vector-negate! (new-stack-vector0) (-> this dynam gravity))) ;; this is the acceleration from gravity.
+  "Compute acceleration due to gravity plus some extra slip term"
+   ;; negative-graivty is our gravity acceleration
+  (let* ((negative-gravity (vector-negate! (new-stack-vector0) (-> this dynam gravity)))
          (slope-normal (-> this local-normal))
-         (slide-acceleration (vector-reflect-flat! (new-stack-vector0) negative-gravity slope-normal)) ;; figure out the accleration from sliding down a sloped wall.
+         ;; Down-slope direction
+         (slide-acceleration (vector-reflect-flat! (new-stack-vector0) negative-gravity slope-normal))
          )
-    ;; apply that. note that we scale the slopiness by slopiness
-    ;; (this is not really how things work.)
+    ;; apply gravity, plus an additional term along the slope, scaled by slopiness.
     (vector--float*! acceleration-out
                      negative-gravity
                      slide-acceleration
                      (cond
-                       ((logtest? (-> this status) (collide-status on-surface)) (empty) slopiness)
+                       ((logtest? (-> this status) (collide-status on-surface))
+                         slopiness)
                        (else 0.0))))
   acceleration-out)
 
@@ -1362,7 +1348,9 @@
        ;; fill with the gox
        (fill-using-bounding-box *collide-cache* bbox kind (-> this process) (-> this pat-ignore-mask))
        ;; only draw collide cache, if we're the target
-       (when (and *display-collide-cache* (= (-> this process type) target))
+       (when (and *display-collide-cache* 
+                  (= (-> this process type) target)
+                  )
          (debug-draw *collide-cache*)
          ;; og:preserve-this added
          (add-debug-box #t (bucket-id debug) (-> bbox min) (-> bbox max) (new 'static 'rgba :a #x80 :b #x70 :g #x70))))
@@ -1378,9 +1366,7 @@
 (#when PC_PORT
   ;; og:preserve-this these functions don't obey calling conventions, so they are modified for the PC port.
   ;; The original passes the accumulated bounds and the expanded radius between these methods in three
-  ;; VU0 registers that survive the virtual calls. Nothing guarantees that on the host, so each method
-  ;; reloads them from this global on entry and writes them back before returning or recursing. The
-  ;; recursive group walkers save around every nested call for the same reason.
+  ;; VU0 registers.
   (deftype pc-bounding-box-work (structure)
     ((spill-min    vector :inline)
      (spill-max    vector :inline)
@@ -1697,48 +1683,51 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun-debug collide-shape-draw-debug-marks ()
-  "Draw collision debug."
+  "Draw the target marker and registered collision shapes selected by the collision-debug filters."
   (add-debug-sphere (or *display-collision-marks* *display-target-marks*)
                     (bucket-id debug)
                     (target-pos 0)
                     819.2
-                    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+                    (static-rgba #xff #xff #xff #x80))
   (when *display-collision-marks*
     (iterate-engine-connections (node *collide-player-list*)
-                                (let ((cshape (-> (the-as connection node) param1)))
-                                  (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
-                                          (or (= (-> (the-as collide-shape cshape) process) *target*)
-                                              (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
-                                              (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
-                                    (debug-draw (the-as collide-shape cshape)))))
+      (let ((cshape (the-as object (-> node param1))))
+        (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                  (or (= (-> (the-as collide-shape cshape) process) *target*)
+                      (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
+                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
+            (debug-draw (the-as collide-shape cshape)))))
     (iterate-engine-connections (node *collide-hit-by-player-list*)
-                                (let ((cshape (-> (the-as connection node) param1)))
-                                  (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
-                                          (or (= (-> (the-as collide-shape cshape) process) *target*)
-                                              (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
-                                              (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
-                                    (debug-draw (the-as collide-shape cshape)))))
+      (let ((cshape (the-as object (-> node param1))))
+        (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                  (or (= (-> (the-as collide-shape cshape) process) *target*)
+                      (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
+                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
+            (debug-draw (the-as collide-shape cshape)))))
     (iterate-engine-connections (node *collide-usually-hit-by-player-list*)
-                                (let ((cshape (-> (the-as connection node) param1)))
-                                  (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
-                                          (or (= (-> (the-as collide-shape cshape) process) *target*)
-                                              (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
-                                              (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
-                                    (debug-draw (the-as collide-shape cshape)))))
+      (let ((cshape (the-as object (-> node param1))))
+        (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                  (or (= (-> (the-as collide-shape cshape) process) *target*)
+                      (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
+                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
+            (debug-draw (the-as collide-shape cshape)))))
     (iterate-engine-connections (node *collide-hit-by-others-list*)
-                                (let ((cshape (-> (the-as connection node) param1)))
-                                  (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
-                                          (or (= (-> (the-as collide-shape cshape) process) *target*)
-                                              (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
-                                              (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
-                                    (debug-draw (the-as collide-shape cshape))))))
+      (let ((cshape (the-as object (-> node param1))))
+        (if (or (and (not *display-actor-anim*) (not *display-process-anim*))
+                  (or (= (-> (the-as collide-shape cshape) process) *target*)
+                      (name= *display-actor-anim* (-> (the-as collide-shape cshape) process name))
+                      (= (ppointer->process *display-process-anim*) (-> (the-as collide-shape cshape) process))))
+            (debug-draw (the-as collide-shape cshape))))))
   0
   (none))
 
 (defmethod debug-draw ((this collide-shape))
   "Draw a collide shape"
-  (if (sphere-in-view-frustum? (the-as sphere (-> this root-prim prim-core))) (debug-draw-world-sphere (-> this root-prim)))
+  (if (sphere-in-view-frustum? (the-as sphere (-> this root-prim prim-core)))
+      (debug-draw-world-sphere (-> this root-prim)))
   (none))
+
+;; these timers are never used.
 
 (define *col-timer* (new 'global 'stopwatch))
 
@@ -1841,27 +1830,31 @@
   (none))
 
 (defmethod move-by-vector! ((this collide-shape-prim) (offset vector))
-  "Adjust our position by the given vector"
-  (vector+! (the-as vector (-> this prim-core)) (the-as vector (-> this prim-core)) offset)
+  "Translate this primitive's world bounding sphere by offset."
+  (vector+! (-> this prim-core world-sphere) (-> this prim-core world-sphere) offset)
   (set! (-> this prim-core world-sphere w) (-> this local-sphere w))
   (none))
 
 (defmethod move-by-vector! ((this collide-shape-prim-group) (offset vector))
-  "Adjust our position by the given vector"
-  (vector+! (the-as vector (-> this prim-core)) (the-as vector (-> this prim-core)) offset)
+  "Translate this primitive's world bounding sphere by offset."
+  (vector+! (-> this prim-core world-sphere) (-> this prim-core world-sphere) offset)
   (set! (-> this prim-core world-sphere w) (-> this local-sphere w))
   (countdown (i (-> this num-prims))
     (let ((child-prim (-> this prims i)))
       (cond
-        ((= (-> child-prim type) collide-shape-prim-group) (move-by-vector! child-prim offset))
+        ((= (-> child-prim type) collide-shape-prim-group)
+         (move-by-vector! child-prim offset))
         (else
-         (vector+! (the-as vector (-> child-prim prim-core)) (the-as vector (-> child-prim prim-core)) offset)
+         (vector+! (-> child-prim prim-core world-sphere) (-> child-prim prim-core world-sphere) offset)
          (set! (-> child-prim prim-core world-sphere w) (-> child-prim local-sphere w))))))
   (none))
 
 (defmethod move-to-point! ((this collide-shape) (destination vector))
-  "Move us to exactly the given position."
-  (let ((offset (new 'stack-no-clear 'vector))) (vector-! offset destination (-> this trans)) (move-by-vector! this offset))
+  "Translate the shape so its origin reaches destination and move every
+   primitive world sphere by the same offset."
+  (let ((offset (new 'stack-no-clear 'vector)))
+    (vector-! offset destination (-> this trans))
+    (move-by-vector! this offset))
   (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1920,7 +1913,9 @@
     (cond
       ((>= prim-count (-> this allocated-prims))
        (format 0 "collide-shape-prim-group::append-prim : Exceeded max # of prims!~%"))
-      (else (set! (-> this prims prim-count) prim) (set! (-> this num-prims) (+ prim-count 1)))))
+      (else
+       (set! (-> this prims prim-count) prim)
+       (set! (-> this num-prims) (+ prim-count 1)))))
   (none))
 
 (defmethod find-collision-meshes ((this collide-shape))
@@ -1930,9 +1925,10 @@
     (let ((draw (-> this process draw)))
       (when (and (nonzero? draw) (-> draw jgeo))
         (let ((mesh-group (res-lump-struct (-> draw jgeo extra) 'collide-mesh-group structure)))
-          (if mesh-group (set! failure-count (num-mesh (-> this root-prim) (the-as collide-shape-prim mesh-group)))))))
+          (if mesh-group
+              (set! failure-count (num-mesh (-> this root-prim) (the-as collide-shape-prim mesh-group)))))))
     (if (nonzero? failure-count)
-      (format 0 "ERROR: Failed to find collision meshes for ~D prim(s) in ~A!~%" failure-count (-> this process name))))
+        (format 0 "ERROR: Failed to find collision meshes for ~D prim(s) in ~A!~%" failure-count (-> this process name))))
   (update-transforms! this))
 
 (defmethod num-mesh ((this collide-shape-prim) (mesh-group collide-shape-prim))
@@ -1997,60 +1993,53 @@
   #f)
 
 (defmethod debug-draw-world-sphere ((this collide-shape-prim))
-  "Draw our sphere"
+  "Draw this primitive's world bounding sphere using a color appropriate
+   to its primitive type and collision state."
   (add-debug-sphere #t
                     (bucket-id debug)
-                    (the-as vector (-> this prim-core))
+                    (-> this prim-core world-sphere)
                     (-> this local-sphere w)
-                    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x40)))
+                    (static-rgba #xff #xff #xff #x40)))
 
 (defmethod debug-draw-world-sphere ((this collide-shape-prim-sphere))
-  "Draw our sphere"
+  "Draw this primitive's world bounding sphere using a color appropriate
+   to its primitive type and collision state."
   (add-debug-sphere #t
                     (bucket-id debug)
-                    (the-as vector (-> this prim-core))
+                    (-> this prim-core world-sphere)
                     (-> this local-sphere w)
                     (cond
                       ((and (zero? (-> this prim-core collide-as)) (zero? (-> this collide-with)))
-                       (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x40))
-                      ((logtest? (-> this prim-core action) (collide-action solid)) (new 'static 'rgba :r #xff :g #xff :a #x40))
-                      (else (new 'static 'rgba :r #xff :g #x80 :a #x40)))))
+                       (static-rgba #x80 #x80 #x80 #x40))
+                      ((logtest? (-> this prim-core action) (collide-action solid))
+                       (static-rgba #xff #xff 0 #x40))
+                      (else
+                       (static-rgba #xff #x80 0 #x40)))))
 
 (defmethod debug-draw-world-sphere ((this collide-shape-prim-mesh))
-  "Draw our sphere"
+  "Draw this primitive's world bounding sphere using a color appropriate
+   to its primitive type and collision state."
   (add-debug-sphere #t
                     (bucket-id debug)
-                    (the-as vector (-> this prim-core))
+                    (-> this prim-core world-sphere)
                     (-> this local-sphere w)
-                    (new 'static 'rgba :b #xff :a #x40)))
+                    (static-rgba 0 0 #xff #x40)))
 
 (defmethod debug-draw-world-sphere ((this collide-shape-prim-group))
-  "Draw our sphere"
+  "Draw this primitive's world bounding sphere using a color appropriate
+   to its primitive type and collision state."
   (add-debug-sphere #t
                     (bucket-id debug)
-                    (the-as vector (-> this prim-core))
+                    (-> this prim-core world-sphere)
                     (-> this local-sphere w)
-                    (new 'static 'rgba :g #xff :a #x10))
+                    (static-rgba 0 #xff 0 #x10))
   (countdown (i (-> this num-prims))
     (debug-draw-world-sphere (-> this prims i)))
   #f)
 
+
 (defmethod do-push-aways! ((this collide-shape))
-  "This is the main function to call to respond"
-  ;; One loop, written out four times, once for each foreground collide list this shape can reach: the
-  ;; player list first, then cak-1, usually-hit-by-player and hit-by-others. Only the list global and the label names differ.
-  ;; A single pass rejects on collide-as, skips this shape's own process, runs the exact overlap test,
-  ;; and when the penetration is deeper than PUSH-AWAY-MIN-OVERLAP fills the collide cache around the
-  ;; other shape and shoves it out with up to PUSH-AWAY-PASSES separating moves.
-  ;;
-  ;; The shove goes through integrate-and-collide! rather than move-by-vector! so that the shape being
-  ;; pushed cannot be driven through a wall. That means it has to be handed over as a velocity, so the
-  ;; separation distance is scaled by frames-per-second here and the integrator's own multiply by
-  ;; seconds-per-frame turns it back into a distance. status is saved and restored across the call
-  ;; because this is not the pushed shape's own frame of motion and must not leave contact flags on it.
-  ;;
-  ;; with-mask is re-read from the root prim after every push, since a reaction is free to change
-  ;; collide-with underneath the loop.
+  "This is the main function to call to resolve collisions"
   (local-vars (frames-per-second-bits int) (normal-side-bits int))
   (rlet ((vf0 :class vf)
          (dot-products :class vf)
@@ -2131,7 +2120,6 @@
                                                   (+! iterations-left -1)))
                                               (set! with-mask (-> this root-prim collide-with)))))))))
       (when (logtest? with-mask (collide-kind hit-by-player usually-hit-by-player hit-by-others))
-        ;; The same loop again for cak-1, usually-hit-by-player and hit-by-others.
         (when (logtest? with-mask (collide-kind hit-by-player))
           (iterate-engine-connections (node *collide-hit-by-player-list*)
                                       (let ((victim (the-as collide-shape-moving (-> (the-as connection node) param1))))

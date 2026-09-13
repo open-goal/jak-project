@@ -140,6 +140,50 @@ TEST(Demacro, Jak1PreservesMemUsageNameSemantics) {
 )");
 }
 
+TEST(Demacro, Jak1RecognizesVectorComponentRemaps) {
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const std::string source = R"((begin
+  (let ((lateral-velocity (new-stack-vector0))
+        (gravity-speed (vector-dot gravity-normal velocity)))
+    0.0
+    (vector-! lateral-velocity
+              velocity
+              (vector-float*! lateral-velocity gravity-normal gravity-speed))
+    (let* ((lateral-speed (vector-length lateral-velocity))
+           (lateral-speed-copy lateral-speed))
+      (if (< gravity-speed 0.0)
+          (set! gravity-speed (* gravity-speed impact-fraction)))
+      (vector+! velocity
+                (vector-float*! velocity gravity-normal gravity-speed)
+                (vector-float*! lateral-velocity
+                                lateral-velocity
+                                (/ lateral-speed lateral-speed-copy)))))
+  (let ((lateral-before (new-stack-vector0)))
+    (let ((gravity-speed-before (vector-dot gravity-normal before-direction)))
+      0.0
+      (vector-! lateral-before
+                before-direction
+                (vector-float*! lateral-before gravity-normal gravity-speed-before)))
+    (let* ((lateral-length-before (vector-length lateral-before))
+           (lateral-length-before-copy lateral-length-before)
+           (gravity-weight-before 0.0))
+      (vector+! before-direction
+                (vector-float*! before-direction gravity-normal gravity-weight-before)
+                (vector-float*! lateral-before
+                                lateral-before
+                                (/ lateral-length-before lateral-length-before-copy)))))
+  (use velocity before-direction))
+)";
+  const auto result = demacro::rewrite(source, rules);
+  EXPECT_EQ(result.rewrite_count(), 2);
+  EXPECT_EQ(result.source, R"((begin
+  (remap-vector-about-axis! velocity gravity-normal (gravity-speed (if (< gravity-speed 0.0) (* gravity-speed impact-fraction) gravity-speed)) (lateral-speed lateral-speed))
+  (remap-vector-about-axis! before-direction gravity-normal (gravity-speed-before 0.0) (lateral-length-before lateral-length-before))
+  (use velocity before-direction))
+)");
+}
+
 TEST(Demacro, Jak1RecognizesPerfStatAndDmaMemUsageMacros) {
   const auto rules =
       demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));

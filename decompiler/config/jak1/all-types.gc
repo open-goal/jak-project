@@ -12971,17 +12971,19 @@ buffer as two allocations in the collide-mesh category.")
      point within about 45 degrees of the cached oriented face normal; the normal is not tested
      against world up. Sphere is encoded by center.xyz and radius.w."
      (_type_ collide-mesh-cache-tri collide-tri-result vector float) float) ;; 12 ;; sopt
-    (populate-cache! "Transform the padded local vertex buffer through xform in four-vertex batches
-     on scratchpad, then expand each indexed triangle into world-space vertices, a unit face normal,
-     integer bounds, and overlaid surface properties in cache." (_type_ collide-mesh-cache-tri matrix) none) ;; 13
-    (transform-verts-1-matrix! "Transform the nonempty padded vertex buffer in groups of four and
-     write each result twice to output: first as a floating-point vector, then as an integer vector
-     converted with truncation. Output provides 32 bytes for every padded vertex."
+    (populate-cache! "Transform the local vertex table through xform into scratchpad, then expand
+     each indexed triangle into world-space vertices, a unit face normal, integer bounds, and
+     overlaid surface properties in cache." (_type_ collide-mesh-cache-tri matrix) none) ;; 13
+    (transform-verts-1-matrix! "Use for queries whose floating-point vertices and integer bounds
+     belong in the same space, such as world-space box and vertical-probe queries. Transform the
+     nonempty padded vertex buffer with xform, then write each result as both a float vector and a
+     truncated integer vector. Output provides 32 bytes for every padded vertex."
      (_type_ matrix (pointer uint8)) none) ;; 14
-    (transform-verts-2-matrix! "Transform local vertices in groups of four. Write each result from
-     float-xform as a floating-point vector, then transform that result by integer-xform
-     and write its truncated integer vector. The input must be nonempty and padded to four vectors;
-     output provides 32 bytes for every padded vertex."
+    (transform-verts-2-matrix! "Use for queries that need vertices and bounds in different spaces,
+     such as swept line-sphere queries. Transform each local vertex with float-xform and store that
+     float result, then transform it with integer-xform and store the truncated integer result. The
+     input must be nonempty and padded to four vectors; output provides 32 bytes for every padded
+     vertex."
      (_type_ matrix matrix (pointer uint8)) none) ;; 15
     )
   )
@@ -14199,8 +14201,8 @@ the magnitude selects the next incremental fallback distance."
   (:methods
     (debug-draw "Draw the candidate holds and attempted positions."
       (_type_) object) ;; 9
-    (add-to-list! "Save the candidate point for debug display and insert the hold in ascending
-rating order, preserving insertion order when ratings are equal."
+    (add-to-list! "Save the candidate in the fixed debug-attempt buffer when space remains, then
+insert the hold in ascending rating order while preserving insertion order for equal ratings."
       (_type_ collide-edge-hold-item) none) ;; 10
     )
   )
@@ -14257,13 +14259,13 @@ coordinate and is not used by the edge search."
 primitive, store the closest point on that edge, and return its distance from the test point.
 Return -1 when no matching edge exists."
       (_type_ vector vector int) float) ;; 14
-    (find-grabbable-edges! "Deduplicate the accepted triangle vertices, pair oppositely directed
-shared edges, and extract at most 96 exposed boundary edges with normalized edge and outward
-directions. Interior edges and edges facing away from the target are marked to be ignored."
+    (find-grabbable-edges! "Weld accepted triangle vertices within one centimeter, cancel reversed
+shared edges, and collect up to 96 exposed edges whose horizontal outward side faces the target.
+Store normalized outward and along-edge directions."
       (_type_) none) ;; 15
-    (find-grabbable-tris! "Select at most 48 ground or obstacle collision-cache triangles whose
-PAT permits edge grabbing, whose integer bounds overlap the reach box, and whose unit normal is
-within 45 degrees of up."
+    (find-grabbable-tris! "Collect up to 48 ground or obstacle cache triangles that overlap the
+reach box, permit edge and entity queries, are not endless-fall surfaces, and have an upward unit
+normal within about 45 degrees of vertical."
       (_type_) none) ;; 16
     (should-add-to-list? "Accept a candidate only when its center lies inside the reach box, its
 outward test point lies within the configured xz distance, and its direction from the target
