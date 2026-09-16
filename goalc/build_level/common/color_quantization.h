@@ -11,14 +11,14 @@
 // but a k-d tree seems like the right approach.
 
 struct QuantizedColors {
-  std::vector<math::Vector<u8, 4>> final_colors;
+  std::vector<math::Vector<u8, 32>> final_colors;
   std::vector<u32> vtx_to_color;
 };
 
-QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 4>>& in);
+QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 32>>& in);
 
-QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& in,
+QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 32>>& in,
                                        u32 target_count);
 
-QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& in,
+QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 32>>& in,
                                         u32 target_depth);
