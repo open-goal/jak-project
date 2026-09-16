@@ -60,6 +60,9 @@ macro(draco_setup_install_target)
               DESTINATION "${target_directory}")
     endforeach()
 
+    # PRESERVE - modified because for whatever reason, some people's environments
+    # have problems with this (the file never ends up moved to where i assume the
+    # code above moves it to)
     install(FILES "${draco_features_file_name}"
             DESTINATION "${includes_path}/draco/")
 
