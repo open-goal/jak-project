@@ -417,7 +417,7 @@ void extract_all_levels(const ObjectFileDB& db,
                       game_version_names[config.game_version] / "entities";
   file_util::create_dir_if_needed(entities_dir);
 
-  int num_workers = std::min(dgo_names.size(), std::thread::hardware_concurrency());
+  int num_workers = std::min<int>(dgo_names.size(), std::thread::hardware_concurrency());
   if (tex_db.replace_texture_dir) {
     num_workers = 1;
   }
