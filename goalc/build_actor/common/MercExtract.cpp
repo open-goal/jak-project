@@ -2,6 +2,7 @@
 
 #include "common/log/log.h"
 #include "common/util/gltf_util.h"
+
 #include "goalc/build_level/common/gltf_mesh_extract.h"
 
 void extract(const std::string& name,
