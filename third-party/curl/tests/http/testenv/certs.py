@@ -24,20 +24,29 @@
 #
 ###########################################################################
 #
+import base64
+import ipaddress
 import os
 import re
-from datetime import timedelta, datetime
-from typing import List, Any, Optional
+import shutil
+import subprocess
+from datetime import datetime, timedelta, timezone
+from typing import Any, List, Optional
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives._serialization import PublicFormat
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption, load_pem_private_key
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    load_pem_private_key,
+)
 from cryptography.x509 import ExtendedKeyUsageOID, NameOID
-
 
 EC_SUPPORTED = {}
 EC_SUPPORTED.update([(curve.name.upper(), curve) for curve in [
@@ -79,6 +88,7 @@ class CertificateSpec:
                  valid_from: timedelta = timedelta(days=-1),
                  valid_to: timedelta = timedelta(days=89),
                  client: bool = False,
+                 check_valid: bool = True,
                  sub_specs: Optional[List['CertificateSpec']] = None):
         self._name = name
         self.domains = domains
@@ -89,12 +99,13 @@ class CertificateSpec:
         self.valid_from = valid_from
         self.valid_to = valid_to
         self.sub_specs = sub_specs
+        self.check_valid = check_valid
 
     @property
     def name(self) -> Optional[str]:
         if self._name:
             return self._name
-        elif self.domains:
+        if self.domains:
             return self.domains[0]
         return None
 
@@ -102,9 +113,9 @@ class CertificateSpec:
     def type(self) -> Optional[str]:
         if self.domains and len(self.domains):
             return "server"
-        elif self.client:
+        if self.client:
             return "client"
-        elif self.name:
+        if self.name:
             return "ca"
         return None
 
@@ -123,6 +134,7 @@ class Credentials:
         self._cert_file = None
         self._pkey_file = None
         self._store = None
+        self._combined_file = None
 
     @property
     def name(self) -> str:
@@ -136,14 +148,22 @@ class Credentials:
     def key_type(self):
         if isinstance(self._pkey, RSAPrivateKey):
             return f"rsa{self._pkey.key_size}"
-        elif isinstance(self._pkey, EllipticCurvePrivateKey):
+        if isinstance(self._pkey, EllipticCurvePrivateKey):
             return f"{self._pkey.curve.name}"
-        else:
-            raise Exception(f"unknown key type: {self._pkey}")
+        raise Exception(f"unknown key type: {self._pkey}")
 
     @property
     def private_key(self) -> Any:
         return self._pkey
+
+    def pub_sha256_b64(self) -> Any:
+        pubkey = self._pkey.public_key()
+        sha256 = hashes.Hash(algorithm=hashes.SHA256())
+        sha256.update(pubkey.public_bytes(
+            encoding=Encoding.DER,
+            format=PublicFormat.SubjectPublicKeyInfo
+        ))
+        return base64.b64encode(sha256.finalize()).decode('utf8')
 
     @property
     def certificate(self) -> Any:
@@ -185,6 +205,10 @@ class Credentials:
     def combined_file(self) -> Optional[str]:
         return self._combined_file
 
+    @property
+    def hashdir(self) -> Optional[str]:
+        return os.path.join(self._store.path, 'hashdir')
+
     def get_first(self, name) -> Optional['Credentials']:
         creds = self._store.get_credentials_for_name(name) if self._store else []
         return creds[0] if len(creds) else None
@@ -202,7 +226,8 @@ class Credentials:
         creds = None
         if self._store:
             creds = self._store.load_credentials(
-                name=spec.name, key_type=key_type, single_file=spec.single_file, issuer=self)
+                name=spec.name, key_type=key_type, single_file=spec.single_file,
+                issuer=self, check_valid=spec.check_valid)
         if creds is None:
             creds = TestCA.create_credentials(spec=spec, issuer=self, key_type=key_type,
                                               valid_from=spec.valid_from, valid_to=spec.valid_to)
@@ -219,6 +244,16 @@ class Credentials:
             subchain.append(self)
             creds.issue_certs(spec.sub_specs, chain=subchain)
         return creds
+
+    def create_hashdir(self, openssl):
+        os.makedirs(self.hashdir, exist_ok=True)
+        p = subprocess.run(args=[
+            openssl, 'x509', '-hash', '-noout', '-in', self.cert_file
+        ], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise Exception(f'openssl failed to compute cert hash: {p}')
+        cert_hname = f'{p.stdout.strip()}.0'
+        shutil.copy(self.cert_file, os.path.join(self.hashdir, cert_hname))
 
 
 class CertStore:
@@ -303,13 +338,26 @@ class CertStore:
 
     def load_credentials(self, name: str, key_type=None,
                          single_file: bool = False,
-                         issuer: Optional[Credentials] = None):
+                         issuer: Optional[Credentials] = None,
+                         check_valid: bool = False):
         cert_file = self.get_cert_file(name=name, key_type=key_type)
         pkey_file = cert_file if single_file else self.get_pkey_file(name=name, key_type=key_type)
         comb_file = self.get_combined_file(name=name, key_type=key_type)
         if os.path.isfile(cert_file) and os.path.isfile(pkey_file):
             cert = self.load_pem_cert(cert_file)
             pkey = self.load_pem_pkey(pkey_file)
+            try:
+                now = datetime.now(tz=timezone.utc)
+                if check_valid and \
+                    ((cert.not_valid_after_utc < now) or
+                     (cert.not_valid_before_utc > now)):
+                    return None
+            except AttributeError:  # older python
+                now = datetime.now()
+                if check_valid and \
+                        ((cert.not_valid_after < now) or
+                         (cert.not_valid_before > now)):
+                    return None
             creds = Credentials(name=name, cert=cert, pkey=pkey, issuer=issuer)
             creds.set_store(self)
             creds.set_files(cert_file, pkey_file, comb_file)
@@ -335,7 +383,9 @@ class TestCA:
                            valid_from: timedelta = timedelta(days=-1),
                            valid_to: timedelta = timedelta(days=89),
                            ) -> Credentials:
-        """Create a certificate signed by this CA for the given domains.
+        """
+        Create a certificate signed by this CA for the given domains.
+
         :returns: the certificate and private key PEM file paths
         """
         if spec.domains and len(spec.domains):
@@ -355,7 +405,7 @@ class TestCA:
         return creds
 
     @staticmethod
-    def _make_x509_name(org_name: str = None, common_name: str = None, parent: x509.Name = None) -> x509.Name:
+    def _make_x509_name(org_name: Optional[str] = None, common_name: Optional[str] = None, parent: x509.Name = None) -> x509.Name:
         name_pieces = []
         if org_name:
             oid = NameOID.ORGANIZATIONAL_UNIT_NAME if parent else NameOID.ORGANIZATION_NAME
@@ -363,7 +413,7 @@ class TestCA:
         elif common_name:
             name_pieces.append(x509.NameAttribute(NameOID.COMMON_NAME, common_name))
         if parent:
-            name_pieces.extend([rdn for rdn in parent])
+            name_pieces.extend(list(parent))
         return x509.Name(name_pieces)
 
     @staticmethod
@@ -371,9 +421,9 @@ class TestCA:
             subject: x509.Name,
             pkey: Any,
             issuer_subject: Optional[Credentials],
-            valid_from_delta: timedelta = None,
-            valid_until_delta: timedelta = None
-    ):
+            valid_from_delta: Optional[timedelta] = None,
+            valid_until_delta: Optional[timedelta] = None
+    ) -> x509.CertificateBuilder:
         pubkey = pkey.public_key()
         issuer_subject = issuer_subject if issuer_subject is not None else subject
 
@@ -426,6 +476,17 @@ class TestCA:
 
     @staticmethod
     def _add_leaf_usages(csr: Any, domains: List[str], issuer: Credentials) -> Any:
+        names = []
+        for name in domains:
+            m = re.match(r'dns:(.+)', name)
+            if m:
+                names.append(x509.DNSName(m.group(1)))
+            else:
+                try:
+                    names.append(x509.IPAddress(ipaddress.ip_address(name)))
+                except ValueError:
+                    names.append(x509.DNSName(name))
+
         return csr.add_extension(
             x509.BasicConstraints(ca=False, path_length=None),
             critical=True,
@@ -435,8 +496,7 @@ class TestCA:
                     x509.SubjectKeyIdentifier).value),
             critical=False
         ).add_extension(
-            x509.SubjectAlternativeName([x509.DNSName(domain) for domain in domains]),
-            critical=True,
+            x509.SubjectAlternativeName(names), critical=True,
         ).add_extension(
             x509.ExtendedKeyUsage([
                 ExtendedKeyUsageOID.SERVER_AUTH,
@@ -445,7 +505,7 @@ class TestCA:
         )
 
     @staticmethod
-    def _add_client_usages(csr: Any, issuer: Credentials, rfc82name: str = None) -> Any:
+    def _add_client_usages(csr: Any, issuer: Credentials, rfc82name: Optional[str] = None) -> Any:
         cert = csr.add_extension(
             x509.BasicConstraints(ca=False, path_length=None),
             critical=True,
@@ -470,7 +530,7 @@ class TestCA:
 
     @staticmethod
     def _make_ca_credentials(name, key_type: Any,
-                             issuer: Credentials = None,
+                             issuer: Optional[Credentials] = None,
                              valid_from: timedelta = timedelta(days=-1),
                              valid_to: timedelta = timedelta(days=89),
                              ) -> Credentials:
@@ -497,7 +557,6 @@ class TestCA:
                                  valid_from: timedelta = timedelta(days=-1),
                                  valid_to: timedelta = timedelta(days=89),
                                  ) -> Credentials:
-        name = name
         pkey = _private_key(key_type=key_type)
         subject = TestCA._make_x509_name(common_name=name, parent=issuer.subject)
         csr = TestCA._make_csr(subject=subject,

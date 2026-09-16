@@ -22,32 +22,34 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+use strict;
+use warnings;
+
 # Determine if curl-config --version matches the curl --version
-if ( $#ARGV != 2 )
-{
+if($#ARGV != 2) {
     print "Usage: $0 curl-config-script curl-version-output-file version|vernum\n";
     exit 3;
 }
 
-my $what=$ARGV[2];
+my $what = $ARGV[2];
 
 # Read the output of curl --version
-open(CURL, "$ARGV[1]") || die "Can't open curl --version list in $ARGV[1]\n";
+open(CURL, $ARGV[1]) or die "Cannot open curl --version list in $ARGV[1]\n";
 $_ = <CURL>;
 chomp;
-/libcurl\/([\.\d]+((-DEV)|(-\d+))?)/;
+/libcurl\/([\.\d]+((-DEV)|(-rc\d)|(-\d+))?)/;
 my $version = $1;
 close CURL;
 
 my $curlconfigversion;
 
 # Read the output of curl-config --version/--vernum
-open(CURLCONFIG, "sh $ARGV[0] --$what|") || die "Can't get curl-config --$what list\n";
+open(CURLCONFIG, '-|', 'sh', $ARGV[0], "--$what") or die "Cannot get curl-config --$what list\n";
 $_ = <CURLCONFIG>;
 chomp;
-my $filever=$_;
-if ( $what eq "version" ) {
-    if($filever =~ /^libcurl ([\.\d]+((-DEV)|(-\d+))?)$/) {
+my $filever = $_;
+if($what eq "version") {
+    if($filever =~ /^libcurl ([\.\d]+((-DEV)|(-rc\d)|(-\d+))?)$/) {
         $curlconfigversion = $1;
     }
     else {
@@ -63,13 +65,13 @@ else { # "vernum" case
         $curlconfigversion = "illegal value";
     }
 
-    # Strip off the -DEV from the curl version if it's there
+    # Strip off the -DEV and -rc suffixes from the curl version if they are there
     $version =~ s/-\w*$//;
 }
 close CURLCONFIG;
 
 my $different = $version ne $curlconfigversion;
-if ($different || !$version) {
+if($different || !$version) {
     print "Mismatch in --version:\n";
     print "curl:        $version\n";
     print "curl-config: $curlconfigversion\n";

@@ -241,6 +241,10 @@ class FunctionEnv : public DeclareEnv {
 
   const std::vector<std::unique_ptr<RegVal>>& reg_vals() const { return m_iregs; }
 
+  // all envs in a function, used by the debugger to get variable names
+  const std::vector<std::unique_ptr<Env>>& child_envs() const { return m_envs; }
+  const AllocationResult& allocations() const { return m_regalloc_result; }
+
   RegVal* push_reg_val(std::unique_ptr<RegVal> in);
 
   int segment = -1;

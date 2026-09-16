@@ -24,6 +24,7 @@
  *
  ***************************************************************************/
 #include "tool_setup.h"
+
 #include "tool_operate.h"
 
 typedef enum {
@@ -56,8 +57,8 @@ typedef enum {
   VAR_INPUT_URLQUERY,
   VAR_INPUT_URLFRAGMENT,
   VAR_INPUT_URLZONEID,
-  /* the same ones again for url *effective* */
-  VAR_INPUT_URLESCHEME,
+  /* the same ones again for URL *effective* */
+  VAR_INPUT_URLESCHEME, /* keep this the first URLE* variable */
   VAR_INPUT_URLEUSER,
   VAR_INPUT_URLEPASSWORD,
   VAR_INPUT_URLEOPTIONS,
@@ -74,17 +75,22 @@ typedef enum {
   VAR_NUM_CERTS,
   VAR_NUM_CONNECTS,
   VAR_NUM_HEADERS,
+  VAR_NUM_RETRY,
   VAR_ONERROR,
   VAR_PRETRANSFER_TIME,
+  VAR_POSTTRANSFER_TIME,
   VAR_PRIMARY_IP,
   VAR_PRIMARY_PORT,
   VAR_PROXY_SSL_VERIFY_RESULT,
+  VAR_PROXY_USED,
+  VAR_QUEUE_TIME,
   VAR_REDIRECT_COUNT,
   VAR_REDIRECT_TIME,
   VAR_REDIRECT_URL,
   VAR_REFERER,
   VAR_REQUEST_SIZE,
   VAR_SCHEME,
+  VAR_SIZE_DELIVERED,
   VAR_SIZE_DOWNLOAD,
   VAR_SIZE_UPLOAD,
   VAR_SPEED_DOWNLOAD,
@@ -93,6 +99,7 @@ typedef enum {
   VAR_STARTTRANSFER_TIME,
   VAR_STDERR,
   VAR_STDOUT,
+  VAR_TLS_EARLYDATA_SENT,
   VAR_TOTAL_TIME,
   VAR_URLNUM,
   VAR_NUM_OF_VARS /* must be the last */

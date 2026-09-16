@@ -1,0 +1,302 @@
+#ifndef CAPSTONE_ALPHA_H
+#define CAPSTONE_ALPHA_H
+
+/* Capstone Disassembly Engine */
+/* By Nguyen Anh Quynh <aquynh@gmail.com>, 2014 */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if !defined(_MSC_VER) || !defined(_KERNEL_MODE)
+#include <stdint.h>
+#endif
+
+#include "cs_operand.h"
+#include "platform.h"
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4201)
+#endif
+
+#define NUM_ALPHA_OPS 3
+
+//> Operand type for instruction's operands
+typedef enum alpha_op_type {
+	ALPHA_OP_INVALID = CS_OP_INVALID, ///< CS_OP_INVALID (Uninitialized).
+	ALPHA_OP_REG = CS_OP_REG, ///< CS_OP_REG (Register operand).
+	ALPHA_OP_IMM = CS_OP_IMM, ///< CS_OP_IMM (Immediate operand).
+} alpha_op_type;
+
+// Instruction operand
+typedef struct cs_alpha_op {
+	alpha_op_type type; // operand type
+	union {
+		unsigned int reg; // register value for REG operand
+		int64_t imm; // immediate value for IMM operand
+	};
+	enum cs_ac_type access;
+} cs_alpha_op;
+
+// Instruction structure
+typedef struct cs_alpha {
+	// Number of operands of this instruction,
+	// or 0 when instruction has no operand.
+	uint8_t op_count;
+	cs_alpha_op operands[NUM_ALPHA_OPS]; // operands for this instruction.
+} cs_alpha;
+
+//> Alpha registers
+typedef enum alpha_reg {
+	// generated content <AlphaGenCSRegEnum.inc> begin
+	// clang-format off
+
+	ALPHA_REG_INVALID = 0,
+	ALPHA_REG_F0 = 1,
+	ALPHA_REG_F1 = 2,
+	ALPHA_REG_F2 = 3,
+	ALPHA_REG_F3 = 4,
+	ALPHA_REG_F4 = 5,
+	ALPHA_REG_F5 = 6,
+	ALPHA_REG_F6 = 7,
+	ALPHA_REG_F7 = 8,
+	ALPHA_REG_F8 = 9,
+	ALPHA_REG_F9 = 10,
+	ALPHA_REG_F10 = 11,
+	ALPHA_REG_F11 = 12,
+	ALPHA_REG_F12 = 13,
+	ALPHA_REG_F13 = 14,
+	ALPHA_REG_F14 = 15,
+	ALPHA_REG_F15 = 16,
+	ALPHA_REG_F16 = 17,
+	ALPHA_REG_F17 = 18,
+	ALPHA_REG_F18 = 19,
+	ALPHA_REG_F19 = 20,
+	ALPHA_REG_F20 = 21,
+	ALPHA_REG_F21 = 22,
+	ALPHA_REG_F22 = 23,
+	ALPHA_REG_F23 = 24,
+	ALPHA_REG_F24 = 25,
+	ALPHA_REG_F25 = 26,
+	ALPHA_REG_F26 = 27,
+	ALPHA_REG_F27 = 28,
+	ALPHA_REG_F28 = 29,
+	ALPHA_REG_F29 = 30,
+	ALPHA_REG_F30 = 31,
+	ALPHA_REG_F31 = 32,
+	ALPHA_REG_R0 = 33,
+	ALPHA_REG_R1 = 34,
+	ALPHA_REG_R2 = 35,
+	ALPHA_REG_R3 = 36,
+	ALPHA_REG_R4 = 37,
+	ALPHA_REG_R5 = 38,
+	ALPHA_REG_R6 = 39,
+	ALPHA_REG_R7 = 40,
+	ALPHA_REG_R8 = 41,
+	ALPHA_REG_R9 = 42,
+	ALPHA_REG_R10 = 43,
+	ALPHA_REG_R11 = 44,
+	ALPHA_REG_R12 = 45,
+	ALPHA_REG_R13 = 46,
+	ALPHA_REG_R14 = 47,
+	ALPHA_REG_R15 = 48,
+	ALPHA_REG_R16 = 49,
+	ALPHA_REG_R17 = 50,
+	ALPHA_REG_R18 = 51,
+	ALPHA_REG_R19 = 52,
+	ALPHA_REG_R20 = 53,
+	ALPHA_REG_R21 = 54,
+	ALPHA_REG_R22 = 55,
+	ALPHA_REG_R23 = 56,
+	ALPHA_REG_R24 = 57,
+	ALPHA_REG_R25 = 58,
+	ALPHA_REG_R26 = 59,
+	ALPHA_REG_R27 = 60,
+	ALPHA_REG_R28 = 61,
+	ALPHA_REG_R29 = 62,
+	ALPHA_REG_R30 = 63,
+	ALPHA_REG_R31 = 64,
+	ALPHA_REG_ENDING, // 65
+
+	// clang-format on
+	// generated content <AlphaGenCSRegEnum.inc> end
+} alpha_reg;
+
+//> Alpha instruction
+typedef enum alpha_insn {
+	// generated content <AlphaGenCSInsnEnum.inc:GET_INSTR_ENUM> begin
+	// clang-format off
+
+	ALPHA_INS_INVALID,
+	ALPHA_INS_ADDL,
+	ALPHA_INS_ADDQ,
+	ALPHA_INS_ADDSSSU,
+	ALPHA_INS_ADDTSSU,
+	ALPHA_INS_AND,
+	ALPHA_INS_BEQ,
+	ALPHA_INS_BGE,
+	ALPHA_INS_BGT,
+	ALPHA_INS_BIC,
+	ALPHA_INS_BIS,
+	ALPHA_INS_BLBC,
+	ALPHA_INS_BLBS,
+	ALPHA_INS_BLE,
+	ALPHA_INS_BLT,
+	ALPHA_INS_BNE,
+	ALPHA_INS_BR,
+	ALPHA_INS_BSR,
+	ALPHA_INS_CMOVEQ,
+	ALPHA_INS_CMOVGE,
+	ALPHA_INS_CMOVGT,
+	ALPHA_INS_CMOVLBC,
+	ALPHA_INS_CMOVLBS,
+	ALPHA_INS_CMOVLE,
+	ALPHA_INS_CMOVLT,
+	ALPHA_INS_CMOVNE,
+	ALPHA_INS_CMPBGE,
+	ALPHA_INS_CMPEQ,
+	ALPHA_INS_CMPLE,
+	ALPHA_INS_CMPLT,
+	ALPHA_INS_CMPTEQSSU,
+	ALPHA_INS_CMPTLESSU,
+	ALPHA_INS_CMPTLTSSU,
+	ALPHA_INS_CMPTUNSSU,
+	ALPHA_INS_CMPULE,
+	ALPHA_INS_CMPULT,
+	ALPHA_INS_CALL_PAL,
+	ALPHA_INS_COND_BRANCH,
+	ALPHA_INS_CPYSE,
+	ALPHA_INS_CPYSN,
+	ALPHA_INS_CPYS,
+	ALPHA_INS_CTLZ,
+	ALPHA_INS_CTPOP,
+	ALPHA_INS_CTTZ,
+	ALPHA_INS_CVTQSSSUI,
+	ALPHA_INS_CVTQTSSUI,
+	ALPHA_INS_CVTSTSS,
+	ALPHA_INS_CVTTQSSVC,
+	ALPHA_INS_CVTTSSSUI,
+	ALPHA_INS_DIVSSSU,
+	ALPHA_INS_DIVTSSU,
+	ALPHA_INS_ECB,
+	ALPHA_INS_EQV,
+	ALPHA_INS_EXCB,
+	ALPHA_INS_EXTBL,
+	ALPHA_INS_EXTLH,
+	ALPHA_INS_EXTLL,
+	ALPHA_INS_EXTQH,
+	ALPHA_INS_EXTQL,
+	ALPHA_INS_EXTWH,
+	ALPHA_INS_EXTWL,
+	ALPHA_INS_FBEQ,
+	ALPHA_INS_FBGE,
+	ALPHA_INS_FBGT,
+	ALPHA_INS_FBLE,
+	ALPHA_INS_FBLT,
+	ALPHA_INS_FBNE,
+	ALPHA_INS_FCMOVEQ,
+	ALPHA_INS_FCMOVGE,
+	ALPHA_INS_FCMOVGT,
+	ALPHA_INS_FCMOVLE,
+	ALPHA_INS_FCMOVLT,
+	ALPHA_INS_FCMOVNE,
+	ALPHA_INS_FETCH,
+	ALPHA_INS_FETCH_M,
+	ALPHA_INS_FTOIS,
+	ALPHA_INS_FTOIT,
+	ALPHA_INS_INSBL,
+	ALPHA_INS_INSLH,
+	ALPHA_INS_INSLL,
+	ALPHA_INS_INSQH,
+	ALPHA_INS_INSQL,
+	ALPHA_INS_INSWH,
+	ALPHA_INS_INSWL,
+	ALPHA_INS_ITOFS,
+	ALPHA_INS_ITOFT,
+	ALPHA_INS_JMP,
+	ALPHA_INS_JSR,
+	ALPHA_INS_JSR_COROUTINE,
+	ALPHA_INS_LDA,
+	ALPHA_INS_LDAH,
+	ALPHA_INS_LDBU,
+	ALPHA_INS_LDL,
+	ALPHA_INS_LDL_L,
+	ALPHA_INS_LDQ,
+	ALPHA_INS_LDQ_L,
+	ALPHA_INS_LDQ_U,
+	ALPHA_INS_LDS,
+	ALPHA_INS_LDT,
+	ALPHA_INS_LDWU,
+	ALPHA_INS_MB,
+	ALPHA_INS_MSKBL,
+	ALPHA_INS_MSKLH,
+	ALPHA_INS_MSKLL,
+	ALPHA_INS_MSKQH,
+	ALPHA_INS_MSKQL,
+	ALPHA_INS_MSKWH,
+	ALPHA_INS_MSKWL,
+	ALPHA_INS_MULL,
+	ALPHA_INS_MULQ,
+	ALPHA_INS_MULSSSU,
+	ALPHA_INS_MULTSSU,
+	ALPHA_INS_ORNOT,
+	ALPHA_INS_RC,
+	ALPHA_INS_RET,
+	ALPHA_INS_RPCC,
+	ALPHA_INS_RS,
+	ALPHA_INS_S4ADDL,
+	ALPHA_INS_S4ADDQ,
+	ALPHA_INS_S4SUBL,
+	ALPHA_INS_S4SUBQ,
+	ALPHA_INS_S8ADDL,
+	ALPHA_INS_S8ADDQ,
+	ALPHA_INS_S8SUBL,
+	ALPHA_INS_S8SUBQ,
+	ALPHA_INS_SEXTB,
+	ALPHA_INS_SEXTW,
+	ALPHA_INS_SLL,
+	ALPHA_INS_SQRTSSSU,
+	ALPHA_INS_SQRTTSSU,
+	ALPHA_INS_SRA,
+	ALPHA_INS_SRL,
+	ALPHA_INS_STB,
+	ALPHA_INS_STL,
+	ALPHA_INS_STL_C,
+	ALPHA_INS_STQ,
+	ALPHA_INS_STQ_C,
+	ALPHA_INS_STQ_U,
+	ALPHA_INS_STS,
+	ALPHA_INS_STT,
+	ALPHA_INS_STW,
+	ALPHA_INS_SUBL,
+	ALPHA_INS_SUBQ,
+	ALPHA_INS_SUBSSSU,
+	ALPHA_INS_SUBTSSU,
+	ALPHA_INS_TRAPB,
+	ALPHA_INS_UMULH,
+	ALPHA_INS_WH64,
+	ALPHA_INS_WH64EN,
+	ALPHA_INS_WMB,
+	ALPHA_INS_XOR,
+	ALPHA_INS_ZAPNOT,
+
+	// clang-format on
+	// generated content <AlphaGenCSInsnEnum.inc:GET_INSTR_ENUM> end
+	ALPHA_INS_ENDING, // <-- mark the end of the list of instructions
+} alpha_insn;
+
+//> Group of Alpha instructions
+typedef enum alpha_insn_group {
+	ALPHA_GRP_INVALID, ///< = CS_GRP_INVALID
+	//> Generic groups
+	ALPHA_GRP_CALL, ///< = CS_GRP_CALL
+	ALPHA_GRP_JUMP, ///< = CS_GRP_JUMP
+	ALPHA_GRP_BRANCH_RELATIVE, ///< = CS_GRP_BRANCH_RELATIVE
+	ALPHA_GRP_ENDING, ///< = mark the end of the list of groups
+} alpha_insn_group;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

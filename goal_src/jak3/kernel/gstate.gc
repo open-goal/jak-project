@@ -385,39 +385,72 @@
                (t9-5)
                )
            )
-         (rlet ((temp)
-                (func)
-                (sp :reg rsp :type uint)
-                (off :reg r15 :type uint)
-                (carg0 :reg rdi)
-                (carg1 :reg rsi)
-                (carg2 :reg rdx)
-                (carg3 :reg rcx))
-           ;; prepare args
-           ;; compiler will likely have these on the stack, we need to get them in regs
-           ;; before messing with the stack.
-           (.mov carg0 arg0)
-           (.mov carg1 arg1)
-           (.mov carg2 arg2)
-           (.mov carg3 arg3)
+         (#cond
+          ((eq? INSTRUCTION_SET 'arm64)
+           (rlet ((func)
+                  (sp :reg sp :type uint)
+                  (off :reg off :type uint)
+                  (xoff :reg exec-off :type uint)
+                  (ra :reg lr :type uint)
+                  (carg0 :reg carg0)
+                  (carg1 :reg carg1)
+                  (carg2 :reg carg2)
+                  (carg3 :reg carg3))
+             ;; load the arguments before discarding their stack slots
+             (.mov carg0 arg0)
+             (.mov carg1 arg1)
+             (.mov carg2 arg2)
+             (.mov carg3 arg3)
+             ;; convert the code pointer to the executable alias before branching
+             (.mov func (-> s0-2 code))
+             (.add func xoff)
+             ;; reset sp through the writable alias
+             (.mov sp (-> pp main-thread stack-top))
+             (.add sp off)
+             ;; return through deactivate
+             (.mov ra return-from-thread-dead)
+             (.add ra xoff)
+             (.jr func)
+             ;; keep the argument registers live until the branch
+             (.add carg0 carg1)
+             (.add carg2 carg3)
+             #f ;; can't get here
+             ))
+          (#t
+            (rlet ((temp)
+                   (func)
+                   (sp :reg rsp :type uint)
+                   (off :reg r15 :type uint)
+                   (carg0 :reg rdi)
+                   (carg1 :reg rsi)
+                   (carg2 :reg rdx)
+                   (carg3 :reg rcx))
+              ;; prepare args
+              ;; compiler will likely have these on the stack, we need to get them in regs
+              ;; before messing with the stack.
+              (.mov carg0 arg0)
+              (.mov carg1 arg1)
+              (.mov carg2 arg2)
+              (.mov carg3 arg3)
 
-           ;; get the main code as an x86-64 pointer
-           (.mov func (-> s0-2 code))
-           (.add func off)
-           ;; reset the stack (scary)
-           (.mov sp (-> pp main-thread stack-top))
-           (.add sp off)
-           ;; push the return trampoline for when code returns.
-           (.mov temp return-from-thread-dead) ;; will deactivate
-           (.add temp off)
-           (.push temp)
-           ;; and call!
-           (.jr func)
-           ;; stupid hack so the compiler doesn't throw away these registers.
-           (.add carg0 carg1)
-           (.add carg2 carg3)
-           #f ;; can't get here
-           )
+              ;; get the main code as an x86-64 pointer
+              (.mov func (-> s0-2 code))
+              (.add func off)
+              ;; reset the stack (scary)
+              (.mov sp (-> pp main-thread stack-top))
+              (.add sp off)
+              ;; push the return trampoline for when code returns.
+              (.mov temp return-from-thread-dead) ;; will deactivate
+              (.add temp off)
+              (.push temp)
+              ;; and call!
+              (.jr func)
+              ;; stupid hack so the compiler doesn't throw away these registers.
+              (.add carg0 carg1)
+              (.add carg2 carg3)
+              #f ;; can't get here
+              )
+           ))
          ; (let ((v1-29 (-> pp main-thread)))
          ;   (.lwu sp-0 28 v1-29)
          ;   )
@@ -510,4 +543,3 @@
         (send-event-function ,proc event-data)
         )
   )
-

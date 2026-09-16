@@ -1,0 +1,3 @@
+from code_retention.all_types_retention import update_alltypes_named_blocks
+
+update_alltypes_named_blocks("jakx")

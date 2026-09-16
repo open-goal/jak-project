@@ -24,14 +24,52 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
 
-#if defined(USE_GNUTLS) || defined(USE_WOLFSSL) || \
-  defined(USE_SCHANNEL) || defined(USE_SECTRANSP)
+/* forward-declare to make it visible in all builds */
+struct Curl_asn1Element;
+
+#if defined(USE_GNUTLS) || defined(USE_WOLFSSL) || defined(USE_SCHANNEL) || \
+  defined(USE_MBEDTLS) || defined(USE_RUSTLS)
 
 #include "cfilters.h"
 #include "urldata.h"
+
+/* ASN.1 classes. */
+/* #define CURL_ASN1_UNIVERSAL             0 */
+/* #define CURL_ASN1_APPLICATION           1 */
+/* #define CURL_ASN1_CONTEXT_SPECIFIC      2 */
+/* #define CURL_ASN1_PRIVATE               3 */
+
+/* ASN.1 types. */
+#define CURL_ASN1_BOOLEAN               1
+#define CURL_ASN1_INTEGER               2
+#define CURL_ASN1_BIT_STRING            3
+#define CURL_ASN1_OCTET_STRING          4
+#define CURL_ASN1_NULL                  5
+#define CURL_ASN1_OBJECT_IDENTIFIER     6
+/* #define CURL_ASN1_OBJECT_DESCRIPTOR     7 */
+/* #define CURL_ASN1_INSTANCE_OF           8 */
+/* #define CURL_ASN1_REAL                  9 */
+#define CURL_ASN1_ENUMERATED            10
+/* #define CURL_ASN1_EMBEDDED              11 */
+#define CURL_ASN1_UTF8_STRING           12
+/* #define CURL_ASN1_RELATIVE_OID          13 */
+/* #define CURL_ASN1_SEQUENCE              16 */
+/* #define CURL_ASN1_SET                   17 */
+#define CURL_ASN1_NUMERIC_STRING        18
+#define CURL_ASN1_PRINTABLE_STRING      19
+#define CURL_ASN1_TELETEX_STRING        20
+/* #define CURL_ASN1_VIDEOTEX_STRING       21 */
+#define CURL_ASN1_IA5_STRING            22
+#define CURL_ASN1_UTC_TIME              23
+#define CURL_ASN1_GENERALIZED_TIME      24
+/* #define CURL_ASN1_GRAPHIC_STRING        25 */
+#define CURL_ASN1_VISIBLE_STRING        26
+/* #define CURL_ASN1_GENERAL_STRING        27 */
+#define CURL_ASN1_UNIVERSAL_STRING      28
+/* #define CURL_ASN1_CHARACTER_STRING      29 */
+#define CURL_ASN1_BMP_STRING            30
 
 /*
  * Types.
@@ -42,9 +80,9 @@ struct Curl_asn1Element {
   const char *header;         /* Pointer to header byte. */
   const char *beg;            /* Pointer to element data. */
   const char *end;            /* Pointer to 1st byte after element. */
-  unsigned char class;        /* ASN.1 element class. */
+  unsigned char eclass;       /* ASN.1 element class. */
   unsigned char tag;          /* ASN.1 element tag. */
-  bool          constructed;  /* Element is constructed. */
+  BIT(constructed);           /* Element is constructed. */
 };
 
 /* X509 certificate: RFC 5280. */
@@ -76,5 +114,6 @@ CURLcode Curl_extract_certinfo(struct Curl_easy *data, int certnum,
                                const char *beg, const char *end);
 CURLcode Curl_verifyhost(struct Curl_cfilter *cf, struct Curl_easy *data,
                          const char *beg, const char *end);
-#endif /* USE_GNUTLS or USE_WOLFSSL or USE_SCHANNEL or USE_SECTRANSP */
+#endif /* USE_GNUTLS || USE_WOLFSSL || USE_SCHANNEL || USE_MBEDTLS ||
+          USE_RUSTLS */
 #endif /* HEADER_CURL_X509ASN1_H */

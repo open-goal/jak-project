@@ -23,15 +23,13 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 /* should probably go into the public header */
 
-#include <curl/curl.h>
-
 /* generated table with all easy options */
-extern struct curl_easyoption Curl_easyopts[];
+extern const struct curl_easyoption Curl_easyopts[];
 
 #ifdef DEBUGBUILD
 int Curl_easyopts_check(void);
 #endif
-#endif
+
+#endif /* HEADER_CURL_EASYOPTIONS_H */

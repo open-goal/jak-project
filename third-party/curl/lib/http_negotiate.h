@@ -23,6 +23,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+#include "curl_setup.h"
 
 #if !defined(CURL_DISABLE_HTTP) && defined(USE_SPNEGO)
 
@@ -34,10 +35,6 @@ CURLcode Curl_input_negotiate(struct Curl_easy *data, struct connectdata *conn,
 CURLcode Curl_output_negotiate(struct Curl_easy *data,
                                struct connectdata *conn, bool proxy);
 
-void Curl_http_auth_cleanup_negotiate(struct connectdata *conn);
-
-#else /* !CURL_DISABLE_HTTP && USE_SPNEGO */
-#define Curl_http_auth_cleanup_negotiate(x)
 #endif
 
 #endif /* HEADER_CURL_HTTP_NEGOTIATE_H */

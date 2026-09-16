@@ -1,0 +1,525 @@
+/* Capstone Disassembly Engine */
+/* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2019 */
+/*    Rot127 <unisono@quyllur.org>, 2022-2023 */
+
+#include "Mapping.h"
+#include "capstone/capstone.h"
+#include "cs_priv.h"
+#include "utils.h"
+
+// Create a cache to map LLVM instruction IDs to capstone instruction IDs, if
+// the architecture needs this.
+cs_err populate_insn_map_cache(cs_struct *handle)
+{
+	unsigned int i;
+
+	// If this architecture doesn't use instruction mapping, do nothing
+	if (!handle->insn_map || handle->insn_map_size <= 0)
+		return CS_ERR_OK;
+
+	// Since the instruction map is assumed to be stored in ascending
+	// order, we can get the maximum LLVM instruction id just by looking at
+	// the last element.
+	unsigned int cache_elements =
+		handle->insn_map[handle->insn_map_size - 1].id + 1;
+
+	// This should not be initialized yet.
+	CS_ASSERT(!handle->insn_cache);
+
+	unsigned short *cache = cs_mem_calloc(cache_elements, sizeof(*cache));
+	if (!cache) {
+		handle->errnum = CS_ERR_MEM;
+		return CS_ERR_MEM;
+	}
+	handle->insn_cache = cache;
+
+	for (i = 1; i < handle->insn_map_size; ++i)
+		handle->insn_cache[handle->insn_map[i].id] = i;
+
+	return CS_ERR_OK;
+}
+
+const insn_map *lookup_insn_map(cs_struct *handle, unsigned short id)
+{
+	// If this is getting called, we need the cache to already be populated
+	// (this should be done when populate_insn_map_cache() gets called).
+	CS_ASSERT(handle->insn_cache);
+	CS_ASSERT(handle->insn_map_size);
+
+	unsigned short highest_id =
+		handle->insn_map[handle->insn_map_size - 1].id;
+	if (id > highest_id)
+		return NULL;
+
+	unsigned short i = handle->insn_cache[id];
+
+	return &handle->insn_map[i];
+}
+
+// Gives the id for the given @name if it is saved in @map.
+// Returns the id or -1 if not found.
+int name2id(const name_map *map, int max, const char *name)
+{
+	CS_ASSERT_RET_VAL(map && name, -1);
+	int i;
+
+	for (i = 0; i < max; i++) {
+		if (!map[i].name) {
+			return -1;
+		}
+		if (!strcmp(map[i].name, name)) {
+			return map[i].id;
+		}
+	}
+
+	// nothing match
+	return -1;
+}
+
+// Gives the name for the given @id if it is saved in @map.
+// Returns the name or NULL if not found.
+const char *id2name(const name_map *map, int max, const unsigned int id)
+{
+	int i;
+
+	for (i = 0; i < max; i++) {
+		if (map[i].id == id) {
+			return map[i].name;
+		}
+	}
+
+	// nothing match
+	return NULL;
+}
+
+/// Adds a register to the implicit write register list.
+/// It will not add the same register twice.
+void map_add_implicit_write(MCInst *MI, uint32_t Reg)
+{
+	if (!MI->flat_insn->detail)
+		return;
+
+	uint16_t *regs_write = MI->flat_insn->detail->regs_write;
+	for (int i = 0; i < MAX_IMPL_W_REGS; ++i) {
+		if (i == MI->flat_insn->detail->regs_write_count) {
+			regs_write[i] = Reg;
+			MI->flat_insn->detail->regs_write_count++;
+			return;
+		}
+		if (regs_write[i] == Reg)
+			return;
+	}
+}
+
+/// Adds a register to the implicit read register list.
+/// It will not add the same register twice.
+void map_add_implicit_read(MCInst *MI, uint32_t Reg)
+{
+	if (!MI->flat_insn->detail)
+		return;
+
+	uint16_t *regs_read = MI->flat_insn->detail->regs_read;
+	for (int i = 0; i < MAX_IMPL_R_REGS; ++i) {
+		if (i == MI->flat_insn->detail->regs_read_count) {
+			regs_read[i] = Reg;
+			MI->flat_insn->detail->regs_read_count++;
+			return;
+		}
+		if (regs_read[i] == Reg)
+			return;
+	}
+}
+
+/// Removes a register from the implicit write register list.
+void map_remove_implicit_write(MCInst *MI, uint32_t Reg)
+{
+	if (!MI->flat_insn->detail)
+		return;
+
+	uint16_t *regs_write = MI->flat_insn->detail->regs_write;
+	bool shorten_list = false;
+	for (int i = 0; i < MAX_IMPL_W_REGS; ++i) {
+		if (shorten_list) {
+			regs_write[i - 1] = regs_write[i];
+		}
+		if (i >= MI->flat_insn->detail->regs_write_count)
+			return;
+
+		if (regs_write[i] == Reg) {
+			MI->flat_insn->detail->regs_write_count--;
+			// The register should exist only once in the list.
+			CS_ASSERT_RET(!shorten_list);
+			shorten_list = true;
+		}
+	}
+}
+
+/// Copies the implicit read registers of @imap to @MI->flat_insn.
+/// Already present registers will be preserved.
+void map_implicit_reads(MCInst *MI, const insn_map *imap)
+{
+#ifndef CAPSTONE_DIET
+	if (!MI->flat_insn->detail)
+		return;
+
+	cs_detail *detail = MI->flat_insn->detail;
+	unsigned Opcode = MCInst_getOpcode(MI);
+	unsigned i = 0;
+	uint16_t reg = imap[Opcode].regs_use[i];
+	while (reg != 0) {
+		if (i >= MAX_IMPL_R_REGS ||
+		    detail->regs_read_count >= MAX_IMPL_R_REGS) {
+			printf("ERROR: Too many implicit read register defined in "
+			       "instruction mapping.\n");
+			return;
+		}
+		detail->regs_read[detail->regs_read_count++] = reg;
+		if (i + 1 < MAX_IMPL_R_REGS) {
+			// Select next one
+			reg = imap[Opcode].regs_use[++i];
+		}
+	}
+#endif // CAPSTONE_DIET
+}
+
+/// Copies the implicit write registers of @imap to @MI->flat_insn.
+/// Already present registers will be preserved.
+void map_implicit_writes(MCInst *MI, const insn_map *imap)
+{
+#ifndef CAPSTONE_DIET
+	if (!MI->flat_insn->detail)
+		return;
+
+	cs_detail *detail = MI->flat_insn->detail;
+	unsigned Opcode = MCInst_getOpcode(MI);
+	unsigned i = 0;
+	uint16_t reg = imap[Opcode].regs_mod[i];
+	while (reg != 0) {
+		if (i >= MAX_IMPL_W_REGS ||
+		    detail->regs_write_count >= MAX_IMPL_W_REGS) {
+			printf("ERROR: Too many implicit write register defined in "
+			       "instruction mapping.\n");
+			return;
+		}
+		detail->regs_write[detail->regs_write_count++] = reg;
+		if (i + 1 < MAX_IMPL_W_REGS) {
+			// Select next one
+			reg = imap[Opcode].regs_mod[++i];
+		}
+	}
+#endif // CAPSTONE_DIET
+}
+
+/// Adds a given group to @MI->flat_insn.
+/// A group is never added twice.
+void add_group(MCInst *MI, unsigned /* arch_group */ group)
+{
+#ifndef CAPSTONE_DIET
+	if (!MI->flat_insn->detail)
+		return;
+
+	cs_detail *detail = MI->flat_insn->detail;
+	if (detail->groups_count >= MAX_NUM_GROUPS) {
+		printf("ERROR: Too many groups defined.\n");
+		return;
+	}
+	for (int i = 0; i < detail->groups_count; ++i) {
+		if (detail->groups[i] == group) {
+			return;
+		}
+	}
+	detail->groups[detail->groups_count++] = group;
+#endif // CAPSTONE_DIET
+}
+
+/// Copies the groups from @imap to @MI->flat_insn.
+/// Already present groups will be preserved.
+void map_groups(MCInst *MI, const insn_map *imap)
+{
+#ifndef CAPSTONE_DIET
+	if (!MI->flat_insn->detail)
+		return;
+
+	cs_detail *detail = MI->flat_insn->detail;
+	unsigned Opcode = MCInst_getOpcode(MI);
+	unsigned i = 0;
+	uint16_t group = imap[Opcode].groups[i];
+	while (group != 0) {
+		if (detail->groups_count >= MAX_NUM_GROUPS) {
+			printf("ERROR: Too many groups defined in instruction mapping.\n");
+			return;
+		}
+		detail->groups[detail->groups_count++] = group;
+		group = imap[Opcode].groups[++i];
+	}
+#endif // CAPSTONE_DIET
+}
+
+/// Returns the pointer to the supllementary information in
+/// the instruction mapping table @imap or NULL in case of failure.
+const void *map_get_suppl_info(MCInst *MI, const insn_map *imap)
+{
+#ifndef CAPSTONE_DIET
+	if (!MI->flat_insn->detail)
+		return NULL;
+
+	unsigned Opcode = MCInst_getOpcode(MI);
+	return &imap[Opcode].suppl_info;
+#else
+	return NULL;
+#endif // CAPSTONE_DIET
+}
+
+// Search for the CS instruction id for the given @MC_Opcode in @imap.
+// return -1 if none is found.
+unsigned int find_cs_id(unsigned MC_Opcode, const insn_map *imap,
+			unsigned imap_size)
+{
+	// binary searching since the IDs are sorted in order
+	unsigned int left, right, m;
+	unsigned int max = imap_size;
+
+	right = max - 1;
+
+	if (MC_Opcode < imap[0].id || MC_Opcode > imap[right].id)
+		// not found
+		return -1;
+
+	left = 0;
+
+	while (left <= right) {
+		m = (left + right) / 2;
+		if (MC_Opcode == imap[m].id) {
+			return m;
+		}
+
+		if (MC_Opcode < imap[m].id)
+			right = m - 1;
+		else
+			left = m + 1;
+	}
+
+	return -1;
+}
+
+/// Sets the Capstone instruction id which maps to the @MI opcode.
+/// If no mapping is found the function returns and prints an error.
+void map_cs_id(MCInst *MI, const insn_map *imap, unsigned int imap_size)
+{
+	unsigned int i = find_cs_id(MCInst_getOpcode(MI), imap, imap_size);
+	if (i != -1) {
+		MI->flat_insn->id = imap[i].mapid;
+		return;
+	}
+	printf("ERROR: Could not find CS id for MCInst opcode: %d\n",
+	       MCInst_getOpcode(MI));
+	return;
+}
+
+/// Returns the operand type information from the
+/// mapping table for instruction operands.
+/// Only usable by `auto-sync` archs!
+const cs_op_type mapping_get_op_type(MCInst *MI, unsigned OpNum,
+				     const map_insn_ops *insn_ops_map,
+				     size_t map_size)
+{
+	assert(MI);
+	assert(MI->Opcode < map_size);
+	assert(OpNum < sizeof(insn_ops_map[MI->Opcode].ops) /
+			       sizeof(insn_ops_map[MI->Opcode].ops[0]));
+
+	return insn_ops_map[MI->Opcode].ops[OpNum].type;
+}
+
+/// Returns the operand access flags from the
+/// mapping table for instruction operands.
+/// Only usable by `auto-sync` archs!
+const cs_ac_type mapping_get_op_access(MCInst *MI, unsigned OpNum,
+				       const map_insn_ops *insn_ops_map,
+				       size_t map_size)
+{
+	assert(MI);
+	assert(MI->Opcode < map_size);
+	assert(OpNum < sizeof(insn_ops_map[MI->Opcode].ops) /
+			       sizeof(insn_ops_map[MI->Opcode].ops[0]));
+
+	cs_ac_type access = insn_ops_map[MI->Opcode].ops[OpNum].access;
+	if (MCInst_opIsTied(MI, OpNum) || MCInst_opIsTying(MI, OpNum))
+		access |= (access == CS_AC_READ) ? CS_AC_WRITE : CS_AC_READ;
+	return access;
+}
+
+/// Returns the operand at detail->arch.operands[op_count + offset]
+/// Or NULL if detail is not set or the offset would be out of bounds.
+#define DEFINE_get_detail_op(arch, ARCH, ARCH_UPPER) \
+	cs_##arch##_op *ARCH##_get_detail_op(MCInst *MI, int offset) \
+	{ \
+		if (!MI->flat_insn->detail) \
+			return NULL; \
+		int OpIdx = MI->flat_insn->detail->arch.op_count + offset; \
+		if (OpIdx < 0 || OpIdx >= NUM_##ARCH_UPPER##_OPS) { \
+			return NULL; \
+		} \
+		return &MI->flat_insn->detail->arch.operands[OpIdx]; \
+	}
+
+DEFINE_get_detail_op(arm, ARM, ARM);
+DEFINE_get_detail_op(ppc, PPC, PPC);
+DEFINE_get_detail_op(tricore, TriCore, TRICORE);
+DEFINE_get_detail_op(aarch64, AArch64, AARCH64);
+DEFINE_get_detail_op(alpha, Alpha, ALPHA);
+DEFINE_get_detail_op(hppa, HPPA, HPPA);
+DEFINE_get_detail_op(loongarch, LoongArch, LOONGARCH);
+DEFINE_get_detail_op(mips, Mips, MIPS);
+DEFINE_get_detail_op(riscv, RISCV, RISCV);
+DEFINE_get_detail_op(systemz, SystemZ, SYSTEMZ);
+DEFINE_get_detail_op(xtensa, Xtensa, XTENSA);
+DEFINE_get_detail_op(bpf, BPF, BPF);
+DEFINE_get_detail_op(arc, ARC, ARC);
+DEFINE_get_detail_op(sparc, Sparc, SPARC);
+
+/// Returns the operand at detail->arch.operands[index]
+/// Or NULL if detail is not set or the index would be out of bounds.
+#define DEFINE_get_detail_op_at(arch, ARCH, ARCH_UPPER) \
+	cs_##arch##_op *ARCH##_get_detail_op_at(MCInst *MI, int index) \
+	{ \
+		if (!MI->flat_insn->detail) \
+			return NULL; \
+		if (index < 0 || index >= NUM_##ARCH_UPPER##_OPS) { \
+			return NULL; \
+		} \
+		return &MI->flat_insn->detail->arch.operands[index]; \
+	}
+
+DEFINE_get_detail_op_at(arm, ARM, ARM);
+DEFINE_get_detail_op_at(ppc, PPC, PPC);
+DEFINE_get_detail_op_at(tricore, TriCore, TRICORE);
+DEFINE_get_detail_op_at(aarch64, AArch64, AARCH64);
+DEFINE_get_detail_op_at(alpha, Alpha, ALPHA);
+DEFINE_get_detail_op_at(hppa, HPPA, HPPA);
+DEFINE_get_detail_op_at(loongarch, LoongArch, LOONGARCH);
+DEFINE_get_detail_op_at(mips, Mips, MIPS);
+DEFINE_get_detail_op_at(riscv, RISCV, RISCV);
+DEFINE_get_detail_op_at(systemz, SystemZ, SYSTEMZ);
+DEFINE_get_detail_op_at(xtensa, Xtensa, XTENSA);
+DEFINE_get_detail_op_at(bpf, BPF, BPF);
+DEFINE_get_detail_op_at(arc, ARC, ARC);
+DEFINE_get_detail_op_at(sparc, Sparc, SPARC);
+
+/// Returns true if for this architecture the
+/// alias operands should be filled.
+/// TODO: Replace this with a proper option.
+/// 			So it can be toggled between disas() calls.
+bool map_use_alias_details(const MCInst *MI)
+{
+	assert(MI);
+	return (MI->csh->detail_opt & CS_OPT_ON) &&
+	       !(MI->csh->detail_opt & CS_OPT_DETAIL_REAL);
+}
+
+/// Sets the setDetailOps flag to @p Val.
+/// If detail == NULLit refuses to set the flag to true.
+void map_set_fill_detail_ops(MCInst *MI, bool Val)
+{
+	CS_ASSERT_RET(MI);
+	if (!detail_is_set(MI)) {
+		MI->fillDetailOps = false;
+		return;
+	}
+
+	MI->fillDetailOps = Val;
+}
+
+/// Sets the instruction alias flags and the given alias id.
+void map_set_is_alias_insn(MCInst *MI, bool Val, uint64_t Alias)
+{
+	CS_ASSERT_RET(MI);
+	MI->isAliasInstr = Val;
+	MI->flat_insn->is_alias = Val;
+	MI->flat_insn->alias_id = Alias;
+}
+
+static inline bool char_ends_mnem(const char c, cs_arch arch)
+{
+	switch (arch) {
+	default:
+		return (!c || c == ' ' || c == '\t' || c == '.');
+	case CS_ARCH_PPC:
+	case CS_ARCH_RISCV:
+		return (!c || c == ' ' || c == '\t');
+	case CS_ARCH_SPARC:
+		return (!c || c == ' ' || c == '\t' || c == ',');
+	}
+}
+
+/// Sets an alternative id for some instruction.
+/// Or -1 if it fails.
+/// You must add (<ARCH>_INS_ALIAS_BEGIN + 1) to the id to get the real id.
+void map_set_alias_id(MCInst *MI, const SStream *O,
+		      const name_map *alias_mnem_id_map, int map_size)
+{
+	if (!MCInst_isAlias(MI))
+		return;
+
+	char alias_mnem[16] = { 0 };
+	int i = 0, j = 0;
+	const char *asm_str_buf = O->buffer;
+	// Skip spaces and tabs
+	while (is_blank_char(asm_str_buf[i])) {
+		if (!asm_str_buf[i]) {
+			MI->flat_insn->alias_id = -1;
+			return;
+		}
+		++i;
+	}
+	for (; j < sizeof(alias_mnem) - 1; ++j, ++i) {
+		if (char_ends_mnem(asm_str_buf[i], MI->csh->arch))
+			break;
+		alias_mnem[j] = asm_str_buf[i];
+	}
+
+	MI->flat_insn->alias_id =
+		name2id(alias_mnem_id_map, map_size, alias_mnem);
+}
+
+/// Does a binary search over the given map and searches for @id.
+/// If @id exists in @map, it sets @found to true and returns
+/// the value for the @id.
+/// Otherwise, @found is set to false and it returns UINT64_MAX.
+///
+/// Of course it assumes the map is sorted.
+uint64_t enum_map_bin_search(const cs_enum_id_map *map, size_t map_len,
+			     const char *id, bool *found)
+{
+	size_t l = 0;
+	size_t r = map_len;
+	size_t id_len = strlen(id);
+
+	while (l <= r) {
+		size_t m = (l + r) / 2;
+		size_t j = 0;
+		size_t i = 0;
+		size_t entry_len = strlen(map[m].str);
+
+		while (j < entry_len && i < id_len && id[i] == map[m].str[j]) {
+			++j, ++i;
+		}
+		if (i == id_len && j == entry_len) {
+			*found = true;
+			return map[m].val;
+		}
+
+		if (id[i] < map[m].str[j]) {
+			r = m - 1;
+		} else if (id[i] > map[m].str[j]) {
+			l = m + 1;
+		}
+		if ((m == 0 && id[i] < map[m].str[j]) ||
+		    (l + r) / 2 >= map_len) {
+			// Break before we go out of bounds.
+			break;
+		}
+	}
+	*found = false;
+	return UINT64_MAX;
+}

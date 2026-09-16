@@ -5,5 +5,527 @@
 ;; name in dgo: scert-3-h
 ;; dgos: ENGINE, GAME
 
+;; +++net-error
+(defenum net-error
+  :type int32
+  (net-error-none 0)
+  (net-error-not-connected 1)
+  (net-error-connection-lost 2)
+  (net-error-connection-failed 3)
+  (net-error-client-rejected 4)
+  (net-error-disconnect-failed 5)
+  (net-error-new-client 6)
+  (net-error-bad-session-master 7)
+  (net-error-bad-index 8)
+  (net-error-bad-data-stream-channel 9)
+  (net-error-bad-pointer 10)
+  (net-error-object-not-shared 11)
+  (net-error-bad-packet-received 12)
+  (net-error-send-failed 13)
+  (net-error-timed-out 14)
+  (net-error-bad-connection-index 15)
+  (net-error-bad-mode 16)
+  (net-error-dme-not-initialized 17)
+  (net-error-init-failed 18)
+  (net-error-no-free-object 19)
+  (net-error-open-data-stream-failed 20)
+  (net-error-client-not-valid 21)
+  (net-error-memory 22)
+  (net-error-invalid-arg 23)
+  (net-error-msg-error 24)
+  (net-error-too-many-pending-events 25)
+  (net-error-udpnot-enabled 26)
+  (net-error-update 27)
+  (net-error-game-is-full 28)
+  (net-error-host-game-failed 29)
+  (net-error-unknown 30)
+  (net-error-msg-too-large 31)
+  (net-error-security 32)
+  (net-error-not-implemented 33)
+  (net-error-bad-server-version 34)
+  (net-error-comm-error 35)
+  (net-error-buffer-error 36)
+  (net-error-udperror 37)
+  (net-error-set-defaults-not-called 38)
+  (net-error-sizeof-param-mismatch 39)
+  (net-error-deprecated 40)
+  (net-error-stream-media 41)
+  (net-error-stream-media-comm 42)
+  (net-error-mutex 43)
+  (net-error-server-error 44)
+  (net-error-hostname-error 45)
+  (net-error-lookup-error 46)
+  (net-error-timebase-error 47)
+  (net-error-token-not-enabled 48)
+  (net-error-token-error 49)
+  (net-error-bad-port 50)
+  (net-error-bad-connectivity-type 51)
+  (extra-net-error-code #xffffff)
+  )
+;; ---net-error
+
+
 ;; DECOMP BEGINS
 
+(deftype net-localization-params (structure)
+  ((character-encoding-type  int32)
+   (language-type            int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-memory-callback-params (structure)
+  ((pf-malloc-callback   basic)
+   (pf-realloc-callback  basic)
+   (pf-free-callback     basic)
+   )
+  )
+
+
+(deftype net-dme-version (structure)
+  ((n-version   uint32)
+   (sz-version  int8  16)
+   )
+  :pack-me
+  )
+
+
+(deftype net-type-system-message-data (structure)
+  ((connection-handle  basic)
+   (severity           uint8)
+   (e-encoding-type    int32)
+   (e-language-type    int32)
+   (b-end-of-message   uint8)
+   (n-message-length   uint16)
+   (p-message          uint32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-update-error (structure)
+  ((connection-handle  basic)
+   (net-error          int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-update-conn-errors (structure)
+  ((sizeof-net-update-errors  uint32)
+   (a-errors                  net-update-error  4 :inline)
+   (udperror                  net-error)
+   )
+  )
+
+
+(deftype net-data (structure)
+  ((n-size  int32)
+   (p-data  basic)
+   )
+  :pack-me
+  )
+
+
+(deftype net-initialize-out-params (structure)
+  ((b-is-set    int32)
+   (error-code  int32)
+   (sz-version  int8  16)
+   )
+  )
+
+
+(deftype net-connect-out-params (structure)
+  ((b-is-set           int32)
+   (error-code         int32)
+   (connection-handle  basic)
+   )
+  )
+
+
+(deftype net-host-peer-to-peer-out-params (structure)
+  ((b-is-set           int32)
+   (error-code         int32)
+   (connection-handle  basic)
+   )
+  )
+
+
+(deftype net-resolve-addr-out-params (structure)
+  ((b-is-set    int32)
+   (error-code  int32)
+   )
+  )
+
+
+(deftype net-incoming-client-out-params (structure)
+  ((b-is-set    int32)
+   (error-code  int32)
+   )
+  )
+
+
+(deftype net-client-metric (structure)
+  ((average-rate      float)
+   (max-average-rate  float)
+   )
+  :pack-me
+  )
+
+
+(deftype net-bandwidth-info (structure)
+  ((sends       net-client-metric  :inline)
+   (send-bytes  net-client-metric  :inline)
+   (recvs       net-client-metric  :inline)
+   (recv-bytes  net-client-metric  :inline)
+   )
+  )
+
+
+(deftype net-connection-status (structure)
+  ((my-connect-status         int32)
+   (n-valid-client-count      int32)
+   (n-connected-client-count  int32)
+   )
+  )
+
+
+(deftype sz-ipaddress (structure)
+  ((data  uint8  16)
+   )
+  )
+
+
+(deftype net-type-lookup-response (structure)
+  ((asz-ipaddresses  sz-ipaddress  16 :inline)
+   (n-ipaddresses    uint32)
+   (error-code       int32)
+   )
+  )
+
+
+(deftype net-type-lookup-params (structure)
+  ((sz-host-name        uint8  256)
+   (sz-server-ip        uint8  16)
+   (pf-lookup-response  basic)
+   )
+  )
+
+
+(deftype rsa-key (structure)
+  ((key  uint32  16)
+   )
+  :pack-me
+  )
+
+
+(deftype rsa-keypair (structure)
+  ((public-key   rsa-key  :inline)
+   (private-key  rsa-key  :inline)
+   )
+  )
+
+
+(deftype net-type-connect-callback-data (structure)
+  ((connection-handle  basic)
+   (connect-status     int32)
+   (failure-reason     int32)
+   (error-code         int32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-type-client-connect-callback-data (structure)
+  ((connection-handle  basic)
+   (client-index       int32)
+   (client-ip-string   uint32)
+   (client-status      int32)
+   (user-specified     int32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-peer-to-peer-host-change-data (structure)
+  ((connection-handle  basic)
+   (host-client-index  int32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-token-ownership-notify-data (structure)
+  ((connection-handle   basic)
+   (token-id            int32)
+   (owner-client-index  int32)
+   (error-code          int32)
+   (p-user-data         basic)
+   )
+  )
+
+
+(deftype net-token-params (structure)
+  ((pf-token-ownership-notify-callback      basic)
+   (p-token-ownership-notify-callback-data  basic)
+   (b-use-token                             int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-system-status-data (structure)
+  ((connection-handle  basic)
+   (status             int32)
+   (error-code         int32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-stream-media-audio-record-data (structure)
+  ((audio-type       int32)
+   (p-buffer         uint32)
+   (buf-size         uint32)
+   (bytes-stored     uint32)
+   (transport-flags  int8)
+   (p-user-data      basic)
+   )
+  )
+
+
+(deftype net-stream-media-audio-play-data (structure)
+  ((audio-type    int32)
+   (client-index  int32)
+   (p-buffer      uint32)
+   (buf-size      uint32)
+   (bytes-read    uint32)
+   (p-user-data   basic)
+   )
+  )
+
+
+(deftype net-audio-data-characteristics (structure)
+  ((n-channels-in          int32)
+   (n-bits-per-sample-in   int32)
+   (n-sample-rate-in       int32)
+   (n-channels-out         int32)
+   (n-bits-per-sample-out  int32)
+   (n-sample-rate-out      int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-color-array (structure)
+  ((cb-size    int32)
+   (line-size  int32)
+   (xsize      int32)
+   (ysize      int32)
+   (data       uint8  16)
+   )
+  )
+
+
+(deftype net-stream-media-video-record-data (structure)
+  ((p-y            net-color-array)
+   (p-cr           net-color-array)
+   (p-cb           net-color-array)
+   (b-data-stored  int32)
+   (p-user-data    basic)
+   )
+  )
+
+
+(deftype net-rgbarray (structure)
+  ((cb-size    int32)
+   (line-size  int32)
+   (xsize      int32)
+   (ysize      int32)
+   (data       uint32  16)
+   )
+  )
+
+
+(deftype net-stream-media-video-play-data (structure)
+  ((client-index      int32)
+   (p-rgbarray        net-rgbarray)
+   (b-data-processed  int32)
+   (p-user-data       basic)
+   )
+  )
+
+
+(deftype net-video-data-characteristics (structure)
+  ((xsize  int32)
+   (ysize  int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-stream-media-custom-video-record-data (structure)
+  ((p-buffer         uint32)
+   (n-buffer-size    uint32)
+   (n-bytes-stored   uint32)
+   (transport-flags  int8)
+   (p-user-data      basic)
+   )
+  )
+
+
+(deftype net-stream-media-custom-video-play-data (structure)
+  ((client-index       int32)
+   (p-buffer           uint32)
+   (n-bytes-available  uint32)
+   (n-bytes-processed  uint32)
+   (p-user-data        basic)
+   )
+  )
+
+
+(deftype net-stream-media-params (structure)
+  ((b-default-set                        int32)
+   (b-use-stream-media                   int32)
+   (num-channels                         uint32)
+   (max-incoming-audio-streams           uint32)
+   (record-no-data-timeout               uint32)
+   (send-buffer-size                     uint32)
+   (recv-buffer-size                     uint32)
+   (grid-type                            int32)
+   (audio-data-characteristics           net-audio-data-characteristics  :inline)
+   (pf-audio-record-callback             basic)
+   (p-audio-record-callback-data         basic)
+   (pf-audio-play-callback               basic)
+   (p-audio-play-callback-data           basic)
+   (video-data-characteristics           net-video-data-characteristics  :inline)
+   (pf-video-record-callback             basic)
+   (p-video-record-callback-data         basic)
+   (pf-video-play-callback               basic)
+   (p-video-play-callback-data           basic)
+   (pf-custom-video-record-callback      basic)
+   (p-custom-video-record-callback-data  basic)
+   (pf-custom-video-play-callback        basic)
+   (p-custom-video-play-callback-data    basic)
+   )
+  :pack-me
+  )
+
+
+(deftype net-address (structure)
+  ((address-type  int32)
+   (address       int8  16)
+   (port          uint32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-address-list (structure)
+  ((a-address-list  net-address  2 :inline)
+   )
+  :pack-me
+  )
+
+
+(deftype net-connection-info (structure)
+  ((e-type         int32)
+   (address-list   net-address-list  :inline)
+   (world-id       int32)
+   (server-key     rsa-key           :inline)
+   (a-session-key  uint8             17)
+   (a-access-key   uint8             17)
+   )
+  :pack-me
+  )
+
+
+(deftype net-connect-in-params (structure)
+  ((b-default-set                             int32)
+   (max-clients                               int32)
+   (connection-info                           net-connection-info      :inline)
+   (pf-local-connect-callback                 basic)
+   (p-local-connect-callback-data             basic)
+   (pf-local-disconnect-callback              basic)
+   (p-local-disconnect-callback-data          basic)
+   (pf-remote-client-connect-callback         basic)
+   (p-remote-client-connect-callback-data     basic)
+   (pf-remote-client-disconnect-callback      basic)
+   (p-remote-client-disconnect-callback-data  basic)
+   (pf-peer-to-peer-host-change-callback      basic)
+   (p-host-change-callback-data               basic)
+   (pf-system-status-callback                 basic)
+   (p-system-status-callback-data             basic)
+   (stream-media-params                       net-stream-media-params  :inline)
+   (user-specified                            int32)
+   (aux-udpbind-port                          int32)
+   (token-params                              net-token-params         :inline)
+   (b-use-time-base                           int32)
+   (send-buffer-size                          uint32)
+   (recv-buffer-size                          uint32)
+   )
+  )
+
+
+(deftype net-bit-mask (structure)
+  ((bitmask  uint32  8)
+   (base-id  int32)
+   (max-id   int32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-client-list (structure)
+  ((target-client  int32)
+   (client-mask    net-bit-mask  :inline)
+   )
+  :pack-me
+  )
+
+
+(deftype net-send-message-in-params (structure)
+  ((connection-handle  basic)
+   (transport-flags    int8)
+   (message-type       int32)
+   (dest-client        net-client-list  :inline)
+   (message-length     int32)
+   (message-data       uint32)
+   )
+  )
+
+
+(deftype net-send-message-out-params (structure)
+  ((error-code     int32)
+   (queued-client  net-client-list  :inline)
+   )
+  )
+
+
+(deftype net-disconnect-params (structure)
+  ((connection-handle             basic)
+   (reason                        int32)
+   (pf-local-disconnect-callback  basic)
+   (p-user-data                   basic)
+   )
+  )
+
+
+(deftype net-latency-metrics-info (structure)
+  ((latency-min  uint32)
+   (latency-max  uint32)
+   (latency-avg  uint32)
+   )
+  :pack-me
+  )
+
+
+(deftype net-latency-metrics-data-args (structure)
+  ((connection-handle     basic)
+   (target-client-index   int32)
+   (latency-metrics-info  net-latency-metrics-info  :inline)
+   (error-code            int32)
+   (p-user-data           basic)
+   )
+  )

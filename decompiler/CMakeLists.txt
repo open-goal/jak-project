@@ -101,6 +101,7 @@ target_link_libraries(decomp
         stb_image
         xdelta3
         tiny_gltf
+        sound
 )
 
 add_executable(decompiler
@@ -112,7 +113,9 @@ target_link_libraries(decompiler
         lzokay
         fmt
         stb_image
-        tiny_gltf)
+        tiny_gltf
+        sound
+)
 
 
 add_executable(extractor
@@ -125,4 +128,6 @@ target_link_libraries(extractor
         fmt
         compiler
         stb_image
-        tiny_gltf)
+        tiny_gltf
+        sound
+)

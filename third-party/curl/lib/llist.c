@@ -21,27 +21,36 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
 
-#include <curl/curl.h>
-
 #include "llist.h"
-#include "curl_memory.h"
 
-/* this must be the last include file */
-#include "memdebug.h"
+#ifdef DEBUGBUILD
+#define LLISTINIT 0x100cc001 /* random pattern */
+#define NODEINIT  0x12344321 /* random pattern */
+#define NODEREM   0x54321012 /* random pattern */
 
-/*
- * @unittest: 1300
- */
-void
-Curl_llist_init(struct Curl_llist *l, Curl_llist_dtor dtor)
+#define VERIFYNODE(x) verifynode(x)
+static struct Curl_llist_node *verifynode(struct Curl_llist_node *n)
 {
-  l->size = 0;
-  l->dtor = dtor;
-  l->head = NULL;
-  l->tail = NULL;
+  DEBUGASSERT(!n || (n->_init == NODEINIT));
+  return n;
+}
+#else
+#define VERIFYNODE(x) x
+#endif
+/*
+ * @unittest 1300
+ */
+void Curl_llist_init(struct Curl_llist *l, Curl_llist_dtor dtor)
+{
+  l->_size = 0;
+  l->_dtor = dtor;
+  l->_head = NULL;
+  l->_tail = NULL;
+#ifdef DEBUGBUILD
+  l->_init = LLISTINIT;
+#endif
 }
 
 /*
@@ -53,94 +62,211 @@ Curl_llist_init(struct Curl_llist *l, Curl_llist_dtor dtor)
  *
  * The 'ne' argument should be a pointer into the object to store.
  *
- * @unittest: 1300
+ * @unittest 1300
  */
-void
-Curl_llist_insert_next(struct Curl_llist *list, struct Curl_llist_element *e,
-                       const void *p,
-                       struct Curl_llist_element *ne)
+void Curl_llist_insert_next(struct Curl_llist *list,
+                            struct Curl_llist_node *e, /* may be NULL */
+                            const void *p,
+                            struct Curl_llist_node *ne)
 {
-  ne->ptr = (void *) p;
-  if(list->size == 0) {
-    list->head = ne;
-    list->head->prev = NULL;
-    list->head->next = NULL;
-    list->tail = ne;
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  DEBUGASSERT(ne);
+
+#ifdef DEBUGBUILD
+  ne->_init = NODEINIT;
+#endif
+  ne->_ptr = CURL_UNCONST(p);
+  ne->_list = list;
+  if(list->_size == 0) {
+    list->_head = ne;
+    list->_head->_prev = NULL;
+    list->_head->_next = NULL;
+    list->_tail = ne;
   }
   else {
     /* if 'e' is NULL here, we insert the new element first in the list */
-    ne->next = e?e->next:list->head;
-    ne->prev = e;
+    ne->_next = e ? e->_next : list->_head;
+    ne->_prev = e;
     if(!e) {
-      list->head->prev = ne;
-      list->head = ne;
+      list->_head->_prev = ne;
+      list->_head = ne;
     }
-    else if(e->next) {
-      e->next->prev = ne;
+    else if(e->_next) {
+      e->_next->_prev = ne;
     }
     else {
-      list->tail = ne;
+      list->_tail = ne;
     }
     if(e)
-      e->next = ne;
+      e->_next = ne;
   }
 
-  ++list->size;
+  ++list->_size;
 }
 
 /*
- * @unittest: 1300
+ * Curl_llist_append()
+ *
+ * Adds a new list element to the end of the list.
+ *
+ * The 'ne' argument should be a pointer into the object to store.
+ *
+ * @unittest 1300
  */
-void
-Curl_llist_remove(struct Curl_llist *list, struct Curl_llist_element *e,
-                  void *user)
+void Curl_llist_append(struct Curl_llist *list, const void *p,
+                       struct Curl_llist_node *ne)
+{
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  DEBUGASSERT(ne);
+  Curl_llist_insert_next(list, list->_tail, p, ne);
+}
+
+void *Curl_node_take_elem(struct Curl_llist_node *e)
 {
   void *ptr;
-  if(!e || list->size == 0)
+  struct Curl_llist *list;
+  if(!e)
+    return NULL;
+
+  list = e->_list;
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  DEBUGASSERT(list->_size);
+  DEBUGASSERT(e->_init == NODEINIT);
+  if(list) {
+    if(e == list->_head) {
+      list->_head = e->_next;
+
+      if(!list->_head)
+        list->_tail = NULL;
+      else
+        e->_next->_prev = NULL;
+    }
+    else {
+      if(e->_prev)
+        e->_prev->_next = e->_next;
+
+      if(!e->_next)
+        list->_tail = e->_prev;
+      else
+        e->_next->_prev = e->_prev;
+    }
+    --list->_size;
+  }
+  ptr = e->_ptr;
+
+  e->_list = NULL;
+  e->_ptr  = NULL;
+  e->_prev = NULL;
+  e->_next = NULL;
+#ifdef DEBUGBUILD
+  e->_init = NODEREM; /* specific pattern on remove - not zero */
+#endif
+
+  return ptr;
+}
+
+static void node_uremove(struct Curl_llist_node *e, void *user)
+{
+  struct Curl_llist *list;
+  void *ptr;
+  if(!e)
     return;
 
-  if(e == list->head) {
-    list->head = e->next;
-
-    if(!list->head)
-      list->tail = NULL;
-    else
-      e->next->prev = NULL;
+  list = e->_list;
+  DEBUGASSERT(list);
+  if(list) {
+    ptr = Curl_node_take_elem(e);
+    if(list->_dtor)
+      list->_dtor(user, ptr);
   }
-  else {
-    if(e->prev)
-      e->prev->next = e->next;
-
-    if(!e->next)
-      list->tail = e->prev;
-    else
-      e->next->prev = e->prev;
-  }
-
-  ptr = e->ptr;
-
-  e->ptr  = NULL;
-  e->prev = NULL;
-  e->next = NULL;
-
-  --list->size;
-
-  /* call the dtor() last for when it actually frees the 'e' memory itself */
-  if(list->dtor)
-    list->dtor(user, ptr);
 }
 
-void
-Curl_llist_destroy(struct Curl_llist *list, void *user)
+void Curl_node_remove(struct Curl_llist_node *e)
+{
+  node_uremove(e, NULL);
+}
+
+void Curl_llist_destroy(struct Curl_llist *list, void *user)
 {
   if(list) {
-    while(list->size > 0)
-      Curl_llist_remove(list, list->tail, user);
+    DEBUGASSERT(list->_init == LLISTINIT);
+    while(list->_size > 0)
+      node_uremove(list->_tail, user);
   }
 }
 
-size_t
-Curl_llist_count(struct Curl_llist *list)
+/* Curl_llist_head() returns the first 'struct Curl_llist_node *', which
+   might be NULL */
+struct Curl_llist_node *Curl_llist_head(const struct Curl_llist *list)
 {
-  return list->size;
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  return VERIFYNODE(list->_head);
+}
+
+#ifdef UNITTESTS
+/* llist_tail() returns the last 'struct Curl_llist_node *', which might be
+   NULL
+
+   @unittest 1300
+*/
+UNITTEST struct Curl_llist_node *llist_tail(const struct Curl_llist *list);
+UNITTEST struct Curl_llist_node *llist_tail(const struct Curl_llist *list)
+{
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  return VERIFYNODE(list->_tail);
+}
+#endif
+
+/* Curl_llist_count() returns a size_t the number of nodes in the list */
+size_t Curl_llist_count(const struct Curl_llist *list)
+{
+  DEBUGASSERT(list);
+  DEBUGASSERT(list->_init == LLISTINIT);
+  return list->_size;
+}
+
+/* Curl_node_elem() returns the custom data from a Curl_llist_node */
+void *Curl_node_elem(const struct Curl_llist_node *n)
+{
+  DEBUGASSERT(n);
+  DEBUGASSERT(n->_init == NODEINIT);
+  return n->_ptr;
+}
+
+/* Curl_node_next() returns the next element in a list from a given
+   Curl_llist_node */
+struct Curl_llist_node *Curl_node_next(const struct Curl_llist_node *n)
+{
+  DEBUGASSERT(n);
+  DEBUGASSERT(n->_init == NODEINIT);
+  return VERIFYNODE(n->_next);
+}
+
+#ifdef UNITTESTS
+/* llist_node_prev() returns the previous element in a list from a given
+   Curl_llist_node
+
+   @unittest 1300
+*/
+UNITTEST struct Curl_llist_node *llist_node_prev(
+  const struct Curl_llist_node *n);
+UNITTEST struct Curl_llist_node *llist_node_prev(
+  const struct Curl_llist_node *n)
+{
+  DEBUGASSERT(n);
+  DEBUGASSERT(n->_init == NODEINIT);
+  return VERIFYNODE(n->_prev);
+}
+#endif
+
+struct Curl_llist *Curl_node_llist(const struct Curl_llist_node *n)
+{
+  DEBUGASSERT(n);
+  DEBUGASSERT(!n->_list || n->_init == NODEINIT);
+  return n->_list;
 }

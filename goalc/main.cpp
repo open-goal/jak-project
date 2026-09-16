@@ -13,6 +13,7 @@
 #include "common/versions/versions.h"
 
 #include "goalc/compiler/Compiler.h"
+#include "goalc/debugger/DebugServer.h"
 
 #include "fmt/color.h"
 #include "fmt/format.h"
@@ -37,8 +38,10 @@ int main(int argc, char** argv) {
   std::string username = "#f";
   std::string game = "jak1";
   int nrepl_port = -1;
+  int debug_port = -1;
   fs::path project_path_override;
   fs::path iso_path_override;
+  std::string instr_set_name = "x86";
 
   // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
   CLI::App app{"OpenGOAL Compiler / REPL"};
@@ -46,17 +49,33 @@ int main(int argc, char** argv) {
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
   app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
+  app.add_option("--debug-port", debug_port,
+                 "Specify the port for the JSON debug server that external debuggers (such as the "
+                 "VS Code extension) connect to.  Defaults to 8128 for jak1, 8129 for jak2, 8130 "
+                 "for jak3");
   app.add_flag("--user-auto", auto_find_user,
                "Attempt to automatically deduce the user, overrides '--user'");
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.add_option("--iso-path", iso_path_override, "Specify the location of the 'iso_data/' folder");
+  app.add_option("--instruction-set", instr_set_name,
+                 "Select the x86 or ARM64 code generation backend.");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
   GameVersion game_version = game_name_to_version(game);
+
+  emitter::InstructionSet instr_set;
+  if (instr_set_name == "x86") {
+    instr_set = emitter::InstructionSet::X86;
+  } else if (instr_set_name == "arm64") {
+    instr_set = emitter::InstructionSet::ARM64;
+  } else {
+    lg::error("Instruction set '{}' must be 'x86' or 'arm64'", instr_set_name);
+    return 1;
+  }
 
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {
@@ -86,6 +105,7 @@ int main(int argc, char** argv) {
   auto startup_file = REPL::load_user_startup_file(username, game_version);
   // Load the user's REPL config
   auto repl_config = REPL::load_repl_config(username, game_version, nrepl_port);
+  repl_config.temp_debug_port = debug_port;
 
   // Check for a custom ISO path before we instantiate the compiler.
   if (!iso_path_override.empty()) {
@@ -103,7 +123,7 @@ int main(int argc, char** argv) {
   // if a command is provided on the command line, no REPL just run the compiler on it
   try {
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>(game_version, emitter::InstructionSet::X86);
+      compiler = std::make_unique<Compiler>(game_version, instr_set);
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
@@ -127,11 +147,27 @@ int main(int argc, char** argv) {
   ReplServer repl_server(shutdown_callback, repl_config.get_nrepl_port());
   bool nrepl_server_ok = repl_server.init_server(true);
   std::thread nrepl_thread;
+
+  // Initialize the debug server socket for external debuggers to connect to
+  DebugServer debug_server(shutdown_callback, repl_config.get_debug_port());
+  bool debug_server_ok = debug_server.init_server(true);
+  std::thread debug_thread;
+
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     compiler = std::make_unique<Compiler>(
-        game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
+        game_version, instr_set, std::make_optional(repl_config), username,
         std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
+
+    if (debug_server_ok) {
+      debug_server.set_compiler(compiler.get(), &compiler_mutex);
+      debug_thread = std::thread([&]() {
+        while (!shutdown_callback()) {
+          debug_server.run_once();
+        }
+      });
+    }
+
     // Start nREPL Server if it spun up successfully
     if (nrepl_server_ok) {
       nrepl_thread = std::thread([&]() {
@@ -158,8 +194,11 @@ int main(int argc, char** argv) {
           compiler->save_repl_history();
         }
         compiler = std::make_unique<Compiler>(
-            game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
+            game_version, instr_set, std::make_optional(repl_config), username,
             std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
+        if (debug_server_ok) {
+          debug_server.set_compiler(compiler.get(), &compiler_mutex);
+        }
         status = ReplStatus::OK;
       }
       // process user input
@@ -181,6 +220,10 @@ int main(int argc, char** argv) {
   if (nrepl_server_ok) {
     repl_server.shutdown_server();
     nrepl_thread.join();
+  }
+  if (debug_server_ok) {
+    debug_server.shutdown_server();
+    debug_thread.join();
   }
   return 0;
 }

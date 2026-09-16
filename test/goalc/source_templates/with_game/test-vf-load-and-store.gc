@@ -6,6 +6,18 @@
     (set! (-> vector-0 z) 3.0)
     (set! (-> vector-0 w) 4.0)
     
+    ;; :reg needs a literal vector register for this backend
+    (#cond
+     ((eq? INSTRUCTION_SET 'arm64)
+    (rlet ((vf1 :class vf  :reset-here #t)
+           (vf2 :class vf :reg v1 :reset-here #t))
+          (.lvf vf1 vector-0)
+          (.nop.vf)
+          (.mov vf2 vf1)
+          (.nop.vf)
+          (.svf (-> vector-1 vector 0) vf2)
+          ))
+     (#t
     (rlet ((vf1 :class vf  :reset-here #t)
            (vf2 :class vf :reg xmm1 :reset-here #t))
           (.lvf vf1 vector-0)
@@ -13,7 +25,7 @@
           (.mov vf2 vf1)
           (.nop.vf)
           (.svf (-> vector-1 vector 0) vf2)
-          )
+          )))
     
     (-> vector-1 vector 0 y)
     )

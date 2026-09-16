@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/regalloc/IRegSet.h"
 #include "goalc/regalloc/IRegister.h"
@@ -20,6 +21,7 @@
  * Information about an instruction needed for register allocation.
  * The model is this:
  *   instruction reads all read registers
+ *   a call overwrites values not preserved by the register model
  *   instruction writes junk into all clobber registers
  *   instruction writes all write registers
  *
@@ -34,7 +36,8 @@ struct RegAllocInstr {
   std::vector<int> jumps;                  // RegAllocInstr indexes of possible jumps
   bool fallthrough = true;                 // can it fall through to the next instruction
   bool is_move = false;                    // is this a move?
-  std::string print() const;
+  bool is_call = false;                    // is this a function call?
+  std::string print(emitter::InstructionSet instr_set) const;
 
   /*!
    * Does this read IReg id?
@@ -57,6 +60,17 @@ struct RegAllocInstr {
     }
     return false;
   }
+
+  bool clobbers(emitter::Register reg,
+                RegClass reg_class,
+                emitter::InstructionSet instr_set) const {
+    for (const auto& clobbered : clobber) {
+      if (clobbered == reg) {
+        return true;
+      }
+    }
+    return is_call && !emitter::reg_info(instr_set).is_preserved_across_call(reg, reg_class);
+  }
 };
 
 /*!
@@ -74,7 +88,7 @@ struct StackOp {
 
   std::vector<Op> ops;
 
-  std::string print() const;
+  std::string print(emitter::InstructionSet instr_set) const;
 };
 
 /*!
@@ -87,7 +101,7 @@ struct Assignment {
   emitter::Register reg = -1;  //! where the IRegister is now
   bool spilled = false;        //! are we ever spilled
 
-  std::string to_string() const;
+  std::string to_string(emitter::InstructionSet instr_set) const;
 
   bool occupies_same_reg(const Assignment& other) const { return other.reg == reg && (reg != -1); }
 
@@ -154,11 +168,12 @@ struct AllocationResult {
  * Input to the allocate_registers algorithm
  */
 struct AllocationInput {
-  std::vector<RegAllocInstr> instructions;           // all instructions in the function
-  std::vector<IRegConstraint> constraints;           // all register constraints
-  std::unordered_set<int> force_on_stack_regs;       // registers which must be on the stack
-  int max_vars = -1;                                 // maximum register id.
-  std::vector<std::string> debug_instruction_names;  // optional, for debug prints
+  std::vector<RegAllocInstr> instructions;      // all instructions in the function
+  std::vector<IRegConstraint> constraints;      // all register constraints
+  std::unordered_set<int> force_on_stack_regs;  // registers which must be on the stack
+  int max_vars = -1;                            // maximum register id.
+  emitter::InstructionSet instr_set = emitter::InstructionSet::X86;  // which register layout
+  std::vector<std::string> debug_instruction_names;                  // optional, for debug prints
   int stack_slots_for_stack_vars = 0;
   bool is_asm_function = false;
 
@@ -197,7 +212,7 @@ struct RegAllocBasicBlock {
                                  const std::vector<RegAllocInstr>& instructions);
   void analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
                                  const std::vector<RegAllocInstr>& instructions);
-  std::string print(const std::vector<RegAllocInstr>& insts);
+  std::string print(const std::vector<RegAllocInstr>& insts, emitter::InstructionSet instr_set);
   std::string print_summary();
 };
 

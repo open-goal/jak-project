@@ -14,7 +14,21 @@ enum LinkKind {
   LINK_DISTANCE_TO_OTHER_SEG_64 = 3,  //! link to another segment
   LINK_DISTANCE_TO_OTHER_SEG_32 = 4,  //! link to another segment
   LINK_PTR = 5,                       //! link a pointer within this segment
+  LINK_ARM64_SYMBOL_MOV32 = 6,        //! symbol offset encoded in a movz/movk pair
+  LINK_ARM64_OTHER_SEG_MOV32 = 7,     //! cross-segment address encoded in a movz/movk pair
 };
+
+/*!
+ * Read a 32-bit value from an ARM64 movz/movk pair.
+ */
+inline u32 arm64_read_mov32(const u32* words) {
+  return ((words[0] >> 5) & 0xffff) | (((words[1] >> 5) & 0xffff) << 16);
+}
+
+inline void arm64_write_mov32(u32* words, u32 value) {
+  words[0] = (words[0] & ~(0xffffu << 5)) | ((value & 0xffff) << 5);
+  words[1] = (words[1] & ~(0xffffu << 5)) | (((value >> 16) & 0xffff) << 5);
+}
 
 enum SegmentTypes { MAIN_SEGMENT = 0, DEBUG_SEGMENT = 1, TOP_LEVEL_SEGMENT = 2 };
 

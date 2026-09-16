@@ -21,25 +21,97 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-# - Try to find the libssh2 library
-# Once done this will define
+# Find the libssh2 library
 #
-# LIBSSH2_FOUND - system has the libssh2 library
-# LIBSSH2_INCLUDE_DIR - the libssh2 include directory
-# LIBSSH2_LIBRARY - the libssh2 library name
+# Input variables:
+#
+# - `LIBSSH2_INCLUDE_DIR`:      Absolute path to libssh2 include directory.
+# - `LIBSSH2_LIBRARY`:          Absolute path to `libssh2` library.
+# - `LIBSSH2_USE_STATIC_LIBS`:  Configure for static libssh2 libraries.
+#
+# Defines:
+#
+# - `LIBSSH2_FOUND`:            System has libssh2.
+# - `LIBSSH2_VERSION`:          Version of libssh2.
+# - `CURL::libssh2`:            libssh2 library target.
 
-find_path(LIBSSH2_INCLUDE_DIR libssh2.h)
+set(_libssh2_pc_requires "libssh2")
 
-find_library(LIBSSH2_LIBRARY NAMES ssh2 libssh2)
-
-if(LIBSSH2_INCLUDE_DIR)
-  file(STRINGS "${LIBSSH2_INCLUDE_DIR}/libssh2.h" libssh2_version_str REGEX "^#define[\t ]+LIBSSH2_VERSION[\t ]+\"(.*)\"")
-  string(REGEX REPLACE "^.*\"([^\"]+)\"" "\\1"  LIBSSH2_VERSION "${libssh2_version_str}")
+if(NOT DEFINED LIBSSH2_INCLUDE_DIR AND
+   NOT DEFINED LIBSSH2_LIBRARY)
+  if(CURL_USE_PKGCONFIG)
+    find_package(PkgConfig QUIET)
+    pkg_check_modules(_libssh2 ${_libssh2_pc_requires})
+  endif()
+  if(NOT _libssh2_FOUND AND CURL_USE_CMAKECONFIG)
+    find_package(libssh2 CONFIG QUIET)
+  endif()
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LibSSH2
-    REQUIRED_VARS LIBSSH2_LIBRARY LIBSSH2_INCLUDE_DIR
-    VERSION_VAR LIBSSH2_VERSION)
+if(_libssh2_FOUND AND _libssh2_INCLUDE_DIRS)
+  set(Libssh2_FOUND TRUE)
+  set(LIBSSH2_FOUND TRUE)
+  set(LIBSSH2_VERSION ${_libssh2_VERSION})
+  if(LIBSSH2_USE_STATIC_LIBS)
+    set(_libssh2_CFLAGS       "${_libssh2_STATIC_CFLAGS}")
+    set(_libssh2_INCLUDE_DIRS "${_libssh2_STATIC_INCLUDE_DIRS}")
+    set(_libssh2_LIBRARY_DIRS "${_libssh2_STATIC_LIBRARY_DIRS}")
+    set(_libssh2_LIBRARIES    "${_libssh2_STATIC_LIBRARIES}")
+  endif()
+  message(STATUS "Found Libssh2 (via pkg-config): ${_libssh2_INCLUDE_DIRS} (found version \"${LIBSSH2_VERSION}\")")
+elseif(libssh2_CONFIG)
+  set(Libssh2_FOUND TRUE)
+  set(LIBSSH2_FOUND TRUE)
+  set(LIBSSH2_VERSION ${libssh2_VERSION})
+  if(LIBSSH2_USE_STATIC_LIBS)
+    set(_libssh2_LIBRARIES libssh2::libssh2_static)
+  else()
+    set(_libssh2_LIBRARIES libssh2::libssh2)
+  endif()
+  message(STATUS "Found Libssh2 (via CMake Config): ${libssh2_CONFIG} (found version \"${LIBSSH2_VERSION}\")")
+else()
+  find_path(LIBSSH2_INCLUDE_DIR NAMES "libssh2.h")
+  if(LIBSSH2_USE_STATIC_LIBS)
+    find_library(LIBSSH2_LIBRARY NAMES "ssh2_static" "libssh2_static" "ssh2" "libssh2")
+  else()
+    find_library(LIBSSH2_LIBRARY NAMES "ssh2" "libssh2")
+  endif()
 
-mark_as_advanced(LIBSSH2_INCLUDE_DIR LIBSSH2_LIBRARY)
+  unset(LIBSSH2_VERSION CACHE)
+  if(LIBSSH2_INCLUDE_DIR AND EXISTS "${LIBSSH2_INCLUDE_DIR}/libssh2.h")
+    set(_version_regex "#[\t ]*define[\t ]+LIBSSH2_VERSION[\t ]+\"([^\"]*)\"")
+    file(STRINGS "${LIBSSH2_INCLUDE_DIR}/libssh2.h" _version_str REGEX "${_version_regex}")
+    string(REGEX REPLACE "${_version_regex}" "\\1" _version_str "${_version_str}")
+    set(LIBSSH2_VERSION "${_version_str}")
+    unset(_version_regex)
+    unset(_version_str)
+  endif()
+
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(Libssh2
+    REQUIRED_VARS
+      LIBSSH2_INCLUDE_DIR
+      LIBSSH2_LIBRARY
+    VERSION_VAR
+      LIBSSH2_VERSION
+  )
+
+  if(LIBSSH2_FOUND)
+    set(_libssh2_INCLUDE_DIRS ${LIBSSH2_INCLUDE_DIR})
+    set(_libssh2_LIBRARIES    ${LIBSSH2_LIBRARY})
+  endif()
+
+  mark_as_advanced(LIBSSH2_INCLUDE_DIR LIBSSH2_LIBRARY)
+endif()
+
+if(LIBSSH2_FOUND)
+  if(NOT TARGET CURL::libssh2)
+    add_library(CURL::libssh2 INTERFACE IMPORTED)
+    set_target_properties(CURL::libssh2 PROPERTIES
+      INTERFACE_LIBCURL_PC_MODULES "${_libssh2_pc_requires}"
+      INTERFACE_COMPILE_OPTIONS "${_libssh2_CFLAGS}"
+      INTERFACE_INCLUDE_DIRECTORIES "${_libssh2_INCLUDE_DIRS}"
+      INTERFACE_LINK_DIRECTORIES "${_libssh2_LIBRARY_DIRS}"
+      INTERFACE_LINK_LIBRARIES "${_libssh2_LIBRARIES}")
+  endif()
+endif()

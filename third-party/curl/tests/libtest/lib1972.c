@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2022, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -21,27 +21,25 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "memdebug.h"
-
-int test(char *URL)
+static CURLcode test_lib1972(const char *URL)
 {
   CURL *curl;
   curl_mime *mime = NULL;
   curl_mimepart *part = NULL;
-  CURLcode res = TEST_ERR_MAJOR_BAD;
+  CURLcode result = TEST_ERR_MAJOR_BAD;
   struct curl_slist *list = NULL;
   struct curl_slist *connect_to = NULL;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -55,22 +53,22 @@ int test(char *URL)
   curl_mime_name(part, "foo");
   curl_mime_data(part, "bar", CURL_ZERO_TERMINATED);
 
-  test_setopt(curl, CURLOPT_MIMEPOST, mime);
-  test_setopt(curl, CURLOPT_VERBOSE, 1L);
-  test_setopt(curl, CURLOPT_AWS_SIGV4, "aws:amz:us-east-1:s3");
-  test_setopt(curl, CURLOPT_USERPWD, "xxx");
-  test_setopt(curl, CURLOPT_HEADER, 0L);
-  test_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  easy_setopt(curl, CURLOPT_AWS_SIGV4, "aws:amz:us-east-1:s3");
+  easy_setopt(curl, CURLOPT_USERPWD, "xxx");
+  easy_setopt(curl, CURLOPT_HEADER, 0L);
+  easy_setopt(curl, CURLOPT_URL, URL);
   list = curl_slist_append(list, "Content-Type: application/json");
   if(!list)
     goto test_cleanup;
-  test_setopt(curl, CURLOPT_HTTPHEADER, list);
+  easy_setopt(curl, CURLOPT_HTTPHEADER, list);
   if(libtest_arg2) {
     connect_to = curl_slist_append(connect_to, libtest_arg2);
   }
-  test_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
+  easy_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
 
-  res = curl_easy_perform(curl);
+  result = curl_easy_perform(curl);
 
 test_cleanup:
 
@@ -80,5 +78,5 @@ test_cleanup:
   curl_mime_free(mime);
   curl_global_cleanup();
 
-  return res;
+  return result;
 }

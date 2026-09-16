@@ -1,0 +1,232 @@
+/* Capstone Disassembly Engine */
+/* By Dmitry Sibirtsev <sibirtsevdl@gmail.com>, 2023 */
+
+#ifdef CAPSTONE_HAS_ALPHA
+
+#include <stdio.h> // debug
+#include <string.h>
+
+#include "../../Mapping.h"
+#include "../../cs_priv.h"
+#include "../../cs_simple_types.h"
+#include "../../utils.h"
+
+#include "AlphaLinkage.h"
+#include "AlphaMapping.h"
+#include "./AlphaDisassembler.h"
+
+#define GET_INSTRINFO_ENUM
+
+#include "AlphaGenInstrInfo.inc"
+
+static const insn_map insns[] = {
+#include "AlphaGenCSMappingInsn.inc"
+};
+
+const insn_map *Alpha_insns = insns;
+const unsigned int Alpha_insn_count = ARR_SIZE(insns);
+
+static const map_insn_ops insn_operands[] = {
+#include "AlphaGenCSMappingInsnOp.inc"
+};
+
+void Alpha_init_cs_detail(MCInst *MI)
+{
+	if (detail_is_set(MI)) {
+		memset(get_detail(MI), 0,
+		       offsetof(cs_detail, alpha) + sizeof(cs_alpha));
+	}
+}
+
+void Alpha_add_cs_detail(MCInst *MI, unsigned OpNum)
+{
+	if (!detail_is_set(MI))
+		return;
+
+	cs_op_type op_type = map_get_op_type(MI, OpNum);
+	if (op_type == CS_OP_IMM)
+		Alpha_set_detail_op_imm(MI, OpNum, ALPHA_OP_IMM,
+					MCInst_getOpVal(MI, OpNum));
+	else if (op_type == CS_OP_REG)
+		Alpha_set_detail_op_reg(MI, OpNum, MCInst_getOpVal(MI, OpNum));
+	else
+		CS_ASSERT_RET(0 && "Op type not handled.");
+}
+
+void Alpha_set_detail_op_imm(MCInst *MI, unsigned OpNum, alpha_op_type ImmType,
+			     int64_t Imm)
+{
+	if (!detail_is_set(MI))
+		return;
+	CS_ASSERT_RET(!(map_get_op_type(MI, OpNum) & CS_OP_MEM));
+	CS_ASSERT_RET(map_get_op_type(MI, OpNum) == CS_OP_IMM);
+	CS_ASSERT_RET(ImmType == ALPHA_OP_IMM);
+
+	Alpha_get_detail_op(MI, 0)->type = ImmType;
+	Alpha_get_detail_op(MI, 0)->imm = Imm;
+	Alpha_get_detail_op(MI, 0)->access = map_get_op_access(MI, OpNum);
+	Alpha_inc_op_count(MI);
+}
+
+void Alpha_set_detail_op_reg(MCInst *MI, unsigned OpNum, alpha_op_type Reg)
+{
+	if (!detail_is_set(MI))
+		return;
+	CS_ASSERT_RET(!(map_get_op_type(MI, OpNum) & CS_OP_MEM));
+	CS_ASSERT_RET(map_get_op_type(MI, OpNum) == CS_OP_REG);
+
+	Alpha_get_detail_op(MI, 0)->type = ALPHA_OP_REG;
+	Alpha_get_detail_op(MI, 0)->reg = Reg;
+	Alpha_get_detail_op(MI, 0)->access = map_get_op_access(MI, OpNum);
+	Alpha_inc_op_count(MI);
+}
+
+// given internal insn id, return public instruction info
+void Alpha_get_insn_id(cs_struct *h, cs_insn *insn, unsigned int id)
+{
+	insn_map const *insn_map = NULL;
+
+	if (!(insn_map = lookup_insn_map(h, id)))
+		return;
+	insn->id = insn_map->mapid;
+
+	if (insn->detail) {
+#ifndef CAPSTONE_DIET
+		memcpy(insn->detail->regs_read, insn_map->regs_use,
+		       sizeof(insn_map->regs_use));
+		insn->detail->regs_read_count =
+			(uint8_t)count_positive(insn_map->regs_use);
+
+		memcpy(insn->detail->regs_write, insn_map->regs_mod,
+		       sizeof(insn_map->regs_mod));
+		insn->detail->regs_write_count =
+			(uint8_t)count_positive(insn_map->regs_mod);
+
+		memcpy(insn->detail->groups, insn_map->groups,
+		       sizeof(insn_map->groups));
+		insn->detail->groups_count =
+			(uint8_t)count_positive8(insn_map->groups);
+#endif
+	}
+}
+
+#ifndef CAPSTONE_DIET
+
+static const char *const insn_names[] = {
+#include "AlphaGenCSMappingInsnName.inc"
+};
+
+// special alias insn
+// static name_map alias_insn_names[] = {{0, NULL}};
+#endif
+
+const char *Alpha_insn_name(csh handle, unsigned int id)
+{
+#ifndef CAPSTONE_DIET
+	if (id >= ALPHA_INS_ENDING)
+		return NULL;
+
+	if (id < ARR_SIZE(insn_names))
+		return insn_names[id];
+
+	return NULL;
+#else
+	return NULL;
+#endif
+}
+
+#ifndef CAPSTONE_DIET
+static const name_map group_name_maps[] = {
+	{ ALPHA_GRP_INVALID, NULL },
+	{ ALPHA_GRP_CALL, "call" },
+	{ ALPHA_GRP_JUMP, "jump" },
+	{ ALPHA_GRP_BRANCH_RELATIVE, "branch_relative" },
+};
+#endif
+
+const char *Alpha_group_name(csh handle, unsigned int id)
+{
+#ifndef CAPSTONE_DIET
+	return id2name(group_name_maps, ARR_SIZE(group_name_maps), id);
+#else
+	return NULL;
+#endif
+}
+
+const char *Alpha_getRegisterName(csh handle, unsigned int id)
+{
+	return ALPHA_LLVM_getRegisterName(handle, id);
+}
+
+void Alpha_printInst(MCInst *MI, SStream *O, void *Info)
+{
+	ALPHA_LLVM_printInstruction(MI, O, Info);
+}
+
+void Alpha_set_instr_map_data(MCInst *MI)
+{
+	map_cs_id(MI, insns, ARR_SIZE(insns));
+	map_implicit_reads(MI, insns);
+	map_implicit_writes(MI, insns);
+	map_groups(MI, insns);
+}
+
+bool Alpha_getInstruction(csh handle, const uint8_t *code, size_t code_len,
+			  MCInst *instr, uint16_t *size, uint64_t address,
+			  void *info)
+{
+	Alpha_init_cs_detail(instr);
+	DecodeStatus Result = ALPHA_LLVM_getInstruction(
+		handle, code, code_len, instr, size, address, info);
+	Alpha_set_instr_map_data(instr);
+	if (Result == MCDisassembler_SoftFail) {
+		MCInst_setSoftFail(instr);
+	}
+	return Result != MCDisassembler_Fail;
+}
+
+#ifndef CAPSTONE_DIET
+void Alpha_reg_access(const cs_insn *insn, cs_regs regs_read,
+		      uint8_t *regs_read_count, cs_regs regs_write,
+		      uint8_t *regs_write_count)
+{
+	uint8_t i;
+	uint8_t read_count, write_count;
+	cs_alpha *alpha = &(insn->detail->alpha);
+
+	read_count = insn->detail->regs_read_count;
+	write_count = insn->detail->regs_write_count;
+
+	// implicit registers
+	memcpy(regs_read, insn->detail->regs_read,
+	       read_count * sizeof(insn->detail->regs_read[0]));
+	memcpy(regs_write, insn->detail->regs_write,
+	       write_count * sizeof(insn->detail->regs_write[0]));
+
+	// explicit registers
+	for (i = 0; i < alpha->op_count; i++) {
+		cs_alpha_op *op = &(alpha->operands[i]);
+		switch ((int)op->type) {
+		case ALPHA_OP_REG:
+			if ((op->access & CS_AC_READ) &&
+			    !arr_exist(regs_read, read_count, op->reg)) {
+				regs_read[read_count] = (uint16_t)op->reg;
+				read_count++;
+			}
+			if ((op->access & CS_AC_WRITE) &&
+			    !arr_exist(regs_write, write_count, op->reg)) {
+				regs_write[write_count] = (uint16_t)op->reg;
+				write_count++;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	*regs_read_count = read_count;
+	*regs_write_count = write_count;
+}
+#endif
+
+#endif

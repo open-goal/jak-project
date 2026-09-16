@@ -24,22 +24,17 @@
 #include "tool_setup.h"
 
 #ifdef HAVE_PWD_H
-#  undef __NO_NET_API /* required for building for AmigaOS */
-#  include <pwd.h>
+#ifdef __AMIGA__
+#undef __NO_NET_API /* required for AmigaOS to declare getpwuid() */
 #endif
-
-#ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#include <pwd.h>
+#ifdef __AMIGA__
+#define __NO_NET_API
 #endif
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
 #endif
-
-#include <curl/mprintf.h>
 
 #include "tool_findfile.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include "tool_cfgable.h"
 
 struct finder {
   const char *env;
@@ -51,12 +46,12 @@ struct finder {
    in the findfile() function */
 static const struct finder conf_list[] = {
   { "CURL_HOME", NULL, FALSE },
-  { "XDG_CONFIG_HOME", NULL, FALSE }, /* index == 1, used in the code */
+  { "XDG_CONFIG_HOME", NULL, TRUE },
   { "HOME", NULL, FALSE },
-#ifdef WIN32
+#ifdef _WIN32
   { "USERPROFILE", NULL, FALSE },
   { "APPDATA", NULL, FALSE },
-  { "USERPROFILE", "\\Application Data", FALSE},
+  { "USERPROFILE", "\\Application Data", FALSE },
 #endif
   /* these are for .curlrc if XDG_CONFIG_HOME is not defined */
   { "CURL_HOME", "/.config", TRUE },
@@ -67,7 +62,7 @@ static const struct finder conf_list[] = {
 
 static char *checkhome(const char *home, const char *fname, bool dotscore)
 {
-  const char pref[2] = { '.', '_' };
+  static const char pref[2] = { '.', '_' };
   int i;
   for(i = 0; i < (dotscore ? 2 : 1); i++) {
     char *c;
@@ -76,10 +71,10 @@ static char *checkhome(const char *home, const char *fname, bool dotscore)
     else
       c = curl_maprintf("%s" DIR_CHAR "%s", home, fname);
     if(c) {
-      int fd = open(c, O_RDONLY);
+      int fd = curlx_open(c, O_RDONLY);
       if(fd >= 0) {
-        char *path = strdup(c);
-        close(fd);
+        char *path = curlx_strdup(c);
+        curlx_close(fd);
         curl_free(c);
         return path;
       }
@@ -90,19 +85,19 @@ static char *checkhome(const char *home, const char *fname, bool dotscore)
 }
 
 /*
- * findfile() - return the full path name of the file.
+ * findfile() - returns the full path name of the file. It must be freed with
+ * curl_free().
  *
  * If 'dotscore' is TRUE, then check for the file first with a leading dot
  * and then with a leading underscore.
  *
  * 1. Iterate over the environment variables in order, and if set, check for
  *    the given file to be accessed there, then it is a match.
- * 2. Non-windows: try getpwuid
+ * 2. Non-Windows: try getpwuid
  */
 char *findfile(const char *fname, int dotscore)
 {
   int i;
-  bool xdg = FALSE;
   DEBUGASSERT(fname && fname[0]);
   DEBUGASSERT((dotscore != 1) || (fname[0] == '.'));
 
@@ -114,8 +109,6 @@ char *findfile(const char *fname, int dotscore)
     if(home) {
       char *path;
       const char *filename = fname;
-      if(i == 1 /* XDG_CONFIG_HOME */)
-        xdg = TRUE;
       if(!home[0]) {
         curl_free(home);
         continue;
@@ -128,7 +121,7 @@ char *findfile(const char *fname, int dotscore)
         home = c;
       }
       if(conf_list[i].withoutdot) {
-        if(!dotscore || xdg) {
+        if(!dotscore) {
           /* this is not looking for .curlrc, or the XDG_CONFIG_HOME was
              defined so we skip the extended check */
           curl_free(home);
@@ -152,6 +145,6 @@ char *findfile(const char *fname, int dotscore)
         return checkhome(home, fname, FALSE);
     }
   }
-#endif /* PWD-stuff */
+#endif /* HAVE_GETPWUID && HAVE_GETEUID */
   return NULL;
 }

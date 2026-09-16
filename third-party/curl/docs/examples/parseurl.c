@@ -26,6 +26,7 @@
  * </DESC>
  */
 #include <stdio.h>
+
 #include <curl/curl.h>
 
 #if !CURL_AT_LEAST_VERSION(7, 62, 0)
@@ -48,10 +49,10 @@ int main(void)
   if(uc)
     goto fail;
 
-  /* extract host name from the parsed URL */
+  /* extract hostname from the parsed URL */
   uc = curl_url_get(h, CURLUPART_HOST, &host, 0);
   if(!uc) {
-    printf("Host name: %s\n", host);
+    printf("Hostname: %s\n", host);
     curl_free(host);
   }
 
@@ -75,6 +76,6 @@ int main(void)
   }
 
 fail:
-  curl_url_cleanup(h); /* free url handle */
+  curl_url_cleanup(h); /* free URL handle */
   return 0;
 }

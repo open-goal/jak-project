@@ -22,16 +22,17 @@
  *
  ***************************************************************************/
 /* <DESC>
- * Access HTTP server over unix domain socket
+ * Access HTTP server over Unix domain socket
  * </DESC>
  */
 #include <stdio.h>
+
 #include <curl/curl.h>
 
 #ifdef USE_ABSTRACT
 /*
  * The abstract socket namespace is a nonportable Linux extension. The name
- * has no connection with filesystem pathnames.
+ * has no connection with file system pathnames.
  */
 #define ABSTRACT "http-unix-domain"
 #else
@@ -41,7 +42,10 @@
 int main(void)
 {
   CURL *curl;
-  CURLcode res;
+
+  CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   curl = curl_easy_init();
   if(curl) {
@@ -53,15 +57,16 @@ int main(void)
     curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, PATH);
 #endif
 
-    /* Perform the request, res will get the return code */
-    res = curl_easy_perform(curl);
+    /* Perform the request, result gets the return code */
+    result = curl_easy_perform(curl);
     /* Check for errors */
-    if(res != CURLE_OK)
+    if(result != CURLE_OK)
       fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(res));
+              curl_easy_strerror(result));
 
     /* always cleanup */
     curl_easy_cleanup(curl);
   }
-  return 0;
+  curl_global_cleanup();
+  return (int)result;
 }

@@ -67,6 +67,7 @@ class OpenGlDebugGui {
   bool record_events = false;
   int max_event_buffer_size = 65536;
   bool want_reboot_in_debug = false;
+  bool want_reboot_in_retail = false;
 
   bool screenshot_hotkey_enabled = true;
 

@@ -20,16 +20,16 @@ void print_allocate_input(const AllocationInput& in) {
       //      lg::print(" [{}] {} -> {}\n", in.debug_instruction_names.at(i),
       //                 in.instructions.at(i).print());
       lg::print(" [{:3d}] {:30} -> {:30}\n", i, in.debug_instruction_names.at(i),
-                in.instructions.at(i).print());
+                in.instructions.at(i).print(in.instr_set));
     }
   } else {
     for (const auto& instruction : in.instructions) {
-      lg::print(" {}\n", instruction.print());
+      lg::print(" {}\n", instruction.print(in.instr_set));
     }
   }
   lg::print("[RegAlloc] Debug Input Constraints:\n");
   for (const auto& c : in.constraints) {
-    lg::print(" {}\n", c.to_string());
+    lg::print(" {}\n", c.to_string(in.instr_set));
   }
 
   lg::print("\n");
@@ -49,7 +49,8 @@ void print_result(const AllocationInput& in, const AllocationResult& result) {
 
     for (int j = 0; j < in.max_vars; j++) {
       if (result.ass_as_ranges.at(j).is_live_at_instr(i)) {
-        lives += std::to_string(j) + " " + result.ass_as_ranges.at(j).get(i).to_string() + "  ";
+        lives += std::to_string(j) + " " +
+                 result.ass_as_ranges.at(j).get(i).to_string(in.instr_set) + "  ";
       }
     }
 
@@ -63,11 +64,11 @@ void print_result(const AllocationInput& in, const AllocationResult& result) {
       code_str.push_back('~');
     }
     printf("[%03d] %30s | %30s | %30s\n", (int)i, code_str.c_str(), lives.c_str(),
-           result.stack_ops.at(i).print().c_str());
+           result.stack_ops.at(i).print(in.instr_set).c_str());
   }
 }
 
-std::string Assignment::to_string() const {
+std::string Assignment::to_string(emitter::InstructionSet instr_set) const {
   std::string result;
   if (spilled) {
     result += "*";
@@ -77,7 +78,7 @@ std::string Assignment::to_string() const {
       result += fmt::format("s[{:2d}]", stack_slot);
       break;
     case Kind::REGISTER:
-      result += emitter::gRegInfo.get_info(reg).name;
+      result += emitter::reg_info(instr_set).get_info(reg).name;
       break;
     case Kind::UNASSIGNED:
       result += "unassigned";
@@ -279,11 +280,12 @@ std::string RegAllocBasicBlock::print_summary() {
   return result;
 }
 
-std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) {
+std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts,
+                                      emitter::InstructionSet instr_set) {
   std::string result = print_summary() + "\n";
   int k = 0;
   for (auto instr : instr_idx) {
-    std::string line = insts.at(instr).print();
+    std::string line = insts.at(instr).print(instr_set);
     constexpr int pad_len = 30;
     if (line.length() < pad_len) {
       // line.insert(line.begin(), pad_len - line.length(), ' ');
@@ -306,7 +308,7 @@ std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) {
 /*!
  * Print for debugging
  */
-std::string RegAllocInstr::print() const {
+std::string RegAllocInstr::print(emitter::InstructionSet instr_set) const {
   bool first = true;
   std::string result = "(";
 
@@ -338,9 +340,17 @@ std::string RegAllocInstr::print() const {
     first = false;
     result += "(clobber";
     for (auto& i : clobber) {
-      result += " " + i.print();
+      result += " " + i.print(instr_set);
     }
     result += ")";
+  }
+
+  if (is_call) {
+    if (!first) {
+      result += " ";
+    }
+    first = false;
+    result += "(call)";
   }
 
   if (!jumps.empty()) {
@@ -358,16 +368,18 @@ std::string RegAllocInstr::print() const {
   return result;
 }
 
-std::string StackOp::print() const {
+std::string StackOp::print(emitter::InstructionSet instr_set) const {
   std::string result;
   bool added = false;
   for (const auto& op : ops) {
     if (op.load) {
-      result += fmt::format("{} <- [{:2d}], ", emitter::gRegInfo.get_info(op.reg).name, op.slot);
+      result += fmt::format("{} <- [{:2d}], ", emitter::reg_info(instr_set).get_info(op.reg).name,
+                            op.slot);
       added = true;
     }
     if (op.store) {
-      result += fmt::format("{} -> [{:2d}], ", emitter::gRegInfo.get_info(op.reg).name, op.slot);
+      result += fmt::format("{} -> [{:2d}], ", emitter::reg_info(instr_set).get_info(op.reg).name,
+                            op.slot);
       added = true;
     }
   }

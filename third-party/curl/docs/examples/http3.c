@@ -22,34 +22,38 @@
  *
  ***************************************************************************/
 /* <DESC>
- * Very simple HTTP/3 GET
+ * Simple HTTP/3 GET
  * </DESC>
  */
 #include <stdio.h>
+
 #include <curl/curl.h>
 
 int main(void)
 {
   CURL *curl;
-  CURLcode res;
+
+  CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   curl = curl_easy_init();
   if(curl) {
     curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
 
     /* Use HTTP/3 but fallback to earlier HTTP if necessary */
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION,
-                     (long)CURL_HTTP_VERSION_3);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_3);
 
-    /* Perform the request, res will get the return code */
-    res = curl_easy_perform(curl);
+    /* Perform the request, result gets the return code */
+    result = curl_easy_perform(curl);
     /* Check for errors */
-    if(res != CURLE_OK)
+    if(result != CURLE_OK)
       fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(res));
+              curl_easy_strerror(result));
 
     /* always cleanup */
     curl_easy_cleanup(curl);
   }
+  curl_global_cleanup();
   return 0;
 }

@@ -34,9 +34,9 @@ RegVal* Val::to_fpr(const goos::Object& form, Env* fe) {
 }
 
 /*!
- * Fallback to_xmm128 if a more optimized one is not provided.
+ * Fallback to_simd128 if a more optimized one is not provided.
  */
-RegVal* Val::to_xmm128(const goos::Object& form, Env* fe) {
+RegVal* Val::to_simd128(const goos::Object& form, Env* fe) {
   auto rv = to_reg(form, fe);
   if (rv->ireg().reg_class == RegClass::INT_128 || rv->ireg().reg_class == RegClass::VECTOR_FLOAT) {
     return rv;
@@ -72,7 +72,7 @@ RegVal* RegVal::to_fpr(const goos::Object& form, Env* fe) {
   }
 }
 
-RegVal* RegVal::to_xmm128(const goos::Object& form, Env* fe) {
+RegVal* RegVal::to_simd128(const goos::Object& form, Env* fe) {
   if (m_ireg.reg_class == RegClass::INT_128 || m_ireg.reg_class == RegClass::VECTOR_FLOAT) {
     return this;
   } else {
@@ -98,19 +98,19 @@ RegVal* IntegerConstantVal::to_reg(const goos::Object& form, Env* fe) {
   } else {
     auto rv = fe->make_ireg(m_ts, RegClass::INT_128);
     auto gpr = fe->make_gpr(TypeSpec("object"));
-    auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
+    auto simd_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
     fe->emit_ir<IR_LoadConstant64>(form, gpr, m_value.value_128_lo());
-    fe->emit_ir<IR_RegSet>(form, xmm_temp, gpr);
+    fe->emit_ir<IR_RegSet>(form, simd_temp, gpr);
     fe->emit_ir<IR_LoadConstant64>(form, gpr, m_value.value_128_hi());
     fe->emit_ir<IR_RegSet>(form, rv, gpr);
-    fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+    fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, simd_temp, IR_Int128Math3Asm::Kind::PCPYLD);
 
     return rv;
   }
 }
 
-RegVal* IntegerConstantVal::to_xmm128(const goos::Object& form, Env* fe) {
+RegVal* IntegerConstantVal::to_simd128(const goos::Object& form, Env* fe) {
   if (m_value.is_zero()) {
     // if we are a constant 0, can use XOR
     auto rv = fe->make_ireg(m_ts, RegClass::INT_128);
@@ -243,8 +243,8 @@ RegVal* AliasVal::to_reg(const goos::Object& form, Env* fe) {
   return result;
 }
 
-RegVal* AliasVal::to_xmm128(const goos::Object& form, Env* fe) {
-  auto as_old_type = base->to_xmm128(form, fe);
+RegVal* AliasVal::to_simd128(const goos::Object& form, Env* fe) {
+  auto as_old_type = base->to_simd128(form, fe);
   auto result = fe->make_ireg(m_ts, as_old_type->ireg().reg_class);
   fe->emit(form, std::make_unique<IR_RegSet>(result, as_old_type));
   return result;
@@ -293,12 +293,12 @@ RegVal* BitFieldVal::to_reg(const goos::Object& form, Env* env) {
     env->emit(form, std::make_unique<IR_RegSet>(result, gpr));
   } else {
     // we need to get the value as a 128-bit integer
-    auto xmm = m_parent->to_reg(form, env);
-    ASSERT(xmm->ireg().reg_class == RegClass::INT_128);
-    auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
-    env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, xmm, xmm,
+    auto simd = m_parent->to_reg(form, env);
+    ASSERT(simd->ireg().reg_class == RegClass::INT_128);
+    auto simd_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
+    env->emit_ir<IR_Int128Math3Asm>(form, true, simd_temp, simd, simd,
                                     IR_Int128Math3Asm::Kind::PCPYUD);
-    env->emit_ir<IR_RegSet>(form, result, xmm_temp);
+    env->emit_ir<IR_RegSet>(form, result, simd_temp);
     start_bit = m_offset - 64;
   }
 

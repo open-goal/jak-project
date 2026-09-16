@@ -1,3 +1,9 @@
+<!--
+Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+
+SPDX-License-Identifier: curl
+-->
+
 # Items to be removed from future curl releases
 
 If any of these deprecated features is a cause for concern for you, please
@@ -6,43 +12,74 @@ email the
 as soon as possible and explain to us why this is a problem for you and
 how your use case cannot be satisfied properly using a workaround.
 
-## mingw v1
+## TLS-SRP Authentication
 
-We remove support for building curl with the original legacy mingw version 1
-in September 2023.
+Transport Layer Security Secure Remote Password is a TLS feature that does not
+work with TLS 1.3 or QUIC and is virtually unused by curl users and in
+general.
 
-During the deprecation period you can enable the support with the configure
-option `--with-mingw1-deprecated`.
+TLS-SRP support gets removed in August 2026.
 
-mingw version 1 is old and deprecated software. There are much better and
-still support build environments to use to build curl and other software. For
-example [MinGW-w64](https://www.mingw-w64.org/).
+## drop SMB support
 
-## space-separated `NOPROXY` patterns
+The SMB protocol has weak security and is rarely used these days.
 
-When specifying patterns/domain names for curl that should *not* go through a
-proxy, the curl tool features the `--noproxy` command line option and the
-library supports the `NO_PROXY` environment variable and the `CURLOPT_NOPROXY`
-libcurl option.
+SMB support gets removed in September 2026.
 
-They all set the same list of patterns. This list is documented to be a set of
-**comma-separated** names, but can also be provided separated with just
-space. The ability to just use spaces for this has never been documented but
-some users may still have come to rely on this.
+## drop NTLM support
 
-Several other tools and utilities also parse the `NO_PROXY` environment
-variable but do not consider a space to be a valid separator. Using spaces for
-separator is probably less portable and might cause more friction than commas
-do. Users should use commas for this for greater portability.
+The NTLM authentication method has weak security and is rarely used these
+days. It has been deprecated by Microsoft and does not work over HTTP/2 or
+HTTP/3.
 
-curl will remove the support for space-separated names in July 2024.
+NTLM support gets removed in September 2026
 
-## past removals
+## Local crypto implementations
 
- - Pipelining
- - axTLS
- - PolarSSL
- - NPN
- - Support for systems without 64 bit data types
- - NSS
- - gskit
+Since the dawn of time, curl bundles code for a few crypto and hash algorithms
+in order to enable functionality for builds without TLS libraries. This list
+includes MD4, MD5, SHA256, SHA256_512 and perhaps something more.
+
+Meanwhile, curl is almost always built to use a TLS/crypto library which for
+sure has better maintained and better performing versions of these algorithms.
+
+Also, the local curl implementations are not as widely tested since curl
+builds without TLS are rare.
+
+Since these implementations are going away, a good idea is to verify ahead of
+time that builds using your preferred TLS library use the crypto functions
+provided by that library and are not bundled by curl.
+
+The removal of local crypto functions subsequently disables some functions in
+future curl versions when built without TLS support. For example Digest.
+
+Local crypto gets removed in October 2026.
+
+## Past removals
+
+- axTLS (removed in 7.63.0)
+- Pipelining (removed in 7.65.0)
+- PolarSSL (removed in 7.69.0)
+- NPN (removed in 7.86.0)
+- Support for systems without 64-bit data types (removed in 8.0.0)
+- NSS (removed in 8.3.0)
+- gskit (removed in 8.3.0)
+- MinGW v1 (removed in 8.4.0)
+- NTLM_WB (removed in 8.8.0)
+- space-separated `NOPROXY` patterns (removed in 8.9.0)
+- hyper (removed in 8.12.0)
+- Support for Visual Studio 2005 and older (removed in 8.13.0)
+- Secure Transport (removed in 8.15.0)
+- BearSSL (removed in 8.15.0)
+- msh3 (removed in 8.16.0)
+- winbuild build system (removed in 8.17.0)
+- Windows CE (removed in 8.18.0)
+- Support for Visual Studio 2008 (removed in 8.18.0)
+- OpenSSL 1.1.1 and older (removed in 8.18.0)
+- Support for Windows XP (removed in 8.19.0)
+- OpenSSL-QUIC (removed in 8.19.0)
+- CMake 3.17 and older (removed in 8.20.0)
+- RTMP (removed in 8.20.0)
+- SMB (became opt-in in 8.20.0)
+- NTLM (became opt-in in 8.20.0)
+- c-ares < 1.16.0 (removed in 8.20.0)

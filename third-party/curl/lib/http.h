@@ -25,13 +25,8 @@
  ***************************************************************************/
 #include "curl_setup.h"
 
-#if defined(USE_MSH3) && !defined(_WIN32)
-#include <pthread.h>
-#endif
-
 #include "bufq.h"
 #include "dynhds.h"
-#include "ws.h"
 
 typedef enum {
   HTTPREQ_GET,
@@ -42,27 +37,30 @@ typedef enum {
   HTTPREQ_HEAD
 } Curl_HttpReq;
 
+#define CURL_HTTP_V1x   (1 << 0)
+#define CURL_HTTP_V2x   (1 << 1)
+#define CURL_HTTP_V3x   (1 << 2)
+/* bitmask of CURL_HTTP_V* values */
+typedef unsigned char http_majors;
+
 #ifndef CURL_DISABLE_HTTP
 
-#if defined(ENABLE_QUIC)
-#include <stdint.h>
-#endif
-
-extern const struct Curl_handler Curl_handler_http;
-
-#ifdef USE_SSL
-extern const struct Curl_handler Curl_handler_https;
-#endif
-
-#ifdef USE_WEBSOCKETS
-extern const struct Curl_handler Curl_handler_ws;
-
-#ifdef USE_SSL
-extern const struct Curl_handler Curl_handler_wss;
-#endif
-#endif /* websockets */
+extern const struct Curl_protocol Curl_protocol_http;
 
 struct dynhds;
+
+struct http_negotiation {
+  unsigned char rcvd_min; /* minimum version seen in responses, 09, 10, 11 */
+  http_majors wanted;  /* wanted major versions when talking to server */
+  http_majors allowed; /* allowed major versions when talking to server */
+  http_majors preferred; /* preferred major version when talking to server */
+  BIT(h2_upgrade);  /* Do HTTP Upgrade from 1.1 to 2 */
+  BIT(h2_prior_knowledge); /* Directly do HTTP/2 without ALPN/SSL */
+  BIT(accept_09); /* Accept an HTTP/0.9 response */
+  BIT(only_10); /* When using major version 1x, use only 1.0 */
+};
+
+void Curl_http_neg_init(struct Curl_easy *data, struct http_negotiation *neg);
 
 CURLcode Curl_bump_headersize(struct Curl_easy *data,
                               size_t delta,
@@ -81,86 +79,53 @@ char *Curl_checkProxyheaders(struct Curl_easy *data,
                              const struct connectdata *conn,
                              const char *thisheader,
                              const size_t thislen);
-struct HTTP; /* see below */
-CURLcode Curl_buffer_send(struct dynbuf *in,
-                          struct Curl_easy *data,
-                          struct HTTP *http,
-                          curl_off_t *bytes_written,
-                          curl_off_t included_body_bytes,
-                          int socketindex);
 
-CURLcode Curl_add_timecondition(struct Curl_easy *data,
-#ifndef USE_HYPER
-                                struct dynbuf *req
-#else
-                                void *headers
-#endif
-  );
-CURLcode Curl_add_custom_headers(struct Curl_easy *data,
-                                 bool is_connect,
-#ifndef USE_HYPER
-                                 struct dynbuf *req
-#else
-                                 void *headers
-#endif
-  );
-CURLcode Curl_dynhds_add_custom(struct Curl_easy *data,
-                                bool is_connect,
-                                struct dynhds *hds);
+CURLcode Curl_add_timecondition(struct Curl_easy *data, struct dynbuf *req);
+CURLcode Curl_add_custom_headers(struct Curl_easy *data, bool is_connect,
+                                 int httpversion, struct dynbuf *req);
 
-CURLcode Curl_http_compile_trailers(struct curl_slist *trailers,
-                                    struct dynbuf *buf,
-                                    struct Curl_easy *handle);
+void Curl_http_to_fold(struct dynbuf *bf);
 
-void Curl_http_method(struct Curl_easy *data, struct connectdata *conn,
-                      const char **method, Curl_HttpReq *);
-CURLcode Curl_http_useragent(struct Curl_easy *data);
-CURLcode Curl_http_host(struct Curl_easy *data, struct connectdata *conn);
-CURLcode Curl_http_target(struct Curl_easy *data, struct connectdata *conn,
-                          struct dynbuf *req);
-CURLcode Curl_http_statusline(struct Curl_easy *data,
-                              struct connectdata *conn);
-CURLcode Curl_http_header(struct Curl_easy *data, struct connectdata *conn,
-                          char *headp);
-CURLcode Curl_transferencode(struct Curl_easy *data);
-CURLcode Curl_http_body(struct Curl_easy *data, struct connectdata *conn,
-                        Curl_HttpReq httpreq,
-                        const char **teep);
-CURLcode Curl_http_bodysend(struct Curl_easy *data, struct connectdata *conn,
-                            struct dynbuf *r, Curl_HttpReq httpreq);
-bool Curl_use_http_1_1plus(const struct Curl_easy *data,
-                           const struct connectdata *conn);
-#ifndef CURL_DISABLE_COOKIES
-CURLcode Curl_http_cookies(struct Curl_easy *data,
-                           struct connectdata *conn,
-                           struct dynbuf *r);
-#else
-#define Curl_http_cookies(a,b,c) CURLE_OK
-#endif
-CURLcode Curl_http_resume(struct Curl_easy *data,
-                          struct connectdata *conn,
-                          Curl_HttpReq httpreq);
-CURLcode Curl_http_range(struct Curl_easy *data,
-                         Curl_HttpReq httpreq);
-CURLcode Curl_http_firstwrite(struct Curl_easy *data,
-                              struct connectdata *conn,
-                              bool *done);
+void Curl_http_method(struct Curl_easy *data,
+                      const char **method, Curl_HttpReq *reqp);
 
 /* protocol-specific functions set up to be called by the main engine */
+CURLcode Curl_http_setup_conn(struct Curl_easy *data,
+                              struct connectdata *conn);
 CURLcode Curl_http(struct Curl_easy *data, bool *done);
-CURLcode Curl_http_done(struct Curl_easy *data, CURLcode, bool premature);
-CURLcode Curl_http_connect(struct Curl_easy *data, bool *done);
+CURLcode Curl_http_done(struct Curl_easy *data,
+                        CURLcode status, bool premature);
+CURLcode Curl_http_doing_pollset(struct Curl_easy *data,
+                                 struct easy_pollset *ps);
+CURLcode Curl_http_perform_pollset(struct Curl_easy *data,
+                                   struct easy_pollset *ps);
+CURLcode Curl_http_write_resp(struct Curl_easy *data,
+                              const char *buf, size_t blen,
+                              bool is_eos);
+CURLcode Curl_http_write_resp_hd(struct Curl_easy *data,
+                                 const char *hd, size_t hdlen,
+                                 bool is_eos);
+
+/* check a received header line for forbidden bytes/format, the same checks
+   applied to regular response headers */
+CURLcode Curl_verify_header(struct Curl_easy *data,
+                            const char *hd, size_t hdlen);
 
 /* These functions are in http.c */
 CURLcode Curl_http_input_auth(struct Curl_easy *data, bool proxy,
                               const char *auth);
+
 CURLcode Curl_http_auth_act(struct Curl_easy *data);
+
+/* follow a redirect or not */
+CURLcode Curl_http_follow(struct Curl_easy *data, const char *newurl,
+                          followtype type);
 
 /* If only the PICKNONE bit is set, there has been a round-trip and we
    selected to use no auth at all. Ie, we actively select no auth, as opposed
    to not having one selected. The other CURLAUTH_* defines are present in the
    public curl/curl.h header. */
-#define CURLAUTH_PICKNONE (1<<30) /* don't use auth */
+#define CURLAUTH_PICKNONE (1 << 30) /* do not use auth */
 
 /* MAX_INITIAL_POST_SIZE indicates the number of bytes that will make the POST
    data get included in the initial data chunk sent to the server. If the
@@ -175,7 +140,7 @@ CURLcode Curl_http_auth_act(struct Curl_easy *data);
    It must not be greater than 64K to work on VMS.
 */
 #ifndef MAX_INITIAL_POST_SIZE
-#define MAX_INITIAL_POST_SIZE (64*1024)
+#define MAX_INITIAL_POST_SIZE (64 * 1024)
 #endif
 
 /* EXPECT_100_THRESHOLD is the request body size limit for when libcurl will
@@ -184,51 +149,28 @@ CURLcode Curl_http_auth_act(struct Curl_easy *data);
  *
  */
 #ifndef EXPECT_100_THRESHOLD
-#define EXPECT_100_THRESHOLD (1024*1024)
+#define EXPECT_100_THRESHOLD (1024 * 1024)
 #endif
 
 /* MAX_HTTP_RESP_HEADER_SIZE is the maximum size of all response headers
    combined that libcurl allows for a single HTTP response, any HTTP
    version. This count includes CONNECT response headers. */
-#define MAX_HTTP_RESP_HEADER_SIZE (300*1024)
+#define MAX_HTTP_RESP_HEADER_SIZE (300 * 1024)
+
+/* MAX_HTTP_RESP_HEADER_COUNT is the maximum number of response headers that
+   libcurl allows for a single HTTP response, including CONNECT and
+   redirects. */
+#define MAX_HTTP_RESP_HEADER_COUNT 5000
 
 #endif /* CURL_DISABLE_HTTP */
 
 /****************************************************************************
  * HTTP unique setup
  ***************************************************************************/
-struct HTTP {
-  curl_off_t postsize; /* off_t to handle large file sizes */
-  const char *postdata;
-  struct back {
-    curl_read_callback fread_func; /* backup storage for fread pointer */
-    void *fread_in;           /* backup storage for fread_in pointer */
-    const char *postdata;
-    curl_off_t postsize;
-    struct Curl_easy *data;
-  } backup;
 
-  enum {
-    HTTPSEND_NADA,    /* init */
-    HTTPSEND_REQUEST, /* sending a request */
-    HTTPSEND_BODY     /* sending body */
-  } sending;
-
-#ifndef CURL_DISABLE_HTTP
-  void *h2_ctx;              /* HTTP/2 implementation context */
-  void *h3_ctx;              /* HTTP/3 implementation context */
-  struct dynbuf send_buffer; /* used if the request couldn't be sent in one
-                                chunk, points to an allocated send_buffer
-                                struct */
-#endif
-};
-
-CURLcode Curl_http_size(struct Curl_easy *data);
-
-CURLcode Curl_http_readwrite_headers(struct Curl_easy *data,
-                                     struct connectdata *conn,
-                                     ssize_t *nread,
-                                     bool *stop_reading);
+CURLcode Curl_http_write_resp_hds(struct Curl_easy *data,
+                                  const char *buf, size_t blen,
+                                  size_t *pconsumed);
 
 /**
  * Curl_http_output_auth() setups the authentication headers for the
@@ -241,38 +183,37 @@ CURLcode Curl_http_readwrite_headers(struct Curl_easy *data,
  * @param request pointer to the request keyword
  * @param httpreq is the request type
  * @param path pointer to the requested path
- * @param proxytunnel boolean if this is the request setting up a "proxy
- * tunnel"
+ * @param query pointer to the requested query or NULL
+ * @param is_connect boolean if this is a CONNECT request
+ *        (where httpreq is HTTPREQ_GET since there is no HTTPREQ_CONNECT)
  *
  * @returns CURLcode
  */
-CURLcode
-Curl_http_output_auth(struct Curl_easy *data,
-                      struct connectdata *conn,
-                      const char *request,
-                      Curl_HttpReq httpreq,
-                      const char *path,
-                      bool proxytunnel); /* TRUE if this is the request setting
-                                            up the proxy tunnel */
+CURLcode Curl_http_output_auth(struct Curl_easy *data,
+                               struct connectdata *conn,
+                               const char *request,
+                               Curl_HttpReq httpreq,
+                               const char *path,
+                               const char *query,
+                               bool is_connect);
 
 /* Decode HTTP status code string. */
 CURLcode Curl_http_decode_status(int *pstatus, const char *s, size_t len);
-
 
 /**
  * All about a core HTTP request, excluding body and trailers
  */
 struct httpreq {
-  char method[12];
+  struct dynhds headers;
+  struct dynhds trailers;
   char *scheme;
   char *authority;
   char *path;
-  struct dynhds headers;
-  struct dynhds trailers;
+  char method[1];
 };
 
 /**
- * Create a HTTP request struct.
+ * Create an HTTP request struct.
  */
 CURLcode Curl_http_req_make(struct httpreq **preq,
                             const char *method, size_t m_len,
@@ -286,11 +227,11 @@ CURLcode Curl_http_req_make2(struct httpreq **preq,
 
 void Curl_http_req_free(struct httpreq *req);
 
-#define HTTP_PSEUDO_METHOD ":method"
-#define HTTP_PSEUDO_SCHEME ":scheme"
+#define HTTP_PSEUDO_METHOD    ":method"
+#define HTTP_PSEUDO_SCHEME    ":scheme"
 #define HTTP_PSEUDO_AUTHORITY ":authority"
-#define HTTP_PSEUDO_PATH ":path"
-#define HTTP_PSEUDO_STATUS ":status"
+#define HTTP_PSEUDO_PATH      ":path"
+#define HTTP_PSEUDO_STATUS    ":status"
 
 /**
  * Create the list of HTTP/2 headers which represent the request,
@@ -322,7 +263,7 @@ struct http_resp {
 };
 
 /**
- * Create a HTTP response struct.
+ * Create an HTTP response struct.
  */
 CURLcode Curl_http_resp_make(struct http_resp **presp,
                              int status,

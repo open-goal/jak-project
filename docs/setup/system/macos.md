@@ -17,7 +17,8 @@ softwareupdate --install-rosetta
 ## Building for x86_64
 
 ```bash
-brew install cmake nasm ninja go-task clang-format
+brew install cmake nasm ninja go-task clang-format openssl@3
+export OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
 cmake -B build --preset=Release-macos-x86_64-clang
 cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ```
@@ -25,7 +26,8 @@ cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ## Building for ARM64 (experimental, unsupported)
 
 ```bash
-brew install cmake ninja go-task clang-format
+brew install cmake ninja go-task clang-format openssl@3
+export OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
 cmake -B build --preset=Release-macos-arm64-clang
 cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ```

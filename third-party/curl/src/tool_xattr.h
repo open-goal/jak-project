@@ -29,7 +29,7 @@
 #  include <sys/xattr.h> /* header from libc, not from libattr */
 #  define USE_XATTR
 #elif (defined(__FreeBSD_version) && (__FreeBSD_version > 500000)) || \
-      defined(__MidnightBSD_version)
+  defined(__MidnightBSD_version)
 #  include <sys/types.h>
 #  include <sys/extattr.h>
 #  define USE_XATTR
@@ -38,8 +38,12 @@
 #ifdef USE_XATTR
 int fwrite_xattr(CURL *curl, const char *url, int fd);
 
+#ifdef UNITTESTS
+UNITTEST char *stripcredentials(const char *url);
+#endif
+
 #else
-#define fwrite_xattr(a,b,c) 0
+#define fwrite_xattr(a, b, c) 0
 #endif
 
 #endif /* HEADER_CURL_TOOL_XATTR_H */

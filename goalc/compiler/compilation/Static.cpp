@@ -522,7 +522,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(form, env);
       auto fe = env->function_env();
       auto rv = fe->make_ireg(type, RegClass::INT_128);
-      auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
+      auto simd_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
         auto field_val_in = def.value;
@@ -560,9 +560,10 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
                                      start_lo ? integer_lo : integer_hi, field_val);
       }
 
-      fe->emit_ir<IR_RegSet>(form, xmm_temp, integer_lo);
+      fe->emit_ir<IR_RegSet>(form, simd_temp, integer_lo);
       fe->emit_ir<IR_RegSet>(form, rv, integer_hi);
-      fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+      fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, simd_temp,
+                                     IR_Int128Math3Asm::Kind::PCPYLD);
       return rv;
     } else {
       RegVal* integer_reg = integer->to_gpr(form, env);

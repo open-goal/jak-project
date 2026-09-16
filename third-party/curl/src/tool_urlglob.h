@@ -26,53 +26,62 @@
 #include "tool_setup.h"
 
 typedef enum {
-  UPTSet = 1,
-  UPTCharRange,
-  UPTNumRange
-} URLPatternType;
+  GLOB_SET = 1,
+  GLOB_ASCII,
+  GLOB_NUM
+} globtype;
 
 struct URLPattern {
-  URLPatternType type;
+  globtype type;
+  char *name;    /* if not NULL */
   int globindex; /* the number of this particular glob or -1 if not used
                     within {} or [] */
   union {
     struct {
-      char **elements;
+      char **elem;
       curl_off_t size;
-      int ptr_s;
-    } Set;
+      curl_off_t idx;
+      size_t palloc; /* elem entries allocated */
+    } set;
     struct {
-      char min_c;
-      char max_c;
-      char ptr_c;
-      int step;
-    } CharRange;
+      int min;
+      int max;
+      int letter;
+      unsigned char step;
+    } ascii;
     struct {
-      curl_off_t min_n;
-      curl_off_t max_n;
-      int padlength;
-      curl_off_t ptr_n;
+      curl_off_t min;
+      curl_off_t max;
+      curl_off_t idx;
       curl_off_t step;
-    } NumRange;
-  } content;
+      int npad;
+    } num;
+  } c;
 };
 
 /* the total number of globs supported */
-#define GLOB_PATTERN_NUM 100
+#define GLOB_PATTERN_NUM 30
 
 struct URLGlob {
-  struct URLPattern pattern[GLOB_PATTERN_NUM];
-  size_t size;
-  size_t urllen;
-  char *glob_buffer;
+  struct dynbuf buf;
+  struct URLPattern *pattern;
+  size_t palloc; /* number of pattern entries allocated */
+  size_t pnum; /* number of patterns used */
   char beenhere;
   const char *error; /* error message */
   size_t pos;        /* column position of error or 0 */
 };
 
-CURLcode glob_url(struct URLGlob**, char *, curl_off_t *, FILE *);
-CURLcode glob_next_url(char **, struct URLGlob *);
-CURLcode glob_match_url(char **, char *, struct URLGlob *);
+void glob_show_error(struct URLGlob *glob, const char *url, FILE *error,
+                     CURLcode result);
+
+CURLcode glob_url(struct URLGlob *glob, const char *url, curl_off_t *urlnum,
+                  FILE *error);
+CURLcode glob_next_url(char **globbed, struct URLGlob *glob);
+CURLcode glob_match_url(char **output, const char *filename,
+                        struct URLGlob *glob, struct URLGlob *glob2,
+                        SANITIZEcode *sc);
 void glob_cleanup(struct URLGlob *glob);
+bool glob_inuse(struct URLGlob *glob);
 
 #endif /* HEADER_CURL_TOOL_URLGLOB_H */

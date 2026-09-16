@@ -33,6 +33,14 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name);
 
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset);
 u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset);
+
+// align the host stack for each ABI
+#ifdef __aarch64__
+constexpr u64 GOAL_STACK_TOP_OFFSET = 16;
+#else
+constexpr u64 GOAL_STACK_TOP_OFFSET = 8;
+#endif
+
 u64 call_goal_function(Ptr<Function> func);
 u64 print_structure(u32 s);
 u64 print_integer(u64 obj);

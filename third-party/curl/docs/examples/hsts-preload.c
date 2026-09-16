@@ -27,6 +27,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+
 #include <curl/curl.h>
 
 struct entry {
@@ -44,22 +45,31 @@ struct state {
   int index;
 };
 
+static void strcopy(char *dest, size_t dsize, const char *src, size_t slen)
+{
+  if(slen < dsize) {
+    memcpy(dest, src, slen);
+    dest[slen] = 0;
+  }
+  else if(dsize)
+    dest[0] = 0;
+}
+
 /* "read" is from the point of the library, it wants data from us. One domain
    entry per invoke. */
-static CURLSTScode hstsread(CURL *easy, struct curl_hstsentry *e,
-                            void *userp)
+static CURLSTScode hstsread(CURL *curl, struct curl_hstsentry *e, void *userp)
 {
   const char *host;
   const char *expire;
   struct state *s = (struct state *)userp;
-  (void)easy;
+  (void)curl;
   host = preload_hosts[s->index].name;
   expire = preload_hosts[s->index++].exp;
 
-  if(host && (strlen(host) < e->namelen)) {
-    strcpy(e->name, host);
+  if(host) {
+    strcopy(e->name, e->namelen, host, strlen(host));
     e->includeSubDomains = 0;
-    strcpy(e->expire, expire);
+    strcopy(e->expire, sizeof(e->expire), expire, strlen(expire));
     fprintf(stderr, "HSTS preload '%s' until '%s'\n", host, expire);
   }
   else
@@ -67,10 +77,10 @@ static CURLSTScode hstsread(CURL *easy, struct curl_hstsentry *e,
   return CURLSTS_OK;
 }
 
-static CURLSTScode hstswrite(CURL *easy, struct curl_hstsentry *e,
+static CURLSTScode hstswrite(CURL *curl, struct curl_hstsentry *e,
                              struct curl_index *i, void *userp)
 {
-  (void)easy;
+  (void)curl;
   (void)userp; /* we have no custom input */
   printf("[%u/%u] %s %s\n", (unsigned int)i->index, (unsigned int)i->total,
          e->name, e->expire);
@@ -80,14 +90,17 @@ static CURLSTScode hstswrite(CURL *easy, struct curl_hstsentry *e,
 int main(void)
 {
   CURL *curl;
-  CURLcode res;
+
+  CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   curl = curl_easy_init();
   if(curl) {
-    struct state st = {0};
+    struct state st = { 0 };
 
     /* enable HSTS for this handle */
-    curl_easy_setopt(curl, CURLOPT_HSTS_CTRL, (long)CURLHSTS_ENABLE);
+    curl_easy_setopt(curl, CURLOPT_HSTS_CTRL, CURLHSTS_ENABLE);
 
     /* function to call at first to populate the cache before the transfer */
     curl_easy_setopt(curl, CURLOPT_HSTSREADFUNCTION, hstsread);
@@ -104,15 +117,16 @@ int main(void)
 
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-    /* Perform the request, res will get the return code */
-    res = curl_easy_perform(curl);
+    /* Perform the request, result gets the return code */
+    result = curl_easy_perform(curl);
     /* Check for errors */
-    if(res != CURLE_OK)
+    if(result != CURLE_OK)
       fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(res));
+              curl_easy_strerror(result));
 
     /* always cleanup */
     curl_easy_cleanup(curl);
   }
-  return 0;
+  curl_global_cleanup();
+  return (int)result;
 }

@@ -1,0 +1,81 @@
+/* Capstone Disassembler Engine */
+/* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2014 */
+
+#include <stdio.h>
+#include <capstone/capstone.h>
+#include "cstool.h"
+
+#include "../arch/RISCV/RISCVInstPrinter.h"
+
+void print_insn_detail_riscv(csh handle, cs_insn *ins)
+{
+	cs_riscv *riscv;
+	int i;
+
+	// detail can be NULL on "data" instruction if SKIPDATA option is turned ON
+	if (ins->detail == NULL)
+		return;
+
+	riscv = &(ins->detail->riscv);
+	if (riscv->op_count)
+		printf("\top_count: %u\n", riscv->op_count);
+
+	for (i = 0; i < riscv->op_count; i++) {
+		cs_riscv_op *op = &(riscv->operands[i]);
+		switch ((int)op->type) {
+		default:
+			break;
+		case RISCV_OP_REG:
+			printf("\t\toperands[%u].type: REG = %s\n", i,
+			       cs_reg_name(handle, op->reg));
+			break;
+		case RISCV_OP_IMM:
+			printf("\t\toperands[%u].type: IMM = 0x%lx\n", i,
+			       (long)op->imm);
+			break;
+		case RISCV_OP_MEM:
+			printf("\t\toperands[%u].type: MEM\n", i);
+			if (op->mem.base != RISCV_REG_INVALID)
+				printf("\t\t\toperands[%u].mem.base: REG = %s\n",
+				       i, cs_reg_name(handle, op->mem.base));
+			if (op->mem.disp != 0)
+				printf("\t\t\toperands[%u].mem.disp: 0x%lx\n",
+				       i, (long)op->mem.disp);
+
+			break;
+		case RISCV_OP_FP:
+			printf("\t\toperands[%u].type: FP_IMM %f \n", i,
+			       op->dimm);
+			break;
+		case RISCV_OP_CSR:
+			printf("\t\toperands[%u].type: CSR = %s\n", i,
+			       getSysRegName(op->csr));
+			break;
+		}
+
+		switch (op->access) {
+		default:
+			break;
+		case CS_AC_READ:
+			printf("\t\toperands[%u].access: READ\n", i);
+			break;
+		case CS_AC_WRITE:
+			printf("\t\toperands[%u].access: WRITE\n", i);
+			break;
+		case CS_AC_READ | CS_AC_WRITE:
+			printf("\t\toperands[%u].access: READ | WRITE\n", i);
+			break;
+		}
+	}
+
+	if (riscv->rounding_mode != RISCV_RM_INVALID) {
+		static const char *const rm_str[] = {
+			[RISCV_RM_RNE] = "rne", [RISCV_RM_RTZ] = "rtz",
+			[RISCV_RM_RDN] = "rdn", [RISCV_RM_RUP] = "rup",
+			[RISCV_RM_RMM] = "rmm", [RISCV_RM_DYN] = "dyn",
+		};
+		printf("\trounding_mode: %s\n", rm_str[riscv->rounding_mode]);
+	}
+
+	printf("\n");
+}

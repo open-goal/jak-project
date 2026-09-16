@@ -3149,7 +3149,7 @@
    (challenge-done   symbol)
    (hud-score        handle)
    (hud-goal         handle)
-   (game-score       uint8)
+   (game-score       game-score)
    (new-high-score   symbol)
    (goal-cup         uint8)
    (last-cup         uint8)
@@ -3199,7 +3199,7 @@
     (t9-0 this)
     )
   (set-setting! 'airlock #f 0.0 0)
-  (set! (-> this game-score) (the-as uint 10))
+  (set! (-> this game-score) (game-score hoverboard))
   (set! (-> this hud-score) (the-as handle #f))
   (set! (-> this hud-goal) (the-as handle #f))
   (if (= (-> this hud-score) #f)
@@ -3228,7 +3228,7 @@
       )
     )
   (set! (-> *game-info* goal)
-        (game-info-method-31 *game-info* (the-as int (-> this game-score)) (the-as int (-> this goal-cup)))
+        (get-goal-for-rank *game-info* (-> this game-score) (the-as int (-> this goal-cup)))
         )
   (let ((v1-14 (handle->process (-> this hud-goal))))
     (when v1-14
@@ -3275,8 +3275,8 @@
 (defmethod task-manager-bbush-board-method-34 ((this task-manager-bbush-board) (arg0 float))
   (set! (-> this roll-back-task?) #t)
   (let* ((s2-0 (-> this game-score))
-         (s4-0 (game-info-method-29 *game-info* (the-as int s2-0)))
-         (t0-0 (get-highscore-rank *game-info* (the-as int s2-0) arg0))
+         (s4-0 (get-best-rank *game-info* s2-0))
+         (t0-0 (get-rank-for-score *game-info* s2-0 arg0))
          (s3-1 (max 0 (- t0-0 s4-0)))
          )
     (let ((t9-2 format)
@@ -3288,58 +3288,58 @@
         a0-3
         a1-3
         (cond
-          ((= v1-4 7)
+          ((= v1-4 (game-score snake-total-jump-distance))
            "snake-total-jump-distance"
            )
-          ((= v1-4 5)
+          ((= v1-4 (game-score snake-total-air-time))
            "snake-total-air-time"
            )
-          ((= v1-4 10)
+          ((= v1-4 (game-score hoverboard))
            "hoverboard"
            )
-          ((= v1-4 12)
+          ((= v1-4 (game-score gungame-2))
            "gungame-2"
            )
-          ((= v1-4 17)
+          ((= v1-4 (game-score arena-training))
            "arena-training"
            )
-          ((= v1-4 8)
+          ((= v1-4 (game-score snake-roll-count))
            "snake-roll-count"
            )
-          ((= v1-4 14)
+          ((= v1-4 (game-score gungame-4))
            "gungame-4"
            )
-          ((= v1-4 6)
+          ((= v1-4 (game-score snake-jump-distance))
            "snake-jump-distance"
            )
-          ((= v1-4 13)
+          ((= v1-4 (game-score gungame-3))
            "gungame-3"
            )
-          ((= v1-4 4)
+          ((= v1-4 (game-score snake-air-time))
            "snake-air-time"
            )
-          ((= v1-4 9)
+          ((= v1-4 (game-score wascity-gungame-1))
            "wascity-gungame-1"
            )
-          ((zero? v1-4)
+          ((= v1-4 (game-score none))
            "none"
            )
-          ((= v1-4 15)
+          ((= v1-4 (game-score power-game))
            "power-game"
            )
-          ((= v1-4 3)
+          ((= v1-4 (game-score snake-race))
            "snake-race"
            )
-          ((= v1-4 1)
+          ((= v1-4 (game-score neo-sat-game))
            "neo-sat-game"
            )
-          ((= v1-4 16)
+          ((= v1-4 (game-score destroy-interceptors))
            "destroy-interceptors"
            )
-          ((= v1-4 11)
+          ((= v1-4 (game-score gungame-1))
            "gungame-1"
            )
-          ((= v1-4 2)
+          ((= v1-4 (game-score turtle-race))
            "turtle-race"
            )
           (else
@@ -3352,7 +3352,7 @@
         s3-1
         )
       )
-    (game-info-method-27 *game-info* (the-as game-score s2-0) arg0)
+    (update-high-score! *game-info* s2-0 arg0)
     (let ((v1-7 (new 'static 'fact-info))
           (f30-0 (* (the float s3-1) (the float (-> this info user-count))))
           )
@@ -3373,7 +3373,7 @@
            )
          )
         (else
-          (let ((f0-5 (game-info-method-31 *game-info* (the-as int (-> this game-score)) (the-as int (-> this goal-cup)))))
+          (let ((f0-5 (get-goal-for-rank *game-info* (-> this game-score) (the-as int (-> this goal-cup)))))
             (if (< arg0 f0-5)
                 (send-event this 'fail)
                 )
@@ -3413,7 +3413,7 @@
         (while (send-event (handle->process (the-as handle gp-1)) 'waiting)
           (suspend)
           )
-        (set! (-> self last-cup) (the-as uint (game-info-method-29 *game-info* (the-as int (-> self game-score)))))
+        (set! (-> self last-cup) (the-as uint (get-best-rank *game-info* (-> self game-score))))
         (format #t "last-cup: ~d~%" (-> self last-cup))
         (set! (-> self goal-cup) (+ (-> self last-cup) 1))
         (suspend)

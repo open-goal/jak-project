@@ -41,17 +41,17 @@ void Region::generate_pairs(DataObjectGenerator& gen, const std::vector<size_t>&
   size_t on_inside_byte = 0;
   size_t on_exit_byte = 0;
   if (on_enter.has_value()) {
-    on_enter_byte = gen_pair(gen, *on_enter.value());
+    on_enter_byte = gen_pair(gen, on_enter.value());
   } else {
     gen.link_word_to_symbol("#f", on_enter_slot);
   }
   if (on_inside.has_value()) {
-    on_inside_byte = gen_pair(gen, *on_inside.value());
+    on_inside_byte = gen_pair(gen, on_inside.value());
   } else {
     gen.link_word_to_symbol("#f", on_inside_slot);
   }
   if (on_exit.has_value()) {
-    on_exit_byte = gen_pair(gen, *on_exit.value());
+    on_exit_byte = gen_pair(gen, on_exit.value());
   } else {
     gen.link_word_to_symbol("#f", on_exit_slot);
   }
@@ -75,17 +75,17 @@ size_t Region::generate(DataObjectGenerator& gen) const {
   size_t on_inside_byte = 0;
   size_t on_exit_byte = 0;
   if (on_enter.has_value()) {
-    on_enter_byte = gen_pair(gen, *on_enter.value());
+    on_enter_byte = gen_pair(gen, on_enter.value());
   } else {
     gen.link_word_to_symbol("#f", on_enter_slot);
   }
   if (on_inside.has_value()) {
-    on_inside_byte = gen_pair(gen, *on_inside.value());
+    on_inside_byte = gen_pair(gen, on_inside.value());
   } else {
     gen.link_word_to_symbol("#f", on_inside_slot);
   }
   if (on_exit.has_value()) {
-    on_exit_byte = gen_pair(gen, *on_exit.value());
+    on_exit_byte = gen_pair(gen, on_exit.value());
   } else {
     gen.link_word_to_symbol("#f", on_exit_slot);
   }
@@ -269,22 +269,22 @@ void add_regions_from_json(const nlohmann::json& json,
         region.faces = std::make_optional<std::vector<RegionFaceData>>(arr.faces);
       }
       if (region_json.find("on-enter") != region_json.end()) {
-        region.on_enter = std::make_optional(
-            &reader.read_from_string(region_json.at("on-enter").get<std::string>(), false)
-                 .as_pair()
-                 ->car);
+        region.on_enter =
+            reader.read_from_string(region_json.at("on-enter").get<std::string>(), false)
+                .as_pair()
+                ->car;
       }
       if (region_json.find("on-inside") != region_json.end()) {
-        region.on_inside = std::make_optional(
-            &reader.read_from_string(region_json.at("on-inside").get<std::string>(), false)
-                 .as_pair()
-                 ->car);
+        region.on_inside =
+            reader.read_from_string(region_json.at("on-inside").get<std::string>(), false)
+                .as_pair()
+                ->car;
       }
       if (region_json.find("on-exit") != region_json.end()) {
-        region.on_exit = std::make_optional(
-            &reader.read_from_string(region_json.at("on-exit").get<std::string>(), false)
-                 .as_pair()
-                 ->car);
+        region.on_exit =
+            reader.read_from_string(region_json.at("on-exit").get<std::string>(), false)
+                .as_pair()
+                ->car;
       }
       lg::print(region.print());
     } else {
@@ -298,17 +298,17 @@ std::string Region::print() {
   result += fmt::format("Region {} ({}):\n", id, tree);
   result += fmt::format("  shape: {}\n", shape);
   if (on_enter.has_value()) {
-    result += fmt::format("  on-enter: {}\n", on_enter.value()->print());
+    result += fmt::format("  on-enter: {}\n", on_enter.value().print());
   } else {
     result += fmt::format("  on-enter: #f\n");
   }
   if (on_inside.has_value()) {
-    result += fmt::format("  on-inside: {}\n", on_inside.value()->print());
+    result += fmt::format("  on-inside: {}\n", on_inside.value().print());
   } else {
     result += fmt::format("  on-inside: #f\n");
   }
   if (on_exit.has_value()) {
-    result += fmt::format("  on-exit: {}\n", on_exit.value()->print());
+    result += fmt::format("  on-exit: {}\n", on_exit.value().print());
   } else {
     result += fmt::format("  on-exit: #f\n");
   }

@@ -20,17 +20,15 @@
 #
 # SPDX-License-Identifier: curl
 #
-###########################################################################
-#***************************************************************************
 #***************************************************************************
 
-# File version for 'aclocal' use. Keep it a single number.
-# serial 7
+dnl File version for 'aclocal' use. Keep it a single number.
+dnl serial 7
 
 dnl CURL_OVERRIDE_AUTOCONF
 dnl -------------------------------------------------
 dnl Placing a call to this macro in configure.ac after
-dnl the one to AC_INIT will make macros in this file
+dnl the one to AC_INIT makes macros in this file
 dnl visible to the rest of the compilation overriding
 dnl those from Autoconf.
 
@@ -42,17 +40,16 @@ AC_BEFORE([$0],[AC_PROG_LIBTOOL])
 dnl Override Autoconf's AC_LANG_PROGRAM (C)
 dnl -------------------------------------------------
 dnl This is done to prevent compiler warning
-dnl 'function declaration isn't a prototype'
+dnl 'function declaration is not a prototype'
 dnl in function main. This requires at least
-dnl a c89 compiler and does not support K&R.
+dnl a C89 compiler and does not support K&R.
 
 m4_define([AC_LANG_PROGRAM(C)],
 [$1
-int main (void)
+int main(void)
 {
 $2
- ;
- return 0;
+  return 0;
 }])
 
 dnl Override Autoconf's AC_LANG_CALL (C)
@@ -83,9 +80,9 @@ m4_define([AC_LANG_FUNC_LINK_TRY(C)],
 [
 #define $1 innocuous_$1
 #ifdef __STDC__
-# include <limits.h>
+#  include <limits.h>
 #else
-# include <assert.h>
+#  include <assert.h>
 #endif
 #undef $1
 #ifdef __cplusplus
@@ -93,6 +90,6 @@ extern "C"
 #endif
 char $1 ();
 #if defined __stub_$1 || defined __stub___$1
-choke me
+#error force compilation error
 #endif
 ], [return $1 ();])])

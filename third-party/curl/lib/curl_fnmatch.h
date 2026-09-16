@@ -23,7 +23,6 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #define CURL_FNMATCH_MATCH    0
 #define CURL_FNMATCH_NOMATCH  1
 #define CURL_FNMATCH_FAIL     2
@@ -31,7 +30,7 @@
 /* default pattern matching function
  * =================================
  * Implemented with recursive backtracking, if you want to use Curl_fnmatch,
- * please note that there is not implemented UTF/UNICODE support.
+ * please note that there is not implemented UTF/Unicode support.
  *
  * Implemented features:
  * '?' notation, does not match UTF characters

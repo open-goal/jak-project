@@ -32,7 +32,7 @@ class VariableTests : public testing::TestWithParam<VariableParam> {
   void TearDown() {}
 
   struct SharedCompiler {
-    SharedCompiler(GameVersion version) : compiler(version, emitter::InstructionSet::X86) {}
+    SharedCompiler(GameVersion version) : compiler(version, emitter::kNativeInstructionSet) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;

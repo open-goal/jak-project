@@ -49,7 +49,7 @@ class WithGameTests : public ::testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
-    SharedCompiler(GameVersion v) : compiler(v, emitter::InstructionSet::X86) {}
+    SharedCompiler(GameVersion v) : compiler(v, emitter::kNativeInstructionSet) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
@@ -70,6 +70,11 @@ std::vector<std::string> get_test_pass_string(const std::string& name, int count
 
 TEST_F(WithGameTests, MakeSystem) {
   shared_compiler->compiler.run_front_end_on_string("(make \"out/jak1/iso/ENGINE.CGO\")");
+}
+
+TEST_F(WithGameTests, StringToFloat) {
+  // 300 + 500 + 250000
+  shared_compiler->runner.run_static_test(testCategory, "string-to-float.static.gc", {"250800\n"});
 }
 
 TEST_F(WithGameTests, ReturnConstant) {
@@ -290,12 +295,14 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 }
 
 TEST_F(WithGameTests, DebuggerDisassemble) {
-  auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
-  bool fail = false;
-  auto result =
-      di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader, false);
-  // printf("Got\n%s\n", result.c_str());
-  EXPECT_FALSE(fail);
+  if (shared_compiler->compiler.instruction_set() == emitter::InstructionSet::X86) {
+    auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
+    bool fail = false;
+    auto result =
+        di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader, false);
+    // printf("Got\n%s\n", result.c_str());
+    EXPECT_FALSE(fail);
+  }
 }
 
 TEST_F(WithGameTests, GameText) {
@@ -838,8 +845,15 @@ TEST_F(WithGameTests, SetU64FromFloat) {
 }
 
 TEST_F(WithGameTests, TrickyFloatBehavior) {
-  shared_compiler->runner.run_static_test(testCategory, "tricky-floats.gc",
-                                          {"#xffffffff80000000 1.0000 #xffffffffbf800000\n0\n"});
+  // The EE Core Instruction Set Manual (CVT.W.S, p. 356) specifies 0x7fffffff for positive
+  // finite overflow. ARM64 matches it; x86 keeps its existing integer-indefinite result.
+  const char* overflowed =
+      shared_compiler->compiler.instruction_set() == emitter::InstructionSet::ARM64
+          ? "#x7fffffff"
+          : "#xffffffff80000000";
+  shared_compiler->runner.run_static_test(
+      testCategory, "tricky-floats.gc",
+      {fmt::format("{} 1.0000 #xffffffffbf800000\n0\n", overflowed)});
 }
 
 TEST_F(WithGameTests, ProcessAllocation) {

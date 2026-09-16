@@ -21,42 +21,27 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#include "memdebug.h"
+#include "first.h"
 
 /* Test inspired by github issue 3340 */
 
-static size_t writecb(char *buffer, size_t size, size_t nitems,
-                      void *outstream)
-{
-  (void)buffer;
-  (void)size;
-  (void)nitems;
-  (void)outstream;
-  return 0;
-}
-
-int test(char *URL)
+static CURLcode test_lib1518(const char *URL)
 {
   CURL *curl;
-  CURLcode res = CURLE_OK;
+  CURLcode result = CURLE_OK;
   long curlResponseCode;
   long curlRedirectCount;
-  char *effectiveUrl = NULL;
-  char *redirectUrl = NULL;
-#ifdef LIB1543
+  const char *effectiveUrl = NULL;
+  const char *redirectUrl = NULL;
   CURLU *urlu = NULL;
-#endif
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
-#ifdef LIB1543
-  /* set CURLOPT_URLU */
-  {
+  if(testnum == 1543) {
+    /* set CURLOPT_URLU */
     CURLUcode rc = CURLUE_OK;
     urlu = curl_url();
     if(urlu)
@@ -64,43 +49,42 @@ int test(char *URL)
     if(!urlu || rc) {
       goto test_cleanup;
     }
-    test_setopt(curl, CURLOPT_CURLU, urlu);
+    easy_setopt(curl, CURLOPT_CURLU, urlu);
+    easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   }
-  test_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-#else
-  test_setopt(curl, CURLOPT_URL, URL);
-  /* just to make it explicit and visible in this test: */
-  test_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-#endif
+  else {
+    easy_setopt(curl, CURLOPT_URL, URL);
+    /* to make it explicit and visible in this test: */
+    easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+  }
 
-
-  /* Perform the request, res will get the return code */
-  res = curl_easy_perform(curl);
+  /* Perform the request, result gets the return code */
+  result = curl_easy_perform(curl);
+  if(result)
+    goto test_cleanup;
 
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &curlResponseCode);
   curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &curlRedirectCount);
   curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effectiveUrl);
   curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &redirectUrl);
-  res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writecb);
+  easy_setopt(curl, CURLOPT_WRITEFUNCTION, tutil_throwaway_cb);
 
-  printf("res %d\n"
-         "status %d\n"
-         "redirects %d\n"
-         "effectiveurl %s\n"
-         "redirecturl %s\n",
-         (int)res,
-         (int)curlResponseCode,
-         (int)curlRedirectCount,
-         effectiveUrl,
-         redirectUrl ? redirectUrl : "blank");
+  curl_mprintf("result %d\n"
+               "status %ld\n"
+               "redirects %ld\n"
+               "effectiveurl %s\n"
+               "redirecturl %s\n",
+               (int)result,
+               curlResponseCode,
+               curlRedirectCount,
+               effectiveUrl,
+               redirectUrl ? redirectUrl : "blank");
 
 test_cleanup:
 
   /* always cleanup */
   curl_easy_cleanup(curl);
   curl_global_cleanup();
-#ifdef LIB1543
   curl_url_cleanup(urlu);
-#endif
-  return res;
+  return result;
 }

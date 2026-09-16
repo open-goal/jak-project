@@ -48,6 +48,11 @@ Compiler::Compiler(GameVersion version,
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
+  // goal-lib defaults this to x86 for older compilers
+  m_goos.set_global_variable_by_name(
+      "INSTRUCTION_SET",
+      m_goos.intern(m_instr_set == emitter::InstructionSet::ARM64 ? "arm64" : "x86"));
+
   // user profile stuff
   if (user_profile != "#f" && fs::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
                                          user_profile / "user.gc")) {
@@ -180,7 +185,7 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
     fe->emit_ir<IR_Return>(code, fe->make_gpr(result->type()), result->to_gpr(code, fe.get()),
-                           emitter::gRegInfo.get_gpr_ret_reg());
+                           emitter::reg_info(m_instr_set).get_gpr_ret_reg());
   }
 
   if (!fe->code().empty()) {
@@ -257,6 +262,7 @@ void Compiler::color_object_file(FileEnv* env) {
   for (auto& f : env->functions()) {
     AllocationInput input;
     input.is_asm_function = f->is_asm_func;
+    input.instr_set = m_instr_set;
     for (auto& i : f->code()) {
       input.instructions.push_back(i->to_rai());
       // input.debug_instruction_names.push_back(i->print());

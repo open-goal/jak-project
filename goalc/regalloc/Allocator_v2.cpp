@@ -245,6 +245,11 @@ class VarAssignment {
 };
 
 struct RACache {
+  struct ReusableSpillSlot {
+    int slot = -1;
+    std::vector<int> vars;
+  };
+
   ControlFlowAnalysisCache control_flow;
   std::vector<VarAssignment> vars;  // per var
   std::vector<bool> was_allocated;  // per var
@@ -252,6 +257,7 @@ struct RACache {
   std::vector<IRegister> iregs;
   std::vector<StackOp> stack_ops;  // per instr.
   std::unordered_map<s32, s32> var_to_stack_slot;
+  std::vector<ReusableSpillSlot> reusable_full_width_spill_slots;
   // list of live vars per instruction.
   std::vector<std::vector<s32>> live_per_instruction;
 
@@ -269,7 +275,7 @@ struct RACache {
 };
 
 struct AssignmentOrder {
-  std::vector<emitter::Register> xmms, gprs;
+  std::vector<emitter::Register> simds, gprs;
 };
 
 AssignmentOrder REG_saved_first_order = {
@@ -302,40 +308,79 @@ std::vector<emitter::Register> allowable_local_var_move_elim = {
     emitter::XMM1,  emitter::XMM0,  emitter::XMM8,  emitter::XMM9, emitter::XMM10, emitter::XMM11,
     emitter::XMM12, emitter::XMM13, emitter::XMM14, emitter::XMM15};
 
+AssignmentOrder REG_saved_first_order_arm64 = {
+    {emitter::V8,  emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13,
+     emitter::V14, emitter::V15, emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,
+     emitter::V3,  emitter::V2,  emitter::V1,  emitter::V0,  emitter::V17, emitter::V18,
+     emitter::V19, emitter::V20, emitter::V21, emitter::V22, emitter::V23, emitter::V24,
+     emitter::V25, emitter::V26, emitter::V27, emitter::V28, emitter::V29, emitter::V30,
+     emitter::V31},
+    {emitter::X19, emitter::X23, emitter::X24, emitter::X25, emitter::X26, emitter::X15,
+     emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10, emitter::X9,
+     emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,  emitter::X3,
+     emitter::X2,  emitter::X1,  emitter::X0}};
+
+AssignmentOrder REG_temp_first_order_arm64 = {
+    {emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,  emitter::V3,  emitter::V2,
+     emitter::V1,  emitter::V0,  emitter::V17, emitter::V18, emitter::V19, emitter::V20,
+     emitter::V21, emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26,
+     emitter::V27, emitter::V28, emitter::V29, emitter::V30, emitter::V31, emitter::V8,
+     emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
+     emitter::V15},
+    {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+     emitter::X9,  emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,
+     emitter::X3,  emitter::X2,  emitter::X1,  emitter::X0,  emitter::X19, emitter::X23,
+     emitter::X24, emitter::X25, emitter::X26}};
+
+AssignmentOrder REG_extra_hard_order_arm64 = {
+    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
+     emitter::V0, emitter::V8, emitter::V9},
+    {emitter::X9, emitter::X5, emitter::X4, emitter::X0, emitter::X19, emitter::X23}};
+
+AssignmentOrder REG_temp_only_order_arm64 = {
+    {emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,  emitter::V3,  emitter::V2,
+     emitter::V1,  emitter::V0,  emitter::V17, emitter::V18, emitter::V19, emitter::V20,
+     emitter::V21, emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26,
+     emitter::V27, emitter::V28, emitter::V29, emitter::V30, emitter::V31},
+    {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+     emitter::X9, emitter::X8, emitter::X7, emitter::X6, emitter::X5, emitter::X4, emitter::X3,
+     emitter::X2, emitter::X1, emitter::X0}};
+
+std::vector<emitter::Register> allowable_local_var_move_elim_arm64 = {
+    emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+    emitter::X9,  emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,
+    emitter::X3,  emitter::X2,  emitter::X1,  emitter::X0,  emitter::X19, emitter::X23,
+    emitter::X24, emitter::X25, emitter::X26, emitter::V7,  emitter::V6,  emitter::V5,
+    emitter::V4,  emitter::V3,  emitter::V2,  emitter::V1,  emitter::V0,  emitter::V8,
+    emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
+    emitter::V15, emitter::V17, emitter::V18, emitter::V19, emitter::V20, emitter::V21,
+    emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26, emitter::V27,
+    emitter::V28, emitter::V29, emitter::V30, emitter::V31};
+
+const std::vector<emitter::Register>& move_elim_regs(const AllocationInput& in) {
+  return in.instr_set == emitter::InstructionSet::ARM64 ? allowable_local_var_move_elim_arm64
+                                                        : allowable_local_var_move_elim;
+}
+
 const std::vector<emitter::Register>& get_alloc_order(int var_idx,
                                                       const AllocationInput& in,
                                                       const RACache& cache,
                                                       bool saved_first) {
   bool is_gpr =
       emitter::reg_class_to_hw(cache.iregs.at(var_idx).reg_class) == emitter::HWRegKind::GPR;
+  bool arm64 = in.instr_set == emitter::InstructionSet::ARM64;
+
+  const AssignmentOrder* order;
   if (in.is_asm_function) {
-    if (is_gpr) {
-      return REG_temp_only_order.gprs;
-    } else {
-      return REG_temp_only_order.xmms;
-    }
+    order = arm64 ? &REG_temp_only_order_arm64 : &REG_temp_only_order;
+  } else if (torture_test_spills) {
+    order = arm64 ? &REG_extra_hard_order_arm64 : &REG_extra_hard_order;
+  } else if (saved_first) {
+    order = arm64 ? &REG_saved_first_order_arm64 : &REG_saved_first_order;
   } else {
-    if (torture_test_spills) {
-      if (is_gpr) {
-        return REG_extra_hard_order.gprs;
-      } else {
-        return REG_extra_hard_order.xmms;
-      }
-    }
-    if (saved_first) {
-      if (is_gpr) {
-        return REG_saved_first_order.gprs;
-      } else {
-        return REG_saved_first_order.xmms;
-      }
-    } else {
-      if (is_gpr) {
-        return REG_temp_first_order.gprs;
-      } else {
-        return REG_temp_first_order.xmms;
-      }
-    }
+    order = arm64 ? &REG_temp_first_order_arm64 : &REG_temp_first_order;
   }
+  return is_gpr ? order->gprs : order->simds;
 }
 
 /*!
@@ -418,7 +463,7 @@ std::vector<VarAssignment> initialize_unassigned(const std::vector<Range<s32>>& 
         if (block.live[instr][var]) {
           result.at(var).mark_live(block.instr_idx.at(instr));
           auto& i = input.instructions.at(block.instr_idx.at(instr));
-          if (!i.clobber.empty()) {
+          if (i.is_call || !i.clobber.empty()) {
             result.at(var).mark_crossing_function();
           }
         }
@@ -523,7 +568,7 @@ void do_constrained_alloc(RACache* cache, const AllocationInput& input, bool tra
   for (auto& constr : input.constraints) {
     auto var_id = constr.ireg.id;
     if (trace_debug) {
-      lg::print("[RA] Apply constraint {}\n", constr.to_string());
+      lg::print("[RA] Apply constraint {}\n", constr.to_string(input.instr_set));
     }
     cache->vars.at(var_id).constrain_to_register(constr.desired_register);
   }
@@ -575,7 +620,7 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
       if (lr.assigned()) {
         if (!lr.assigned_to_reg(constr.desired_register)) {
           lg::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                    constr.ireg.to_string(), constr.desired_register.print(), "???");
+                    constr.ireg.to_string(), constr.desired_register.print(in.instr_set), "???");
           ok = false;
         }
       }
@@ -603,10 +648,26 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
                 "[RegAlloc Error] {} Cannot satisfy constraints at instruction {} due to "
                 "constraints "
                 "on {} and {}, both are assigned to register {}\n",
-                in.function_name, i, lr1.var(), lr2.var(), lr1.reg().print());
+                in.function_name, i, lr1.var(), lr2.var(), lr1.reg().print(in.instr_set));
             ok = false;
           }
         }
+      }
+    }
+  }
+
+  for (int var_idx = 0; var_idx < in.max_vars; var_idx++) {
+    const auto& var = cache->vars.at(var_idx);
+    if (!var.seen() || !var.locked()) {
+      continue;
+    }
+    for (int i = var.first_live(); i <= var.last_live(); i++) {
+      const auto& instr = in.instructions.at(i);
+      if (instr.clobbers(var.reg(), cache->iregs.at(var_idx).reg_class, in.instr_set) &&
+          cache->liveout_per_instr.at(i)[var_idx] && !instr.writes(var_idx)) {
+        lg::print("[RegAlloc Error] {} cannot stay in {} across instruction {}\n",
+                  cache->iregs.at(var_idx).to_string(), var.reg().print(in.instr_set), i);
+        ok = false;
       }
     }
   }
@@ -685,17 +746,15 @@ bool check_register_assign_at(const AllocationInput& input,
 
   const auto& instr = input.instructions.at(instr_idx);
 
-  if (vector_contains(instr.clobber, reg)) {
+  if (instr.clobbers(reg, cache.iregs.at(var_idx).reg_class, input.instr_set)) {
     // there's two cases where this is okay.
     // 1: if we aren't live-out. The clobber won't clobber anything.
     if (!cache.liveout_per_instr.at(instr_idx)[var_idx]) {
       // ok
+    } else if (instr.writes(var_idx)) {
+      // the result is written after the clobber
     } else {
-      // otherwise, we need to write it.
-      //        if (!instr.writes(var_idx)) {
       return false;
-      //        }
-      // 2: we write it after the clobber.
     }
   }
 
@@ -769,7 +828,7 @@ bool check_register_assign(const AllocationInput& input,
       continue;
     }
 
-    if (vector_contains(instr.clobber, reg)) {
+    if (instr.clobbers(reg, cache.iregs.at(var_idx).reg_class, input.instr_set)) {
       // there's two cases where this is okay.
       // 1: if we aren't live-out. The clobber won't clobber anything.
       if (!cache.liveout_per_instr.at(instr_idx)[var_idx]) {
@@ -787,13 +846,15 @@ bool check_register_assign(const AllocationInput& input,
   return true;
 }
 
-int get_stack_slot_for_var(int var, RACache* cache) {
+bool live_ranges_overlap(const VarAssignment& first, const VarAssignment& second) {
+  return first.first_live() <= second.last_live() && second.first_live() <= first.last_live();
+}
+
+int get_stack_slot_for_var(int var, RACache* cache, const AllocationInput& input) {
   int slot_size;
   auto& info = cache->iregs.at(var);
   switch (info.reg_class) {
     case RegClass::INT_128:
-      slot_size = 2;
-      break;
     case RegClass::VECTOR_FLOAT:
       slot_size = 2;
       break;
@@ -807,17 +868,43 @@ int get_stack_slot_for_var(int var, RACache* cache) {
       ASSERT(false);
   }
   auto kv = cache->var_to_stack_slot.find(var);
-  if (kv == cache->var_to_stack_slot.end()) {
-    if (slot_size == 2 && (cache->current_stack_slot & 1)) {
-      cache->current_stack_slot++;
-    }
-    auto slot = cache->current_stack_slot;
-    cache->current_stack_slot += slot_size;
-    cache->var_to_stack_slot[var] = slot;
-    return slot;
-  } else {
+  if (kv != cache->var_to_stack_slot.end()) {
     return kv->second;
   }
+
+  // Keep the existing x86 stack layout, but reuse full-width ARM64 spill slots when their live
+  // ranges do not overlap. Address-taken variables need their own slots.
+  if (input.instr_set == emitter::InstructionSet::ARM64 && slot_size == 2 &&
+      !input.force_on_stack_regs.contains(var)) {
+    for (auto& spill_slot : cache->reusable_full_width_spill_slots) {
+      bool slot_is_available = true;
+      for (int other_var : spill_slot.vars) {
+        if (input.force_on_stack_regs.contains(other_var) ||
+            live_ranges_overlap(cache->vars.at(var), cache->vars.at(other_var))) {
+          slot_is_available = false;
+          break;
+        }
+      }
+
+      if (slot_is_available) {
+        spill_slot.vars.push_back(var);
+        cache->var_to_stack_slot[var] = spill_slot.slot;
+        return spill_slot.slot;
+      }
+    }
+  }
+
+  if (slot_size == 2 && (cache->current_stack_slot & 1)) {
+    cache->current_stack_slot++;
+  }
+  auto slot = cache->current_stack_slot;
+  cache->current_stack_slot += slot_size;
+  cache->var_to_stack_slot[var] = slot;
+  if (input.instr_set == emitter::InstructionSet::ARM64 && slot_size == 2 &&
+      !input.force_on_stack_regs.contains(var)) {
+    cache->reusable_full_width_spill_slots.push_back({slot, {var}});
+  }
+  return slot;
 }
 
 struct AssignmentSettings {
@@ -841,7 +928,7 @@ bool try_demote_stack(const AllocationInput& input,
     return false;  // not in a reg.
   }
 
-  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  int my_slot = get_stack_slot_for_var(var_idx, cache, input);
   var.demote_to_stack(my_slot);
   setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
   return true;
@@ -890,7 +977,7 @@ loop_top:
       auto& check_other_var = cache->vars.at(check_other_reg);
       if (check_other_var.assigned_to_reg()) {
         auto reg = check_other_var.reg();
-        if (vector_contains(allowable_local_var_move_elim, reg)) {
+        if (vector_contains(move_elim_regs(input), reg)) {
           if (check_register_assign_at(input, *cache, var_idx, instr_idx, reg)) {
             var.set_stack_slot_reg(reg, instr_idx);
             bonus.reg = reg;
@@ -983,7 +1070,7 @@ bool handle_failed_register_allocation(const AllocationInput& input,
                                        const AssignmentSettings& settings) {
   // so we couldn't find a register and we need to put this on the stack.  Set on stack:
   auto& var = cache->vars.at(var_idx);
-  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  int my_slot = get_stack_slot_for_var(var_idx, cache, input);
   var.assign_to_stack(my_slot);
   return setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
 }
@@ -1012,11 +1099,11 @@ bool run_assignment_on_var(const AllocationInput& input,
       const auto& other_var = cache->vars.at(other_live_var_idx);
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.first_live())) {
-        if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
+        if (vector_contains(move_elim_regs(input), other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             lg::print("m0 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                      other_var.reg().print(), worked);
+                      other_var.reg().print(input.instr_set), worked);
           }
 
           if (worked) {
@@ -1040,11 +1127,11 @@ bool run_assignment_on_var(const AllocationInput& input,
 
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.last_live())) {
-        if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
+        if (vector_contains(move_elim_regs(input), other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             lg::print("m1 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                      other_var.reg().print(), worked);
+                      other_var.reg().print(input.instr_set), worked);
           }
 
           if (worked) {
@@ -1062,8 +1149,8 @@ bool run_assignment_on_var(const AllocationInput& input,
         if (trace) {
           const auto& this_var = cache->vars.at(var_idx);
           lg::print("m2 trying var {} in {} (live {} to {}): {}\n",
-                    cache->iregs.at(var_idx).to_string(), reg.print(), this_var.first_live(),
-                    this_var.last_live(), worked);
+                    cache->iregs.at(var_idx).to_string(), reg.print(input.instr_set),
+                    this_var.first_live(), this_var.last_live(), worked);
         }
         if (worked) {
           var.assign_to_register(reg);
@@ -1182,7 +1269,7 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
   result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
 
   // check for use of saved registers
-  for (auto sr : emitter::gRegInfo.get_all_saved()) {
+  for (auto sr : emitter::reg_info(input.instr_set).get_all_saved()) {
     bool uses_sr = false;
     for (auto& lr : cache.vars) {
       for (int instr_idx = lr.first_live(); instr_idx <= lr.last_live(); instr_idx++) {

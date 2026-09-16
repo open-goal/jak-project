@@ -490,16 +490,17 @@ void make_draws(tfrag3::Level& lev,
                         combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
+            auto resolved = tdb.resolve_texture(combo_tex);
             // add a new texture to the level data
             idx_in_lev_data = lev.textures.size();
             lev.textures.emplace_back();
             auto& new_tex = lev.textures.back();
             new_tex.combo_id = combo_tex;
-            new_tex.w = tex_it->second.w;
-            new_tex.h = tex_it->second.h;
+            new_tex.w = resolved.w;
+            new_tex.h = resolved.h;
             new_tex.debug_name = tex_it->second.name;
             new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-            new_tex.data = tex_it->second.rgba_bytes;
+            new_tex.data = std::move(resolved.rgba);
           }
 
           DrawMode mode = draw.settings.mode;
@@ -511,8 +512,7 @@ void make_draws(tfrag3::Level& lev,
           if (existing_draws_in_tex != static_draws_by_tex.end()) {
             for (auto idx : existing_draws_in_tex->second) {
               auto& candidate_draw_out = tree_out.static_draws.at(idx);
-              if (candidate_draw_out.mode == mode && (!tree_out.has_per_proto_visibility_toggle ||
-                                                      candidate_draw_out.proto_idx == proto_idx)) {
+              if (candidate_draw_out.mode == mode && candidate_draw_out.proto_idx == proto_idx) {
                 draw_to_add_to = &tree_out.static_draws[idx];
                 verts_to_add_to = &indices_regrouped_by_draw[idx];
               }
@@ -526,9 +526,9 @@ void make_draws(tfrag3::Level& lev,
             draw_to_add_to = &tree_out.static_draws.back();
             draw_to_add_to->mode = mode;
             draw_to_add_to->tree_tex_id = idx_in_lev_data;
-            if (tree_out.has_per_proto_visibility_toggle) {
-              draw_to_add_to->proto_idx = proto_idx;
-            }
+            // jak 1 has no per-proto visibility toggle, but the gltf exporter still uses this to
+            // split the tree back up into one mesh per prototype
+            draw_to_add_to->proto_idx = proto_idx;
             verts_to_add_to = &indices_regrouped_by_draw.emplace_back();
           }
 

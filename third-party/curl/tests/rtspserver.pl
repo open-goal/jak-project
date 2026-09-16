@@ -34,14 +34,11 @@ BEGIN {
 use serverhelp qw(
     server_pidfilename
     server_logfilename
-    );
-
-use pathhelp qw(
-    exe_ext
+    server_exe
     );
 
 my $verbose = 0;     # set to 1 for debugging
-my $port = 8990;     # just a default
+my $port = 8990;     # a default
 my $ipvnum = 4;      # default IP version of rtsp server
 my $idnum = 1;       # default rtsp server instance number
 my $proto = 'rtsp';  # protocol the rtsp server speaks
@@ -107,7 +104,7 @@ while(@ARGV) {
         $verbose = 1;
     }
     else {
-        print STDERR "\nWarning: rtspserver.pl unknown parameter: $ARGV[0]\n";
+        print STDERR "\nWarning: rtspserver.pl unknown parameter: '$ARGV[0]'\n";
     }
     shift @ARGV;
 }
@@ -133,4 +130,4 @@ $flags .= "--pidfile \"$pidfile\" ".
 $flags .= "--ipv$ipvnum --port $port --srcdir \"$srcdir\"";
 
 $| = 1;
-exec("exec server/rtspd".exe_ext('SRV')." $flags");
+exec("exec ".server_exe('rtspd')." $flags");

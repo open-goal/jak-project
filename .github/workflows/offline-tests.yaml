@@ -36,6 +36,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.user.id }}
           COMMENT: ${{ github.event.comment.body }}
           PR_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
 
@@ -70,6 +71,7 @@ jobs:
             SHA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.head.sha')
             if [ "$COMMENT" = "ok to test" ] && grep -Fxq "$COMMENT_ID" ./.tmp-ci/allowlist.txt; then
               is_trusted=true
+              gh pr comment "${{ github.event.issue.number }}" --body "Offline tests running: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             fi
           fi
 

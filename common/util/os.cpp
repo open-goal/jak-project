@@ -1,5 +1,7 @@
 #include "os.h"
 
+#include <fstream>
+
 #include "common/common_types.h"
 #include "common/log/log.h"
 #include "common/util/string_util.h"
@@ -46,16 +48,132 @@ void __cpuidex(int result[4], int eax, int ecx) {
       : "=a"(result[0]), "=b"(result[1]), "=c"(result[2]), "=d"(result[3])
       : "0"(eax), "2"(ecx));
 }
-#else
-// TODO ARM - implement ARM64 detection, check for NEON instead of AVX
-// for now, just return 0's.
-void __cpuidex(int result[4], int eax, int ecx) {
-  lg::warn("cpuid not implemented on this platform");
-  for (int i = 0; i < 4; i++) {
-    result[i] = 0;
-  }
-}
 #endif
+
+void setup_cpu_info_windows(CpuInfo& info) {
+#if defined(_M_X64) || defined(_M_IX86)
+  // Brand string
+  {
+    int result[4];
+    __cpuidex(result, 0, 0);
+
+    for (int r : {1, 3, 2}) {
+      int reg = result[r];
+      for (int i = 0; i < 4; i++) {
+        info.brand.push_back(reg & 0xff);
+        reg >>= 8;
+      }
+    }
+  }
+  // Model string
+  for (int leaf = 0x80000002; leaf <= 0x80000004; leaf++) {
+    int result[4];
+    __cpuidex(result, leaf, 0);
+
+    for (int reg : result) {
+      for (int i = 0; i < 4; i++) {
+        info.model.push_back(reg & 0xff);
+        reg >>= 8;
+      }
+    }
+  }
+  {
+    int result[4];
+    __cpuidex(result, 1, 0);
+    info.has_avx = result[2] & (1 << 28);
+  }
+  {
+    int result[4];
+    __cpuidex(result, 7, 0);
+    info.has_avx2 = result[1] & (1 << 5);
+  }
+#elif defined(_M_ARM64)
+  info.brand = "ARM";
+  HKEY key;
+  if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0,
+                    KEY_READ, &key) == ERROR_SUCCESS) {
+    char buf[256];
+    DWORD size = sizeof(buf);
+    if (RegQueryValueExA(key, "ProcessorNameString", nullptr, nullptr, reinterpret_cast<BYTE*>(buf),
+                         &size) == ERROR_SUCCESS) {
+      info.model = buf;
+    }
+    RegCloseKey(key);
+  }
+  info.has_neon = IsProcessorFeaturePresent(PF_ARM_NEON_INSTRUCTIONS_AVAILABLE);
+#endif
+}
+
+void setup_cpu_info_linux(CpuInfo& info) {
+  std::ifstream cpuinfo("/proc/cpuinfo");
+  std::string line;
+  while (std::getline(cpuinfo, line)) {
+    auto colon = line.find(':');
+    if (colon == std::string::npos) {
+      continue;
+    }
+    std::string key = line.substr(0, colon);
+    std::string value = line.substr(colon + 1);
+    while (!value.empty() && value.front() == ' ') {
+      value.erase(value.begin());
+    }
+    if (info.brand.empty() && key == "vendor_id") {
+      info.brand = value;
+    }
+    if (info.model.empty() && (key == "model name" || key == "Processor")) {
+      info.model = value;
+    }
+  }
+#if defined(__aarch64__)
+  info.brand = "ARM";
+#ifdef HWCAP_ASIMD
+  info.has_neon = getauxval(AT_HWCAP) & HWCAP_ASIMD;
+#endif
+#endif
+
+#if defined(__x86_64__)
+  int result[4];
+  __cpuidex(result, 1, 0);
+  info.has_avx = result[2] & (1 << 28);
+  __cpuidex(result, 7, 0);
+  info.has_avx2 = result[1] & (1 << 5);
+#endif
+}
+
+void setup_cpu_info_macos(CpuInfo& info) {
+#if defined(__x86_64__)
+  int result[4];
+  __cpuidex(result, 0, 0);
+  for (int r : {1, 3, 2}) {
+    int reg = result[r];
+    for (int i = 0; i < 4; i++) {
+      info.brand.push_back(reg & 0xff);
+      reg >>= 8;
+    }
+  }
+  for (int leaf = 0x80000002; leaf <= 0x80000004; leaf++) {
+    __cpuidex(result, leaf, 0);
+    for (int reg : result) {
+      for (int i = 0; i < 4; i++) {
+        info.model.push_back(reg & 0xff);
+        reg >>= 8;
+      }
+    }
+  }
+  __cpuidex(result, 1, 0);
+  info.has_avx = result[2] & (1 << 28);
+  __cpuidex(result, 7, 0);
+  info.has_avx2 = result[1] & (1 << 5);
+#elif defined(__aarch64__) || defined(__arm64__)
+  info.brand = "Apple";
+  char buf[128];
+  size_t len = sizeof(buf);
+  if (sysctlbyname("hw.model", buf, &len, nullptr, 0) == 0) {
+    info.model = buf;
+  }
+  info.has_neon = true;
+#endif
+}
 
 CpuInfo gCpuInfo;
 
@@ -64,47 +182,23 @@ void setup_cpu_info() {
     return;
   }
 
-  // as a test, get the brand and model
-  for (u32 i = 0x80000002; i <= 0x80000004; i++) {
-    int result[4];
-    __cpuidex(result, i, 0);
-    for (auto reg : result) {
-      for (int c = 0; c < 4; c++) {
-        gCpuInfo.model.push_back(reg);
-        reg >>= 8;
-      }
-    }
-  }
-
-  {
-    int result[4];
-    __cpuidex(result, 0, 0);
-    for (auto r : {1, 3, 2}) {
-      for (int c = 0; c < 4; c++) {
-        gCpuInfo.brand.push_back(result[r]);
-        result[r] >>= 8;
-      }
-    }
-  }
-
-  // check for AVX2
-  {
-    int result[4];
-    __cpuidex(result, 7, 0);
-    gCpuInfo.has_avx2 = result[1] & (1 << 5);
-  }
-
-  {
-    int result[4];
-    __cpuidex(result, 1, 0);
-    gCpuInfo.has_avx = result[2] & (1 << 28);
-  }
+#if defined(_WIN32)
+  setup_cpu_info_windows(gCpuInfo);
+#elif defined(__APPLE__)
+  setup_cpu_info_macos(gCpuInfo);
+#elif defined(__linux__)
+  setup_cpu_info_linux(gCpuInfo);
+#else
+  gCpuInfo.brand = "Unknown Brand";
+  gCpuInfo.model = "Unknown Model";
+#endif
 
   printf("-------- CPU Information --------\n");
   printf(" Brand: %s\n", gCpuInfo.brand.c_str());
   printf(" Model: %s\n", gCpuInfo.model.c_str());
   printf(" AVX  : %s\n", gCpuInfo.has_avx ? "true" : "false");
   printf(" AVX2 : %s\n", gCpuInfo.has_avx2 ? "true" : "false");
+  printf(" NEON : %s\n", gCpuInfo.has_neon ? "true" : "false");
   fflush(stdout);
 
   gCpuInfo.initialized = true;

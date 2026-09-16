@@ -21,31 +21,29 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+#include "first.h"
 
-#include "test.h"
-#include "testtrace.h"
-
-#include <curl/curl.h>
-
-#define URL2 libtest_arg2
-
-int test(char *URL)
+static CURLcode test_lib2306(const char *URL)
 {
   /* first a fine GET response, then a bad one */
-  CURL *cl;
-  int res = 0;
+  CURL *curl;
+  CURLcode result = CURLE_OK;
 
   global_init(CURL_GLOBAL_ALL);
 
-  cl = curl_easy_init();
-  curl_easy_setopt(cl, CURLOPT_URL, URL);
-  curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
-  curl_easy_perform(cl);
+  easy_init(curl);
+  easy_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  result = curl_easy_perform(curl);
+  if(result)
+    goto test_cleanup;
 
-  /* re-use handle, do a second transfer */
-  curl_easy_setopt(cl, CURLOPT_URL, URL2);
-  curl_easy_perform(cl);
-  curl_easy_cleanup(cl);
+  /* reuse handle, do a second transfer */
+  easy_setopt(curl, CURLOPT_URL, libtest_arg2);
+  result = curl_easy_perform(curl);
+
+test_cleanup:
+  curl_easy_cleanup(curl);
   curl_global_cleanup();
-  return res;
+  return result;
 }

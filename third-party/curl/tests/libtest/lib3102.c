@@ -21,9 +21,7 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
-
-#include "memdebug.h"
+#include "first.h"
 
 /*
  * Verify correct order of certificates in the chain by comparing the
@@ -31,45 +29,46 @@
  */
 static bool is_chain_in_order(struct curl_certinfo *cert_info)
 {
-  char *last_issuer = NULL;
+  const char *last_issuer = NULL;
   int cert;
 
   /* Chains with only a single certificate are always in order */
   if(cert_info->num_of_certs <= 1)
-    return 1;
+    return TRUE;
 
   /* Enumerate each certificate in the chain */
   for(cert = 0; cert < cert_info->num_of_certs; cert++) {
     struct curl_slist *slist = cert_info->certinfo[cert];
-    char *issuer = NULL;
-    char *subject = NULL;
+    const char *issuer = NULL;
+    const char *subject = NULL;
 
     /* Find the certificate issuer and subject by enumerating each field */
     for(; slist && (!issuer || !subject); slist = slist->next) {
-      const char issuer_prefix[] = "Issuer:";
-      const char subject_prefix[] = "Subject:";
+      static const char issuer_prefix[] = "Issuer:";
+      static const char subject_prefix[] = "Subject:";
 
-      if(!strncmp(slist->data, issuer_prefix, sizeof(issuer_prefix)-1)) {
-        issuer = slist->data + sizeof(issuer_prefix)-1;
+      if(!strncmp(slist->data, issuer_prefix, sizeof(issuer_prefix) - 1)) {
+        issuer = slist->data + sizeof(issuer_prefix) - 1;
       }
-      if(!strncmp(slist->data, subject_prefix, sizeof(subject_prefix)-1)) {
-        subject = slist->data + sizeof(subject_prefix)-1;
+      if(!strncmp(slist->data, subject_prefix, sizeof(subject_prefix) - 1)) {
+        subject = slist->data + sizeof(subject_prefix) - 1;
       }
     }
 
     if(subject && issuer) {
-      printf("cert %d\n", cert);
-      printf("  subject: %s\n", subject);
-      printf("  issuer: %s\n", issuer);
+      curl_mprintf("cert %d\n", cert);
+      curl_mprintf("  subject: %s\n", subject);
+      curl_mprintf("  issuer: %s\n", issuer);
 
       if(last_issuer) {
         /* If the last certificate's issuer matches the current certificate's
          * subject, then the chain is in order */
-        if(strcmp(last_issuer, subject) != 0) {
-          fprintf(stderr, "cert %d issuer does not match cert %d subject\n",
-                  cert - 1, cert);
-          fprintf(stderr, "certificate chain is not in order\n");
-          return false;
+        if(strcmp(last_issuer, subject)) {
+          curl_mfprintf(stderr,
+                        "cert %d issuer does not match cert %d subject\n",
+                        cert - 1, cert);
+          curl_mfprintf(stderr, "certificate chain is not in order\n");
+          return FALSE;
         }
       }
     }
@@ -77,57 +76,50 @@ static bool is_chain_in_order(struct curl_certinfo *cert_info)
     last_issuer = issuer;
   }
 
-  printf("certificate chain is in order\n");
-  return true;
+  curl_mprintf("certificate chain is in order\n");
+  return TRUE;
 }
 
-static size_t wrfu(void *ptr,  size_t  size,  size_t  nmemb,  void *stream)
-{
-  (void)stream;
-  (void)ptr;
-  return size * nmemb;
-}
-
-int test(char *URL)
+static CURLcode test_lib3102(const char *URL)
 {
   CURL *curl;
-  CURLcode res = CURLE_OK;
+  CURLcode result = CURLE_OK;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
 
-  /* Set the HTTPS url to retrieve. */
-  test_setopt(curl, CURLOPT_URL, URL);
+  /* Set the HTTPS URL to retrieve. */
+  easy_setopt(curl, CURLOPT_URL, URL);
 
   /* Capture certificate information */
-  test_setopt(curl, CURLOPT_CERTINFO, 1L);
+  easy_setopt(curl, CURLOPT_CERTINFO, 1L);
 
   /* Ignore output */
-  test_setopt(curl, CURLOPT_WRITEFUNCTION, wrfu);
+  easy_setopt(curl, CURLOPT_WRITEFUNCTION, tutil_throwaway_cb);
 
   /* No peer verify */
-  test_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-  test_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+  easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+  easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
-  /* Perform the request, res will get the return code */
-  res = curl_easy_perform(curl);
-  if(!res || res == CURLE_GOT_NOTHING) {
+  /* Perform the request, result gets the return code */
+  result = curl_easy_perform(curl);
+  if(!result || result == CURLE_GOT_NOTHING) {
     struct curl_certinfo *cert_info = NULL;
     /* Get the certificate information */
-    res = curl_easy_getinfo(curl, CURLINFO_CERTINFO, &cert_info);
-    if(!res) {
+    result = curl_easy_getinfo(curl, CURLINFO_CERTINFO, &cert_info);
+    if(!result) {
       /* Check to see if the certificate chain is ordered correctly */
       if(!is_chain_in_order(cert_info))
-        res = TEST_ERR_FAILURE;
+        result = TEST_ERR_FAILURE;
     }
   }
 
@@ -137,5 +129,5 @@ test_cleanup:
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
-  return res;
+  return result;
 }

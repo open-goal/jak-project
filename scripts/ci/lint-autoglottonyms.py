@@ -50,6 +50,24 @@ JAK2_AUTOGLOT_IDS = [
     "1349",
 ]
 
+JAK3_AUTOGLOT_IDS = [
+    "133a",
+    "133c",
+    "133d",
+    "133e",
+    "133f",
+    "1340",
+    "1341",
+    "1342",
+    "1343",
+    "1344",
+    "1345",
+    "1346",
+    "1347",
+    "1348",
+    "1349",
+]
+
 def check_text_files(game_name, ids_to_check):
     problem_found = False
 
@@ -79,8 +97,9 @@ def check_text_files(game_name, ids_to_check):
 
 not_ok_jak1 = check_text_files("jak1", JAK1_AUTOGLOT_IDS)
 not_ok_jak2 = check_text_files("jak2", JAK2_AUTOGLOT_IDS)
+not_ok_jak3 = check_text_files("jak3", JAK3_AUTOGLOT_IDS)
 
-if not_ok_jak1 or not_ok_jak2:
+if not_ok_jak1 or not_ok_jak2 or not_ok_jak3:
     print("Autoglottonyms were changed, stop!")
     exit(1)
 else:

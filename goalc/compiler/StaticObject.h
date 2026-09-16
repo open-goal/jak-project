@@ -19,7 +19,7 @@ class StaticObject {
     bool requires_load = false;
     int load_size = -1;
     bool load_signed = false;
-    bool prefer_xmm = false;
+    bool prefer_simd = false;
   };
 
   virtual LoadInfo get_load_info() const = 0;

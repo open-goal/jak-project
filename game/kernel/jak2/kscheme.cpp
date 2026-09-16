@@ -12,6 +12,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 
+#include "game/kernel/common/codegen.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kdsnetm.h"
 #include "game/kernel/common/klink.h"
@@ -314,10 +315,14 @@ Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
   auto trampoline_function_addr = _arg_call_arm64;
 #endif
   auto trampoline = (u8*)&trampoline_function_addr;
-  // TODO - x86 code still being emitted below
 
-  // movabs rax, target_function
   int offset = 0;
+#ifdef __aarch64__
+  u64 tramp;
+  memcpy(&tramp, trampoline, 8);
+  offset = emit_arm64_c_stub(mem.c(), (u64)func, tramp, arg3_is_pp);
+#else
+  // movabs rax, target_function
   mem.c()[offset++] = 0x48;
   mem.c()[offset++] = 0xb8;
   for (int i = 0; i < 8; i++) {
@@ -345,8 +350,9 @@ Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
   mem.c()[offset++] = 0xff;
   mem.c()[offset++] = 0xe0;
   // the asm function's ret will return to the caller of this (GOAL code) directlyz.
+#endif
 
-  // CacheFlush(mem, 0x34);
+  flush_icache_goal(mem.offset, offset);
 
   return mem.cast<Function>();
 }
@@ -427,8 +433,13 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
 #endif
   auto trampoline = (u8*)&trampoline_function_addr;
 
-  // movabs rax, target_function
   int offset = 0;
+#ifdef __aarch64__
+  u64 tramp;
+  memcpy(&tramp, trampoline, 8);
+  offset = emit_arm64_c_stub(mem.c(), (u64)func, tramp, false);
+#else
+  // movabs rax, target_function
   mem.c()[offset++] = 0x48;
   mem.c()[offset++] = 0xb8;
   for (int i = 0; i < 8; i++) {
@@ -448,8 +459,9 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   // jmp rax
   mem.c()[offset++] = 0xff;
   mem.c()[offset++] = 0xe0;
+#endif
 
-  // CacheFlush(mem, 0x34);
+  flush_icache_goal(mem.offset, offset);
 
   return mem.cast<Function>();
 }
@@ -530,9 +542,9 @@ Ptr<Function> make_nothing_func() {
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x14, UNKNOWN_PP));
 
-  // a single x86-64 ret.
-  mem.c()[0] = 0xc3;
-  // CacheFlush(mem, 8);
+  const int written = emit_return_stub(mem.c());
+  // flush the executable view
+  flush_icache_goal(mem.offset, written);
   return mem.cast<Function>();
 }
 
@@ -542,12 +554,8 @@ Ptr<Function> make_nothing_func() {
 Ptr<Function> make_zero_func() {
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x14, UNKNOWN_PP));
-  // xor eax, eax
-  mem.c()[0] = 0x31;
-  mem.c()[1] = 0xc0;
-  // ret
-  mem.c()[2] = 0xc3;
-  // CacheFlush(mem, 8);
+  const int written = emit_zero_stub(mem.c());
+  flush_icache_goal(mem.offset, written);
   return mem.cast<Function>();
 }
 

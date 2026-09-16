@@ -7,3 +7,473 @@
 
 ;; DECOMP BEGINS
 
+(deftype menu-string (hud-string)
+  ((pad  int32)
+   )
+  )
+
+
+(deftype menu-option-info (structure)
+  ((display-name-id  uint32)
+   (sym              basic)
+   (extra            basic)
+   (extra-object     basic  :overlay-at extra)
+   (extra-int        int32  :overlay-at extra)
+   )
+  )
+
+
+(deftype strings-extra-struct (structure)
+  ((text          uint8  128)
+   (extra         basic)
+   (extra-object  basic    :overlay-at extra)
+   (extra-int     int32    :overlay-at extra)
+   (extra-int16   int16  2 :overlay-at extra)
+   )
+  )
+
+
+(deftype menu-selection-struct (structure)
+  ((array-ptr        basic)
+   (selection-index  int32)
+   (last-sym         basic)
+   )
+  )
+
+
+(deftype animation-info (structure)
+  ((enter-anim    int32)
+   (exit-anim     int32)
+   (running-anim  int32)
+   (anim-speed    float)
+   (enter-delay   uint32)
+   (3d-offset     vector  :inline)
+   (3d-offset-x   float   :overlay-at (-> 3d-offset data 0))
+   (3d-offset-y   float   :overlay-at (-> 3d-offset data 1))
+   (3d-offset-z   float   :overlay-at (-> 3d-offset data 2))
+   (3d-offset-w   float   :overlay-at (-> 3d-offset data 3))
+   )
+  )
+
+
+(deftype base-menu-info (structure)
+  ((menu-type      basic)
+   (children       basic)
+   (name-symbol    basic)
+   (3d-menu-type   basic)
+   (trans-info     animation-info)
+   (joint-index    int8)
+   (joint-index-2  int8)
+   (box-index      int8)
+   (flags          uint8)
+   (joints         basic)
+   (anim-delay     uint32)
+   (width          int32)
+   (height         int32)
+   (scale-y        float)
+   (scale-x        float)
+   (user-data      uint32)
+   )
+  )
+
+
+(deftype base-menu (process-drawable)
+  ((child-handles      basic)
+   (info-ptr           base-menu-info)
+   (focused?           basic)
+   (3d-menu-2d-offset  vector               :inline)
+   (pos-x              float)
+   (pos-y              float)
+   (pos-z              float)
+   (menu-time          uint32)
+   (width              int32)
+   (height             int32)
+   (width-array        basic)
+   (height-array       basic)
+   (joint-mat          matrix               :inline)
+   (offset-matrix      matrix               :inline)
+   (j-mod              joint-mod-set-world  :inline)
+   (extra-offset       vector               :inline)
+   (pad                int8)
+   (hidden?            basic)
+   )
+  (:methods
+    (base-menu-method-50 () none)
+    (base-menu-method-51 () none)
+    (base-menu-method-52 () none)
+    (base-menu-method-53 () none)
+    (base-menu-method-54 () none)
+    (base-menu-method-55 () none)
+    (base-menu-method-56 () none)
+    (base-menu-method-57 () none)
+    (base-menu-method-58 () none)
+    (base-menu-method-59 () none)
+    (base-menu-method-60 () none)
+    (base-menu-method-61 () none)
+    (base-menu-method-62 () none)
+    (base-menu-method-63 () none)
+    (base-menu-method-64 () none)
+    )
+  )
+
+
+(deftype jakx-logo-menu (base-menu)
+  ()
+  )
+
+
+(define *jakx-logo-seen?* #f)
+
+(deftype map-menu (base-menu)
+  ()
+  (:methods
+    (map-menu-method-65 () none)
+    )
+  )
+
+
+(deftype selection-menu-manager (base-menu)
+  ((selection-index       int32)
+   (prev-selection-index  int32)
+   (enabled               basic)
+   )
+  (:methods
+    (selection-menu-manager-method-65 () none)
+    (selection-menu-manager-method-66 () none)
+    )
+  )
+
+
+(deftype sprite-info (structure)
+  ((offset             vector  :inline)
+   (offset-x           float   :overlay-at (-> offset data 0))
+   (offset-y           float   :overlay-at (-> offset data 1))
+   (offset-z           float   :overlay-at (-> offset data 2))
+   (offset-w           float   :overlay-at (-> offset data 3))
+   (pos-z              int32)
+   (tex-name           basic)
+   (tex-id             uint32)
+   (scale-x            float)
+   (scale-y            float)
+   (flags              uint16)
+   (offset-from-index  int8)
+   (offset-dir         uint8)
+   (texture-index      int8)
+   )
+  )
+
+
+(deftype transition-info (animation-info)
+  ((enter-pos-x      float)
+   (enter-pos-y      float)
+   (enter-alpha      float)
+   (running-alpha    float)
+   (exit-alpha       float)
+   (running-pos-x    float)
+   (running-pos-y    float)
+   (exit-pos-x       float)
+   (exit-pos-y       float)
+   (move-rate        float)
+   (scroll-offset-x  int32)
+   (scroll-offset-y  int32)
+   (scroll-rate      float)
+   )
+  :pack-me
+  )
+
+
+(deftype sprite-menu-info (base-menu-info)
+  ((trans-info    transition-info :override)
+   (sprites-info  basic)
+   (color         uint32)
+   )
+  )
+
+
+(deftype hud-sprite-array (inline-array-class)
+  ((data  hud-sprite  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> hud-sprite-array heap-base) (the-as uint 64))
+
+(deftype sprite-menu (base-menu)
+  ((sprites  basic)
+   (alpha    float)
+   )
+  (:methods
+    (sprite-menu-method-65 () none)
+    )
+  )
+
+
+(deftype menu-prim-strip-client (prim-client)
+  ((strip  basic)
+   )
+  (:methods
+    (menu-prim-strip-client-method-10 () none)
+    )
+  )
+
+
+(deftype prim-strip-menu (sprite-menu)
+  ((p-client-array  basic)
+   (colors          basic)
+   )
+  (:methods
+    (prim-strip-menu-method-66 () none)
+    )
+  )
+
+
+(deftype sprite-ptr-info (sprite-info)
+  ((sprite-ptr  basic)
+   )
+  )
+
+
+(deftype sprite-ptr-menu-info (sprite-menu-info)
+  ()
+  )
+
+
+(deftype sprite-ptr-menu (prim-strip-menu)
+  ()
+  )
+
+
+(deftype index-sprite-list-menu-info (sprite-menu-info)
+  ((pad1         uint32  2)
+   (index-list   basic)
+   (horiz-list?  basic)
+   (item-offset  int32)
+   (color-array  basic)
+   )
+  )
+
+
+(deftype index-sprite-list-menu (prim-strip-menu)
+  ((index-list  basic)
+   )
+  )
+
+
+(deftype string-info (structure)
+  ((offset                   vector  :inline)
+   (offset-x                 float   :overlay-at (-> offset data 0))
+   (offset-y                 float   :overlay-at (-> offset data 1))
+   (offset-z                 float   :overlay-at (-> offset data 2))
+   (offset-w                 float   :overlay-at (-> offset data 3))
+   (pos-z                    int32)
+   (id                       uint32)
+   (font-scale               float)
+   (width                    float)
+   (height                   float)
+   (string-ptr               basic)
+   (string-ptr-needs-format  basic)
+   (font-flags               uint16)
+   (font-color               uint8)
+   (font-color-2             uint8)
+   (font-color-3             uint8)
+   (offset-dir               uint8)
+   (offset-from-index        int8)
+   (offset-type-from         int8)
+   (is-player-string         basic)
+   (tmp-talking              int32)
+   (extra-arg                basic)
+   )
+  )
+
+
+(deftype menu-string-array (inline-array-class)
+  ((data  menu-string  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> menu-string-array heap-base) (the-as uint 80))
+
+(deftype string-menu-info (sprite-menu-info)
+  ((strings-info  basic)
+   (text-ids      basic)
+   )
+  )
+
+
+(deftype string-menu (prim-strip-menu)
+  ((strings   basic)
+   (text-ids  basic)
+   )
+  (:methods
+    (string-menu-method-67 () none)
+    (string-menu-method-68 () none)
+    )
+  )
+
+
+(deftype options-bar-indicator (string-menu)
+  ()
+  )
+
+
+(deftype game-text-menu-info (string-menu-info)
+  ((text-id  uint32)
+   )
+  )
+
+
+(deftype game-text-menu (string-menu)
+  ((text-id  uint32)
+   )
+  )
+
+
+(deftype dynamic-string-menu (string-menu)
+  ()
+  )
+
+
+(deftype dynamic-driver-info (dynamic-string-menu)
+  ()
+  )
+
+
+(deftype dropdown-trans-info (transition-info)
+  ((selected-offset  vector)
+   )
+  )
+
+
+(deftype dropdown-item-info (string-menu-info)
+  ((trans-info                   dropdown-trans-info :override)
+   (selection-box-width          int32)
+   (selection-box-height         int32)
+   (selection-type               basic)
+   (selection-extra              int32)
+   (selection-box-offset         vector               :inline)
+   (selection-box-offset-x       float                :overlay-at (-> selection-box-offset data 0))
+   (selection-box-offset-y       float                :overlay-at (-> selection-box-offset data 1))
+   (selection-box-offset-z       float                :overlay-at (-> selection-box-offset data 2))
+   (selection-box-offset-w       float                :overlay-at (-> selection-box-offset data 3))
+   (selection-box-color          uint32)
+   (down-index-modifier          int8)
+   (up-index-modifier            int8)
+   (left-index-modifier          int8)
+   (right-index-modifier         int8)
+   (selection-box-texture-index  int8)
+   (reset-pad                    uint8)
+   )
+  )
+
+
+(deftype dropdown-item (string-menu)
+  ((selected            basic)
+   (p-client-selection  basic)
+   (prev-selection      int32)
+   (enabled             basic)
+   (selected-offset     vector  :inline)
+   )
+  (:methods
+    (dropdown-item-method-69 () none)
+    )
+  )
+
+
+(deftype item-list-selection-info (dropdown-item-info)
+  ((menu-options-info-sym  basic)
+   (add-string             uint32)
+   )
+  )
+
+
+(deftype item-list-selection (dropdown-item)
+  ((menu-options-info-ptr  menu-selection-struct)
+   (selection-type         basic)
+   (selection-index        int32)
+   )
+  )
+
+
+(deftype item-list-driver-selection (item-list-selection)
+  ()
+  )
+
+
+(deftype item-num-selection-info (item-list-selection-info)
+  ((pad1  uint32)
+   )
+  )
+
+
+(deftype menu-num-info (structure)
+  ((min          int32)
+   (max          int32)
+   (current-num  int32)
+   (last-num     int32)
+   )
+  )
+
+
+(deftype item-num-selection (item-list-selection)
+  ((num-selection  int32)
+   (sound-id       uint32)
+   )
+  )
+
+
+(deftype item-num-max-selection (item-num-selection)
+  ((pad1  uint32)
+   )
+  )
+
+
+(deftype games-list-selection (string-menu)
+  ((selection-index  int8)
+   )
+  )
+
+
+(deftype player-ct-string-menu (string-menu)
+  ()
+  )
+
+
+(deftype string-list-selection (dropdown-item)
+  ((selection-index  int8)
+   )
+  )
+
+
+(deftype basic-list-selection-info (string-menu-info)
+  ((menu-options-info-sym  basic)
+   )
+  )
+
+
+(deftype basic-list-selection (string-menu)
+  ((menu-options-info-ptr  basic)
+   (selection-index        int8)
+   )
+  )
+
+
+(deftype big-text-menu-info (sprite-menu-info)
+  ((string-info  string-info)
+   (text         basic)
+   (off-2d-x     float)
+   (off-2d-y     float)
+   )
+  )
+
+
+(deftype big-text-menu (sprite-menu)
+  ((big-text     basic)
+   (vert-offset  float)
+   (vert-extent  float)
+   (temp-string  basic)
+   )
+  (:methods
+    (big-text-menu-method-66 () none)
+    )
+  )

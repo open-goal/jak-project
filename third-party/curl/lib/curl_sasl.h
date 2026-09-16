@@ -23,9 +23,6 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
-#include <curl/curl.h>
-
 #include "bufref.h"
 
 struct Curl_easy;
@@ -132,12 +129,8 @@ struct SASL {
 
 /* This is used to test whether the line starts with the given mechanism */
 #define sasl_mech_equal(line, wordlen, mech) \
-  (wordlen == (sizeof(mech) - 1) / sizeof(char) && \
+  ((wordlen) == (sizeof(mech) - 1) / sizeof(char) && \
    !memcmp(line, mech, wordlen))
-
-/* This is used to cleanup any libraries or curl modules used by the sasl
-   functions */
-void Curl_sasl_cleanup(struct connectdata *conn, unsigned short authused);
 
 /* Convert a mechanism name to a token */
 unsigned short Curl_sasl_decode_mech(const char *ptr,
@@ -154,12 +147,14 @@ void Curl_sasl_init(struct SASL *sasl, struct Curl_easy *data,
 /* Check if we have enough auth data and capabilities to authenticate */
 bool Curl_sasl_can_authenticate(struct SASL *sasl, struct Curl_easy *data);
 
-/* Calculate the required login details for SASL authentication  */
+/* Calculate the required login details for SASL authentication */
 CURLcode Curl_sasl_start(struct SASL *sasl, struct Curl_easy *data,
                          bool force_ir, saslprogress *progress);
 
-/* Continue an SASL authentication  */
+/* Continue an SASL authentication */
 CURLcode Curl_sasl_continue(struct SASL *sasl, struct Curl_easy *data,
                             int code, saslprogress *progress);
+
+CURLcode Curl_sasl_is_blocked(struct SASL *sasl, struct Curl_easy *data);
 
 #endif /* HEADER_CURL_SASL_H */
