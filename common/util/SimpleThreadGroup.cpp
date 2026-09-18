@@ -13,6 +13,8 @@ void SimpleThreadGroup::run(const std::function<void(int)>& func, int num_runs, 
   // copy the function, in case the user gives us a temporary function.
   m_func = func;
 
+  num_workers = std::min<int>(num_workers, std::thread::hardware_concurrency());
+
   int start_idx = 0;
   for (int thread_idx = 0; thread_idx < num_workers; thread_idx++) {
     int end_idx = ((thread_idx + 1) * num_runs) / num_workers;
