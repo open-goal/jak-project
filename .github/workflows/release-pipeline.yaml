@@ -12,6 +12,10 @@ on:
           - patch
           - minor
           - major
+      release_version:
+        description: 'Explicit release version (e.g. 0.3.8). If set, skips automatic version bump.'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -25,23 +29,37 @@ jobs:
     steps:
       # Docs - https://github.com/mathieudutour/github-tag-action
       - name: Bump Version and Push Tag
-        if: github.repository == 'open-goal/jak-project'
+        if: github.repository == 'open-goal/jak-project' && !inputs.release_version
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag_prefix: v
-          default_bump: ${{ github.event.inputs.bump }}
+          default_bump: ${{ inputs.bump }}
 
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ steps.tag_version.outputs.new_tag }} --generate-notes --draft --repo ${{ github.repository }}
+        run: |
+          if [ -n "${{ inputs.release_version }}" ]; then
+            TAG="v${{ inputs.release_version }}"
+          else
+            TAG="${{ steps.tag_version.outputs.new_tag }}"
+          fi
+
+          gh release create "$TAG" \
+            --generate-notes \
+            --draft \
+            --repo "${{ github.repository }}"
 
       - name: Output new tag
         id: set_tag
         run: |
-          echo "new_tag=${{ steps.tag_version.outputs.new_tag }}" >> $GITHUB_OUTPUT
+          if [ -n "${{ inputs.release_version }}" ]; then
+            echo "new_tag=v${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_tag=${{ steps.tag_version.outputs.new_tag }}" >> "$GITHUB_OUTPUT"
+          fi
 
   # Windows
   build_windows_clang:
