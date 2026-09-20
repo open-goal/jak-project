@@ -41,7 +41,12 @@ int main(int argc, char** argv) {
   int debug_port = -1;
   fs::path project_path_override;
   fs::path iso_path_override;
+
+#if defined(__aarch64__) || defined(_M_ARM64)
+  std::string instr_set_name = "arm64";
+#else
   std::string instr_set_name = "x86";
+#endif
 
   // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
   CLI::App app{"OpenGOAL Compiler / REPL"};
