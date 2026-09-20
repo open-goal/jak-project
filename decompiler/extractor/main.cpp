@@ -138,7 +138,13 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Compiler compiler(game_name_to_version(version_info.game_name), emitter::kNativeInstructionSet);
+#if defined(__aarch64__) || defined(_M_ARM64)
+  emitter::InstructionSet instr_set = emitter::InstructionSet::ARM64;
+#else
+  emitter::InstructionSet instr_set = emitter::InstructionSet::X86;
+#endif
+
+  Compiler compiler(game_name_to_version(version_info.game_name), instr_set);
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
   file_util::set_iso_data_dir(absolute(iso_data_path));
@@ -190,6 +196,7 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
   std::string decomp_config_override = "{}";
+  std::string instr_set_name = "x86";
 
   lg::initialize();
 
