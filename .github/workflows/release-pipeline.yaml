@@ -39,9 +39,14 @@ jobs:
 
       - name: Create Explicit Tag
         if: inputs.release_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag "v${{ inputs.release_version }}" "${{ github.sha }}"
-          git push origin "v${{ inputs.release_version }}"
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/git/refs" \
+            -f "ref=refs/tags/v${{ inputs.release_version }}" \
+            -f "sha=${{ github.sha }}"
 
       - name: Create Release
         env:
