@@ -204,7 +204,26 @@ std::string font_util_korean::compose_korean_containing_text(const std::string& 
     char32_t second = (i + 1 < cps.size()) ? cps[i + 1] : 0;
     char32_t third = (i + 2 < cps.size()) ? cps[i + 2] : 0;
     char32_t fourth = (i + 3 < cps.size()) ? cps[i + 3] : 0;
-    if (is_leading(first) && is_vowel(second) && is_leading(third) && is_vowel(fourth)) {
+    // The glyph lookup maps combined vowels to two component jamo. Rejoin
+    // them before forming a syllable for text-bank round trips.
+    char32_t combined_vowel = 0;
+    if (second == 0x1169) {
+      if (third == 0x1161) combined_vowel = 0x116A;
+      if (third == 0x1162) combined_vowel = 0x116B;
+      if (third == 0x1175) combined_vowel = 0x116C;
+    } else if (second == 0x116E) {
+      if (third == 0x1165) combined_vowel = 0x116F;
+      if (third == 0x1166) combined_vowel = 0x1170;
+      if (third == 0x1175) combined_vowel = 0x1171;
+    } else if (second == 0x1173 && third == 0x1175) {
+      combined_vowel = 0x1174;
+    }
+    if (is_leading(first) && combined_vowel) {
+      output += codepoint_to_utf8(
+          compose_jamo(first, combined_vowel, is_trailing(fourth) ? std::optional<char32_t>(fourth)
+                                                                   : std::nullopt));
+      i += is_trailing(fourth) ? 4 : 3;
+    } else if (is_leading(first) && is_vowel(second) && is_leading(third) && is_vowel(fourth)) {
       char32_t syllable = compose_jamo(first, second);
       output += codepoint_to_utf8(syllable);
       i += 2;  // consume 2 codepoints
@@ -274,18 +293,26 @@ bool is_median_vowel_combined(char32_t vowel) {
   return false;
 }
 
-std::string glyph_hex_string_to_int(const std::string& str) {
+std::vector<std::string> glyph_hex_string_to_int(const std::string& str) {
   try {
-    std::string result;
-    if (str_util::starts_with(str, "extra_")) {
-      // handle glyphs on the secondary texture page
-      result += 0x5;
-      std::string temp = str;
-      str_util::replace(temp, "extra_", "");
-      result += std::stoi(temp, nullptr, 0);
-    } else {
-      result += std::stoi(str, nullptr, 0);
-    }
+    std::vector<std::string> result;
+    size_t start = 0;
+    do {
+      const auto end = str.find(',', start);
+      auto glyph = str.substr(start, end == std::string::npos ? end : end - start);
+      std::string encoded;
+      if (str_util::starts_with(glyph, "extra_")) {
+        // Secondary texture page components carry their own marker.
+        encoded += 0x5;
+        str_util::replace(glyph, "extra_", "");
+      }
+      encoded += std::stoi(glyph, nullptr, 0);
+      result.push_back(encoded);
+      if (end == std::string::npos) {
+        break;
+      }
+      start = end + 1;
+    } while (true);
     return result;
   } catch (std::exception& e) {
     lg::error("Unable to convert hex_string_to_int: {}", str);
@@ -338,50 +365,49 @@ std::string font_util_korean::game_encode_korean_syllable(
   //
   // the order the glyphs are drawn in does not matter, as they all overlap anyway.
   std::vector<std::string> glyphs_to_draw = {};
+  const auto add_glyphs = [&glyphs_to_draw](const std::string& value) {
+    const auto glyphs = glyph_hex_string_to_int(value);
+    glyphs_to_draw.insert(glyphs_to_draw.end(), glyphs.begin(), glyphs.end());
+  };
   const auto initial_utf8 = codepoint_to_utf8(initial);
   const auto median_utf8 = codepoint_to_utf8(median);
   if (final == BASE_OF_TRAILING_CONSONANTS) {  // no final consonant
     const auto initial_alt_lookup_key = fmt::format("<G>,{}", median_utf8);
     const auto& initial_alts = db.at(initial_utf8).at(orientation).alternatives;
     if (initial_alts.contains(initial_alt_lookup_key)) {
-      glyphs_to_draw.push_back(glyph_hex_string_to_int(initial_alts.at(initial_alt_lookup_key)));
+      add_glyphs(initial_alts.at(initial_alt_lookup_key));
     } else {
-      glyphs_to_draw.push_back(
-          glyph_hex_string_to_int(db.at(initial_utf8).at(orientation).defaultGlyph));
+      add_glyphs(db.at(initial_utf8).at(orientation).defaultGlyph);
     }
     const auto median_alt_lookup_key = fmt::format("{},<G>", initial_utf8);
     const auto& median_alts = db.at(median_utf8).at(orientation).alternatives;
     if (median_alts.contains(median_alt_lookup_key)) {
-      glyphs_to_draw.push_back(glyph_hex_string_to_int(median_alts.at(median_alt_lookup_key)));
+      add_glyphs(median_alts.at(median_alt_lookup_key));
     } else {
-      glyphs_to_draw.push_back(
-          glyph_hex_string_to_int(db.at(median_utf8).at(orientation).defaultGlyph));
+      add_glyphs(db.at(median_utf8).at(orientation).defaultGlyph);
     }
   } else {
     const auto final_utf8 = codepoint_to_utf8(final);
     const auto initial_alt_lookup_key = fmt::format("<G>,{},{}", median_utf8, final_utf8);
     const auto& initial_alts = db.at(initial_utf8).at(orientation).alternatives;
     if (initial_alts.contains(initial_alt_lookup_key)) {
-      glyphs_to_draw.push_back(glyph_hex_string_to_int(initial_alts.at(initial_alt_lookup_key)));
+      add_glyphs(initial_alts.at(initial_alt_lookup_key));
     } else {
-      glyphs_to_draw.push_back(
-          glyph_hex_string_to_int(db.at(initial_utf8).at(orientation).defaultGlyph));
+      add_glyphs(db.at(initial_utf8).at(orientation).defaultGlyph);
     }
     const auto median_alt_lookup_key = fmt::format("{},<G>,{}", initial_utf8, final_utf8);
     const auto& median_alts = db.at(median_utf8).at(orientation).alternatives;
     if (median_alts.contains(median_alt_lookup_key)) {
-      glyphs_to_draw.push_back(glyph_hex_string_to_int(median_alts.at(median_alt_lookup_key)));
+      add_glyphs(median_alts.at(median_alt_lookup_key));
     } else {
-      glyphs_to_draw.push_back(
-          glyph_hex_string_to_int(db.at(median_utf8).at(orientation).defaultGlyph));
+      add_glyphs(db.at(median_utf8).at(orientation).defaultGlyph);
     }
     const auto final_alt_lookup_key = fmt::format("{},{},<G>", initial_utf8, median_utf8);
     const auto& final_alts = db.at(final_utf8).at(orientation).alternatives;
     if (final_alts.contains(final_alt_lookup_key)) {
-      glyphs_to_draw.push_back(glyph_hex_string_to_int(final_alts.at(final_alt_lookup_key)));
+      add_glyphs(final_alts.at(final_alt_lookup_key));
     } else {
-      glyphs_to_draw.push_back(
-          glyph_hex_string_to_int(db.at(final_utf8).at(orientation).defaultGlyph));
+      add_glyphs(db.at(final_utf8).at(orientation).defaultGlyph);
     }
   }
 
