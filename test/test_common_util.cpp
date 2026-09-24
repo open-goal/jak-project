@@ -12,6 +12,7 @@
 #include "common/util/Trie.h"
 #include "common/util/crc32.h"
 #include "common/util/json_util.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/os.h"
 #include "common/util/print_float.h"
 
@@ -22,6 +23,39 @@
 
 TEST(CommonUtil, CpuInfo) {
   setup_cpu_info();
+}
+
+TEST(CommonUtil, Jak1KoreanTextEncoding) {
+  auto* font_v1 = get_font_bank(GameTextVersion::JAK1_V1);
+  auto* font_v2 = get_font_bank(GameTextVersion::JAK1_V2);
+
+  EXPECT_TRUE(font_v1->is_language_id_korean(17));
+  EXPECT_TRUE(font_v2->is_language_id_korean(17));
+  EXPECT_FALSE(font_v2->is_language_id_korean(0));
+
+  const std::string source = "새 게임";
+  const auto encoded = font_v2->convert_utf8_to_game_korean(source);
+  ASSERT_FALSE(encoded.empty());
+  EXPECT_EQ(static_cast<unsigned char>(encoded.front()), 4);
+  EXPECT_EQ(font_v2->convert_korean_game_to_utf8(encoded.c_str()), source);
+
+  // Compound vowels must retain both drawing components, and an extra-page
+  // final consonant must remain a separate overlay within the same syllable.
+  const auto compound = font_v2->convert_utf8_to_game_korean("의 와 웠");
+  const auto byte = [&compound](size_t index) {
+    return static_cast<unsigned char>(compound.at(index));
+  };
+  EXPECT_EQ(byte(0), 4);
+  EXPECT_EQ(byte(1), 3);
+  EXPECT_EQ(byte(4), 0xa9);  // ㅣ in 의
+  EXPECT_EQ(byte(7), 4);
+  EXPECT_EQ(byte(8), 3);
+  EXPECT_EQ(byte(11), 0xa8);  // ㅏ in 와
+  EXPECT_EQ(byte(14), 4);
+  EXPECT_EQ(byte(15), 3);
+  EXPECT_EQ(byte(18), 5);  // secondary-page 받침
+  EXPECT_EQ(byte(19), 0x8a);
+  EXPECT_EQ(font_v2->convert_korean_game_to_utf8(compound.c_str()), "의 와 웠");
 }
 
 TEST(CommonUtil, get_file_path) {
