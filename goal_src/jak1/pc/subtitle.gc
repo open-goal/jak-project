@@ -393,6 +393,13 @@
      (string-format "~3L~S:~0L ~S" (-> keyframe speaker) (-> keyframe string)))
     (else (string-format "~S" (-> keyframe string)))))
 
+(defun subtitle-render-string ((obj subtitle) (keyframe subtitle-keyframe))
+  "format a subtitle and expand Korean syllables into composited Jak 1 glyphs."
+  (let ((formatted (subtitle-format obj keyframe)))
+    (if (= (-> *pc-settings* subtitle-language) (pc-language korean))
+      (convert-korean-text formatted)
+      formatted)))
+
 (defun subtitle? ((hinttitles? symbol))
   "can a subtitle be displayed right now?"
   (and (or (and (not hinttitles?) (-> *pc-settings* subtitles?)) ;; subtitles enabled
@@ -422,7 +429,7 @@
   (when (and (-> self want-subtitle) (subtitle? (-> self hint-subtitle?)))
     ;; we got a valid subtitle! render it.
     (hide-bottom-hud)
-    (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22)
+    (print-game-subtitle (subtitle-render-string self (-> self want-subtitle)) (-> self font) #f 128 22)
     (#when PC_SUBTITLE_DEBUG
       (draw-debug-text-box (-> self font)))))
 
@@ -739,7 +746,7 @@
               (set! (-> self want-subtitle) (-> *subtitle-text* data i keyframes ii))
               (1+! lines-this-time)
               (when (< (* (-> *SUBTITLE-bank* lines) 11)
-                       (print-game-subtitle (subtitle-format self (-> self want-subtitle)) (-> self font) #f 128 22))
+                       (print-game-subtitle (subtitle-render-string self (-> self want-subtitle)) (-> self font) #f 128 22))
                 (format 0 "LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
                 (format #t "LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
                 (1+! bad-lines))))
