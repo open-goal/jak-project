@@ -71,7 +71,10 @@ GameTextFontBank::GameTextFontBank(GameTextVersion version,
 }
 
 bool GameTextFontBank::is_language_id_korean(const int language_id) const {
-  if (m_version == GameTextVersion::JAK2 && language_id == 6) {
+  if ((m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2) &&
+      language_id == 17) {
+    return true;
+  } else if (m_version == GameTextVersion::JAK2 && language_id == 6) {
     return true;
   } else if (m_version == GameTextVersion::JAK3 && language_id == 7) {
     return true;
@@ -238,8 +241,9 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
 }
 
 std::string GameTextFontBank::convert_utf8_to_game_korean(const std::string& str) {
-  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
-             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
+  ASSERT_MSG(m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2 ||
+                 m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for this game");
   if (!m_korean_db.has_value()) {
     const auto db_file_path =
         file_util::get_file_path({"game/assets/fonts/jak2_jak3_korean_db.json"});
@@ -283,8 +287,9 @@ std::string GameTextFontBank::convert_utf8_to_game_korean(const std::string& str
 }
 
 std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const {
-  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
-             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
+  ASSERT_MSG(m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2 ||
+                 m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for this game");
   // Korean strings are fully bitstrings, in other words, it's just a bunch of bytes
   // Some info on the layout:
   // - Every korean syllable block starts with a `4`
