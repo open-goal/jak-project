@@ -193,8 +193,6 @@ def is_korean_syllable(char):
 
 
 def is_char_allowed(game_name, char, allowed_characters):
-    if game_name == "jak1":
-        return char in allowed_characters
     return char in allowed_characters or is_korean_syllable(char)
 
 
