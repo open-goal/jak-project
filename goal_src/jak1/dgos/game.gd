@@ -172,6 +172,7 @@
   "shadow-cpu.o"
   "shadow-vu1.o"
   "depth-cue.o"
+  "korean-font.o"
   "font.o"
   "decomp.o"
   "background.o"
