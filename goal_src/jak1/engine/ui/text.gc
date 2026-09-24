@@ -17,9 +17,15 @@
 ;; DECOMP BEGINS
 
 ;; State of text drawing.
-(define *game-text-word* (new 'global 'string 128 (the string '#f)))
+(define *game-text-word* (new 'global 'string 1024 (the string '#f)))
 
-(define *game-text-line* (new 'global 'string 256 (the string '#f)))
+(define *game-text-line* (new 'global 'string 2048 (the string '#f)))
+
+;; Korean text is stored compactly as Hangul syllable blocks.  Lookup expands
+;; each block into overlapping jamo glyphs understood by the Jak 1 font renderer.
+(define *korean-expand-buffer-number* 0)
+(define *korean-expanded-text-0* (new 'global 'string 4096 (the string '#f)))
+(define *korean-expanded-text-1* (new 'global 'string 4096 (the string '#f)))
 
 (define *level-text-file-load-flag* #t)
 
@@ -67,6 +73,62 @@
       (+! (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))))
   this)
 
+(defun convert-korean-text ((src string))
+  "Expand compact Korean syllables into overlapping Jak 1 extension glyphs."
+  (set! *korean-expand-buffer-number* (logxor *korean-expand-buffer-number* 1))
+  (let ((dst (if (zero? *korean-expand-buffer-number*) *korean-expanded-text-0* *korean-expanded-text-1*))
+        (src-index 0)
+        (dst-index 0)
+        (src-length (length src)))
+    (clear dst)
+    (while (< src-index src-length)
+      (let ((marker (-> src data src-index)))
+        (cond
+          ;; 0x03 introduces a run encoded with the normal Jak 1 font bank.
+          ((= marker 3)
+           (+! src-index 1)
+           (while (and (< src-index src-length)
+                       (!= (-> src data src-index) 3)
+                       (!= (-> src data src-index) 4))
+             (set! (-> dst data dst-index) (-> src data src-index))
+             (+! src-index 1)
+             (+! dst-index 1)))
+          ;; 0x04, count, glyph... is one precomposed Hangul syllable.
+          ((= marker 4)
+           (let ((glyph-count (-> src data (+ src-index 1))))
+             (+! src-index 2)
+             ;; Save the pen position.  Every component except the final one
+             ;; restores it, so all jamo overlap and the syllable advances once.
+             (set! (-> dst data dst-index) (the-as uint 126)) ;; ~
+             (set! (-> dst data (+ dst-index 1)) (the-as uint 89)) ;; Y
+             (+! dst-index 2)
+             (dotimes (glyph-index glyph-count)
+               (let ((extra? (= (-> src data src-index) 5)))
+                 (when extra? (+! src-index 1))
+                 (let ((source-glyph (-> src data src-index)))
+                   ;; Marker 2 selects the Korean-only UV bank.  Marker 1
+                   ;; remains the original Japanese extension encoding.
+                   (set! (-> dst data dst-index) (the-as uint 2))
+                   (set! (-> dst data (+ dst-index 1))
+                         (if extra?
+                             (-> *korean-extra-jamo-map* source-glyph)
+                             (-> *korean-jamo-map* source-glyph)))
+                   (+! dst-index 2)
+                   (+! src-index 1))
+                 (when (< (+ glyph-index 1) glyph-count)
+                   (set! (-> dst data dst-index) (the-as uint 126)) ;; ~
+                   (set! (-> dst data (+ dst-index 1)) (the-as uint 90)) ;; Z
+                   (+! dst-index 2))))))
+          (else
+           ;; Invalid data should remain visible instead of stalling lookup.
+           (set! (-> dst data dst-index) marker)
+           (+! src-index 1)
+           (+! dst-index 1))))
+      (when (>= dst-index (- (-> dst allocated-length) 8))
+        (set! src-index src-length)))
+    (set! (-> dst data dst-index) (the-as uint 0))
+    dst))
+
 ;; og:preserve-this extracted implementation out so that callers of `lookup-text!` were uneffected
 ;; this implementation is different from the original (has fallback text lookup)
 (define-extern lookup-text-impl! (function game-text-info text-id symbol symbol string))
@@ -106,6 +168,8 @@
                   (string-format "UNKNOWN ID ~D" arg0))
               (string-format "UNKNOWN ID ~D" arg0))
             (string-format "UNKNOWN ID ~D" arg0)))))
+      ((= (-> this language-id) 17)
+       (convert-korean-text (-> this data v1-2 text)))
       (else
        (-> this data v1-2 text) ;; found it!
        ))))
