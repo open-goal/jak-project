@@ -95,7 +95,11 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
     for (auto& [id, name] : speakers_converted) {
       // convert name in-place. we copied the map earlier so this is safe.
       // the subtitle lines have the speaker "id" stored in them, which is the map key here.
-      name = font->convert_utf8_to_game(name);
+      if (font->is_language_id_korean(lang)) {
+        name = font->convert_utf8_to_game_korean(name);
+      } else {
+        name = font->convert_utf8_to_game(name);
+      }
     }
 
     DataObjectGenerator gen;
@@ -125,7 +129,12 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
 
       for (auto& subtitle : scene.m_lines) {
         gen.add_word(subtitle.metadata.frame_start);                               // frame
-        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(subtitle.text));  // line
+        if (font->is_language_id_korean(lang)) {
+          gen.add_ref_to_string_in_pool(
+              font->convert_utf8_to_game_korean(subtitle.text));  // line
+        } else {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(subtitle.text));  // line
+        }
         // speaker
         if (subtitle.metadata.speaker.empty()) {
           gen.add_ref_to_string_in_pool("");
