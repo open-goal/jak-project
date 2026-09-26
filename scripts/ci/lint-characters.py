@@ -192,8 +192,8 @@ def is_korean_syllable(char):
     return "\uac00" <= char <= "\ud7a3"
 
 
-def is_char_allowed(game_name, char, allowed_characters):
-    return char in allowed_characters or is_korean_syllable(char)
+def is_char_allowed(game_name, char, allowed_characters, allow_korean):
+    return char in allowed_characters or (allow_korean and is_korean_syllable(char))
 
 
 def is_allowed_code(pos, text, allowed_codes):
@@ -206,10 +206,12 @@ def is_allowed_code(pos, text, allowed_codes):
     return -1
 
 
-def fix_character(game_name, char, allowed_characters, auto_replacements):
+def fix_character(
+    game_name, char, allowed_characters, auto_replacements, allow_korean
+):
     # First let's try upper-casing it, if that's allowed, let's use that instead
     upper_case = char.upper()
-    if is_char_allowed(game_name, upper_case, allowed_characters):
+    if is_char_allowed(game_name, upper_case, allowed_characters, allow_korean):
         return upper_case
     if char in auto_replacements:
         return auto_replacements[char]
@@ -224,13 +226,20 @@ def replace_character(string, position, new_character):
 
 
 def lint_characters(
-    game_name, text, allowed_characters, allowed_codes, auto_replacements
+    game_name,
+    text,
+    allowed_characters,
+    allowed_codes,
+    auto_replacements,
+    allow_korean,
 ):
     invalid_characters_found = False
     pos = 0
     while pos < len(text):
         character = text[pos]
-        if not is_char_allowed(game_name, character, allowed_characters):
+        if not is_char_allowed(
+            game_name, character, allowed_characters, allow_korean
+        ):
             # Check to see if it's an allowed code
             code_end_pos = is_allowed_code(pos, text, allowed_codes)
             if code_end_pos == -1:
@@ -238,7 +247,11 @@ def lint_characters(
                 char_fixed = False
                 if args.fix:
                     new_char = fix_character(
-                        game_name, character, allowed_characters, auto_replacements
+                        game_name,
+                        character,
+                        allowed_characters,
+                        auto_replacements,
+                        allow_korean,
                     )
                     if new_char != character:
                         text = replace_character(text, pos, new_char)
@@ -270,11 +283,17 @@ def fix_games_translations(
 
     for text_file in text_files:
         print("Checking {}".format(text_file))
+        allow_korean = game_name != "jak1" or text_file.endswith("_ko-KR.json")
         with open(text_file, encoding="utf-8") as f:
             file_data = json.load(f)
         for id, text in file_data.items():
             invalid_chars_exist, new_text = lint_characters(
-                game_name, text, allowed_characters, allowed_codes, auto_replacements
+                game_name,
+                text,
+                allowed_characters,
+                allowed_codes,
+                auto_replacements,
+                allow_korean,
             )
             if args.fix:
                 file_data[id] = new_text
@@ -290,12 +309,18 @@ def fix_games_translations(
 
     for subtitle_file in subtitle_files:
         print("Checking {}...".format(subtitle_file))
+        allow_korean = game_name != "jak1" or subtitle_file.endswith("_ko-KR.json")
         with open(subtitle_file, encoding="utf-8") as f:
             file_data = json.load(f)
         # Check Speakers
         for id, text in file_data["speakers"].items():
             invalid_chars_exist, new_text = lint_characters(
-                game_name, text, allowed_characters, allowed_codes, auto_replacements
+                game_name,
+                text,
+                allowed_characters,
+                allowed_codes,
+                auto_replacements,
+                allow_korean,
             )
             if args.fix and new_text != text:
                 file_data["speakers"][id] = new_text
@@ -310,6 +335,7 @@ def fix_games_translations(
                     allowed_characters,
                     allowed_codes,
                     auto_replacements,
+                    allow_korean,
                 )
                 if args.fix and new_text != line:
                     lines[i] = new_text
@@ -324,6 +350,7 @@ def fix_games_translations(
                         allowed_characters,
                         allowed_codes,
                         auto_replacements,
+                        allow_korean,
                     )
                     if args.fix and new_text != line:
                         lines[i] = new_text
@@ -338,6 +365,7 @@ def fix_games_translations(
                         allowed_characters,
                         allowed_codes,
                         auto_replacements,
+                        allow_korean,
                     )
                     if args.fix and new_text != line:
                         lines[i] = new_text
