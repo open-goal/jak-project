@@ -58,6 +58,20 @@ TEST(CommonUtil, Jak1KoreanTextEncoding) {
   EXPECT_EQ(font_v2->convert_korean_game_to_utf8(compound.c_str()), "의 와 웠");
 }
 
+TEST(CommonUtil, Jak2And3KoreanCompoundVowels) {
+  const std::string source = "과 관 괄 워 원 월 웨 위 의";
+
+  auto* jak2_font = get_font_bank(GameTextVersion::JAK2);
+  auto* jak3_font = get_font_bank(GameTextVersion::JAK3);
+  EXPECT_TRUE(jak2_font->is_language_id_korean(6));
+  EXPECT_TRUE(jak3_font->is_language_id_korean(7));
+
+  for (auto* font : {jak2_font, jak3_font}) {
+    const auto encoded = font->convert_utf8_to_game_korean(source);
+    EXPECT_EQ(font->convert_korean_game_to_utf8(encoded.c_str()), source);
+  }
+}
+
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
   std::string sampleString = file_util::get_file_path(test);
