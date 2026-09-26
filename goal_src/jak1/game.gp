@@ -424,7 +424,8 @@
          "$OUT/iso/3SUBTIT.TXT"
          "$OUT/iso/4SUBTIT.TXT"
          "$OUT/iso/5SUBTIT.TXT"
-         "$OUT/iso/6SUBTIT.TXT")
+         "$OUT/iso/6SUBTIT.TXT"
+         "$OUT/iso/17SUBTIT.TXT")
   )
 
 
@@ -2127,5 +2128,3 @@
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
-
-  
