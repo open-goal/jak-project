@@ -312,5 +312,3 @@
   "subtitle.o" ;; added
   "default-menu-pc.o" ;; added
  ))
-
- 
