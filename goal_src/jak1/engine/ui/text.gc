@@ -76,18 +76,20 @@
 (defun convert-korean-text ((src string))
   "Expand compact Korean syllables into overlapping Jak 1 extension glyphs."
   (set! *korean-expand-buffer-number* (logxor *korean-expand-buffer-number* 1))
-  (let ((dst (if (zero? *korean-expand-buffer-number*) *korean-expanded-text-0* *korean-expanded-text-1*))
+  (let* ((dst (if (zero? *korean-expand-buffer-number*) *korean-expanded-text-0* *korean-expanded-text-1*))
         (src-index 0)
         (dst-index 0)
-        (src-length (length src)))
+        (src-length (length src))
+        (dst-limit (- (-> dst allocated-length) 1)))
     (clear dst)
-    (while (< src-index src-length)
+    (while (and (< src-index src-length) (< dst-index dst-limit))
       (let ((marker (-> src data src-index)))
         (cond
           ;; 0x03 introduces a run encoded with the normal Jak 1 font bank.
           ((= marker 3)
            (+! src-index 1)
            (while (and (< src-index src-length)
+                       (< dst-index dst-limit)
                        (!= (-> src data src-index) 3)
                        (!= (-> src data src-index) 4))
              (set! (-> dst data dst-index) (-> src data src-index))
@@ -95,37 +97,72 @@
              (+! dst-index 1)))
           ;; 0x04, count, glyph... is one precomposed Hangul syllable.
           ((= marker 4)
-           (let ((glyph-count (-> src data (+ src-index 1))))
-             (+! src-index 2)
-             ;; Save the pen position.  Every component except the final one
-             ;; restores it, so all jamo overlap and the syllable advances once.
-             (set! (-> dst data dst-index) (the-as uint 126)) ;; ~
-             (set! (-> dst data (+ dst-index 1)) (the-as uint 89)) ;; Y
-             (+! dst-index 2)
-             (dotimes (glyph-index glyph-count)
-               (let ((extra? (= (-> src data src-index) 5)))
-                 (when extra? (+! src-index 1))
-                 (let ((source-glyph (-> src data src-index)))
-                   ;; Marker 2 selects the Korean-only UV bank.  Marker 1
-                   ;; remains the original Japanese extension encoding.
-                   (set! (-> dst data dst-index) (the-as uint 2))
-                   (set! (-> dst data (+ dst-index 1))
-                         (if extra?
-                             (-> *korean-extra-jamo-map* source-glyph)
-                             (-> *korean-jamo-map* source-glyph)))
-                   (+! dst-index 2)
-                   (+! src-index 1))
-                 (when (< (+ glyph-index 1) glyph-count)
+           (if (>= (+ src-index 1) src-length)
+             (set! src-index src-length)
+             (let ((glyph-count (-> src data (+ src-index 1)))
+                   (glyph-src-index (+ src-index 2))
+                   (valid? #t))
+               ;; One component needs two bytes for its glyph and, except for
+               ;; the final component, two bytes to restore the pen position.
+               ;; Validate the complete source and destination before writing
+               ;; any part of the syllable.
+               (when (or (zero? glyph-count)
+                         (> (+ dst-index (* glyph-count 4)) dst-limit))
+                 (set! valid? #f))
+               (dotimes (glyph-index glyph-count)
+                 (when valid?
+                   (let ((extra? #f))
+                     (when (>= glyph-src-index src-length)
+                       (set! valid? #f))
+                     (when (and valid? (= (-> src data glyph-src-index) 5))
+                       (set! extra? #t)
+                       (+! glyph-src-index 1)
+                       (when (>= glyph-src-index src-length)
+                         (set! valid? #f)))
+                     (when valid?
+                       (let ((source-glyph (-> src data glyph-src-index)))
+                         (when (and (= glyph-index 0) (= glyph-count 3) (= source-glyph #x08))
+                           (set! source-glyph (the-as uint #x1f)))
+                         (when (zero? (if extra?
+                                        (-> *korean-extra-jamo-map* source-glyph)
+                                        (-> *korean-jamo-map* source-glyph)))
+                           (set! valid? #f)))
+                       (+! glyph-src-index 1)))))
+               (if (not valid?)
+                 (set! src-index src-length)
+                 (begin
+                   (+! src-index 2)
+                   ;; Save the pen position. Every component except the final
+                   ;; one restores it, so all jamo overlap and advance once.
                    (set! (-> dst data dst-index) (the-as uint 126)) ;; ~
-                   (set! (-> dst data (+ dst-index 1)) (the-as uint 90)) ;; Z
-                   (+! dst-index 2))))))
+                   (set! (-> dst data (+ dst-index 1)) (the-as uint 89)) ;; Y
+                   (+! dst-index 2)
+                   (dotimes (glyph-index glyph-count)
+                     (let ((extra? (= (-> src data src-index) 5)))
+                       (when extra? (+! src-index 1))
+                       (let ((source-glyph (-> src data src-index)))
+                         ;; The lowered no-final ㄴ form fixes 니, but overlaps
+                         ;; the final consonant in syllables such as 났.
+                         (when (and (= glyph-index 0) (= glyph-count 3) (= source-glyph #x08))
+                           (set! source-glyph (the-as uint #x1f)))
+                         ;; Marker 2 selects the Korean-only UV bank. Marker 1
+                         ;; remains the original Japanese extension encoding.
+                         (set! (-> dst data dst-index) (the-as uint 2))
+                         (set! (-> dst data (+ dst-index 1))
+                               (if extra?
+                                   (-> *korean-extra-jamo-map* source-glyph)
+                                   (-> *korean-jamo-map* source-glyph)))
+                         (+! dst-index 2)
+                         (+! src-index 1))
+                       (when (< (+ glyph-index 1) glyph-count)
+                         (set! (-> dst data dst-index) (the-as uint 126)) ;; ~
+                         (set! (-> dst data (+ dst-index 1)) (the-as uint 90)) ;; Z
+                         (+! dst-index 2)))))))))
           (else
            ;; Invalid data should remain visible instead of stalling lookup.
            (set! (-> dst data dst-index) marker)
            (+! src-index 1)
-           (+! dst-index 1))))
-      (when (>= dst-index (- (-> dst allocated-length) 8))
-        (set! src-index src-length)))
+           (+! dst-index 1)))))
     (set! (-> dst data dst-index) (the-as uint 0))
     dst))
 
@@ -417,6 +454,17 @@
       (set! (-> *game-text-line* data 0) (the-as uint 0))
       (while (or (not (and (zero? sv-176) (zero? sv-184) (zero? sv-192))) (>= sv-156 (-> gp-0 origin y)))
         (cond
+          ;; Korean extension glyphs are two-byte tokens. Copy the payload
+          ;; with its marker so payload values such as space or the PAL marker
+          ;; are never interpreted as standalone text.
+          ((= sv-176 2)
+           (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+           (set! sv-184 (+ sv-184 1))
+           (set! sv-140 (&-> sv-140 1))
+           (set! sv-176 (the-as int (-> sv-140 0)))
+           (when (nonzero? sv-176)
+             (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+             (set! sv-184 (+ sv-184 1))))
           ((= sv-176 32)
            (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
            (set! sv-184 (+ sv-184 1))

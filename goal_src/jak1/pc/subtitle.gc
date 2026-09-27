@@ -312,6 +312,16 @@
       (set! (-> *game-text-line* data 0) (the-as uint 0))
       (while (or (not (and (zero? sv-176) (zero? sv-184) (zero? sv-192))) (>= sv-156 (-> gp-0 origin y)))
         (cond
+          ;; Korean extension glyphs are two-byte tokens. Keep their payload
+          ;; out of the normal space and underscore handling below.
+          ((= sv-176 2)
+           (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+           (set! sv-184 (+ sv-184 1))
+           (set! sv-140 (&-> sv-140 1))
+           (set! sv-176 (the-as int (-> sv-140 0)))
+           (when (nonzero? sv-176)
+             (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
+             (set! sv-184 (+ sv-184 1))))
           ((= sv-176 32)
            (set! (-> *game-text-word* data sv-184) (the-as uint sv-176))
            (set! sv-184 (+ sv-184 1))
