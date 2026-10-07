@@ -128,7 +128,8 @@ int main(int argc, char** argv) {
   // if a command is provided on the command line, no REPL just run the compiler on it
   try {
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>(game_version, instr_set);
+      compiler =
+          std::make_unique<Compiler>(game_version, instr_set, std::make_optional(repl_config));
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
