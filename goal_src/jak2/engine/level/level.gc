@@ -30,7 +30,12 @@ into 7 sections, which might explain the weird sizes in the center.
 
 (defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
 ;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
-(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
+;; ARM64 code is larger than x86. At 1.1x the ctywide heap had 14544 bytes
+;; free and citywide-login could not allocate the 32768-byte NPC pool.
+(#if (eq? INSTRUCTION_SET 'arm64)
+     (defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.12)
+     (defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1)
+     )
 (defglobalconstant DEBUG_LEVEL_PAGE_SIZE (* 1024 (* DEBUG_LEVEL_HEAP_MULT LEVEL_PAGE_SIZE_KB)))
 (defglobalconstant DEBUG_LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES DEBUG_LEVEL_PAGE_SIZE))
 

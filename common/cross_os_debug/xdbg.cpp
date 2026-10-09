@@ -24,6 +24,10 @@
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
+#if defined(__aarch64__)
+#include <elf.h>
+#include <sys/uio.h>
+#endif
 #elif _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -211,6 +215,21 @@ bool detach_and_resume(const ThreadID& tid) {
  * Get all registers now. Must be attached and stopped
  */
 bool get_regs_now(const ThreadID& tid, Regs* out) {
+#if defined(__aarch64__)
+  user_regs_struct regs = {};
+  iovec iov = {};
+  iov.iov_base = &regs;
+  iov.iov_len = sizeof(regs);
+  if (ptrace(PTRACE_GETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_GETREGSET %s\n", strerror(errno));
+    return false;
+  }
+  for (int i = 0; i < 16; i++) {
+    out->gprs[i] = regs.regs[i];
+  }
+  out->rip = regs.pc;
+  return true;
+#else
   user regs = {};
   if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
     printf("[Debugger] Failed to PTRACE_GETREGS %s\n", strerror(errno));
@@ -237,12 +256,32 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
 
   // todo, get fprs.
   return true;
+#endif
 }
 
 /*!
  * Set all registers now. Must be attached and stopped
  */
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
+#if defined(__aarch64__)
+  user_regs_struct regs = {};
+  iovec iov = {};
+  iov.iov_base = &regs;
+  iov.iov_len = sizeof(regs);
+  if (ptrace(PTRACE_GETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_GETREGSET %s\n", strerror(errno));
+    return false;
+  }
+  for (int i = 0; i < 16; i++) {
+    regs.regs[i] = out.gprs[i];
+  }
+  regs.pc = out.rip;
+  if (ptrace(PTRACE_SETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_SETREGSET %s\n", strerror(errno));
+    return false;
+  }
+  return true;
+#else
   user regs = {};
   if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
     printf("[Debugger] Failed to PTRACE_GETREGS %s\n", strerror(errno));
@@ -273,6 +312,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   }
   // todo, set fprs.
   return true;
+#endif
 }
 
 /*!

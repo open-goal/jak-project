@@ -180,6 +180,9 @@ int main(int argc, char** argv) {
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
+  // AVX is an x86 extension. Native ARM builds use NEON, so this gate
+  // only applies to x86-64, including x86 binaries running under Rosetta.
+#if defined(__x86_64__) || defined(_M_X64)
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
 // Check if we are on a modern enough version of macOS so that AVX can be
@@ -203,6 +206,7 @@ int main(int argc, char** argv) {
     return -1;
 #endif
   }
+#endif
 
   // set up file paths for resources. This is the full repository when developing, and the data
   // directory (a subset of the full repo) in release versions
