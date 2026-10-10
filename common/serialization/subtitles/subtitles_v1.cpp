@@ -125,6 +125,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
       new_meta.frame_end = 0;  // unused by v1
       new_meta.offscreen = true;
       new_meta.speaker = line_meta.speaker;
+      new_meta.merge = false;
       new_scene_meta.lines.push_back(new_meta);
       if (line_meta.clear) {
         scene_lines.push_back("");
