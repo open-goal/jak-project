@@ -5,18 +5,18 @@
 #include "common/util/json_util.h"
 
 struct SubtitleCutsceneLineMetadataV1 {
-  int frame_start;
-  bool offscreen;
+  int frame_start = 0;
+  bool offscreen = false;
   std::string speaker;
-  bool clear;
+  bool clear = false;
 };
 void to_json(json& j, const SubtitleCutsceneLineMetadataV1& obj);
 void from_json(const json& j, SubtitleCutsceneLineMetadataV1& obj);
 
 struct SubtitleHintLineMetadataV1 {
-  int frame_start;
+  int frame_start = 0;
   std::string speaker;
-  bool clear;
+  bool clear = false;
 };
 void to_json(json& j, const SubtitleHintLineMetadataV1& obj);
 void from_json(const json& j, SubtitleHintLineMetadataV1& obj);

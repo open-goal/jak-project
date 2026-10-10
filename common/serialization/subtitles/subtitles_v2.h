@@ -6,14 +6,14 @@
 #include "common/util/json_util.h"
 
 struct SubtitleLineMetadata {
-  int frame_start;
-  int frame_end;
-  bool offscreen;
+  int frame_start = 0;
+  int frame_end = 0;
+  bool offscreen = false;
   std::string speaker;
   // NOTE: merge is a bad name, as we don't actually merge anything (the game doesn't load the
   // english subtitles as well) and all this does if set is it's ignored when being written out to
   // the file
-  bool merge;
+  bool merge = false;
 
   bool operator==(const SubtitleLineMetadata& other) const {
     if (frame_start != other.frame_start || frame_end != other.frame_end ||
