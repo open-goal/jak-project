@@ -4866,14 +4866,20 @@
 ;; view-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO - fill out these basics, they are pretty obvious what they are...
+(declare-type process-nettable process)
+(declare-type process-drawable process-nettable)
+(declare-type process-focusable process-drawable)
+(declare-type target process-focusable)
+(declare-type camera-master process)
+(declare-type camera-combiner process)
+(declare-type math-camera basic)
 (deftype view (basic)
   ((index           int8   :offset-assert 4)
    (control-scheme  uint8  :offset-assert 5)
-   (camera          basic  :offset-assert 8)
-   (camera-combiner basic  :offset-assert 12)
-   (target          basic  :offset-assert 16)
-   (math-camera     basic  :offset-assert 20)
+   (camera          camera-master  :offset-assert 8)
+   (camera-combiner camera-combiner  :offset-assert 12)
+   (target          target  :offset-assert 16)
+   (math-camera     math-camera  :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -4885,7 +4891,7 @@
 (define-extern *views* "Length of 2, initialized empty" (array view))
 (define-extern *view-context-stack* (array int32))
 (define-extern *view-context-stack-ptr* (pointer int32))
-(define-extern *view-default* symbol)
+(define-extern *view-default* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pad                            ;;
@@ -7083,10 +7089,10 @@
    (func-id      symbol                                          :offset-assert 4 :overlay-at func) ;; guessed by decompiler
    (init-func    (function texture-anim int)                     :offset-assert 8) ;; guessed by decompiler
    (init-func-id symbol                                          :offset-assert 8 :overlay-at init-func) ;; guessed by decompiler
-   (mip-func     basic                                           :offset-assert 12)
-   (mip-func-id  basic                                           :offset-assert 12 :overlay-at mip-func)
-   (time-func    basic                                           :offset-assert 16)
-   (time-func-id basic                                           :offset-assert 16 :overlay-at time-func)
+   (mip-func     function                                           :offset-assert 12)
+   (mip-func-id  symbol                                           :offset-assert 12 :overlay-at mip-func)
+   (time-func    function                                           :offset-assert 16)
+   (time-func-id symbol                                           :offset-assert 16 :overlay-at time-func)
    (tex          texture                                         :offset-assert 20) ;; guessed by decompiler
    (tex-name     string                                          :offset-assert 24) ;; guessed by decompiler
    (extra        vector                                 :inline  :offset-assert 32)
@@ -16223,23 +16229,23 @@
 (define-extern view-push-context (function int none))
 (define-extern view-pop-context (function none))
 (define-extern view-get-active-target (function target))
-;; (define-extern view-get-target function)
-;; (define-extern view-set-active-target function)
-;; (define-extern view-get-active-camera (function camera-master))
-;; (define-extern view-get-camera function)
-;; (define-extern view-set-active-camera function)
+(define-extern view-get-target (function int target))
+(define-extern view-set-active-target (function target target))
+(define-extern view-get-active-camera (function camera-master))
+(define-extern view-get-camera (function int camera-master))
+(define-extern view-set-active-camera (function camera-master camera-master))
 (define-extern view-get-active-camera-combiner (function camera-combiner))
-;; (define-extern view-get-camera-combiner function)
-;; (define-extern view-set-active-camera-combiner function)
+(define-extern view-get-camera-combiner (function int camera-combiner))
+(define-extern view-set-active-camera-combiner (function camera-combiner camera-combiner))
 (define-extern view-get-active-math-camera (function math-camera))
-;; (define-extern view-get-math-camera function)
-;; (define-extern view-set-active-math-camera function)
-;; (define-extern view-get-real-active function)
-;; (define-extern view-get-active function)
-;; (define-extern view-get-index function)
+(define-extern view-get-math-camera (function int math-camera))
+(define-extern view-set-active-math-camera (function math-camera math-camera))
+(define-extern view-get-real-active (function view))
+(define-extern view-get-active (function view))
+(define-extern view-get-index (function view int))
 (define-extern view-get-active-index (function int))
-;; (define-extern view-get-real-active-index function)
-;; (define-extern view-print function)
+(define-extern view-get-real-active-index (function int))
+(define-extern view-print (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; viewport                       ;;
@@ -39593,8 +39599,8 @@
 ;; cam-start                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cam-stop function) ;; (function symbol)
-;; (define-extern cam-start function) ;; (function symbol none)
+(define-extern cam-stop (function symbol)) ;; 
+(define-extern cam-start (function symbol none)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth-h                        ;;
@@ -40358,9 +40364,9 @@
   :size-assert         #x80
   :flag-assert         #x1700000080
   (:methods
-    (light-trail-method-10 () none) ;; 10 ;; (reset! (_type_) none)
+    (light-trail-method-10 (_type_ light-trail-composition int) none) ;; 10 ;; (reset! (_type_) none)
     (light-trail-method-11 () none) ;; 11 ;; (add-crumb! (_type_ vector time-frame) int)
-    (light-trail-method-12 () none) ;; 12 ;; (build-prim-strip! (_type_) none)
+    (light-trail-method-12 (_type_ vector int) none) ;; 12 ;; (build-prim-strip! (_type_) none)
     (light-trail-method-13 () none) ;; 13 ;; (common-trans! (_type_) int)
     (light-trail-method-14 () none) ;; 14 ;; (expire-old-points! (_type_) none)
     (light-trail-method-15 () none) ;; 15 ;; (light-trail-method-15 (_type_) none)
@@ -40448,8 +40454,8 @@
     die ;; 15
     )
   (:methods
-    (light-trail-tracker-method-16 () none) ;; 16 ;; (get-tracked-object-pos (_type_ process-focusable vector) vector)
-    (light-trail-tracker-method-17 () none) ;; 17 ;; (should-track? (_type_ process-focusable) symbol)
+    (get-tracked-object-pos (_type_ process-focusable vector) vector)
+    (should-track? (_type_ process-focusable) symbol)
     (light-trail-tracker-method-18 () none) ;; 18 ;; (should-end? (_type_ process-focusable) symbol)
     (light-trail-tracker-method-19 () none) ;; 19 ;; (should-draw? (_type_) symbol)
     (light-trail-tracker-method-20 () none) ;; 20 ;; (add-crumb! (_type_ vector) none)
@@ -41773,7 +41779,7 @@
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none)) ;; 
 ;; (define-extern reset-actors-by-game-type function)
 ;; (define-extern reset-actors function) ;; (function symbol none)
-;; (define-extern reset-cameras function) ;; (function none)
+(define-extern reset-cameras (function none)) ;; 
 ;; (define-extern entity-birth-no-kill function) ;; (function entity process)
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
@@ -48767,9 +48773,9 @@
 ;; capture                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern gs-set-default-store-image function) ;; (function gs-store-image-packet int int gs-psm int int int int int)
-;; (define-extern *capture-tga-temp* object)
-;; (define-extern store-image function) ;; (function screen-shot-work none)
+(define-extern gs-set-default-store-image (function gs-store-image-packet int int gs-psm int int int int int)) ;; 
+(define-extern *capture-tga-temp* int)
+(define-extern store-image (function screen-shot-work none)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fmv-player                     ;;
@@ -57852,7 +57858,7 @@
 ;; atoll-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *atoll-water-texture-anim-array* texture-anim-array)
+(define-extern *atoll-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-part                     ;;
@@ -58720,9 +58726,9 @@
 ;; canyon-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *canyona-water-texture-anim-array* texture-anim-array)
-;; (define-extern *canyonc-water-texture-anim-array* texture-anim-array)
-;; (define-extern *canyone-water-texture-anim-array* texture-anim-array)
+(define-extern *canyona-water-texture-anim-array* texture-anim-array)
+(define-extern *canyonc-water-texture-anim-array* texture-anim-array)
+(define-extern *canyone-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-time-box                   ;;
@@ -58907,7 +58913,7 @@
 ;; cliffs-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *cliffs-water-texture-anim-array* texture-anim-array)
+(define-extern *cliffs-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cliffs-ocean                   ;;
@@ -59896,7 +59902,7 @@
 ;; kras-effects                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *kras-alpha-texture-anim-array* texture-anim-array)
+(define-extern *kras-alpha-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; train-obs                      ;;
@@ -59964,7 +59970,6 @@
 ;; docks-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype docks-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -59973,9 +59978,8 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-;; (define-extern update-mood-docks (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-docks (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; docks-part                     ;;
@@ -60219,7 +60223,6 @@
 ;; drome-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drome-states (structure)
   ((light light-state :inline :offset-assert 0)
    )
@@ -60227,10 +60230,9 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern update-mood-drome (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern *dromec-water-texture-anim-array* texture-anim-array)
+(define-extern update-mood-drome (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *dromec-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drome-part                     ;;
@@ -60281,7 +60283,7 @@
 ;; desisle-effects                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *desisle-water-texture-anim-array* texture-anim-array)
+(define-extern *desisle-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desisle-part                   ;;
@@ -60352,7 +60354,6 @@
 ;; desert-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desert-states (structure)
   ((light    light-state  :inline :offset-assert 0)
    (flame    flames-state :inline :offset-assert 8)
@@ -60363,9 +60364,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype desertg-states (structure)
   ((light   light-state  :inline :offset-assert 0)
    (flame   flames-state :inline :offset-assert 8)
@@ -60375,9 +60374,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype deswalk-states (structure)
   ((light    light-state  :inline :offset-assert 0)
    (flame    flames-state :inline :offset-assert 8)
@@ -60388,12 +60385,11 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern update-mood-desert (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-desertg function) ;; (function mood-context float)
-;; (define-extern update-mood-desertg (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern update-mood-deswalk (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-desert (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern init-mood-desertg (function mood-context float)) ;; 
+(define-extern update-mood-desertg (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-deswalk (function mood-context float int none :behavior time-of-day-proc)) ;; (function mood-context float int none :behavior time-of-day-proc)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-ocean                   ;;
@@ -60566,7 +60562,6 @@
 ;; desarena-effects               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desarena-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -60575,10 +60570,9 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-;; (define-extern update-mood-desarena (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern *desarena-water-texture-anim-array* texture-anim-array)
+(define-extern update-mood-desarena (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *desarena-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; garage-part                    ;;
@@ -60600,8 +60594,8 @@
 ;; haven-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *havend-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *havend-water-texture-anim-array* texture-anim-array)
+(define-extern *havend-alpha-texture-anim-array* texture-anim-array)
+(define-extern *havend-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; haven-part                     ;;
@@ -60833,41 +60827,35 @@
 ;; jungle-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *junglea-water-texture-anim-array* texture-anim-array)
-;; (define-extern *jungleb-water-texture-anim-array* texture-anim-array)
-;; (define-extern *jungley-water-texture-anim-array* texture-anim-array)
+(define-extern *junglea-water-texture-anim-array* texture-anim-array)
+(define-extern *jungleb-water-texture-anim-array* texture-anim-array)
+(define-extern *jungley-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; havjung-effects                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *junglee-water-texture-anim-array* texture-anim-array)
-;; (define-extern *junglef-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *havjung-water-texture-anim-array* texture-anim-array)
+(define-extern *junglee-water-texture-anim-array* texture-anim-array)
+(define-extern *junglef-alpha-texture-anim-array* texture-anim-array)
+(define-extern *havjung-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; havsew-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype havsewx-states (UNKNOWN)
+(deftype havsewx-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern update-mood-havsewx (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern *havsewx-water-texture-anim-array* texture-anim-array)
-;; (define-extern *havsewy-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *havsewy-water-texture-anim-array* texture-anim-array)
+(define-extern update-mood-havsewx (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *havsewx-water-texture-anim-array* texture-anim-array)
+(define-extern *havsewy-alpha-texture-anim-array* texture-anim-array)
+(define-extern *havsewy-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sewer-states (structure)
   ((rot float  :offset-assert 0)
    )
@@ -60875,25 +60863,19 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
-(deftype sewerx-states (UNKNOWN)
+(deftype sewerx-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern update-mood-sewer (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern update-mood-sewerx (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern *sewb-water-texture-anim-array* texture-anim-array)
-;; (define-extern *sewc-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-;; (define-extern *sewd-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-;; (define-extern *sewe-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-;; (define-extern *sewf-water-texture-anim-array* texture-anim-array)
-;; (define-extern *sewx-water-texture-anim-array* texture-anim-array)
+(define-extern update-mood-sewer (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-sewerx (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *sewb-water-texture-anim-array* texture-anim-array)
+(define-extern *sewc-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *sewd-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *sewe-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *sewf-water-texture-anim-array* texture-anim-array)
+(define-extern *sewx-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-part                     ;;
@@ -61090,7 +61072,7 @@
 ;; kcross-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *kcross-water-texture-anim-array* texture-anim-array)
+(define-extern *kcross-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-keira                   ;;
@@ -63064,7 +63046,6 @@
 ;; snow-effects                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype snow-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -63073,9 +63054,8 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-;; (define-extern update-mood-snow (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-snow (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; snow-part                      ;;
@@ -63128,13 +63108,13 @@
 ;; temple-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *templec-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *templed-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *templed-water-texture-anim-array* texture-anim-array)
-;; (define-extern *templee-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *templex-alpha-texture-anim-array* texture-anim-array)
-;; (define-extern *templex-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-;; (define-extern *templey-water-texture-anim-array* texture-anim-array)
+(define-extern *templec-alpha-texture-anim-array* texture-anim-array)
+(define-extern *templed-alpha-texture-anim-array* texture-anim-array)
+(define-extern *templed-water-texture-anim-array* texture-anim-array)
+(define-extern *templee-alpha-texture-anim-array* texture-anim-array)
+(define-extern *templex-alpha-texture-anim-array* texture-anim-array)
+(define-extern *templex-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *templey-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; temple-ocean                   ;;
