@@ -12,7 +12,7 @@ It creates a folder per WAD (named after the extension of the WAD) with one `.va
 ### Repacking
 ```tools/vag_packer <path to folder with the audio files> <path to vag_description.json>```
 
-It writes `mod_VAGDIR.AYB` and a `mod_VAGWAD.xxx` for each WAD in the description file, in the given folder. Unmodified, the output is byte for byte identical to the original files. To use them, put them in `iso_data/<game>/VAG/` (removing `mod_`) and run the extractor/decompiler as usual, or in `out/<game>/iso/` for the game itself.
+It writes `mod_VAGDIR.AYB` and a `mod_VAGWAD.xxx` for each WAD in the description file, in the given folder. Unmodified, the output is byte for byte identical to the original files. To use them in the game, copy them (removing `mod_`) over the files in `out/<game>/iso/`, which is where the game reads them from. Note that the game build (`(mi)`) copies `VAGDIR.AYB` and the `VAGWAD` files from `iso_data/<game>/VAG/` into that folder, so if you want the build to keep your versions, put them in `iso_data/<game>/VAG/` instead (keep a copy of the originals).
 
 ### Replacing audio
 Edit the `files` of an entry in `vag_description.json` to point to your own file. It can be:
