@@ -353,6 +353,9 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"~+7Vg~-7V", "g"},
     {"~+7Vq~-7V", "q"},
     {"~+1Vj~-1V", "j"},
+    // cyrillic letters drawn the same way as the latin ones above
+    {"~+7Vр~-7V", "р"},
+    {"~+7Vу~-7V", "у"},
 
     {"\\\\",
      "~%"},  // this is 2 slashes, duplicated because we use an escape sequence when decompiling
