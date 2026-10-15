@@ -92,14 +92,14 @@ the project.
 
 #### Debug:
 
-```
+```sh
 task gen-cmake-debug
 task build-debug
 ```
 
 #### Release:
 
-```
+```sh
 task gen-cmake-release
 task build-release
 ```
@@ -110,13 +110,13 @@ There are a number of predefined configurations for common compilation parameter
 You can find the available presets in `CMakePresets.json`.
 To compile with a particular preset, use the following:
 
-```
+```sh
 task gen-cmake CMAKE_PRESET=<preset>    # Replace <preset> with the name of the preset, like Debug-linux-gcc
 task build-debug                        # Or build-release, depending on the type of build.
 ```
 
 #### Compiling directly with cmake:
-```
+```sh
 cmake -B build             # You can optionally use a preset with the --preset <preset> argument
 cmake --build build -j 8   # build is the folder where cmake will compile the project.
 ```
