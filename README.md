@@ -138,7 +138,7 @@ You can of course use whatever editor you want, but here is some documentation t
 
 Getting a running game involves 4 main steps:
 
-1. Build C++ tools (follow "Setting up a Development Environment" steps above for your platform)
+1. Build C++ tools (follow "OS Setup" and "Compiling" (or "Editor Setup") steps above for your platform)
 2. Extract assets from the game
 3. Build the game
 4. Run the game
