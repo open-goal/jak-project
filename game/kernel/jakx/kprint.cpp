@@ -338,7 +338,7 @@ s32 format_impl_jakx(uint64_t* args) {
           if (arg0 == -1) {
             jakx::print_object(in);
           } else {
-            auto sym = jakx::find_symbol_from_c(-1, argument_data[0].data);
+            auto sym = jakx::find_symbol_from_c(-1, reinterpret_cast<const char*>(argument_data[0].data));
             if (sym.offset) {
               Ptr<Type> type(sym->value());
               if (type.offset) {
@@ -359,7 +359,7 @@ s32 format_impl_jakx(uint64_t* args) {
           if (arg0 == -1) {
             inspect_object(in);
           } else {
-            auto sym = find_symbol_from_c(-1, argument_data[0].data);
+            auto sym = find_symbol_from_c(-1, reinterpret_cast<const char*>(argument_data[0].data));
             if (sym.offset) {
               Ptr<Type> type(sym->value());
               if (type.offset) {
