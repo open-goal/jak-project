@@ -180,14 +180,15 @@ int main(int argc, char** argv) {
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
-  // AVX is an x86 extension. Native ARM builds use NEON, so this gate
-  // only applies to x86-64, including x86 binaries running under Rosetta.
-#if defined(__x86_64__) || defined(_M_X64)
-  // If the CPU doesn't have AVX, GOAL code won't work and we exit.
-  if (!get_cpu_info().has_avx) {
-// Check if we are on a modern enough version of macOS so that AVX can be
-// emulated via rosetta
-#ifdef __APPLE__
+  // x86-64 GOAL code needs AVX. Native ARM needs NEON. Rosetta on macOS 15+ can emulate AVX.
+  if (!get_cpu_info().has_avx && !get_cpu_info().has_neon) {
+#if defined(__aarch64__) || defined(_M_ARM64)
+    lg::info("Your CPU does not support NEON, which is required for OpenGOAL.");
+    dialogs::create_error_message_dialog(
+        "Unmet Requirements", "Your CPU does not support NEON, which is required for OpenGOAL.");
+    return -1;
+#elif defined(__APPLE__)
+    // AVX can be emulated via Rosetta on new enough macOS.
     auto macos_major_version = get_macos_major_version();
     if (macos_major_version < 15.0) {
       lg::info(
@@ -206,7 +207,6 @@ int main(int argc, char** argv) {
     return -1;
 #endif
   }
-#endif
 
   // set up file paths for resources. This is the full repository when developing, and the data
   // directory (a subset of the full repo) in release versions
