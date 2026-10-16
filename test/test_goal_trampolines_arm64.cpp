@@ -198,6 +198,26 @@ u64 g_callee_arg0 = 0;
 u64 g_callee_offset = 0;
 u64 g_callee_exec_base = 0;
 
+u64 decode_mov64(const u8* code, int size, u32 reg) {
+  u64 result = 0;
+  for (int offset = 0; offset < size; offset += 4) {
+    u32 instr;
+    memcpy(&instr, code + offset, 4);
+    EXPECT_EQ(instr & 0x1f, reg);
+
+    const u32 halfword = (instr >> 21) & 3;
+    const u64 value = (instr >> 5) & 0xffff;
+    if (offset == 0) {
+      EXPECT_EQ(instr & 0xff800000, 0xd2800000);
+      result = value << (halfword * 16);
+    } else {
+      EXPECT_EQ(instr & 0xff800000, 0xf2800000);
+      result |= value << (halfword * 16);
+    }
+  }
+  return result;
+}
+
 // AAPCS64 callee used by the trampoline tests
 extern "C" u64 arm64_trampoline_test_callee(u64 a0);
 extern "C" u64 arm64_trampoline_test_callee(u64 a0) {
@@ -301,7 +321,81 @@ TEST(ARM64CStub, pp_argument) {
   EXPECT_EQ(len2, 9 * 4);
 }
 
+TEST(ARM64RuntimeCodegen, mov64_omits_zero_halfwords) {
+  struct TestCase {
+    u64 value;
+    int instructions;
+  };
+  const TestCase cases[] = {
+      {0, 1},
+      {0x1234, 1},
+      {0x12340000, 1},
+      {0x123400000000, 1},
+      {0x1234000000000000, 1},
+      {0x12345678, 2},
+      {0x123456789abc, 3},
+      {0x123456789abcdef0, 4},
+      {0x1234000000005678, 2},
+  };
+
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.value);
+    u8 code[16] = {};
+    const int size = emit_arm64_mov64(code, 11, test.value);
+    EXPECT_EQ(size, test.instructions * 4);
+    EXPECT_EQ(decode_mov64(code, size, 11), test.value);
+  }
+}
+
+TEST(ARM64CStub, short_immediates) {
+  u8 code[64] = {};
+  int size = emit_arm64_c_stub(code, 0x0000000123456789, 0x000000019abcdef0, true);
+  ASSERT_EQ(size, 8 * 4);
+
+  u32 words[8];
+  memcpy(words, code, sizeof(words));
+  EXPECT_EQ(words[3], 0xaa1403e3u) << "mov x3, x20";
+  EXPECT_EQ(words[7], 0xd61f0120u) << "br x9";
+
+  size = emit_arm64_c_stub(code, 0x0000000123456789, 0x000000019abcdef0, false);
+  ASSERT_EQ(size, 7 * 4);
+  memcpy(words, code, size);
+  EXPECT_EQ(words[6], 0xd61f0120u) << "br x9";
+}
+
 #ifdef __APPLE__
+
+TEST(ARM64RuntimeCodegen, mov64_executes) {
+  const size_t kSize = 4096;
+  u8* rw = (u8*)mmap(nullptr, kSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  ASSERT_NE(rw, MAP_FAILED);
+
+  mach_vm_address_t exec_addr = 0;
+  vm_prot_t cur_prot = 0, max_prot = 0;
+  ASSERT_EQ(
+      mach_vm_remap(mach_task_self(), &exec_addr, kSize, 0, VM_FLAGS_ANYWHERE, mach_task_self(),
+                    (mach_vm_address_t)rw, false, &cur_prot, &max_prot, VM_INHERIT_NONE),
+      KERN_SUCCESS);
+  ASSERT_EQ(
+      mach_vm_protect(mach_task_self(), exec_addr, kSize, false, VM_PROT_READ | VM_PROT_EXECUTE),
+      KERN_SUCCESS);
+
+  const u64 values[] = {0, 0x1234000000000000, 0x1234000000005678, 0x123456789abcdef0};
+  for (size_t i = 0; i < std::size(values); i++) {
+    u8* code = rw + i * 32;
+    int size = emit_arm64_mov64(code, 0, values[i]);
+    const u32 ret = 0xd65f03c0;
+    memcpy(code + size, &ret, sizeof(ret));
+    size += sizeof(ret);
+
+    auto fn = (u64 (*)())(void*)(exec_addr + i * 32);
+    flush_icache((void*)fn, size);
+    EXPECT_EQ(fn(), values[i]);
+  }
+
+  EXPECT_EQ(mach_vm_deallocate(mach_task_self(), exec_addr, kSize), KERN_SUCCESS);
+  munmap(rw, kSize);
+}
 
 TEST(ARM64ICache, icache_invalidation) {
   const size_t kSize = 64 * 1024;
