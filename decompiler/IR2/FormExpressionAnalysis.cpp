@@ -902,9 +902,11 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
   auto src = m_expr.get_arg(0);
-  auto src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
+  auto src_is_float = false;
   std::vector<FormElement*> src_fes;
   if (src.is_var()) {
+    auto src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
+    src_is_float = env.dts->ts.tc(TypeSpec("float"), src_type.typespec());
     auto forms = pop_to_forms({src.var()}, env, pool, stack, allow_side_effects);
     for (auto x : forms.at(0)->elts()) {
       src_fes.push_back(x);
@@ -916,7 +918,7 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
   // set ourself to identity.
   m_expr = src.as_expr();
 
-  if (env.dts->ts.tc(TypeSpec("float"), src_type.typespec())) {
+  if (src_is_float) {
     // got a float as an input, we can convert it to an FPR with no effect.
     for (auto x : src_fes) {
       result->push_back(x);
