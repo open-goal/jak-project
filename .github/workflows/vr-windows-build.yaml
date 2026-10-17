@@ -23,6 +23,8 @@ jobs:
     name: "Package"
     needs: build_windows
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -39,3 +41,16 @@ jobs:
           name: opengoal-vr-windows
           if-no-files-found: error
           path: ./ci-artifacts/opengoal-vr
+
+      - name: Zip build
+        run: cd ./ci-artifacts/opengoal-vr && 7z a -tzip ../opengoal-vr-windows.zip .
+
+      # Publish as a pre-release so the zip has a plain download link
+      - name: Publish pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: vr-build-${{ github.run_number }}
+          name: VR build ${{ github.run_number }}
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          files: ./ci-artifacts/opengoal-vr-windows.zip
