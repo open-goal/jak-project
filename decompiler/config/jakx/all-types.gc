@@ -24977,6 +24977,7 @@
    (connection-class int32       :offset-assert 320)
    (end-of-list      int8        :offset-assert 324)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x145
   :flag-assert         #x900000145
@@ -43171,7 +43172,6 @@
   )
 |#
 
-#|
 (deftype net-clan-ladder-stats (structure)
   ((version          uint32  :offset-assert 0)
    (overall-score    uint32  :offset-assert 4)
@@ -43187,7 +43187,6 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
 #|
 (deftype net-clan-ladder-stats-info (structure)
@@ -43329,29 +43328,28 @@
   )
 
 (define-extern *medius-player-cache* medius-cache)
-;; (define-extern *medius-buddies* object)
-;; (define-extern *medius-buddies-online* object)
-;; (define-extern *medius-ignores* object)
-;; (define-extern *medius-room-players* object)
-;; (define-extern *medius-recent-players* object)
-;; (define-extern *medius-in-game-players* object)
-;; (define-extern *medius-local-game-players* object)
-;; (define-extern *medius-outstanding-clan-invites* object)
-;; (define-extern *medius-mute-list* object)
-;; (define-extern *medius-clan-members-online* object)
+(define-extern *medius-buddies* medius-player-index-array)
+(define-extern *medius-buddies-online* medius-player-index-array)
+(define-extern *medius-ignores* medius-player-index-array)
+(define-extern *medius-room-players* medius-player-index-array)
+(define-extern *medius-recent-players* medius-player-index-array)
+(define-extern *medius-in-game-players* medius-player-index-array)
+(define-extern *medius-local-game-players* medius-player-index-array)
+(define-extern *medius-outstanding-clan-invites* medius-player-index-array)
+(define-extern *medius-mute-list* medius-player-index-array)
+(define-extern *medius-clan-members-online* medius-player-index-array)
 (define-extern *medius-my-player* medius-cached-info-player)
-;; (define-extern *medius-recent-opponents* object)
+(define-extern *medius-recent-opponents* medius-player-index-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-mgr-medius-clans-h         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype medius-cached-info-clan (medius-cached-info)
-  ((name           UNKNOWN                   32      :offset-assert 24)
+  ((name           uint8                   32      :offset-assert 24)
    (leader-acct-id int32                             :offset-assert 56)
-   (leader-name    UNKNOWN                   32      :offset-assert 60)
-   (stats          UNKNOWN                   256     :offset-assert 92)
+   (leader-name    uint8                   32      :offset-assert 60)
+   (stats          uint8                   256     :offset-assert 92)
    (members        medius-player-index-array         :offset-assert 348)
    (ladder-stats   net-clan-ladder-stats     :inline :offset-assert 352)
    )
@@ -43359,45 +43357,37 @@
   :size-assert         #x184
   :flag-assert         #xd00000184
   (:methods
-    (medius-cached-info-clan-method-12 () none) ;; 12
+    (medius-cached-info-clan-method-12 (_type_ medius-cached-info-clan) none) ;; 12
     )
   )
-|#
 
-#|
 (deftype medius-clan (medius-cache-index)
   ()
   :method-count-assert 12
   :size-assert         #x4
   :flag-assert         #xc00000004
   (:methods
-    (medius-clan-method-11 () none) ;; 11
+    (medius-clan-method-11 (_type_) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype medius-clan-index-array (medius-cache-index-array)
   ()
   :method-count-assert 13
   :size-assert         #x8
   :flag-assert         #xd00000008
   )
-|#
 
-#|
 (deftype medius-incoming-clan-invite (structure)
   ((clan-id   int32      :offset-assert 0)
    (invite-id int32      :offset-assert 4)
-   (clan-name UNKNOWN 32 :offset-assert 8)
+   (clan-name uint8 32 :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype medius-clan-challenge (structure)
   ((send-clan-id int32  :offset-assert 0)
    (recv-clan-id int32  :offset-assert 4)
@@ -43408,61 +43398,59 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *clan-pending-deltas-valid* object)
-;; (define-extern *clan-pending-deltas* object)
-;; (define-extern *clan-msg-text* object)
-;; (define-extern *clan-msg-id* object)
-;; (define-extern *medius-clan-cache* medius-cache)
-;; (define-extern *medius-recent-clans* object)
-;; (define-extern *medius-clan-members-31* object)
-;; (define-extern *medius-clan-members-30* object)
-;; (define-extern *medius-clan-members-29* object)
-;; (define-extern *medius-clan-members-28* object)
-;; (define-extern *medius-clan-members-27* object)
-;; (define-extern *medius-clan-members-26* object)
-;; (define-extern *medius-clan-members-25* object)
-;; (define-extern *medius-clan-members-24* object)
-;; (define-extern *medius-clan-members-23* object)
-;; (define-extern *medius-clan-members-22* object)
-;; (define-extern *medius-clan-members-21* object)
-;; (define-extern *medius-clan-members-20* object)
-;; (define-extern *medius-clan-members-19* object)
-;; (define-extern *medius-clan-members-18* object)
-;; (define-extern *medius-clan-members-17* object)
-;; (define-extern *medius-clan-members-16* object)
-;; (define-extern *medius-clan-members-15* object)
-;; (define-extern *medius-clan-members-14* object)
-;; (define-extern *medius-clan-members-13* object)
-;; (define-extern *medius-clan-members-12* object)
-;; (define-extern *medius-clan-members-11* object)
-;; (define-extern *medius-clan-members-10* object)
-;; (define-extern *medius-clan-members-9* object)
-;; (define-extern *medius-clan-members-8* object)
-;; (define-extern *medius-clan-members-7* object)
-;; (define-extern *medius-clan-members-6* object)
-;; (define-extern *medius-clan-members-5* object)
-;; (define-extern *medius-clan-members-4* object)
-;; (define-extern *medius-clan-members-3* object)
-;; (define-extern *medius-clan-members-2* object)
-;; (define-extern *medius-clan-members-1* object)
-;; (define-extern *medius-clan-members-0* object)
-;; (define-extern *medius-incoming-clan-invites* array)
-;; (define-extern *medius-clan-challenges* array)
-;; (define-extern *medius-visible-clan-challenges* array)
-;; (define-extern *medius-my-clan* medius-cached-info-clan)
-;; (define-extern *medius-my-clan-members* object)
-;; (define-extern *medius-enemy-clan* medius-cached-info-clan)
-;; (define-extern *medius-enemy-clan-members* object)
-;; (define-extern *medius-enemy-clan-id* object)
-;; (define-extern *challenge-clans* array)
+(define-extern *clan-pending-deltas-valid* symbol)
+(define-extern *clan-pending-deltas* (pointer uint32)) ;; TODO - no idea what this is
+(define-extern *clan-msg-text* (pointer uint8))
+(define-extern *clan-msg-id* int)
+(define-extern *medius-clan-cache* medius-cache)
+(define-extern *medius-recent-clans* medius-clan-index-array)
+(define-extern *medius-clan-members-31* medius-player-index-array)
+(define-extern *medius-clan-members-30* medius-player-index-array)
+(define-extern *medius-clan-members-29* medius-player-index-array)
+(define-extern *medius-clan-members-28* medius-player-index-array)
+(define-extern *medius-clan-members-27* medius-player-index-array)
+(define-extern *medius-clan-members-26* medius-player-index-array)
+(define-extern *medius-clan-members-25* medius-player-index-array)
+(define-extern *medius-clan-members-24* medius-player-index-array)
+(define-extern *medius-clan-members-23* medius-player-index-array)
+(define-extern *medius-clan-members-22* medius-player-index-array)
+(define-extern *medius-clan-members-21* medius-player-index-array)
+(define-extern *medius-clan-members-20* medius-player-index-array)
+(define-extern *medius-clan-members-19* medius-player-index-array)
+(define-extern *medius-clan-members-18* medius-player-index-array)
+(define-extern *medius-clan-members-17* medius-player-index-array)
+(define-extern *medius-clan-members-16* medius-player-index-array)
+(define-extern *medius-clan-members-15* medius-player-index-array)
+(define-extern *medius-clan-members-14* medius-player-index-array)
+(define-extern *medius-clan-members-13* medius-player-index-array)
+(define-extern *medius-clan-members-12* medius-player-index-array)
+(define-extern *medius-clan-members-11* medius-player-index-array)
+(define-extern *medius-clan-members-10* medius-player-index-array)
+(define-extern *medius-clan-members-9* medius-player-index-array)
+(define-extern *medius-clan-members-8* medius-player-index-array)
+(define-extern *medius-clan-members-7* medius-player-index-array)
+(define-extern *medius-clan-members-6* medius-player-index-array)
+(define-extern *medius-clan-members-5* medius-player-index-array)
+(define-extern *medius-clan-members-4* medius-player-index-array)
+(define-extern *medius-clan-members-3* medius-player-index-array)
+(define-extern *medius-clan-members-2* medius-player-index-array)
+(define-extern *medius-clan-members-1* medius-player-index-array)
+(define-extern *medius-clan-members-0* medius-player-index-array)
+(define-extern *medius-incoming-clan-invites* (array medius-incoming-clan-invite))
+(define-extern *medius-clan-challenges* (array medius-clan-challenge))
+(define-extern *medius-visible-clan-challenges* (array medius-clan-challenge))
+(define-extern *medius-my-clan* medius-cached-info-clan)
+(define-extern *medius-my-clan-members* medius-player-index-array)
+(define-extern *medius-enemy-clan* medius-cached-info-clan)
+(define-extern *medius-enemy-clan-members* medius-player-index-array)
+(define-extern *medius-enemy-clan-id* int)
+(define-extern *challenge-clans* (array medius-cached-info-clan))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-mgr-medius-games-h         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype medius-cached-info-game-status (medius-cached-info)
   ((game-status int32  :offset-assert 24)
    )
@@ -43470,12 +43458,10 @@
   :size-assert         #x1c
   :flag-assert         #xc0000001c
   )
-|#
 
-#|
 (deftype medius-game-array (structure)
   ((ct   int32      :offset-assert 0)
-   (data UNKNOWN 64 :offset-assert 4)
+   (data medius-game-world-player-list-response 64 :inline :offset-assert 4)
    )
   :method-count-assert 11
   :size-assert         #x5404
@@ -43485,9 +43471,7 @@
     (medius-game-array-method-10 () none) ;; 10
     )
   )
-|#
 
-#|
 (deftype medius-game-filter-settings (structure)
   ((burn-version-and-flags int32  :offset-assert 0)
    (event                  int8   :offset-assert 4)
@@ -43500,10 +43484,9 @@
   :size-assert         #xe
   :flag-assert         #x90000000e
   )
-|#
 
 (define-extern *medius-game-status-cache* medius-cache)
-;; (define-extern *medius-games* object)
+(define-extern *medius-games* medius-game-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-predict-h                  ;;
@@ -45548,7 +45531,7 @@
 
 (deftype net-vehicle (structure)
   ((id         uint32  :offset-assert 0)
-   (name       basic   :offset-assert 4)
+   (name       string   :offset-assert 4)
    (levname    basic   :offset-assert 8)
    (vt         uint8   :offset-assert 12)
    (ct         int8    :offset-assert 13)
@@ -45599,10 +45582,10 @@
     )
   )
 
-;; (define-extern *ghost-info-ptr* object)
+(define-extern *ghost-info-ptr* pointer) ;; to something
 ;; (define-extern net-play-mode-race? function)
 ;; (define-extern get-task-node-id-from-location-and-event function)
-;; (define-extern *default-vehicle-load-parts* object)
+(define-extern *default-vehicle-load-parts* int) ;; TODO - likely an enum
 ;; (define-extern encode-green-room-stats function)
 ;; (define-extern decode-green-room-stats function)
 ;; (define-extern encode-net-world-state function)
@@ -45611,18 +45594,18 @@
 (define-extern *msg-map-net-world* (array symbol))
 (define-extern *net-process-class-info-net-world* net-process-class-info)
 (define-extern *net-world* net-world)
-;; (define-extern *net-player-names* object)
+(define-extern *net-player-names* (inline-array net-player-name))
 (define-extern *prebuilt-ai-vehicles* (array prebuilt-ai-vehicle))
 (define-extern *net-vehicles* (array net-vehicle))
 (define-extern find-vehicle-info (function symbol net-vehicle))
 ;; (define-extern find-prebuilt-ai-vehicle function)
-;; (define-extern *net-drivers* array)
+(define-extern *net-drivers* (array net-driver))
 ;; (define-extern get-vehicle-name function)
-;; (define-extern *protect-vehicle-slot-1* object)
+(define-extern *protect-vehicle-slot-1* symbol)
 ;; (define-extern protect-vehicle-slot-1 function)
-;; (define-extern *in-end-of-race-preload* object)
-;; (define-extern *race-end-camera-pos-valid* object)
-;; (define-extern *race-end-camera-pos* object)
+(define-extern *in-end-of-race-preload* symbol)
+(define-extern *race-end-camera-pos-valid* symbol)
+(define-extern *race-end-camera-pos* vector)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-logging-h                  ;;
@@ -45715,8 +45698,9 @@
   :method-count-assert 57
   :size-assert         #x108
   :flag-assert         #x3900800108
+  (:state-methods
+    TODO)
   (:methods
-    (powerup-draw-method-50 () none) ;; 50
     (powerup-draw-method-51 () none) ;; 51
     (powerup-draw-method-52 () none) ;; 52
     (powerup-draw-method-53 () none) ;; 53
@@ -45731,18 +45715,17 @@
 (define-extern net-powerup-init-remote (function process none :behavior net-powerup))
 (define-extern *msg-map-net-powerup* (array symbol))
 (define-extern *net-process-class-info-net-powerup* net-process-class-info)
-(define-extern powerup-draw-init-by-other (function vector vector object none :behavior powerup-draw))
+(define-extern powerup-draw-init-by-other (function process vector process none :behavior powerup-draw))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-mgr-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-game-mgr-vehicle-info (structure)
-  ((all-vehicles         UNKNOWN 6 :offset-assert 0)
-   (local-vehicles       UNKNOWN 6 :offset-assert 24)
-   (ai-vehicles          UNKNOWN 6 :offset-assert 48)
-   (player-vehicles      UNKNOWN 6 :offset-assert 72)
+  ((all-vehicles         uint32 6 :offset-assert 0)
+   (local-vehicles       uint32 6 :offset-assert 24)
+   (ai-vehicles          uint32 6 :offset-assert 48)
+   (player-vehicles      uint32 6 :offset-assert 72)
    (all-vehicle-count    int8      :offset-assert 96)
    (local-vehicle-count  int8      :offset-assert 97)
    (ai-vehicle-count     int8      :offset-assert 98)
@@ -45752,21 +45735,19 @@
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype net-game-mgr (process-nettable)
   ((scheduled-finish-time int32      :offset-assert 188)
    (scheduled-finish-mode basic      :offset-assert 192)
    (sorted-ct             int8       :offset-assert 196)
    (human-ct              int8       :offset-assert 197)
-   (sorted-ids            UNKNOWN 24 :offset-assert 198)
+   (sorted-ids            uint8 24 :offset-assert 198)
    (intro-end-time        int32      :offset-assert 224)
-   (hud-player-indicators UNKNOWN 2  :offset-assert 232)
+   (hud-player-indicators handle 2  :offset-assert 232)
    (net-players           basic      :offset-assert 248)
-   (stats-hud             UNKNOWN 2  :offset-assert 256)
-   (intro-handle          UNKNOWN 2  :offset-assert 272)
-   (cheats                UNKNOWN 4  :offset-assert 288)
+   (stats-hud             handle 2  :offset-assert 256)
+   (intro-handle          handle 2  :offset-assert 272)
+   (cheats                uint16 4  :offset-assert 288)
    (state-time            uint64     :offset-assert 296)
    )
   :method-count-assert 80
@@ -45813,26 +45794,24 @@
     (net-game-mgr-method-79 () none) ;; 79
     )
   )
-|#
 
-;; (define-extern net-game-mgr-init-remote function)
-;; (define-extern *msg-map-net-game-mgr* array)
-;; (define-extern *net-process-class-info-net-game-mgr* net-process-class-info)
-;; (define-extern *net-game-mgr* object)
-;; (define-extern *should-update-stats* object)
-;; (define-extern *stats-adjusted* object)
-;; (define-extern current-finish-mode function)
-;; (define-extern *fake-continue* continue-point)
-;; (define-extern *overall-score-penalty* object)
-;; (define-extern *total-pts-at-stake* object)
-;; (define-extern *user-pts-at-stake* object)
-;; (define-extern *place-suffix* array)
+(define-extern net-game-mgr-init-remote (function int none :behavior net-game-mgr))
+(define-extern *msg-map-net-game-mgr* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr* net-process-class-info)
+(define-extern *net-game-mgr* net-game-mgr)
+(define-extern *should-update-stats* symbol)
+(define-extern *stats-adjusted* symbol)
+(define-extern current-finish-mode (function symbol))
+(define-extern *fake-continue* continue-point)
+(define-extern *overall-score-penalty* int)
+(define-extern *total-pts-at-stake* int)
+(define-extern *user-pts-at-stake* int)
+(define-extern *place-suffix* (array string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-race-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-player-race (net-player)
   ((last-on-track-pos       vector      :inline :offset-assert 400)
    (last-on-track-rot       quaternion  :inline :offset-assert 416)
@@ -45867,14 +45846,15 @@
     (net-player-race-method-107 () none) ;; 107
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-race (net-game-mgr)
   ((lap-count       int8       :offset-assert 304)
    (racer-ct        int8       :offset-assert 305)
-   (racer-ids       UNKNOWN 24 :offset-assert 306)
+   (racer-ids       int8    24 :offset-assert 306)
    (race-count-down int8       :offset-assert 330)
+   (unknown-uint32-1  uint32     :offset-assert 332)
+   (unknown-uint32-2  uint32     :offset-assert 336)
+   (unknown-uint32-3  uint32     :offset-assert 340)
    (banner          uint64     :offset-assert 344)
    (hud-clock       uint64     :offset-assert 352)
    (auto-end-time   int32      :offset-assert 360)
@@ -45893,43 +45873,36 @@
     (net-game-mgr-race-method-87 () none) ;; 87
     )
   )
-|#
 
-;; (define-extern net-player-race-init-remote function)
-;; (define-extern *msg-map-net-player-race* array)
-;; (define-extern *net-process-class-info-net-player-race* net-process-class-info)
-;; (define-extern net-game-mgr-race-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-race* array)
-;; (define-extern *net-process-class-info-net-game-mgr-race* net-process-class-info)
+(define-extern net-player-race-init-remote (function int none :behavior net-player-race))
+(define-extern *msg-map-net-player-race* (array symbol))
+(define-extern *net-process-class-info-net-player-race* net-process-class-info)
+(define-extern net-game-mgr-race-init-remote (function int none :behavior net-game-mgr-race))
+(define-extern *msg-map-net-game-mgr-race* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-race* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-modes-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype deathmatch-spawner (structure)
   ((entity          basic   :offset-assert 0)
-   (next-spawn-time uint64  :offset-assert 8)
+   (next-spawn-time time-frame  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype deathmatch-spawner-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  (
+   (data             deathmatch-spawner :dynamic :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype net-player-deathmatch (net-player)
   ((target-vehicle     uint64  :offset-assert 400)
    (last-attack-time   uint64  :offset-assert 408)
@@ -45947,9 +45920,7 @@
     (net-player-deathmatch-method-99 () none) ;; 99
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-deathmatch (net-game-mgr)
   ((spawner-array basic  :offset-assert 304)
    (spawner-count int8   :offset-assert 308)
@@ -45964,33 +45935,26 @@
     (net-game-mgr-deathmatch-method-83 () none) ;; 83
     )
   )
-|#
 
-#|
 (deftype net-player-assassin (net-player-deathmatch)
   ()
   :method-count-assert 100
   :size-assert         #x1c0
   :flag-assert         #x64013001c0
   )
-|#
 
-#|
-(deftype net-game-mgr-assassin (net-game-mgr-deathmatch)
-  ((mark    UNKNOWN 24 :offset-assert 305)
-   (UNKNOWN UNKNOWN    :offset-assert -1) ;; field could not be read.
-   )
-  :method-count-assert 86
-  :size-assert         #x14d
-  :flag-assert         #x5600c0014d
-  (:methods
-    (net-game-mgr-assassin-method-84 () none) ;; 84
-    (net-game-mgr-assassin-method-85 () none) ;; 85
-    )
-  )
-|#
+;; (deftype net-game-mgr-assassin (net-game-mgr-deathmatch)
+;;   ((mark    unknown 24 :offset-assert 305)
+;;    )
+;;   :method-count-assert 86
+;;   :size-assert         #x14d
+;;   :flag-assert         #x5600c0014d
+;;   (:methods
+;;     (net-game-mgr-assassin-method-84 () none) ;; 84
+;;     (net-game-mgr-assassin-method-85 () none) ;; 85
+;;     )
+;;   )
 
-#|
 (deftype net-player-deathrace (net-player-race)
   ((impact-death       basic   :offset-assert 496)
    (focus-player-index int8    :offset-assert 500)
@@ -46008,9 +45972,7 @@
     (net-player-deathrace-method-110 () none) ;; 110
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-deathrace (net-game-mgr-race)
   ((next-drone-spawn-time uint64  :offset-assert 368)
    )
@@ -46018,21 +45980,17 @@
   :size-assert         #x178
   :flag-assert         #x5800f00178
   )
-|#
 
-#|
 (deftype net-game-mgr-football (net-game-mgr-race)
   ((borrow-level      basic     :offset-assert 364)
-   (intro-hud-manager UNKNOWN 2 :offset-assert 368)
-   (intro-sfx         UNKNOWN 2 :offset-assert 384)
+   (intro-hud-manager handle 2 :offset-assert 368)
+   (intro-sfx         uint32 2 :offset-assert 384)
    )
   :method-count-assert 88
   :size-assert         #x188
   :flag-assert         #x5801000188
   )
-|#
 
-#|
 (deftype net-player-football (net-player-race)
   ((my-potato             uint64    :offset-assert 496)
    (slow-warning          uint64    :offset-assert 504)
@@ -46042,15 +46000,13 @@
    (turbo-meter           float     :offset-assert 536)
    (cheat-award-time      uint64    :offset-assert 544)
    (cheat-turbo-fill      float     :offset-assert 552)
-   (bing                  UNKNOWN 2 :offset-assert 556)
+   (bing                  uint32 2 :offset-assert 556)
    )
   :method-count-assert 108
   :size-assert         #x234
   :flag-assert         #x6c01b00234
   )
-|#
 
-#|
 (deftype powercell-dispenser (net-powerup)
   ((original-owner int32  :offset-assert 244)
    )
@@ -46058,9 +46014,7 @@
   :size-assert         #xf8
   :flag-assert         #x38007000f8
   )
-|#
 
-#|
 (deftype powercell-dispenser-draw (powerup-draw)
   ((subdraw uint64  :offset-assert 264)
    )
@@ -46071,9 +46025,7 @@
     (powercell-dispenser-draw-method-57 () none) ;; 57
     )
   )
-|#
 
-#|
 (deftype powercell-footie (rigid-body-object)
   ((owner      uint64         :offset-assert 288)
    (plyid      int8           :offset-assert 296)
@@ -46091,9 +46043,7 @@
     (powercell-footie-method-90 () none) ;; 90
     )
   )
-|#
 
-#|
 (deftype net-player-artifact (net-player-deathmatch)
   ((seek-after int32  :offset-assert 448)
    )
@@ -46101,28 +46051,22 @@
   :size-assert         #x1c4
   :flag-assert         #x64014001c4
   )
-|#
 
-#|
 (deftype artifact-location-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             net-player-artifact :dynamic :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
   ((artifact-location-array basic     :offset-assert 312)
    (artifact-location-count int8      :offset-assert 316)
-   (artifact                UNKNOWN 6 :offset-assert 320)
+   (artifact                handle 6 :offset-assert 320)
    (num-artifacts           int32     :offset-assert 368)
    (last-artifact-index     int32     :offset-assert 372)
-   (last-position-index     UNKNOWN 6 :offset-assert 376)
+   (last-position-index     int32 6 :offset-assert 376)
    (special-rule            basic     :offset-assert 400)
    )
   :method-count-assert 86
@@ -46133,9 +46077,7 @@
     (net-game-mgr-artifact-method-85 () none) ;; 85
     )
   )
-|#
 
-#|
 (deftype net-player-beasthunt (net-player-deathmatch)
   ((prev-send-score      int32  :offset-assert 448)
    (last-score-send-time int32  :offset-assert 452)
@@ -46147,27 +46089,21 @@
   :size-assert         #x1d4
   :flag-assert         #x64015001d4
   )
-|#
 
-#|
 (deftype net-game-mgr-beasthunt (net-game-mgr-deathmatch)
   ()
   :method-count-assert 84
   :size-assert         #x135
   :flag-assert         #x5400b00135
   )
-|#
 
-#|
 (deftype net-player-collectable (net-player-deathmatch)
   ()
   :method-count-assert 100
   :size-assert         #x1c0
   :flag-assert         #x64013001c0
   )
-|#
 
-#|
 (deftype net-game-mgr-collectable (net-game-mgr-deathmatch)
   ((steal-mode basic  :offset-assert 312)
    )
@@ -46175,7 +46111,6 @@
   :size-assert         #x13c
   :flag-assert         #x5400b0013c
   )
-|#
 
 ;; (define-extern net-player-deathmatch-init-remote function)
 ;; (define-extern *msg-map-net-player-deathmatch* array)
@@ -46233,7 +46168,6 @@
 ;; net-game-modes2-h              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-player-ctf (net-player-deathmatch)
   ((info-text-display-stop-time   int32   :offset-assert 448)
    (flag-event                    uint64  :offset-assert 456)
@@ -46248,9 +46182,7 @@
     (net-player-ctf-method-102 () none) ;; 102
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-ctf (net-game-mgr-deathmatch)
   ((red-spawners-count int8  :offset-assert 309)
    )
@@ -46258,9 +46190,7 @@
   :size-assert         #x136
   :flag-assert         #x5400b00136
   )
-|#
 
-#|
 (deftype ctf-flag (process-focusable)
   ((carrier       uint64         :offset-assert 256)
    (grabbed-time  int32          :offset-assert 264)
@@ -46296,15 +46226,16 @@
     (ctf-flag-method-77 () none) ;; 77
     )
   )
-|#
 
-#|
 (deftype net-player-rushhour (net-player-race)
   ((combo-score     int32   :offset-assert 496)
    (combo-count     int32   :offset-assert 500)
    (last-score-time int32   :offset-assert 504)
    (combo-hud       uint64  :offset-assert 512)
    (drone-type      uint16  :offset-assert 520)
+   (unknown-uint32-1  uint32  :offset-assert 524)
+   (unknown-uint32-2  uint32  :offset-assert 528)
+   (unknown-uint32-3  uint32  :offset-assert 532)
    (powerup-timer   uint64  :offset-assert 536)
    )
   :method-count-assert 111
@@ -46316,9 +46247,7 @@
     (net-player-rushhour-method-110 () none) ;; 110
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-rushhour (net-game-mgr-race)
   ((next-drone-spawn-time uint64  :offset-assert 368)
    (drone-type-counter    int32   :offset-assert 376)
@@ -46327,12 +46256,10 @@
   :size-assert         #x17c
   :flag-assert         #x5800f0017c
   )
-|#
 
-#|
 (deftype net-game-mgr-king-of-hill (net-game-mgr-deathmatch)
   ((king-id     int16     :offset-assert 310)
-   (kingfx-part UNKNOWN 4 :offset-assert 312)
+   (kingfx-part basic 4 :offset-assert 312) ;; unknown
    )
   :method-count-assert 85
   :size-assert         #x148
@@ -46341,9 +46268,7 @@
     (net-game-mgr-king-of-hill-method-84 () none) ;; 84
     )
   )
-|#
 
-#|
 (deftype net-player-king-of-hill (net-player-deathmatch)
   ((zap-interval uint64  :offset-assert 448)
    )
@@ -46351,9 +46276,7 @@
   :size-assert         #x1c8
   :flag-assert         #x64014001c8
   )
-|#
 
-#|
 (deftype net-player-time-box (net-player-race)
   ((player-timer          float   :offset-assert 496)
    (start-time            uint32  :offset-assert 500)
@@ -46374,9 +46297,7 @@
     (net-player-time-box-method-108 () none) ;; 108
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-time-box (net-game-mgr-race)
   ((total-race-time uint32  :offset-assert 364)
    (sound-id        uint32  :offset-assert 368)
@@ -46385,27 +46306,21 @@
   :size-assert         #x174
   :flag-assert         #x5800f00174
   )
-|#
 
-#|
 (deftype net-player-time-trial (net-player-race)
   ()
   :method-count-assert 108
   :size-assert         #x1f0
   :flag-assert         #x6c016001f0
   )
-|#
 
-#|
 (deftype net-game-mgr-time-trial (net-game-mgr-race)
   ()
   :method-count-assert 88
   :size-assert         #x16c
   :flag-assert         #x5800e0016c
   )
-|#
 
-#|
 (deftype net-game-mgr-training (net-game-mgr-deathrace)
   ((spawn-ai-num int32  :offset-assert 376)
    (ai-num       int32  :offset-assert 380)
@@ -46417,9 +46332,7 @@
   :size-assert         #x18c
   :flag-assert         #x580100018c
   )
-|#
 
-#|
 (deftype net-player-boss-battle (net-player-race)
   ((give-weapon-timer uint64  :offset-assert 496)
    )
@@ -46435,71 +46348,67 @@
     (net-player-boss-battle-method-113 () none) ;; 113
     )
   )
-|#
 
-#|
 (deftype net-game-mgr-boss-battle (net-game-mgr-race)
-  ((player-won?  basic   :offset-assert 364)
-   (player-lost? basic   :offset-assert 368)
+  ((player-won?  symbol   :offset-assert 364)
+   (player-lost? symbol   :offset-assert 368)
    (lose-time    uint64  :offset-assert 376)
    )
   :method-count-assert 88
   :size-assert         #x180
   :flag-assert         #x5800f00180
   )
-|#
 
-;; (define-extern *ctf-flag* object)
-;; (define-extern *ctf-red-base* object)
-;; (define-extern *ctf-blue-base* object)
-;; (define-extern net-player-ctf-init-remote function)
-;; (define-extern *msg-map-net-player-ctf* array)
-;; (define-extern *net-process-class-info-net-player-ctf* net-process-class-info)
-;; (define-extern net-game-mgr-ctf-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-ctf* array)
-;; (define-extern *net-process-class-info-net-game-mgr-ctf* net-process-class-info)
-;; (define-extern ctf-flag-init-remote function)
-;; (define-extern *msg-map-ctf-flag* array)
-;; (define-extern *net-process-class-info-ctf-flag* net-process-class-info)
-;; (define-extern net-player-rushhour-init-remote function)
-;; (define-extern *msg-map-net-player-rushhour* array)
-;; (define-extern *net-process-class-info-net-player-rushhour* net-process-class-info)
-;; (define-extern net-game-mgr-rushhour-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-rushhour* array)
-;; (define-extern *net-process-class-info-net-game-mgr-rushhour* net-process-class-info)
-;; (define-extern net-game-mgr-king-of-hill-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-king-of-hill* array)
-;; (define-extern *net-process-class-info-net-game-mgr-king-of-hill* net-process-class-info)
-;; (define-extern net-player-king-of-hill-init-remote function)
-;; (define-extern *msg-map-net-player-king-of-hill* array)
-;; (define-extern *net-process-class-info-net-player-king-of-hill* net-process-class-info)
-;; (define-extern net-player-time-box-init-remote function)
-;; (define-extern *msg-map-net-player-time-box* array)
-;; (define-extern *net-process-class-info-net-player-time-box* net-process-class-info)
-;; (define-extern net-game-mgr-time-box-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-time-box* array)
-;; (define-extern *net-process-class-info-net-game-mgr-time-box* net-process-class-info)
-;; (define-extern net-player-time-trial-init-remote function)
-;; (define-extern *msg-map-net-player-time-trial* array)
-;; (define-extern *net-process-class-info-net-player-time-trial* net-process-class-info)
-;; (define-extern net-game-mgr-time-trial-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-time-trial* array)
-;; (define-extern *net-process-class-info-net-game-mgr-time-trial* net-process-class-info)
-;; (define-extern net-game-mgr-training-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-training* array)
-;; (define-extern *net-process-class-info-net-game-mgr-training* net-process-class-info)
-;; (define-extern net-player-boss-battle-init-remote function)
-;; (define-extern *msg-map-net-player-boss-battle* array)
-;; (define-extern *net-process-class-info-net-player-boss-battle* net-process-class-info)
-;; (define-extern net-game-mgr-boss-battle-init-remote function)
-;; (define-extern *msg-map-net-game-mgr-boss-battle* array)
-;; (define-extern *net-process-class-info-net-game-mgr-boss-battle* net-process-class-info)
+(define-extern *ctf-flag* symbol)
+(define-extern *ctf-red-base* symbol)
+(define-extern *ctf-blue-base* symbol)
+(define-extern net-player-ctf-init-remote (function int none :behavior net-player-ctf))
+(define-extern *msg-map-net-player-ctf* (array symbol))
+(define-extern *net-process-class-info-net-player-ctf* net-process-class-info)
+(define-extern net-game-mgr-ctf-init-remote (function int none :behavior net-game-mgr-ctf))
+(define-extern *msg-map-net-game-mgr-ctf* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-ctf* net-process-class-info)
+(define-extern ctf-flag-init-remote (function int none :behavior ctf-flag))
+(define-extern *msg-map-ctf-flag* (array symbol))
+(define-extern *net-process-class-info-ctf-flag* net-process-class-info)
+(define-extern net-player-rushhour-init-remote (function int none :behavior net-player-rushhour))
+(define-extern *msg-map-net-player-rushhour* (array symbol))
+(define-extern *net-process-class-info-net-player-rushhour* net-process-class-info)
+(define-extern net-game-mgr-rushhour-init-remote (function int none :behavior net-game-mgr-rushhour))
+(define-extern *msg-map-net-game-mgr-rushhour* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-rushhour* net-process-class-info)
+(define-extern net-game-mgr-king-of-hill-init-remote (function int none :behavior net-game-mgr-king-of-hill))
+(define-extern *msg-map-net-game-mgr-king-of-hill* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-king-of-hill* net-process-class-info)
+(define-extern net-player-king-of-hill-init-remote (function int none :behavior net-player-king-of-hill))
+(define-extern *msg-map-net-player-king-of-hill* (array symbol))
+(define-extern *net-process-class-info-net-player-king-of-hill* net-process-class-info)
+(define-extern net-player-time-box-init-remote (function int none :behavior net-player-time-box))
+(define-extern *msg-map-net-player-time-box* (array symbol))
+(define-extern *net-process-class-info-net-player-time-box* net-process-class-info)
+(define-extern net-game-mgr-time-box-init-remote (function int none :behavior net-game-mgr-time-box))
+(define-extern *msg-map-net-game-mgr-time-box* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-time-box* net-process-class-info)
+(define-extern net-player-time-trial-init-remote (function int none :behavior net-player-time-trial))
+(define-extern *msg-map-net-player-time-trial* (array symbol))
+(define-extern *net-process-class-info-net-player-time-trial* net-process-class-info)
+(define-extern net-game-mgr-time-trial-init-remote (function int none :behavior net-game-mgr-time-trial))
+(define-extern *msg-map-net-game-mgr-time-trial* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-time-trial* net-process-class-info)
+(define-extern net-game-mgr-training-init-remote (function int none :behavior net-game-mgr-training))
+(define-extern *msg-map-net-game-mgr-training* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-training* net-process-class-info)
+(define-extern net-player-boss-battle-init-remote (function int none :behavior net-player-boss-battle))
+(define-extern *msg-map-net-player-boss-battle* (array symbol))
+(define-extern *net-process-class-info-net-player-boss-battle* net-process-class-info)
+(define-extern net-game-mgr-boss-battle-init-remote (function int none :behavior net-game-mgr-boss-battle))
+(define-extern *msg-map-net-game-mgr-boss-battle* (array symbol))
+(define-extern *net-process-class-info-net-game-mgr-boss-battle* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-simple-destruct-h          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-simple-destruct (process-focusable)
   ((hit-points         float          :offset-assert 256)
    (incoming-attack-id int32          :offset-assert 260)
@@ -46522,9 +46431,7 @@
     (net-simple-destruct-method-69 () none) ;; 69
     )
   )
-|#
 
-#|
 (deftype net-simple-destruct-mgr (process-nettable)
   ()
   :method-count-assert 48
@@ -46539,12 +46446,11 @@
     (net-simple-destruct-mgr-method-47 () none) ;; 47
     )
   )
-|#
 
-;; (define-extern net-simple-destruct-mgr-init-remote function)
-;; (define-extern *msg-map-net-simple-destruct-mgr* array)
-;; (define-extern *net-process-class-info-net-simple-destruct-mgr* net-process-class-info)
-;; (define-extern *net-simple-destruct-mgr* object)
+(define-extern net-simple-destruct-mgr-init-remote (function int none :behavior net-simple-destruct-mgr))
+(define-extern *msg-map-net-simple-destruct-mgr* (array symbol))
+(define-extern *net-process-class-info-net-simple-destruct-mgr* net-process-class-info)
+(define-extern *net-simple-destruct-mgr* net-simple-destruct-mgr)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-hud-h                      ;;
@@ -46634,8 +46540,8 @@
 
 (define-extern *ghosts-enabled* symbol)
 (define-extern *ghost-rec* (inline-array timetrial-snapshot))
-(define-extern *ghost-upload-proc* object)
-(define-extern *ghost-download-proc* object)
+(define-extern *ghost-upload-proc* handle-wrapper)
+(define-extern *ghost-download-proc* handle-wrapper)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-eco-h                      ;;
@@ -47490,25 +47396,25 @@
    (vehicle-flags              uint64    :offset-assert 280)
    (vehicle-paint-mode         uint64    :offset-assert 288)
    (tuning-type-selected       uint64    :offset-assert 296)
-   (all-ready?                 basic     :offset-assert 304)
+   (all-ready?                 symbol     :offset-assert 304)
    (map-proc                   uint64    :offset-assert 312)
    (venue-map                  uint64    :offset-assert 320)
    (current-local-player       int8      :offset-assert 328)
-   (spawn-another?             basic     :offset-assert 332)
+   (spawn-another?             symbol     :offset-assert 332)
    (state-time                 uint64    :offset-assert 336)
    (has-driver?                symbol  2 :offset-assert 344)
    (car-part-type-selected     uint8     :offset-assert 352)
-   (cam-string                 basic     :offset-assert 356)
-   (driver-was-taken?          basic     :offset-assert 360)
-   (interpolate-camera?        basic     :offset-assert 364)
+   (cam-string                 string     :offset-assert 356)
+   (driver-was-taken?          symbol     :offset-assert 360)
+   (interpolate-camera?        symbol     :offset-assert 364)
    (last-selected-human-count  int8      :offset-assert 368)
    (last-selected-cpu-count    int8      :offset-assert 369)
-   (game-visible?              basic     :offset-assert 372)
-   (psp-mode-run?              basic     :offset-assert 376)
+   (game-visible?              symbol     :offset-assert 372)
+   (psp-mode-run?              symbol     :offset-assert 376)
    (garage-lights              float     :offset-assert 380)
    (garage-lights-target       float     :offset-assert 384)
    (memcard-status             uint32    :offset-assert 388)
-   (time-limit?                basic     :offset-assert 392)
+   (time-limit?                symbol     :offset-assert 392)
    (profile-save-mode          basic     :offset-assert 396)
    (machine-id-to-kick         int8      :offset-assert 400)
    (cookie-id-to-kick          int8      :offset-assert 401)
@@ -47709,7 +47615,7 @@
 ;; (define-extern lobby-vehicle-flag->string function)
 ;; (define-extern *lobby-reset-mode* object)
 ;; (define-extern *net-mgr-finish-mode* object)
-;; (define-extern *lobby-menu-manager* object)
+(define-extern *lobby-menu-manager* lobby-menu-manager)
 ;; (define-extern get-selected-local-player-count function)
 ;; (define-extern kiosk-code? function)
 ;; (define-extern min-max-wrap-around function) ;; (function int int int int)
@@ -49001,7 +48907,7 @@
 ;; (define-extern *game-name-entered* object)
 ;; (define-extern draw-language-select function)
 ;; (define-extern check-language function)
-;; (define-extern *end-credits-proc* object)
+(define-extern *end-credits-proc* (pointer handle))
 ;; (define-extern end-end-credits function)
 ;; (define-extern start-end-credits function)
 
@@ -49221,7 +49127,7 @@
 ;; (define-extern get-total-humans function)
 ;; (define-extern get-total-skill-level function)
 ;; (define-extern get-player-clan-info function)
-;; (define-extern lobby-level-set! function)
+(define-extern lobby-level-set! (function int symbol symbol none))
 ;; (define-extern set-player-car-from-level-array function)
 ;; (define-extern *in-end-of-race-preload* object)
 ;; (define-extern end-of-race-start-preload function)
@@ -53915,19 +53821,19 @@
 ;; (define-extern *reset-hud-results* object)
 ;; (define-extern *last-game-mgr-grand-prix* object)
 ;; (define-extern *hud-results-medal* array)
-;; (define-extern *hud-results-medal-proc* object)
+(define-extern *hud-results-medal-proc* process)
 ;; (define-extern spawn-hud-results-medal function)
 ;; (define-extern *hud-results-view-0* array)
-;; (define-extern *hud-results-view-0-proc* object)
+(define-extern *hud-results-view-0-proc* process)
 ;; (define-extern spawn-hud-results-view-0 function)
 ;; (define-extern *hud-results-view-1* array)
-;; (define-extern *hud-results-view-1-proc* object)
+(define-extern *hud-results-view-1-proc* process)
 ;; (define-extern spawn-hud-results-view-1 function)
 ;; (define-extern *hud-results-team-view-0* array)
-;; (define-extern *hud-results-team-view-0-proc* object)
+(define-extern *hud-results-team-view-0-proc* process)
 ;; (define-extern spawn-hud-results-team-view-0 function)
 ;; (define-extern *hud-results-team-view-1* array)
-;; (define-extern *hud-results-team-view-1-proc* object)
+(define-extern *hud-results-team-view-1-proc* process)
 ;; (define-extern spawn-hud-results-team-view-1 function)
 ;; (define-extern spawn-hud-results-team function)
 ;; (define-extern spawn-hud-results function)
@@ -59792,9 +59698,8 @@
 ;; credits-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype credits-char (structure)
-  ((levname basic   :offset-assert 0)
+  ((levname symbol   :offset-assert 0)
    (skel    basic   :offset-assert 4)
    (anim    uint32  :offset-assert 8)
    (scale   float   :offset-assert 12)
@@ -59806,9 +59711,7 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype hirez-viewer (process-drawable)
   ((char    credits-char  :offset-assert 248) ;; museum-char
    (id      sound-id      :offset-assert 252) ;; guessed by decompiler
@@ -59821,35 +59724,23 @@
     idle ;; 50
     )
   )
-|#
 
-#|
 (deftype end-credits-proc (process)
   ((char-viewer uint64  :offset-assert 144)
    )
   :method-count-assert 17
   :size-assert         #x98
   :flag-assert         #x1100100098
-  (:methods
-    (end-credits-proc-method-9 () none) ;; 9
-    (end-credits-proc-method-10 () none) ;; 10
-    (end-credits-proc-method-11 () none) ;; 11
-    (end-credits-proc-method-12 () none) ;; 12
-    (end-credits-proc-method-13 () none) ;; 13
-    (end-credits-proc-method-14 () none) ;; 14
-    )
   (:state-methods
     running ;; 15
     die ;; 16
     )
   )
-|#
 
-#|
 (deftype end-credits-character-viewer (process)
   ((hirez-viewer     uint64        :offset-assert 144)
    (vehicle          uint64        :offset-assert 152)
-   (turntable-handle uint64        :offset-assert 160)
+   (turntable-handle handle        :offset-assert 160)
    (last-up-time     int32         :offset-assert 168)
    (finish           basic         :offset-assert 172)
    (anim-ending      basic         :offset-assert 176)
@@ -59858,29 +59749,20 @@
   :method-count-assert 17
   :size-assert         #xb8
   :flag-assert         #x11003000b8
-  (:methods
-    (end-credits-character-viewer-method-9 () none) ;; 9
-    (end-credits-character-viewer-method-10 () none) ;; 10
-    (end-credits-character-viewer-method-11 () none) ;; 11
-    (end-credits-character-viewer-method-12 () none) ;; 12
-    (end-credits-character-viewer-method-13 () none) ;; 13
-    (end-credits-character-viewer-method-14 () none) ;; 14
-    )
   (:state-methods
     running ;; 15
     die ;; 16
     )
   )
-|#
 
-;; (define-extern *credits-chars* array)
-;; (define-extern hirez-viewer-init-by-other function) ;; (function museum-char symbol symbol object :behavior hirez-viewer)
-;; (define-extern spawn-hirez-viewer function) ;; (function museum-char symbol symbol handle)
-;; (define-extern draw-end-credits function) ;; (function level float symbol)
+(define-extern *credits-chars* (array credits-char))
+(define-extern hirez-viewer-init-by-other (function credits-char symbol symbol object :behavior hirez-viewer))
+(define-extern spawn-hirez-viewer (function credits-char symbol symbol handle))
+(define-extern draw-end-credits (function level float symbol))
 ;; (define-extern end-credits-character-viewer-init-by-other function)
-;; (define-extern update-stuff function)
-;; (define-extern end-credits-proc-init-by-other function)
-;; (define-extern activate-end-credits-proc function)
+(define-extern update-stuff (function none))
+(define-extern end-credits-proc-init-by-other (function none :behavior end-credits-proc))
+(define-extern activate-end-credits-proc (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; kras-effects                   ;;

@@ -7,3 +7,725 @@
 
 ;; DECOMP BEGINS
 
+(define *ctf-flag* #f)
+
+(define *ctf-red-base* #f)
+
+(define *ctf-blue-base* #f)
+
+(deftype net-player-ctf (net-player-deathmatch)
+  ((info-text-display-stop-time    int32)
+   (flag-event                     uint64)
+   (indicate-flag-event-stop-time  int32)
+   )
+  (:methods
+    (net-player-ctf-method-100 () none)
+    (net-player-ctf-method-101 () none)
+    (net-player-ctf-method-102 () none)
+    )
+  )
+
+
+(defbehavior net-player-ctf-init-remote net-player-ctf ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-ctf) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-ctf :init net-player-ctf-init-remote arg0 :name "net-player-ctf")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-ctf) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-ctf* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-ctf* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-ctf* msg-map) *msg-map-net-player-ctf*)
+
+(write-msg-map-rec net-player-ctf *net-process-class-info-net-player-ctf*)
+
+(set! (-> *net-process-class-info-net-player-ctf* owner-type) net-player-ctf)
+
+(net-process-class-register *net-process-class-info-net-player-ctf*)
+
+(defmethod process-nettable-method-40 ((this net-player-ctf))
+  *net-process-class-info-net-player-ctf*
+  )
+
+(deftype net-game-mgr-ctf (net-game-mgr-deathmatch)
+  ((red-spawners-count  int8)
+   )
+  )
+
+
+(defbehavior net-game-mgr-ctf-init-remote net-game-mgr-ctf ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-ctf) (arg0 int))
+  (ppointer->process
+    (process-spawn net-game-mgr-ctf :init net-game-mgr-ctf-init-remote arg0 :name "net-game-mgr-ctf")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-ctf) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-ctf* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-game-mgr-ctf* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-ctf* msg-map) *msg-map-net-game-mgr-ctf*)
+
+(write-msg-map-rec net-game-mgr-ctf *net-process-class-info-net-game-mgr-ctf*)
+
+(set! (-> *net-process-class-info-net-game-mgr-ctf* owner-type) net-game-mgr-ctf)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-ctf*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-ctf))
+  *net-process-class-info-net-game-mgr-ctf*
+  )
+
+(deftype ctf-flag (process-focusable)
+  ((carrier        uint64)
+   (grabbed-time   int32)
+   (carried-part   uint64)
+   (task-arrow     uint64)
+   (team           uint8)
+   (count          uint8)
+   (spawn-pos      vector  :inline)
+   (last-good-pos  vector  :inline)
+   )
+  (:methods
+    (ctf-flag-method-59 () none)
+    (ctf-flag-method-60 () none)
+    (ctf-flag-method-61 () none)
+    (ctf-flag-method-62 () none)
+    (ctf-flag-method-63 () none)
+    (ctf-flag-method-64 () none)
+    (ctf-flag-method-65 () none)
+    (ctf-flag-method-66 () none)
+    (ctf-flag-method-67 () none)
+    (ctf-flag-method-68 () none)
+    (ctf-flag-method-69 () none)
+    (ctf-flag-method-70 () none)
+    (ctf-flag-method-71 () none)
+    (ctf-flag-method-72 () none)
+    (ctf-flag-method-73 () none)
+    (ctf-flag-method-74 () none)
+    (ctf-flag-method-75 () none)
+    (ctf-flag-method-76 () none)
+    (ctf-flag-method-77 () none)
+    )
+  )
+
+
+(defbehavior ctf-flag-init-remote ctf-flag ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this ctf-flag) (arg0 int))
+  (ppointer->process (process-spawn ctf-flag :init ctf-flag-init-remote arg0 :name "ctf-flag"))
+  )
+
+(defmethod process-nettable-method-37 ((this ctf-flag) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'flag-picked-up)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'flag-dropped)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'flag-returned)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'flag-captured)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-ctf-flag* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-ctf-flag* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-ctf-flag* msg-map) *msg-map-ctf-flag*)
+
+(write-msg-map-rec ctf-flag *net-process-class-info-ctf-flag*)
+
+(set! (-> *net-process-class-info-ctf-flag* owner-type) ctf-flag)
+
+(net-process-class-register *net-process-class-info-ctf-flag*)
+
+(defmethod process-nettable-method-40 ((this ctf-flag))
+  *net-process-class-info-ctf-flag*
+  )
+
+(deftype net-player-rushhour (net-player-race)
+  ((combo-score       int32)
+   (combo-count       int32)
+   (last-score-time   int32)
+   (combo-hud         uint64)
+   (drone-type        uint16)
+   (unknown-uint32-1  uint32)
+   (unknown-uint32-2  uint32)
+   (unknown-uint32-3  uint32)
+   (powerup-timer     uint64)
+   )
+  (:methods
+    (net-player-rushhour-method-108 () none)
+    (net-player-rushhour-method-109 () none)
+    (net-player-rushhour-method-110 () none)
+    )
+  )
+
+
+(defbehavior net-player-rushhour-init-remote net-player-rushhour ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-rushhour) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-rushhour :init net-player-rushhour-init-remote arg0 :name "net-player-rushhour")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-rushhour) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-rushhour* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-rushhour* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-rushhour* msg-map) *msg-map-net-player-rushhour*)
+
+(write-msg-map-rec net-player-rushhour *net-process-class-info-net-player-rushhour*)
+
+(set! (-> *net-process-class-info-net-player-rushhour* owner-type) net-player-rushhour)
+
+(net-process-class-register *net-process-class-info-net-player-rushhour*)
+
+(defmethod process-nettable-method-40 ((this net-player-rushhour))
+  *net-process-class-info-net-player-rushhour*
+  )
+
+(deftype net-game-mgr-rushhour (net-game-mgr-race)
+  ((next-drone-spawn-time  uint64)
+   (drone-type-counter     int32)
+   )
+  )
+
+
+(defbehavior net-game-mgr-rushhour-init-remote net-game-mgr-rushhour ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-rushhour) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-rushhour
+                       :init net-game-mgr-rushhour-init-remote
+                       arg0
+                       :name "net-game-mgr-rushhour"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-rushhour) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-rushhour*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-rushhour* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-rushhour* msg-map) *msg-map-net-game-mgr-rushhour*)
+
+(write-msg-map-rec net-game-mgr-rushhour *net-process-class-info-net-game-mgr-rushhour*)
+
+(set! (-> *net-process-class-info-net-game-mgr-rushhour* owner-type) net-game-mgr-rushhour)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-rushhour*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-rushhour))
+  *net-process-class-info-net-game-mgr-rushhour*
+  )
+
+(deftype net-game-mgr-king-of-hill (net-game-mgr-deathmatch)
+  ((king-id      int16)
+   (kingfx-part  basic  4)
+   )
+  (:methods
+    (net-game-mgr-king-of-hill-method-84 () none)
+    )
+  )
+
+
+(defbehavior net-game-mgr-king-of-hill-init-remote net-game-mgr-king-of-hill ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-king-of-hill) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-king-of-hill
+                       :init net-game-mgr-king-of-hill-init-remote
+                       arg0
+                       :name "net-game-mgr-king-of-hill"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-king-of-hill) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'tag-state-change)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-king-of-hill*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-king-of-hill* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-king-of-hill* msg-map) *msg-map-net-game-mgr-king-of-hill*)
+
+(write-msg-map-rec net-game-mgr-king-of-hill *net-process-class-info-net-game-mgr-king-of-hill*)
+
+(set! (-> *net-process-class-info-net-game-mgr-king-of-hill* owner-type) net-game-mgr-king-of-hill)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-king-of-hill*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-king-of-hill))
+  *net-process-class-info-net-game-mgr-king-of-hill*
+  )
+
+(deftype net-player-king-of-hill (net-player-deathmatch)
+  ((zap-interval  uint64)
+   )
+  )
+
+
+(defbehavior net-player-king-of-hill-init-remote net-player-king-of-hill ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-king-of-hill) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-king-of-hill
+                       :init net-player-king-of-hill-init-remote
+                       arg0
+                       :name "net-player-king-of-hill"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-king-of-hill) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-king-of-hill*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-player-king-of-hill* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-king-of-hill* msg-map) *msg-map-net-player-king-of-hill*)
+
+(write-msg-map-rec net-player-king-of-hill *net-process-class-info-net-player-king-of-hill*)
+
+(set! (-> *net-process-class-info-net-player-king-of-hill* owner-type) net-player-king-of-hill)
+
+(net-process-class-register *net-process-class-info-net-player-king-of-hill*)
+
+(defmethod process-nettable-method-40 ((this net-player-king-of-hill))
+  *net-process-class-info-net-player-king-of-hill*
+  )
+
+(deftype net-player-time-box (net-player-race)
+  ((player-timer           float)
+   (start-time             uint32)
+   (freeze-time-total      uint32)
+   (freeze-time-current    uint32)
+   (freeze-time-remaining  uint32)
+   (start-freeze-time      uint32)
+   (total-race-time        uint32)
+   (lose-time              uint32)
+   (pickup-total           int32)
+   (pickup-collected       int32)
+   (bonus-time             int32)
+   )
+  (:methods
+    (net-player-time-box-method-108 () none)
+    )
+  )
+
+
+(defbehavior net-player-time-box-init-remote net-player-time-box ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-time-box) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-time-box :init net-player-time-box-init-remote arg0 :name "net-player-time-box")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-time-box) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'time-freeze)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-time-box* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-time-box* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-time-box* msg-map) *msg-map-net-player-time-box*)
+
+(write-msg-map-rec net-player-time-box *net-process-class-info-net-player-time-box*)
+
+(set! (-> *net-process-class-info-net-player-time-box* owner-type) net-player-time-box)
+
+(net-process-class-register *net-process-class-info-net-player-time-box*)
+
+(defmethod process-nettable-method-40 ((this net-player-time-box))
+  *net-process-class-info-net-player-time-box*
+  )
+
+(deftype net-game-mgr-time-box (net-game-mgr-race)
+  ((total-race-time  uint32)
+   (sound-id         uint32)
+   )
+  )
+
+
+(defbehavior net-game-mgr-time-box-init-remote net-game-mgr-time-box ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-time-box) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-time-box
+                       :init net-game-mgr-time-box-init-remote
+                       arg0
+                       :name "net-game-mgr-time-box"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-time-box) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-time-box*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-time-box* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-time-box* msg-map) *msg-map-net-game-mgr-time-box*)
+
+(write-msg-map-rec net-game-mgr-time-box *net-process-class-info-net-game-mgr-time-box*)
+
+(set! (-> *net-process-class-info-net-game-mgr-time-box* owner-type) net-game-mgr-time-box)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-time-box*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-time-box))
+  *net-process-class-info-net-game-mgr-time-box*
+  )
+
+(deftype net-player-time-trial (net-player-race)
+  ()
+  )
+
+
+(defbehavior net-player-time-trial-init-remote net-player-time-trial ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-time-trial) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-time-trial
+                       :init net-player-time-trial-init-remote
+                       arg0
+                       :name "net-player-time-trial"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-time-trial) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-time-trial*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-player-time-trial* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-time-trial* msg-map) *msg-map-net-player-time-trial*)
+
+(write-msg-map-rec net-player-time-trial *net-process-class-info-net-player-time-trial*)
+
+(set! (-> *net-process-class-info-net-player-time-trial* owner-type) net-player-time-trial)
+
+(net-process-class-register *net-process-class-info-net-player-time-trial*)
+
+(defmethod process-nettable-method-40 ((this net-player-time-trial))
+  *net-process-class-info-net-player-time-trial*
+  )
+
+(deftype net-game-mgr-time-trial (net-game-mgr-race)
+  ()
+  )
+
+
+(defbehavior net-game-mgr-time-trial-init-remote net-game-mgr-time-trial ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-time-trial) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-time-trial
+                       :init net-game-mgr-time-trial-init-remote
+                       arg0
+                       :name "net-game-mgr-time-trial"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-time-trial) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-time-trial*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-time-trial* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-time-trial* msg-map) *msg-map-net-game-mgr-time-trial*)
+
+(write-msg-map-rec net-game-mgr-time-trial *net-process-class-info-net-game-mgr-time-trial*)
+
+(set! (-> *net-process-class-info-net-game-mgr-time-trial* owner-type) net-game-mgr-time-trial)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-time-trial*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-time-trial))
+  *net-process-class-info-net-game-mgr-time-trial*
+  )
+
+(deftype net-game-mgr-training (net-game-mgr-deathrace)
+  ((spawn-ai-num  int32)
+   (ai-num        int32)
+   (ais-move?     basic)
+   (ai-attack?    basic)
+   (can-shoot?    basic)
+   )
+  )
+
+
+(defbehavior net-game-mgr-training-init-remote net-game-mgr-training ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-training) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-training
+                       :init net-game-mgr-training-init-remote
+                       arg0
+                       :name "net-game-mgr-training"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-training) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-training*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-training* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-training* msg-map) *msg-map-net-game-mgr-training*)
+
+(write-msg-map-rec net-game-mgr-training *net-process-class-info-net-game-mgr-training*)
+
+(set! (-> *net-process-class-info-net-game-mgr-training* owner-type) net-game-mgr-training)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-training*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-training))
+  *net-process-class-info-net-game-mgr-training*
+  )
+
+(deftype net-player-boss-battle (net-player-race)
+  ((give-weapon-timer  uint64)
+   )
+  (:methods
+    (net-player-boss-battle-method-108 () none)
+    (net-player-boss-battle-method-109 () none)
+    (net-player-boss-battle-method-110 () none)
+    (net-player-boss-battle-method-111 () none)
+    (net-player-boss-battle-method-112 () none)
+    (net-player-boss-battle-method-113 () none)
+    )
+  )
+
+
+(defbehavior net-player-boss-battle-init-remote net-player-boss-battle ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-boss-battle) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-boss-battle
+                       :init net-player-boss-battle-init-remote
+                       arg0
+                       :name "net-player-boss-battle"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-boss-battle) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-boss-battle*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-player-boss-battle* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-boss-battle* msg-map) *msg-map-net-player-boss-battle*)
+
+(write-msg-map-rec net-player-boss-battle *net-process-class-info-net-player-boss-battle*)
+
+(set! (-> *net-process-class-info-net-player-boss-battle* owner-type) net-player-boss-battle)
+
+(net-process-class-register *net-process-class-info-net-player-boss-battle*)
+
+(defmethod process-nettable-method-40 ((this net-player-boss-battle))
+  *net-process-class-info-net-player-boss-battle*
+  )
+
+(deftype net-game-mgr-boss-battle (net-game-mgr-race)
+  ((player-won?   symbol)
+   (player-lost?  symbol)
+   (lose-time     uint64)
+   )
+  )
+
+
+(defbehavior net-game-mgr-boss-battle-init-remote net-game-mgr-boss-battle ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-boss-battle) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-boss-battle
+                       :init net-game-mgr-boss-battle-init-remote
+                       arg0
+                       :name "net-game-mgr-boss-battle"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-boss-battle) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-boss-battle*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-boss-battle* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-boss-battle* msg-map) *msg-map-net-game-mgr-boss-battle*)
+
+(write-msg-map-rec net-game-mgr-boss-battle *net-process-class-info-net-game-mgr-boss-battle*)
+
+(set! (-> *net-process-class-info-net-game-mgr-boss-battle* owner-type) net-game-mgr-boss-battle)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-boss-battle*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-boss-battle))
+  *net-process-class-info-net-game-mgr-boss-battle*
+  )
