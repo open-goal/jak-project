@@ -1,0 +1,41 @@
+# Builds the VR fork for Windows and packages it the same way an
+# official OpenGOAL release is laid out (gk.exe, goalc.exe, extractor.exe, data/).
+# Download the "opengoal-vr-windows" artifact from the run page.
+name: VR Windows Build
+
+on:
+  push:
+    branches:
+      - vr
+  workflow_dispatch: {}
+
+jobs:
+  build_windows:
+    name: "Windows (clang, static)"
+    uses: ./.github/workflows/windows-build-clang.yaml
+    with:
+      cmakePreset: "Release-windows-clang-static"
+      cachePrefix: "vr"
+      uploadArtifacts: true
+    secrets: inherit
+
+  package:
+    name: "Package"
+    needs: build_windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: opengoal-windows-vr
+          path: ./ci-artifacts/bin
+
+      - name: Lay out release folder
+        run: ./.github/scripts/releases/extract_build_windows.sh ./ci-artifacts/opengoal-vr ./ci-artifacts/bin ./
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: opengoal-vr-windows
+          if-no-files-found: error
+          path: ./ci-artifacts/opengoal-vr
