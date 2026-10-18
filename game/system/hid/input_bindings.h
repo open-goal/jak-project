@@ -391,7 +391,7 @@ extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 // So there are some potential solutions but this doesn't feel high priority and this was always an
 // issue.
 struct CommandBinding {
-  enum Source { CONTROLLER, KEYBOARD, MOUSE };
+  enum class Source { CONTROLLER, KEYBOARD, MOUSE };
 
   u32 host_key;
   InputModifiers modifiers;

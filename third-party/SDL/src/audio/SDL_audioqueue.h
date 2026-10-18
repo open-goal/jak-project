@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,7 @@
 
 // Internal functions used by SDL_AudioStream for queueing audio.
 
-typedef void (SDLCALL *SDL_ReleaseAudioBufferCallback)(void *userdata, const void *buffer, int buflen);
+typedef SDL_AudioStreamDataCompleteCallback SDL_ReleaseAudioBufferCallback;
 
 typedef struct SDL_AudioQueue SDL_AudioQueue;
 typedef struct SDL_AudioTrack SDL_AudioTrack;

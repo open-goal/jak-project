@@ -41,8 +41,8 @@
            (let ((s4-0 (new 'stack 'attack-info)))
              (calc-shove-up (-> self root) s4-0 (-> self shove-up))
              (level-hint-spawn (text-id sunken-hotpipes) "sksp0134" (the-as entity #f) *entity-pool* (game-task none))
-             (if (or (= (-> *target* control unknown-surface00 mode) 'air)
-                     (>= (+ (current-time) (seconds -0.2)) (-> *target* control unknown-dword11))
+             (if (or (= (-> *target* control mod-surface mode) 'air)
+                     (>= (+ (current-time) (seconds -0.2)) (-> *target* control last-time-on-surface))
                      (< 0.75 (-> *target* control poly-normal y))
                      )
                  (send-event
@@ -77,7 +77,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this shover) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag))
   (set! (-> this shove-up) (res-lump-float arg0 'shove :default 12288.0))
   (let ((s3-0 (res-lump-value arg0 'collision-mesh-id uint128))
         (s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player)))
@@ -104,8 +103,9 @@
         (go process-drawable-art-error "no path")
         )
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-23 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-23 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16)))
+         )
     (when v1-23
       (+! (-> this root trans x) (-> v1-23 0))
       (+! (-> this root trans y) (-> v1-23 1))

@@ -18,6 +18,8 @@ std::string get_time_of_day(float time);
 const char* get_full_level_name(const std::map<std::string, std::string>& level_names,
                                 const std::map<std::string, std::string>& level_name_remap,
                                 const char* level_name);
+std::string get_base_level_name(const std::map<std::string, std::string>& level_name_remap,
+                                const char* level_name);
 bool indoors(std::vector<std::string> indoor_levels, const char* level_name);
 
 void handleDiscordReady(const DiscordUser* user);

@@ -6,6 +6,10 @@
 #include "game/graphics/opengl_renderer/SkyBlendCommon.h"
 #include "game/graphics/pipelines/opengl.h"
 
+// declared here so the tests can call them
+void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size);
+void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size);
+
 class SkyBlendCPU {
  public:
   SkyBlendCPU();

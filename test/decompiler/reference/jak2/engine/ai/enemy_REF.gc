@@ -540,7 +540,7 @@
 
 ;; definition for method 135 of type enemy
 ;; INFO: Used lq/sq
-(defmethod enemy-method-135 ((this enemy) (sound int))
+(defmethod play-damage-or-death-sound ((this enemy) (sound int))
   (let ((name (static-sound-name "")))
     (let ((sound-type sound))
       (cond
@@ -1029,7 +1029,6 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-behaviour-and-stats! ((this enemy) (arg0 enemy-info))
   "Initializes a bunch of enemy fields related to how they should react, how many hitpoints they should have, etc"
-  (local-vars (sv-16 res-tag))
   (when (coin-flip? this)
     (let ((a0-2 (-> this node-list data 2)))
       (set! (-> a0-2 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint-flip-z!))
@@ -1096,8 +1095,9 @@
         )
     (reset-to-collide-spec (-> this focus) (the-as collide-spec a1-5))
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-49 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-49 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-49 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-49))
@@ -1606,7 +1606,7 @@
 (defmethod general-event-handler ((this enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
    @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (local-vars (s5-5 rgbaf) (sv-432 process) (sv-448 event-message-block))
+  (local-vars (s5-5 rgbaf))
   (cond
     ((= arg2 'track)
      (and (nonzero? (-> this hit-points))
@@ -1669,14 +1669,12 @@
            ((and (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
                  (not (logtest? (-> this focus-status) (focus-status grabbed)))
                  )
-            (let* ((s1-0 this)
-                   (s0-0 (method-of-object s1-0 set-incoming-attack-info))
-                   )
-              (set! sv-432 arg0)
-              (set! sv-448 arg3)
-              (let ((a3-3 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
-                (s0-0 s1-0 sv-432 sv-448 a3-3 (the-as attack-info s2-0))
-                )
+            (set-incoming-attack-info
+              this
+              arg0
+              arg3
+              (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)
+              (the-as attack-info s2-0)
               )
             (send-event (ppointer->process (-> this parent)) 'child-hit)
             0
@@ -2888,7 +2886,7 @@
   :enter (behavior ()
     (stop-looking-at-target! self)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (enemy-method-135 self 0)
+    (play-damage-or-death-sound self 0)
     )
   :code (behavior ()
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
@@ -3067,11 +3065,7 @@
        )
       (((knocked-type knocked-type-5))
        (let* ((f1-2 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
-              (f0-26 1.0)
-              (f2-0 61440.0)
-              (f1-3 (fmin f1-2 (* f2-0 f2-0)))
-              (f2-3 61440.0)
-              (f30-5 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
+              (f30-5 (* (- 1.0 (/ (fmin f1-2 (square 61440.0)) (square 61440.0))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-red-vxz-lo) (-> s5-0 knocked-red-vxz-hi) f30-5))
          (set! (-> arg0 y) (lerp (-> s5-0 knocked-red-vy-lo) (-> s5-0 knocked-red-vy-hi) f30-5))
@@ -3079,11 +3073,7 @@
        )
       (((knocked-type knocked-type-6))
        (let* ((f1-5 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
-              (f0-34 1.0)
-              (f2-6 122880.0)
-              (f1-6 (fmin f1-5 (* f2-6 f2-6)))
-              (f2-9 122880.0)
-              (f30-7 (* (- f0-34 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
+              (f30-7 (* (- 1.0 (/ (fmin f1-5 (square 122880.0)) (square 122880.0))) (rnd-float-range this 0.8 1.0)))
               )
          (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
          (cond
@@ -3196,12 +3186,8 @@
     (or (>= (-> arg0 on-surface-count) 3)
         (and (logtest? (-> gp-0 status) (collide-status on-ground)) (>= 16384.0 (-> gp-0 transv y)))
         (and (>= (-> arg0 move-count) 3)
-             (let ((f0-1 40.96))
-               (>= (* f0-1 f0-1) (vector-vector-distance-squared (-> gp-0 trans-old) (-> gp-0 trans-old-old)))
-               )
-             (let ((f0-4 40.96))
-               (>= (* f0-4 f0-4) (vector-vector-distance-squared (-> gp-0 trans-old-old) (-> gp-0 trans-old-old-old)))
-               )
+             (>= (square 40.96) (vector-vector-distance-squared (-> gp-0 trans-old) (-> gp-0 trans-old-old)))
+             (>= (square 40.96) (vector-vector-distance-squared (-> gp-0 trans-old-old) (-> gp-0 trans-old-old-old)))
              )
         )
     )
@@ -3318,7 +3304,7 @@
         )
     (if (zero? (-> self hit-points))
         (dying self)
-        (enemy-method-135 self 0)
+        (play-damage-or-death-sound self 0)
         )
     (logclear! (-> self focus-status) (focus-status dangerous))
     (if (= (-> self incoming knocked-type) (knocked-type knocked-type-4))
@@ -3456,7 +3442,7 @@
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
     (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag called-dying) (-> this enemy-flags))))
-    (enemy-method-135 this 1)
+    (play-damage-or-death-sound this 1)
     (when (and (>= (-> this enemy-info gem-joint) 0)
                (not (logtest? (enemy-flag spawn-gem) (-> this enemy-flags)))
                (or (and (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status save))))

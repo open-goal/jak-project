@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -280,7 +280,7 @@ void ConvertAudio(int num_frames,
 
     // swizzle input to "standard" format if necessary.
     if (src_map) {
-        void* buf = scratch ? scratch : dst;  // use scratch if available, since it has to be big enough to hold src, unless it's NULL, then dst has to be.
+        void *buf = scratch ? scratch : dst;  // use scratch if available, since it has to be big enough to hold src, unless it's NULL, then dst has to be.
         SwizzleAudio(num_frames, buf, src, src_channels, src_map, src_format);
         src = buf;
     }
@@ -318,7 +318,7 @@ void ConvertAudio(int num_frames,
 
     // get us to float format.
     if (srcconvert) {
-        void* buf = (channelconvert || dstconvert) ? scratch : dst;
+        void *buf = (channelconvert || dstconvert) ? scratch : dst;
         ConvertAudioToFloat((float *) buf, src, num_frames * src_channels, src_format);
         src = buf;
     }
@@ -332,7 +332,7 @@ void ConvertAudio(int num_frames,
                 buf[i] *= gain;
             }
         } else {
-            float *fsrc = (float *)src;
+            const float *fsrc = (const float *)src;
             for (int i = 0; i < total_samples; i++) {
                 buf[i] = fsrc[i] * gain;
             }
@@ -368,7 +368,7 @@ void ConvertAudio(int num_frames,
             channel_converter = override;
         }
 
-        void* buf = dstconvert ? scratch : dst;
+        void *buf = dstconvert ? scratch : dst;
         channel_converter((float *) buf, (const float *) src, num_frames);
         src = buf;
     }
@@ -399,7 +399,7 @@ static int CalculateMaxFrameSize(SDL_AudioFormat src_format, int src_channels, S
     return max_format_size * max_channels;
 }
 
-static Sint64 GetAudioStreamResampleRate(SDL_AudioStream* stream, int src_freq, Sint64 resample_offset)
+static Sint64 GetAudioStreamResampleRate(SDL_AudioStream *stream, int src_freq, Sint64 resample_offset)
 {
     src_freq = (int)((float)src_freq * stream->freq_ratio);
 
@@ -474,10 +474,11 @@ SDL_AudioStream *SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_
 
 SDL_PropertiesID SDL_GetAudioStreamProperties(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return 0;
     }
+
     SDL_LockMutex(stream->lock);
     if (stream->props == 0) {
         stream->props = SDL_CreateProperties();
@@ -488,9 +489,10 @@ SDL_PropertiesID SDL_GetAudioStreamProperties(SDL_AudioStream *stream)
 
 bool SDL_SetAudioStreamGetCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
+
     SDL_LockMutex(stream->lock);
     stream->get_callback = callback;
     stream->get_callback_userdata = userdata;
@@ -500,9 +502,10 @@ bool SDL_SetAudioStreamGetCallback(SDL_AudioStream *stream, SDL_AudioStreamCallb
 
 bool SDL_SetAudioStreamPutCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
+
     SDL_LockMutex(stream->lock);
     stream->put_callback = callback;
     stream->put_callback_userdata = userdata;
@@ -512,25 +515,33 @@ bool SDL_SetAudioStreamPutCallback(SDL_AudioStream *stream, SDL_AudioStreamCallb
 
 bool SDL_LockAudioStream(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
+
     SDL_LockMutex(stream->lock);
     return true;
 }
 
 bool SDL_UnlockAudioStream(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
+
     SDL_UnlockMutex(stream->lock);
     return true;
 }
 
 bool SDL_GetAudioStreamFormat(SDL_AudioStream *stream, SDL_AudioSpec *src_spec, SDL_AudioSpec *dst_spec)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
+        if (src_spec) {
+            SDL_zerop(src_spec);
+        }
+        if (dst_spec) {
+            SDL_zerop(dst_spec);
+        }
         return SDL_InvalidParamError("stream");
     }
 
@@ -554,7 +565,7 @@ bool SDL_GetAudioStreamFormat(SDL_AudioStream *stream, SDL_AudioSpec *src_spec, 
 
 bool SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_spec, const SDL_AudioSpec *dst_spec)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
 
@@ -563,21 +574,25 @@ bool SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_
     // like 196608000Hz. File a bug.  :P
 
     if (src_spec) {
-        if (!SDL_IsSupportedAudioFormat(src_spec->format)) {
+        CHECK_PARAM(!SDL_IsSupportedAudioFormat(src_spec->format)) {
             return SDL_InvalidParamError("src_spec->format");
-        } else if (!SDL_IsSupportedChannelCount(src_spec->channels)) {
+        }
+        CHECK_PARAM(!SDL_IsSupportedChannelCount(src_spec->channels)) {
             return SDL_InvalidParamError("src_spec->channels");
-        } else if (src_spec->freq <= 0) {
+        }
+        CHECK_PARAM(src_spec->freq <= 0) {
             return SDL_InvalidParamError("src_spec->freq");
         }
     }
 
     if (dst_spec) {
-        if (!SDL_IsSupportedAudioFormat(dst_spec->format)) {
+        CHECK_PARAM(!SDL_IsSupportedAudioFormat(dst_spec->format)) {
             return SDL_InvalidParamError("dst_spec->format");
-        } else if (!SDL_IsSupportedChannelCount(dst_spec->channels)) {
+        }
+        CHECK_PARAM(!SDL_IsSupportedChannelCount(dst_spec->channels)) {
             return SDL_InvalidParamError("dst_spec->channels");
-        } else if (dst_spec->freq <= 0) {
+        }
+        CHECK_PARAM(dst_spec->freq <= 0) {
             return SDL_InvalidParamError("dst_spec->freq");
         }
     }
@@ -616,7 +631,7 @@ bool SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_
 
 bool SetAudioStreamChannelMap(SDL_AudioStream *stream, const SDL_AudioSpec *spec, int **stream_chmap, const int *chmap, int channels, int isinput)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
 
@@ -702,7 +717,7 @@ int *SDL_GetAudioStreamOutputChannelMap(SDL_AudioStream *stream, int *count)
 
 float SDL_GetAudioStreamFrequencyRatio(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return 0.0f;
     }
@@ -716,7 +731,7 @@ float SDL_GetAudioStreamFrequencyRatio(SDL_AudioStream *stream)
 
 bool SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *stream, float freq_ratio)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
 
@@ -739,7 +754,7 @@ bool SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *stream, float freq_ratio)
 
 float SDL_GetAudioStreamGain(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return -1.0f;
     }
@@ -753,9 +768,10 @@ float SDL_GetAudioStreamGain(SDL_AudioStream *stream)
 
 bool SDL_SetAudioStreamGain(SDL_AudioStream *stream, float gain)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
-    } else if (gain < 0.0f) {
+    }
+    CHECK_PARAM(gain < 0.0f) {
         return SDL_InvalidParamError("gain");
     }
 
@@ -768,16 +784,48 @@ bool SDL_SetAudioStreamGain(SDL_AudioStream *stream, float gain)
 
 static bool CheckAudioStreamIsFullySetup(SDL_AudioStream *stream)
 {
-    if (stream->src_spec.format == 0) {
+    if (stream->src_spec.format == SDL_AUDIO_UNKNOWN) {
         return SDL_SetError("Stream has no source format");
-    } else if (stream->dst_spec.format == 0) {
+    } else if (stream->dst_spec.format == SDL_AUDIO_UNKNOWN) {
         return SDL_SetError("Stream has no destination format");
     }
 
     return true;
 }
 
-static bool PutAudioStreamBuffer(SDL_AudioStream *stream, const void *buf, int len, SDL_ReleaseAudioBufferCallback callback, void* userdata)
+// you MUST hold `stream->lock` when calling this, and validate your parameters!
+static bool PutAudioStreamBufferInternal(SDL_AudioStream *stream, const SDL_AudioSpec *spec, const int *chmap, const void *buf, int len, SDL_ReleaseAudioBufferCallback callback, void *userdata)
+{
+    SDL_AudioTrack *track = NULL;
+
+    if (callback) {
+        track = SDL_CreateAudioTrack(stream->queue, spec, chmap, (Uint8 *)buf, len, len, callback, userdata);
+        if (!track) {
+            return false;
+        }
+    }
+
+    const int prev_available = stream->put_callback ? SDL_GetAudioStreamAvailable(stream) : 0;
+
+    bool retval = true;
+
+    if (track) {
+        SDL_AddTrackToAudioQueue(stream->queue, track);
+    } else {
+        retval = SDL_WriteToAudioQueue(stream->queue, spec, chmap, (const Uint8 *)buf, len);
+    }
+
+    if (retval) {
+        if (stream->put_callback) {
+            const int newavail = SDL_GetAudioStreamAvailable(stream) - prev_available;
+            stream->put_callback(stream->put_callback_userdata, stream, newavail, newavail);
+        }
+    }
+
+    return retval;
+}
+
+static bool PutAudioStreamBuffer(SDL_AudioStream *stream, const void *buf, int len, SDL_ReleaseAudioBufferCallback callback, void *userdata)
 {
 #if DEBUG_AUDIOSTREAM
     SDL_Log("AUDIOSTREAM: wants to put %d bytes", len);
@@ -795,53 +843,31 @@ static bool PutAudioStreamBuffer(SDL_AudioStream *stream, const void *buf, int l
         return SDL_SetError("Can't add partial sample frames");
     }
 
-    SDL_AudioTrack* track = NULL;
-
-    if (callback) {
-        track = SDL_CreateAudioTrack(stream->queue, &stream->src_spec, stream->src_chmap, (Uint8 *)buf, len, len, callback, userdata);
-
-        if (!track) {
-            SDL_UnlockMutex(stream->lock);
-            return false;
-        }
-    }
-
-    const int prev_available = stream->put_callback ? SDL_GetAudioStreamAvailable(stream) : 0;
-
-    bool result = true;
-
-    if (track) {
-        SDL_AddTrackToAudioQueue(stream->queue, track);
-    } else {
-        result = SDL_WriteToAudioQueue(stream->queue, &stream->src_spec, stream->src_chmap, (const Uint8 *)buf, len);
-    }
-
-    if (result) {
-        if (stream->put_callback) {
-            const int newavail = SDL_GetAudioStreamAvailable(stream) - prev_available;
-            stream->put_callback(stream->put_callback_userdata, stream, newavail, newavail);
-        }
-    }
+    const bool retval = PutAudioStreamBufferInternal(stream, &stream->src_spec, stream->src_chmap, buf, len, callback, userdata);
 
     SDL_UnlockMutex(stream->lock);
 
-    return result;
+    return retval;
 }
 
 static void SDLCALL FreeAllocatedAudioBuffer(void *userdata, const void *buf, int len)
 {
-    SDL_free((void*) buf);
+    SDL_free((void *)buf);
 }
 
 bool SDL_PutAudioStreamData(SDL_AudioStream *stream, const void *buf, int len)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
-    } else if (!buf) {
+    }
+    CHECK_PARAM(!buf) {
         return SDL_InvalidParamError("buf");
-    } else if (len < 0) {
+    }
+    CHECK_PARAM(len < 0) {
         return SDL_InvalidParamError("len");
-    } else if (len == 0) {
+    }
+
+    if (len == 0) {
         return true; // nothing to do.
     }
 
@@ -857,9 +883,8 @@ bool SDL_PutAudioStreamData(SDL_AudioStream *stream, const void *buf, int len)
         }
 
         SDL_memcpy(data, buf, len);
-        buf = data;
 
-        bool ret = PutAudioStreamBuffer(stream, buf, len, FreeAllocatedAudioBuffer, NULL);
+        bool ret = PutAudioStreamBuffer(stream, data, len, FreeAllocatedAudioBuffer, NULL);
         if (!ret) {
             SDL_free(data);
         }
@@ -869,9 +894,192 @@ bool SDL_PutAudioStreamData(SDL_AudioStream *stream, const void *buf, int len)
     return PutAudioStreamBuffer(stream, buf, len, NULL, NULL);
 }
 
+
+#define GENERIC_INTERLEAVE_FUNCTION(bits) \
+    static void InterleaveAudioChannelsGeneric##bits(void *output, const void * const *channel_buffers, const int channels, int num_samples) { \
+        Uint##bits *dst = (Uint##bits *) output; \
+        const Uint##bits * const *srcs = (const Uint##bits * const *) channel_buffers; \
+        for (int frame = 0; frame < num_samples; frame++) { \
+            for (int channel = 0; channel < channels; channel++) { \
+                *(dst++) = srcs[channel][frame]; \
+            } \
+        } \
+    }
+
+GENERIC_INTERLEAVE_FUNCTION(8)
+GENERIC_INTERLEAVE_FUNCTION(16)
+GENERIC_INTERLEAVE_FUNCTION(32)
+//GENERIC_INTERLEAVE_FUNCTION(64)   (we don't have any 64-bit audio data types at the moment.)
+#undef GENERIC_INTERLEAVE_FUNCTION
+
+#define GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION(bits) \
+    static void InterleaveAudioChannelsWithNullsGeneric##bits(void *output, const void * const *channel_buffers, const int channels, int num_samples, const int isilence) { \
+        const Uint##bits silence = (Uint##bits) isilence; \
+        Uint##bits *dst = (Uint##bits *) output; \
+        const Uint##bits * const *srcs = (const Uint##bits * const *) channel_buffers; \
+        for (int frame = 0; frame < num_samples; frame++) { \
+            for (int channel = 0; channel < channels; channel++) { \
+                *(dst++) = srcs[channel] ? srcs[channel][frame] : silence; \
+            } \
+        } \
+    }
+
+GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION(8)
+GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION(16)
+GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION(32)
+//GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION(64)   (we don't have any 64-bit audio data types at the moment.)
+#undef GENERIC_INTERLEAVE_WITH_NULLS_FUNCTION
+
+static void InterleaveAudioChannels(void *output, const void * const *channel_buffers, int channels, int num_samples, const SDL_AudioSpec *spec)
+{
+    bool have_null_channel = false;
+    void *channels_full[16];
+
+    // if didn't specify enough channels, pad out a channel array with NULLs.
+    if ((channels >= 0) && (channels < spec->channels)) {
+        have_null_channel = true;
+        SDL_assert(SDL_IsSupportedChannelCount(spec->channels));
+        SDL_assert(spec->channels <= SDL_arraysize(channels_full));
+        SDL_memcpy(channels_full, channel_buffers, channels * sizeof (*channel_buffers));
+        SDL_memset(channels_full + channels, 0, (spec->channels - channels) * sizeof (*channel_buffers));
+        channel_buffers = (const void * const *) channels_full;
+    }
+
+    channels = spec->channels;  // it's either < 0, needs to be clamped to spec->channels, or we just padded it out to spec->channels with channels_full.
+
+    if (!have_null_channel) {
+        for (int i = 0; i < channels; i++) {
+            if (channel_buffers[i] == NULL) {
+                have_null_channel = true;
+                break;
+            }
+        }
+    }
+
+    if (have_null_channel) {
+        const int silence = SDL_GetSilenceValueForFormat(spec->format);
+        switch (SDL_AUDIO_BITSIZE(spec->format)) {
+            case 8: InterleaveAudioChannelsWithNullsGeneric8(output, channel_buffers, channels, num_samples, silence); break;
+            case 16: InterleaveAudioChannelsWithNullsGeneric16(output, channel_buffers, channels, num_samples, silence); break;
+            case 32: InterleaveAudioChannelsWithNullsGeneric32(output, channel_buffers, channels, num_samples, silence); break;
+            //case 64: InterleaveAudioChannelsGeneric64(output, channel_buffers, channels, num_samples); break;  (we don't have any 64-bit audio data types at the moment.)
+            default: SDL_assert(!"Missing needed generic audio interleave function!"); SDL_memset(output, 0, SDL_AUDIO_FRAMESIZE(*spec) * num_samples); break;
+        }
+    } else {
+        // !!! FIXME: it would be possible to do this really well in SIMD for stereo data, using unpack (intel) or zip (arm) instructions, etc.
+        switch (SDL_AUDIO_BITSIZE(spec->format)) {
+            case 8: InterleaveAudioChannelsGeneric8(output, channel_buffers, channels, num_samples); break;
+            case 16: InterleaveAudioChannelsGeneric16(output, channel_buffers, channels, num_samples); break;
+            case 32: InterleaveAudioChannelsGeneric32(output, channel_buffers, channels, num_samples); break;
+            //case 64: InterleaveAudioChannelsGeneric64(output, channel_buffers, channels, num_samples); break;  (we don't have any 64-bit audio data types at the moment.)
+            default: SDL_assert(!"Missing needed generic audio interleave function!"); SDL_memset(output, 0, SDL_AUDIO_FRAMESIZE(*spec) * num_samples); break;
+        }
+    }
+}
+
+bool SDL_PutAudioStreamPlanarData(SDL_AudioStream *stream, const void * const *channel_buffers, int num_channels, int num_samples)
+{
+    CHECK_PARAM(!stream) {
+        return SDL_InvalidParamError("stream");
+    }
+    CHECK_PARAM(!channel_buffers) {
+        return SDL_InvalidParamError("channel_buffers");
+    }
+    CHECK_PARAM(num_samples < 0) {
+        return SDL_InvalidParamError("num_samples");
+    }
+
+    if (num_samples == 0) {
+        return true; // nothing to do.
+    }
+
+    // we do the interleaving up front without the lock held, so the audio device doesn't starve while we work.
+    //  but we _do_ need to know the current input spec.
+    SDL_AudioSpec spec;
+    int chmap_copy[SDL_MAX_CHANNELMAP_CHANNELS];
+    int *chmap = NULL;
+    SDL_LockMutex(stream->lock);
+    if (!CheckAudioStreamIsFullySetup(stream)) {
+        SDL_UnlockMutex(stream->lock);
+        return false;
+    }
+    SDL_copyp(&spec, &stream->src_spec);
+    if (stream->src_chmap) {
+        chmap = chmap_copy;
+        SDL_memcpy(chmap, stream->src_chmap, sizeof (*chmap) * spec.channels);
+    }
+    SDL_UnlockMutex(stream->lock);
+
+    if (spec.channels == 1) {  // nothing to interleave, just use the usual function.
+        return SDL_PutAudioStreamData(stream, channel_buffers[0], SDL_AUDIO_FRAMESIZE(spec) * num_samples);
+    }
+
+    bool retval = false;
+
+    const int len = SDL_AUDIO_FRAMESIZE(spec) * num_samples;
+    #if DEBUG_AUDIOSTREAM
+    SDL_Log("AUDIOSTREAM: wants to put %d bytes of planar data", len);
+    #endif
+
+    // Is the data small enough to just interleave it on the stack and put it through the normal interface?
+    #define INTERLEAVE_STACK_SIZE 1024
+    Uint8 stackbuf[INTERLEAVE_STACK_SIZE];
+    void *data = stackbuf;
+    SDL_ReleaseAudioBufferCallback callback = NULL;
+
+    if (len > INTERLEAVE_STACK_SIZE) {
+        // too big for the stack? Just SDL_malloc a block and interleave into that. To avoid the extra copy, we'll just set it as a
+        //  new track in the queue (the distinction is specifying a callback to PutAudioStreamBufferInternal, to release the buffer).
+        data = SDL_malloc(len);
+        if (!data) {
+            return false;
+        }
+        callback = FreeAllocatedAudioBuffer;
+    }
+
+    InterleaveAudioChannels(data, channel_buffers, num_channels, num_samples, &spec);
+
+    // it's okay if the stream format changed on another thread while we didn't hold the lock; PutAudioStreamBufferInternal will notice
+    //  and set up a new track with the right format, and the next SDL_PutAudioStreamData will notice that stream->src_spec doesn't
+    //  match the new track and set up a new one again. It's a bad idea to change the format on another thread while putting here,
+    //  but everything _will_ work out with the format that was (presumably) expected.
+    SDL_LockMutex(stream->lock);
+    retval = PutAudioStreamBufferInternal(stream, &spec, chmap, data, len, callback, NULL);
+    SDL_UnlockMutex(stream->lock);
+
+    return retval;
+}
+
+static void SDLCALL DontFreeThisAudioBuffer(void *userdata, const void *buf, int len)
+{
+    // We don't own the buffer, but know it will outlive the stream
+}
+
+bool SDL_PutAudioStreamDataNoCopy(SDL_AudioStream *stream, const void *buf, int len, SDL_AudioStreamDataCompleteCallback callback, void *userdata)
+{
+    CHECK_PARAM(!stream) {
+        return SDL_InvalidParamError("stream");
+    }
+    CHECK_PARAM(!buf) {
+        return SDL_InvalidParamError("buf");
+    }
+    CHECK_PARAM(len < 0) {
+        return SDL_InvalidParamError("len");
+    }
+
+    if (len == 0) {
+        if (callback) {
+            callback(userdata, buf, len);
+        }
+        return true; // nothing to do.
+    }
+
+    return PutAudioStreamBuffer(stream, buf, len, callback ? callback : DontFreeThisAudioBuffer, userdata);
+}
+
 bool SDL_FlushAudioStream(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
 
@@ -901,8 +1109,8 @@ static Uint8 *EnsureAudioStreamWorkBufferSize(SDL_AudioStream *stream, size_t ne
     return ptr;
 }
 
-static Sint64 NextAudioStreamIter(SDL_AudioStream* stream, void** inout_iter,
-    Sint64* inout_resample_offset, SDL_AudioSpec* out_spec, int **out_chmap, bool* out_flushed)
+static Sint64 NextAudioStreamIter(SDL_AudioStream *stream, void **inout_iter,
+    Sint64 *inout_resample_offset, SDL_AudioSpec *out_spec, int **out_chmap, bool *out_flushed)
 {
     SDL_AudioSpec spec;
     bool flushed;
@@ -956,9 +1164,9 @@ static Sint64 NextAudioStreamIter(SDL_AudioStream* stream, void** inout_iter,
     return output_frames;
 }
 
-static Sint64 GetAudioStreamAvailableFrames(SDL_AudioStream* stream, Sint64* out_resample_offset)
+static Sint64 GetAudioStreamAvailableFrames(SDL_AudioStream *stream, Sint64 *out_resample_offset)
 {
-    void* iter = SDL_BeginAudioQueueIter(stream->queue);
+    void *iter = SDL_BeginAudioQueueIter(stream->queue);
 
     Sint64 resample_offset = stream->resample_offset;
     Sint64 output_frames = 0;
@@ -980,9 +1188,9 @@ static Sint64 GetAudioStreamAvailableFrames(SDL_AudioStream* stream, Sint64* out
     return output_frames;
 }
 
-static Sint64 GetAudioStreamHead(SDL_AudioStream* stream, SDL_AudioSpec* out_spec, int **out_chmap, bool* out_flushed)
+static Sint64 GetAudioStreamHead(SDL_AudioStream *stream, SDL_AudioSpec *out_spec, int **out_chmap, bool *out_flushed)
 {
-    void* iter = SDL_BeginAudioQueueIter(stream->queue);
+    void *iter = SDL_BeginAudioQueueIter(stream->queue);
 
     if (!iter) {
         SDL_zerop(out_spec);
@@ -998,8 +1206,8 @@ static Sint64 GetAudioStreamHead(SDL_AudioStream* stream, SDL_AudioSpec* out_spe
 // Enough input data MUST be available!
 static bool GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int output_frames, float gain)
 {
-    const SDL_AudioSpec* src_spec = &stream->input_spec;
-    const SDL_AudioSpec* dst_spec = &stream->dst_spec;
+    const SDL_AudioSpec *src_spec = &stream->input_spec;
+    const SDL_AudioSpec *dst_spec = &stream->dst_spec;
 
     const SDL_AudioFormat src_format = src_spec->format;
     const int src_channels = src_spec->channels;
@@ -1019,7 +1227,7 @@ static bool GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int o
 
     // Not resampling? It's an easy conversion (and maybe not even that!)
     if (resample_rate == 0) {
-        Uint8* work_buffer = NULL;
+        Uint8 *work_buffer = NULL;
 
         // Ensure we have enough scratch space for any conversions
         if ((src_format != dst_format) || (src_channels != dst_channels) || (gain != 1.0f)) {
@@ -1089,7 +1297,7 @@ static bool GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int o
         work_buffer_capacity += resample_bytes;
     }
 
-    Uint8* work_buffer = EnsureAudioStreamWorkBufferSize(stream, work_buffer_capacity);
+    Uint8 *work_buffer = EnsureAudioStreamWorkBufferSize(stream, work_buffer_capacity);
 
     if (!work_buffer) {
         return false;
@@ -1101,7 +1309,7 @@ static bool GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int o
     const float postresample_gain = (input_frames > output_frames) ? gain : 1.0f;
 
     // (dst channel map is NULL because we'll do the final swizzle on ConvertAudio after resample.)
-    const Uint8* input_buffer = SDL_ReadFromAudioQueue(stream->queue,
+    const Uint8 *input_buffer = SDL_ReadFromAudioQueue(stream->queue,
         NULL, resample_format, resample_channels, NULL,
         padding_frames, input_frames, padding_frames, work_buffer, preresample_gain);
 
@@ -1112,11 +1320,11 @@ static bool GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int o
     input_buffer += padding_frames * resample_frame_size;
 
     // Decide where the resampled output goes
-    void* resample_buffer = (resample_buffer_offset != -1) ? (work_buffer + resample_buffer_offset) : buf;
+    void *resample_buffer = (resample_buffer_offset != -1) ? (work_buffer + resample_buffer_offset) : buf;
 
     SDL_ResampleAudio(resample_channels,
-                  (const float *) input_buffer, input_frames,
-                  (float*) resample_buffer, output_frames,
+                  (const float *)input_buffer, input_frames,
+                  (float *)resample_buffer, output_frames,
                   resample_rate, &stream->resample_offset);
 
     // Convert to the final format, if necessary (src channel map is NULL because SDL_ReadFromAudioQueue already handled this).
@@ -1134,16 +1342,20 @@ int SDL_GetAudioStreamDataAdjustGain(SDL_AudioStream *stream, void *voidbuf, int
     SDL_Log("AUDIOSTREAM: want to get %d converted bytes", len);
 #endif
 
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return -1;
-    } else if (!buf) {
+    }
+    CHECK_PARAM(!buf) {
         SDL_InvalidParamError("buf");
         return -1;
-    } else if (len < 0) {
+    }
+    CHECK_PARAM(len < 0) {
         SDL_InvalidParamError("len");
         return -1;
-    } else if (len == 0) {
+    }
+
+    if (len == 0) {
         return 0; // nothing to do.
     }
 
@@ -1241,7 +1453,7 @@ int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
 // number of converted/resampled bytes available for output
 int SDL_GetAudioStreamAvailable(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return -1;
     }
@@ -1267,7 +1479,7 @@ int SDL_GetAudioStreamAvailable(SDL_AudioStream *stream)
 // number of sample frames that are currently queued as input.
 int SDL_GetAudioStreamQueued(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         SDL_InvalidParamError("stream");
         return -1;
     }
@@ -1284,7 +1496,7 @@ int SDL_GetAudioStreamQueued(SDL_AudioStream *stream)
 
 bool SDL_ClearAudioStream(SDL_AudioStream *stream)
 {
-    if (!stream) {
+    CHECK_PARAM(!stream) {
         return SDL_InvalidParamError("stream");
     }
 
@@ -1326,11 +1538,6 @@ void SDL_DestroyAudioStream(SDL_AudioStream *stream)
     SDL_free(stream);
 }
 
-static void SDLCALL DontFreeThisAudioBuffer(void *userdata, const void *buf, int len)
-{
-    // We don't own the buffer, but know it will outlive the stream
-}
-
 bool SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spec, const Uint8 *src_data, int src_len, const SDL_AudioSpec *dst_spec, Uint8 **dst_data, int *dst_len)
 {
     if (dst_data) {
@@ -1341,13 +1548,16 @@ bool SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spec, const Uint8 *src_dat
         *dst_len = 0;
     }
 
-    if (!src_data) {
+    CHECK_PARAM(!src_data) {
         return SDL_InvalidParamError("src_data");
-    } else if (src_len < 0) {
+    }
+    CHECK_PARAM(src_len < 0) {
         return SDL_InvalidParamError("src_len");
-    } else if (!dst_data) {
+    }
+    CHECK_PARAM(!dst_data) {
         return SDL_InvalidParamError("dst_data");
-    } else if (!dst_len) {
+    }
+    CHECK_PARAM(!dst_len) {
         return SDL_InvalidParamError("dst_len");
     }
 
@@ -1357,8 +1567,7 @@ bool SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spec, const Uint8 *src_dat
 
     SDL_AudioStream *stream = SDL_CreateAudioStream(src_spec, dst_spec);
     if (stream) {
-        if (PutAudioStreamBuffer(stream, src_data, src_len, DontFreeThisAudioBuffer, NULL) &&
-            SDL_FlushAudioStream(stream)) {
+        if (SDL_PutAudioStreamDataNoCopy(stream, src_data, src_len, NULL, NULL) && SDL_FlushAudioStream(stream)) {
             dstlen = SDL_GetAudioStreamAvailable(stream);
             if (dstlen >= 0) {
                 dst = (Uint8 *)SDL_malloc(dstlen);

@@ -2820,61 +2820,55 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs (pointer process).
 (defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
-  (local-vars
-    (v1-56 pickup-type)
-    (v1-68 pickup-type)
-    (sv-32 vector)
-    (sv-36 float)
-    (sv-40 (pointer process))
-    (sv-48 int)
-    (sv-56 fact-info)
-    (sv-64 int)
-    (sv-72 int)
-    )
+  (local-vars (v1-56 pickup-type) (v1-68 pickup-type))
   (let ((s2-0 (verify-pickup-type arg1)))
     (if (= s2-0 (pickup-type none))
         (return (the-as (pointer process) 0))
         )
-    (set! sv-32 (new-stack-vector0))
-    (set! sv-36 (res-lump-float
-                  (if (and arg5 (nonzero? (-> arg5 process)))
-                      (-> arg5 process entity)
+    (let ((sv-32 (new-stack-vector0))
+          (sv-36 (res-lump-float
+                   (if (and arg5 (nonzero? (-> arg5 process)))
+                       (-> arg5 process entity)
+                       )
+                   'pickup-radius
+                   :default (cond
+                     ((= s2-0 (pickup-type buzzer))
+                      0.0
                       )
-                  'pickup-radius
-                  :default (cond
-                    ((= s2-0 (pickup-type buzzer))
-                     0.0
-                     )
-                    ((= arg2 1.0)
-                     409.6
-                     )
-                    (else
-                      8192.0
+                     ((= arg2 1.0)
+                      409.6
                       )
-                    )
-                  )
+                     (else
+                       8192.0
+                       )
+                     )
+                   )
+                 )
+          (sv-40 (the-as (pointer process) #f))
           )
-    (set! sv-40 (the-as (pointer process) #f))
-    (set! sv-48 (the int arg2))
-    (set! sv-56 (new 'static 'fact-info))
-    (set! (-> sv-56 options) (actor-option))
-    (set! (-> sv-56 process) #f)
-    (if arg5
-        (mem-copy! (&-> sv-56 type) (&-> arg5 type) 40)
-        )
-    (set! (-> sv-56 pickup-type) s2-0)
-    (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
-        (set! (-> sv-56 pickup-spawn-amount) 1.0)
-        )
-    (while (> sv-48 0)
-      (set! sv-48 (+ sv-48 -1))
-      (when arg3
-        (set-vector! sv-32 0.0 57001.605 sv-36 1.0)
-        (vector-rotate-around-y! sv-32 sv-32 (/ (* 65536.0 (the float sv-48)) arg2))
-        )
-      (case s2-0
-        (((pickup-type eco-yellow))
-         (set! sv-40 (process-spawn
+      (let ((sv-48 (the int arg2))
+            (sv-56 (new 'static 'fact-info))
+            )
+        (set! (-> sv-56 options) (actor-option))
+        (set! (-> sv-56 process) #f)
+        (if arg5
+            (mem-copy! (&-> sv-56 type) (&-> arg5 type) 40)
+            )
+        (set! (-> sv-56 pickup-type) s2-0)
+        (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+            (set! (-> sv-56 pickup-spawn-amount) 1.0)
+            )
+        (while (> sv-48 0)
+          (+! sv-48 -1)
+          (when arg3
+            (set-vector! sv-32 0.0 57001.605 sv-36 1.0)
+            (vector-rotate-around-y! sv-32 sv-32 (/ (* 65536.0 (the float sv-48)) arg2))
+            )
+          (let ((v1-30 s2-0))
+            (set! sv-40
+                  (cond
+                    ((= v1-30 (pickup-type eco-yellow))
+                     (process-spawn
                        eco-yellow
                        :init initialize-eco-by-other
                        arg0
@@ -2884,234 +2878,249 @@
                        :from *pickup-dead-pool*
                        :to arg4
                        )
-               )
-         )
-        (((pickup-type eco-red))
-         (set! sv-40 (process-spawn
-                       eco-red
-                       :init initialize-eco-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "eco-red"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         )
-        (((pickup-type eco-blue))
-         (set! sv-40 (process-spawn
-                       eco-blue
-                       :init initialize-eco-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "eco-blue"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         )
-        (((pickup-type eco-green))
-         (set! sv-40 (process-spawn
-                       eco-green
-                       :init initialize-eco-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "eco-green"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         )
-        (((pickup-type health))
-         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
-             (set! (-> sv-56 pickup-spawn-amount) arg2)
-             )
-         (set! sv-40 (process-spawn
-                       health
-                       :init initialize-eco-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "health"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         (set! sv-48 0)
-         0
-         )
-        (((pickup-type eco-pill-green) (pickup-type eco-pill-dark) (pickup-type eco-pill-light))
-         (set! sv-64 (cond
-                       ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
-                        (the int (-> sv-56 pickup-spawn-amount))
-                        )
-                       ((begin (set! v1-56 s2-0) (= v1-56 (pickup-type eco-pill-dark)))
-                        2
-                        )
-                       ((= v1-56 (pickup-type eco-pill-light))
-                        20
-                        )
-                       (else
-                         1
+                     )
+                    (else
+                      (cond
+                        ((= v1-30 (pickup-type eco-red))
+                         (let ((s1-2 (get-process *pickup-dead-pool* eco-red #x4000 1)))
+                           (set! sv-40 (when s1-2
+                                         (let ((t9-8 (method-of-type eco-red activate)))
+                                           (t9-8 (the-as eco-red s1-2) arg4 "eco-red" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-2 initialize-eco-by-other arg0 sv-32 sv-56)
+                                         (-> s1-2 ppointer)
+                                         )
+                                 )
+                           )
                          )
-                       )
-               )
-         (set! (-> sv-56 pickup-spawn-amount) (the float sv-64))
-         (set! sv-40 (process-spawn
-                       eco-pill
-                       :init initialize-eco-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "eco-pill"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         (set! sv-48 (- sv-48 (+ sv-64 -1)))
-         )
-        (((pickup-type ammo-yellow)
-          (pickup-type ammo-red)
-          (pickup-type ammo-blue)
-          (pickup-type ammo-dark)
-          (pickup-type shield)
-          )
-         (set! sv-72 (cond
-                       ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
-                        (the int (-> sv-56 pickup-spawn-amount))
-                        )
-                       ((begin (set! v1-68 s2-0) (= v1-68 (pickup-type ammo-red)))
-                        5
-                        )
-                       ((= v1-68 (pickup-type ammo-dark))
-                        1
-                        )
-                       (else
-                         10
+                        ((= v1-30 (pickup-type eco-blue))
+                         (let ((s1-3 (get-process *pickup-dead-pool* eco-blue #x4000 1)))
+                           (set! sv-40 (when s1-3
+                                         (let ((t9-11 (method-of-type eco-blue activate)))
+                                           (t9-11 (the-as eco-blue s1-3) arg4 "eco-blue" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-3 initialize-eco-by-other arg0 sv-32 sv-56)
+                                         (-> s1-3 ppointer)
+                                         )
+                                 )
+                           )
                          )
-                       )
-               )
-         (set! (-> sv-56 pickup-spawn-amount) (the float sv-72))
-         (set! sv-40 (process-spawn
-                       ammo-collectable
-                       :init initialize-ammo-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "ammo-collectable"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         (set! sv-48 (- sv-48 (+ sv-72 -1)))
-         )
-        (((pickup-type gun-red-1)
-          (pickup-type gun-red-2)
-          (pickup-type gun-red-3)
-          (pickup-type gun-yellow-1)
-          (pickup-type gun-yellow-2)
-          (pickup-type gun-yellow-3)
-          (pickup-type gun-blue-1)
-          (pickup-type gun-blue-2)
-          (pickup-type gun-blue-3)
-          (pickup-type gun-dark-1)
-          (pickup-type gun-dark-2)
-          (pickup-type gun-dark-3)
-          (pickup-type board)
-          )
-         (set! sv-40 (process-spawn
-                       upgrade-collectable
-                       :init initialize-upgrade-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       (-> self entity)
-                       :name "upgrade-collectable"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         (set! sv-48 0)
-         0
-         )
-        (((pickup-type trick-point))
-         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
-             (set! (-> sv-56 pickup-spawn-amount) arg2)
-             )
-         (set! sv-40 (process-spawn
-                       trick-point
-                       :init initialize-ammo-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       :name "trick-point"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         (set! sv-48 0)
-         0
-         )
-        (((pickup-type money))
-         (set! sv-40
-               (process-spawn money arg0 sv-32 sv-56 (-> self entity) 0 :name "money" :from *pickup-dead-pool* :to arg4)
-               )
-         )
-        (((pickup-type trick-point))
-         (set! sv-40
-               (process-spawn money arg0 sv-32 sv-56 (-> self entity) 4500 :name "money" :from *pickup-dead-pool* :to arg4)
-               )
-         )
-        (((pickup-type gem))
-         (if (>= (-> *game-info* live-gem-count) 20)
-             (return (the-as (pointer process) #f))
-             )
-         (set! sv-40 (process-spawn
-                       gem
-                       :init money-init-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       (-> self entity)
-                       4500
-                       :name "gem"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         )
-        (((pickup-type skill))
-         (when (>= arg2 (-> *FACT-bank* super-skill-inc))
-           (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
-               (set! (-> sv-56 pickup-spawn-amount) arg2)
-               )
-           (set! sv-48 0)
-           0
-           )
-         (set! sv-40 (process-spawn
-                       skill
-                       :init money-init-by-other
-                       arg0
-                       sv-32
-                       sv-56
-                       (-> self entity)
-                       0
-                       :name "skill"
-                       :from *pickup-dead-pool*
-                       :to arg4
-                       )
-               )
-         )
-        (else
-          (format 0 "ERROR: unknown type of eco ~d~%" s2-0)
+                        ((= v1-30 (pickup-type eco-green))
+                         (let ((s1-4 (get-process *pickup-dead-pool* eco-green #x4000 1)))
+                           (set! sv-40 (when s1-4
+                                         (let ((t9-14 (method-of-type eco-green activate)))
+                                           (t9-14 (the-as eco-green s1-4) arg4 "eco-green" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-4 initialize-eco-by-other arg0 sv-32 sv-56)
+                                         (-> s1-4 ppointer)
+                                         )
+                                 )
+                           )
+                         )
+                        ((= v1-30 (pickup-type health))
+                         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+                             (set! (-> sv-56 pickup-spawn-amount) arg2)
+                             )
+                         (let ((s1-5 (get-process *pickup-dead-pool* health #x4000 1)))
+                           (set! sv-40 (when s1-5
+                                         (let ((t9-17 (method-of-type health activate)))
+                                           (t9-17 (the-as health s1-5) arg4 "health" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-5 initialize-eco-by-other arg0 sv-32 sv-56)
+                                         (-> s1-5 ppointer)
+                                         )
+                                 )
+                           )
+                         (set! sv-48 0)
+                         0
+                         )
+                        ((or (= v1-30 (pickup-type eco-pill-green))
+                             (= v1-30 (pickup-type eco-pill-dark))
+                             (= v1-30 (pickup-type eco-pill-light))
+                             )
+                         (let ((sv-64 (cond
+                                        ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
+                                         (the int (-> sv-56 pickup-spawn-amount))
+                                         )
+                                        ((begin (set! v1-56 s2-0) (= v1-56 (pickup-type eco-pill-dark)))
+                                         2
+                                         )
+                                        ((= v1-56 (pickup-type eco-pill-light))
+                                         20
+                                         )
+                                        (else
+                                          1
+                                          )
+                                        )
+                                      )
+                               )
+                           (set! (-> sv-56 pickup-spawn-amount) (the float sv-64))
+                           (let ((s1-6 (get-process *pickup-dead-pool* eco-pill #x4000 1)))
+                             (set! sv-40 (when s1-6
+                                           (let ((t9-20 (method-of-type eco-pill activate)))
+                                             (t9-20 (the-as eco-pill s1-6) arg4 "eco-pill" (the-as pointer #x70004000))
+                                             )
+                                           (run-now-in-process s1-6 initialize-eco-by-other arg0 sv-32 sv-56)
+                                           (-> s1-6 ppointer)
+                                           )
+                                   )
+                             )
+                           (set! sv-48 (- sv-48 (+ sv-64 -1)))
+                           )
+                         )
+                        ((or (= v1-30 (pickup-type ammo-yellow))
+                             (= v1-30 (pickup-type ammo-red))
+                             (= v1-30 (pickup-type ammo-blue))
+                             (= v1-30 (pickup-type ammo-dark))
+                             (= v1-30 (pickup-type shield))
+                             )
+                         (let ((sv-72 (cond
+                                        ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
+                                         (the int (-> sv-56 pickup-spawn-amount))
+                                         )
+                                        ((begin (set! v1-68 s2-0) (= v1-68 (pickup-type ammo-red)))
+                                         5
+                                         )
+                                        ((= v1-68 (pickup-type ammo-dark))
+                                         1
+                                         )
+                                        (else
+                                          10
+                                          )
+                                        )
+                                      )
+                               )
+                           (set! (-> sv-56 pickup-spawn-amount) (the float sv-72))
+                           (let ((s1-7 (get-process *pickup-dead-pool* ammo-collectable #x4000 1)))
+                             (set! sv-40 (when s1-7
+                                           (let ((t9-23 (method-of-type ammo-collectable activate)))
+                                             (t9-23 (the-as ammo-collectable s1-7) arg4 "ammo-collectable" (the-as pointer #x70004000))
+                                             )
+                                           (run-now-in-process s1-7 initialize-ammo-by-other arg0 sv-32 sv-56)
+                                           (-> s1-7 ppointer)
+                                           )
+                                   )
+                             )
+                           (set! sv-48 (- sv-48 (+ sv-72 -1)))
+                           )
+                         )
+                        ((or (= v1-30 (pickup-type gun-red-1))
+                             (= v1-30 (pickup-type gun-red-2))
+                             (= v1-30 (pickup-type gun-red-3))
+                             (= v1-30 (pickup-type gun-yellow-1))
+                             (= v1-30 (pickup-type gun-yellow-2))
+                             (= v1-30 (pickup-type gun-yellow-3))
+                             (= v1-30 (pickup-type gun-blue-1))
+                             (= v1-30 (pickup-type gun-blue-2))
+                             (= v1-30 (pickup-type gun-blue-3))
+                             (= v1-30 (pickup-type gun-dark-1))
+                             (= v1-30 (pickup-type gun-dark-2))
+                             (= v1-30 (pickup-type gun-dark-3))
+                             (= v1-30 (pickup-type board))
+                             )
+                         (let ((s1-8 (get-process *pickup-dead-pool* upgrade-collectable #x4000 1)))
+                           (set! sv-40
+                                 (when s1-8
+                                   (let ((t9-26 (method-of-type upgrade-collectable activate)))
+                                     (t9-26 (the-as upgrade-collectable s1-8) arg4 "upgrade-collectable" (the-as pointer #x70004000))
+                                     )
+                                   (run-now-in-process s1-8 initialize-upgrade-by-other arg0 sv-32 sv-56 (-> self entity))
+                                   (-> s1-8 ppointer)
+                                   )
+                                 )
+                           )
+                         (set! sv-48 0)
+                         0
+                         )
+                        ((= v1-30 (pickup-type trick-point))
+                         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+                             (set! (-> sv-56 pickup-spawn-amount) arg2)
+                             )
+                         (let ((s1-9 (get-process *pickup-dead-pool* trick-point #x4000 1)))
+                           (set! sv-40 (when s1-9
+                                         (let ((t9-29 (method-of-type trick-point activate)))
+                                           (t9-29 (the-as trick-point s1-9) arg4 "trick-point" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-9 initialize-ammo-by-other arg0 sv-32 sv-56)
+                                         (-> s1-9 ppointer)
+                                         )
+                                 )
+                           )
+                         (set! sv-48 0)
+                         0
+                         )
+                        ((= v1-30 (pickup-type money))
+                         (let ((s1-10 (get-process *pickup-dead-pool* money #x4000 1)))
+                           (set! sv-40 (when s1-10
+                                         (let ((t9-32 (method-of-type money activate)))
+                                           (t9-32 (the-as money s1-10) arg4 "money" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-10 money-init-by-other arg0 sv-32 sv-56 (-> self entity) 0)
+                                         (-> s1-10 ppointer)
+                                         )
+                                 )
+                           )
+                         )
+                        ((= v1-30 (pickup-type trick-point))
+                         (let ((s1-11 (get-process *pickup-dead-pool* money #x4000 1)))
+                           (set! sv-40 (when s1-11
+                                         (let ((t9-35 (method-of-type money activate)))
+                                           (t9-35 (the-as money s1-11) arg4 "money" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-11 money-init-by-other arg0 sv-32 sv-56 (-> self entity) 4500)
+                                         (-> s1-11 ppointer)
+                                         )
+                                 )
+                           )
+                         )
+                        ((= v1-30 (pickup-type gem))
+                         (if (>= (-> *game-info* live-gem-count) 20)
+                             (return (the-as (pointer process) #f))
+                             )
+                         (let ((s1-12 (get-process *pickup-dead-pool* gem #x4000 1)))
+                           (set! sv-40 (when s1-12
+                                         (let ((t9-38 (method-of-type gem activate)))
+                                           (t9-38 (the-as gem s1-12) arg4 "gem" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-12 money-init-by-other arg0 sv-32 sv-56 (-> self entity) 4500)
+                                         (-> s1-12 ppointer)
+                                         )
+                                 )
+                           )
+                         )
+                        ((= v1-30 (pickup-type skill))
+                         (when (>= arg2 (-> *FACT-bank* super-skill-inc))
+                           (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+                               (set! (-> sv-56 pickup-spawn-amount) arg2)
+                               )
+                           (set! sv-48 0)
+                           0
+                           )
+                         (let ((s1-13 (get-process *pickup-dead-pool* skill #x4000 1)))
+                           (set! sv-40 (when s1-13
+                                         (let ((t9-41 (method-of-type skill activate)))
+                                           (t9-41 (the-as skill s1-13) arg4 "skill" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s1-13 money-init-by-other arg0 sv-32 sv-56 (-> self entity) 0)
+                                         (-> s1-13 ppointer)
+                                         )
+                                 )
+                           )
+                         )
+                        (else
+                          (format 0 "ERROR: unknown type of eco ~d~%" s2-0)
+                          )
+                        )
+                      sv-40
+                      )
+                    )
+                  )
+            )
           )
         )
+      (the-as (pointer process) sv-40)
       )
     )
-  (the-as (pointer process) sv-40)
   )
 
 ;; definition for function pickup-dark-set!
@@ -3158,118 +3167,116 @@
 
 ;; definition for function pickup-ammo-set!
 (defun pickup-ammo-set! ((arg0 fact-info) (arg1 (pointer pickup-type)) (arg2 (pointer float)) (arg3 int))
-  (local-vars (v0-5 number) (sv-16 float))
+  (local-vars (v0-5 number))
   (let ((s2-0 (-> *game-info* features)))
     0.0
-    (let ((f22-0 0.0)
-          (f26-0 0.0)
-          (f28-0 0.0)
-          (f30-0 0.0)
-          )
-      (set! sv-16 (the-as float (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
+    (let* ((f22-0 0.0)
+           (f26-0 0.0)
+           (f28-0 0.0)
+           (f30-0 0.0)
+           (sv-16 (the-as float (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
                                     (get-max-ammo-for-gun *game-info* (pickup-type ammo-yellow))
                                     0.0
                                     )
                           )
-            )
-      (let* ((f20-0 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
-                        (get-max-ammo-for-gun *game-info* (pickup-type ammo-red))
-                        0.0
-                        )
-                    )
-             (f24-0 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
-                        (get-max-ammo-for-gun *game-info* (pickup-type ammo-blue))
-                        0.0
-                        )
-                    )
-             (f0-2 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
-                       (get-max-ammo-for-gun *game-info* (pickup-type ammo-dark))
-                       0.0
-                       )
-                   )
-             (f4-0 (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
-                       (-> *game-info* gun-ammo 0)
-                       0.0
-                       )
-                   )
-             (f1-2 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
-                       (-> *game-info* gun-ammo 1)
-                       0.0
-                       )
-                   )
-             (f2-1 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
-                       (-> *game-info* gun-ammo 2)
-                       0.0
-                       )
-                   )
-             (f3-1 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
-                       (-> *game-info* gun-ammo 3)
-                       0.0
-                       )
-                   )
-             (f22-1 (+ f22-0 (- sv-16 f4-0)))
-             )
-        (if (< 0.0 sv-16)
-            (set! f22-1 (/ f22-1 sv-16))
-            )
-        (let ((f1-4 (+ f26-0 (- f20-0 f1-2))))
-          (if (< 0.0 f20-0)
-              (set! f1-4 (/ f1-4 f20-0))
-              )
-          (let ((f2-3 (+ f28-0 (- f24-0 f2-1))))
-            (if (< 0.0 f24-0)
-                (set! f2-3 (/ f2-3 f24-0))
-                )
-            (let ((f3-3 (+ f30-0 (- f0-2 f3-1))))
-              (if (< 0.0 f0-2)
-                  (set! f3-3 (/ f3-3 f0-2))
                   )
-              (let ((f26-1 (+ f22-1 f1-4 f2-3 f3-3)))
-                (when (= f26-1 0.0)
-                  (set! f22-1 1.0)
-                  (set! f26-1 1.0)
+           (f20-0 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
+                      (get-max-ammo-for-gun *game-info* (pickup-type ammo-red))
+                      0.0
+                      )
                   )
-                (cond
-                  ((!= f26-1 0.0)
-                   (let* ((f24-1 (+ f1-4 f22-1))
-                          (f28-1 (+ f2-3 f24-1))
-                          (f30-1 (+ f3-3 f28-1))
-                          (v1-39 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                          (v1-40 (the-as number (logior #x3f800000 v1-39)))
-                          (f0-10 (* (+ -1.0 (the-as float v1-40)) f26-1))
-                          )
-                     (set! v0-5 (cond
-                                  ((and (>= f22-1 f0-10) (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3)))
-                                   (set! v0-5 15)
-                                   (set! (-> arg1 0) (the-as pickup-type v0-5))
-                                   v0-5
-                                   )
-                                  ((and (>= f24-1 f0-10) (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3)))
-                                   (set! (-> arg1 0) (pickup-type ammo-red))
-                                   (if (>= 1 (mod (the-as int (rand-uint31-gen *random-generator*)) 3))
-                                       (set! (-> arg2 0) (/ (-> arg2 0) 2))
-                                       )
-                                   )
-                                  ((and (>= f28-1 f0-10) (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3)))
-                                   (set! v0-5 17)
-                                   (set! (-> arg1 0) (the-as pickup-type v0-5))
-                                   v0-5
-                                   )
-                                  ((and (>= f30-1 f0-10) (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0))
-                                   (set! (-> arg1 0) (pickup-type ammo-dark))
-                                   (set! (-> arg2 0) (the float (the int (fmax 1.0 (/ (-> arg2 0) 15)))))
-                                   )
-                                  (else
-                                    (pickup-dark-set! arg0 arg1 arg2 arg3)
-                                    )
-                                  )
-                           )
+           (f24-0 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
+                      (get-max-ammo-for-gun *game-info* (pickup-type ammo-blue))
+                      0.0
+                      )
+                  )
+           (f0-2 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
+                     (get-max-ammo-for-gun *game-info* (pickup-type ammo-dark))
+                     0.0
                      )
+                 )
+           (f4-0 (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
+                     (-> *game-info* gun-ammo 0)
+                     0.0
+                     )
+                 )
+           (f1-2 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
+                     (-> *game-info* gun-ammo 1)
+                     0.0
+                     )
+                 )
+           (f2-1 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
+                     (-> *game-info* gun-ammo 2)
+                     0.0
+                     )
+                 )
+           (f3-1 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
+                     (-> *game-info* gun-ammo 3)
+                     0.0
+                     )
+                 )
+           (f22-1 (+ f22-0 (- sv-16 f4-0)))
+           )
+      (if (< 0.0 sv-16)
+          (set! f22-1 (/ f22-1 sv-16))
+          )
+      (let ((f1-4 (+ f26-0 (- f20-0 f1-2))))
+        (if (< 0.0 f20-0)
+            (set! f1-4 (/ f1-4 f20-0))
+            )
+        (let ((f2-3 (+ f28-0 (- f24-0 f2-1))))
+          (if (< 0.0 f24-0)
+              (set! f2-3 (/ f2-3 f24-0))
+              )
+          (let ((f3-3 (+ f30-0 (- f0-2 f3-1))))
+            (if (< 0.0 f0-2)
+                (set! f3-3 (/ f3-3 f0-2))
+                )
+            (let ((f26-1 (+ f22-1 f1-4 f2-3 f3-3)))
+              (when (= f26-1 0.0)
+                (set! f22-1 1.0)
+                (set! f26-1 1.0)
+                )
+              (cond
+                ((!= f26-1 0.0)
+                 (let* ((f24-1 (+ f1-4 f22-1))
+                        (f28-1 (+ f2-3 f24-1))
+                        (f30-1 (+ f3-3 f28-1))
+                        (v1-39 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                        (v1-40 (the-as number (logior #x3f800000 v1-39)))
+                        (f0-10 (* (+ -1.0 (the-as float v1-40)) f26-1))
+                        )
+                   (set! v0-5 (cond
+                                ((and (>= f22-1 f0-10) (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3)))
+                                 (set! v0-5 15)
+                                 (set! (-> arg1 0) (the-as pickup-type v0-5))
+                                 v0-5
+                                 )
+                                ((and (>= f24-1 f0-10) (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3)))
+                                 (set! (-> arg1 0) (pickup-type ammo-red))
+                                 (if (>= 1 (mod (the-as int (rand-uint31-gen *random-generator*)) 3))
+                                     (set! (-> arg2 0) (/ (-> arg2 0) 2))
+                                     )
+                                 )
+                                ((and (>= f28-1 f0-10) (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3)))
+                                 (set! v0-5 17)
+                                 (set! (-> arg1 0) (the-as pickup-type v0-5))
+                                 v0-5
+                                 )
+                                ((and (>= f30-1 f0-10) (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0))
+                                 (set! (-> arg1 0) (pickup-type ammo-dark))
+                                 (set! (-> arg2 0) (the float (the int (fmax 1.0 (/ (-> arg2 0) 15)))))
+                                 )
+                                (else
+                                  (pickup-dark-set! arg0 arg1 arg2 arg3)
+                                  )
+                                )
+                         )
                    )
-                  (else
-                    (set! (-> arg1 0) (pickup-type none))
-                    0
-                    )
+                 )
+                (else
+                  (set! (-> arg1 0) (pickup-type none))
+                  0
                   )
                 )
               )
@@ -3310,41 +3317,26 @@
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 (defmethod drop-pickup ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int) (arg4 symbol))
-  (local-vars (sv-16 pickup-type) (sv-20 float))
-  (set! sv-16 (-> this pickup-type))
-  (set! sv-20 (-> this pickup-amount))
-  (if (not arg4)
-      (set! sv-20 (fmin 10.0 sv-20))
-      )
-  (cond
-    ((= sv-16 (pickup-type ammo-random))
-     (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
-     )
-    ((= sv-16 (pickup-type eco-pill-random))
-     (if (rand-vu-percent? 0.1)
-         (pickup-light-set! this (& sv-16) (& sv-20) arg3)
-         (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
-         )
-     )
-    ((= sv-16 (pickup-type light-random))
-     (cond
-       ((rand-vu-percent? 0.1)
-        (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+  (let ((sv-16 (-> this pickup-type))
+        (sv-20 (-> this pickup-amount))
         )
-       (else
-         (set! sv-16 (pickup-type none))
-         0
-         )
+    (if (not arg4)
+        (set! sv-20 (fmin 10.0 sv-20))
+        )
+    (cond
+      ((= sv-16 (pickup-type ammo-random))
+       (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
        )
-     )
-    ((= sv-16 (pickup-type ammo-light-random))
-     (let ((v1-17 (rand-vu-int-count 100)))
+      ((= sv-16 (pickup-type eco-pill-random))
+       (if (rand-vu-percent? 0.1)
+           (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+           (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
+           )
+       )
+      ((= sv-16 (pickup-type light-random))
        (cond
-         ((< v1-17 10)
+         ((rand-vu-percent? 0.1)
           (pickup-light-set! this (& sv-16) (& sv-20) arg3)
-          )
-         ((< v1-17 50)
-          (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
           )
          (else
            (set! sv-16 (pickup-type none))
@@ -3352,48 +3344,64 @@
            )
          )
        )
-     )
-    ((= sv-16 (pickup-type ammo-dark-light-random))
-     (let ((v1-23 (rand-vu-int-count 100)))
-       (cond
-         ((< v1-23 10)
-          (pickup-light-set! this (& sv-16) (& sv-20) arg3)
-          )
-         ((< v1-23 55)
-          (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
-          )
-         (else
-           (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
+      ((= sv-16 (pickup-type ammo-light-random))
+       (let ((v1-17 (rand-vu-int-count 100)))
+         (cond
+           ((< v1-17 10)
+            (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+            )
+           ((< v1-17 50)
+            (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
+            )
+           (else
+             (set! sv-16 (pickup-type none))
+             0
+             )
            )
          )
        )
-     )
-    )
-  (if (= sv-16 (pickup-type none))
-      (return (the-as (pointer process) #f))
-      )
-  (let ((s3-1 (new 'stack-no-clear 'collide-query)))
-    (vector-copy! (-> s3-1 start-pos) (-> (the-as process-drawable (-> this process)) root trans))
-    (set-vector! (-> s3-1 move-dist) 0.0 -81920.0 0.0 1.0)
-    (+! (-> s3-1 start-pos y) 12288.0)
-    (let ((v1-33 s3-1))
-      (set! (-> v1-33 radius) 40.96)
-      (set! (-> v1-33 collide-with) (collide-spec backgnd hit-by-others-list pusher))
-      (set! (-> v1-33 ignore-process0) #f)
-      (set! (-> v1-33 ignore-process1) #f)
-      (set! (-> v1-33 ignore-pat)
-            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+      ((= sv-16 (pickup-type ammo-dark-light-random))
+       (let ((v1-23 (rand-vu-int-count 100)))
+         (cond
+           ((< v1-23 10)
+            (pickup-light-set! this (& sv-16) (& sv-20) arg3)
             )
-      (set! (-> v1-33 action-mask) (collide-action solid))
+           ((< v1-23 55)
+            (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
+            )
+           (else
+             (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
+             )
+           )
+         )
+       )
       )
-    (if (>= (fill-and-probe-using-line-sphere *collide-cache* s3-1) 0.0)
-        (vector-copy! (-> s3-1 start-pos) (-> s3-1 best-other-tri intersect))
-        (vector-copy! (-> s3-1 start-pos) (-> (the-as process-drawable (-> this process)) root trans))
+    (if (= sv-16 (pickup-type none))
+        (return (the-as (pointer process) #f))
         )
-    (if (= sv-16 (pickup-type fuel-cell))
-        (+! (-> s3-1 start-pos y) 6144.0)
+    (let ((s3-1 (new 'stack-no-clear 'collide-query)))
+      (vector-copy! (-> s3-1 start-pos) (-> (the-as process-drawable (-> this process)) root trans))
+      (set-vector! (-> s3-1 move-dist) 0.0 -81920.0 0.0 1.0)
+      (+! (-> s3-1 start-pos y) 12288.0)
+      (let ((v1-33 s3-1))
+        (set! (-> v1-33 radius) 40.96)
+        (set! (-> v1-33 collide-with) (collide-spec backgnd hit-by-others-list pusher))
+        (set! (-> v1-33 ignore-process0) #f)
+        (set! (-> v1-33 ignore-process1) #f)
+        (set! (-> v1-33 ignore-pat)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        (set! (-> v1-33 action-mask) (collide-action solid))
         )
-    (birth-pickup-at-point (-> s3-1 start-pos) sv-16 sv-20 arg0 arg1 this)
+      (if (>= (fill-and-probe-using-line-sphere *collide-cache* s3-1) 0.0)
+          (vector-copy! (-> s3-1 start-pos) (-> s3-1 best-other-tri intersect))
+          (vector-copy! (-> s3-1 start-pos) (-> (the-as process-drawable (-> this process)) root trans))
+          )
+      (if (= sv-16 (pickup-type fuel-cell))
+          (+! (-> s3-1 start-pos y) 6144.0)
+          )
+      (birth-pickup-at-point (-> s3-1 start-pos) sv-16 sv-20 arg0 arg1 this)
+      )
     )
   )
 

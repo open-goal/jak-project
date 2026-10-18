@@ -1,0 +1,9 @@
+("GARAGEB.DGO"
+ ("garage-part.o"
+  "tpage-1801.go"
+  "tpage-1873.go"
+  "tpage-2288.go"
+  "tpage-1986.go"
+  "garage-sliding-door-ag.go"
+  "garageb.o"
+ ))

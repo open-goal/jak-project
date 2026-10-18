@@ -26,12 +26,16 @@
  * </DESC>
  */
 #include <stdio.h>
+
 #include <curl/curl.h>
 
 int main(void)
 {
   CURL *curl;
-  CURLcode res;
+
+  CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   curl = curl_easy_init();
   if(curl) {
@@ -42,18 +46,19 @@ int main(void)
     curl_easy_setopt(curl, CURLOPT_REQUEST_TARGET, "*");
 
     /* if this operation fails, allow risking a memory leak and do quick exit
-       from libcurl as this will exit() anyway */
+       from libcurl as this exits anyway */
     curl_easy_setopt(curl, CURLOPT_QUICK_EXIT, 1L);
 
-    /* Perform the request, res will get the return code */
-    res = curl_easy_perform(curl);
+    /* Perform the request, result gets the return code */
+    result = curl_easy_perform(curl);
     /* Check for errors */
-    if(res != CURLE_OK)
+    if(result != CURLE_OK)
       fprintf(stderr, "curl_easy_perform() failed: %s\n",
-              curl_easy_strerror(res));
+              curl_easy_strerror(result));
 
     /* always cleanup */
     curl_easy_cleanup(curl);
   }
+  curl_global_cleanup();
   return 0;
 }

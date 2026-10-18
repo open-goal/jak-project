@@ -31,11 +31,15 @@ int xferinfo_cb(void *clientp,
                 curl_off_t ultotal,
                 curl_off_t ulnow);
 
-bool progress_meter(struct GlobalConfig *global,
-                    struct timeval *start,
+bool progress_meter(CURLM *multi,
+                    struct curltime *start,
                     bool final);
+struct per_transfer;
 void progress_finalize(struct per_transfer *per);
 
-extern curl_off_t all_xfers;   /* total number */
+#ifdef UNITTESTS
+UNITTEST char *max5data(curl_off_t bytes, char *max5, size_t mlen);
+UNITTEST void timebuf(char *r, size_t rlen, curl_off_t seconds);
+#endif
 
 #endif /* HEADER_CURL_TOOL_PROGRESS_H */

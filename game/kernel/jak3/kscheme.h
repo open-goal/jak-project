@@ -11,6 +11,8 @@ constexpr s32 SYMBOL_OFFSET = 1;
 extern Ptr<u32> SymbolString;
 extern bool DebugSymbols;
 
+extern Ptr<Symbol4<u32>> SqlResult;
+
 /*!
  * GOAL Type
  */
@@ -53,6 +55,7 @@ u64 print_object(u32 obj);
 u64 inspect_object(u32 obj);
 Ptr<Symbol4<u32>> find_symbol_from_c(uint16_t sym_id, const char* name);
 u64 make_string_from_c(const char* c_str);
+u64 make_debug_string_from_c(const char* c_str);
 u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id);
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr);
 u64 call_goal_function_by_name(const char* name);

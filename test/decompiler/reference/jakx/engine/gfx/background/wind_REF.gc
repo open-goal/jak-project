@@ -1,0 +1,48 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function update-wind
+;; WARN: Return type mismatch int vs none.
+(defun update-wind ((arg0 wind-work) (arg1 (array uint8)))
+  "Update the wind force for this frame.
+   This value will be used by level-update-wind to update tie/shrub wind values."
+  (with-pp
+    (let* ((f0-1 (+ (-> arg0 wind-normal w) (rand-vu-float-range -1024.0 1024.0)))
+           (f30-1 (- f0-1 (* (the float (the int (/ f0-1 65536.0))) 65536.0)))
+           )
+      (set! (-> arg0 wind-normal w) f30-1)
+      (set! (-> arg0 wind-normal x) (cos f30-1))
+      (set! (-> arg0 wind-normal z) (sin f30-1))
+      )
+    (+! (-> arg0 wind-time) (- (-> pp clock integral-frame-counter) (-> pp clock old-integral-frame-counter)))
+    (let* ((s4-0 (logand (-> arg0 wind-time) 63))
+           (f0-4 (rand-vu-float-range 0.0 100.0))
+           (v1-7 (/ (-> arg0 wind-time) (the-as uint 120)))
+           (f1-6 (* 0.008333334 (the float (mod (-> arg0 wind-time) (the-as uint 120)))))
+           (f2-4 (* 0.0625 (the float (-> arg1 (mod (the-as int v1-7) (-> arg1 length))))))
+           (f0-5
+             (* (+ (* (- (* 0.0625 (the float (-> arg1 (mod (the-as int (+ v1-7 1)) (-> arg1 length))))) f2-4) f1-6) f2-4)
+                f0-4
+                )
+             )
+           )
+      (set! (-> *wind-work* wind-force s4-0) f0-5)
+      (vector-float*! (-> *wind-work* wind-array s4-0) (-> arg0 wind-normal) f0-5)
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for function wind-get-hashed-index
+(defun wind-get-hashed-index ((arg0 vector) (arg1 wind-work))
+  "Unused function, likely a leftover from Jak 1's different wind system."
+  (logand (+ (the int (-> arg0 x)) (the int (-> arg0 z)) (-> *wind-work* wind-time)) 63)
+  )
+
+;; definition for function level-update-wind
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+
+
+

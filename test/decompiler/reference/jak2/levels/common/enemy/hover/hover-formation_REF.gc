@@ -202,7 +202,6 @@
          (arg2 (function form-search-info float))
          (arg3 form-search-info)
          )
-  (local-vars (sv-80 int))
   (let ((s2-0 (new 'stack-no-clear 'array 'int32 32)))
     (dotimes (v1-0 arg0)
       (set! (-> s2-0 v1-0) 0)
@@ -216,16 +215,16 @@
            0
            )
           (else
-            (let ((s0-0 arg1))
-              (set! sv-80 s1-0)
-              (let ((a1-1 (if (odd? s1-0)
-                              (-> s2-0 s1-0)
-                              0
-                              )
-                          )
-                    (a2-1 arg3)
+            (let ((s0-0 arg1)
+                  (sv-80 s1-0)
+                  )
+              (s0-0
+                sv-80
+                (if (odd? s1-0)
+                    (-> s2-0 s1-0)
+                    0
                     )
-                (s0-0 sv-80 a1-1 a2-1)
+                arg3
                 )
               )
             (+! (-> s2-0 s1-0) 1)
@@ -666,7 +665,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-32 structure))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 (-> this entity) #f))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (let* ((s5-0 (method-of-type hover-formation-control new))
@@ -680,25 +678,29 @@
                    )
                )
          (s0-0 (res-lump-float (-> this entity) 'notice-dist :default 225280.0))
+         (t9-3 (method-of-type res-lump get-property-struct))
+         (a0-5 (-> this entity))
+         (a1-4 'trans-offset)
+         (a2-3 'interp)
+         (a3-2 -1000000000.0)
+         (t0-2 (new 'stack-no-clear 'vector))
          )
-    (let ((t9-3 (method-of-type res-lump get-property-struct))
-          (a0-5 (-> this entity))
-          (a1-4 'trans-offset)
-          (a2-3 'interp)
-          (a3-2 -1000000000.0)
-          (t0-2 (new 'stack-no-clear 'vector))
+    (set! (-> t0-2 x) 0.0)
+    (set! (-> t0-2 y) 20480.0)
+    (set! (-> t0-2 z) 61440.0)
+    (set! (-> t0-2 w) 1.0)
+    (set! (-> this formation)
+          (s5-0
+            s4-0
+            s3-0
+            s2-0
+            s1-0
+            s0-0
+            (the-as vector (t9-3 a0-5 a1-4 a2-3 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*))
+            (res-lump-float (-> this entity) 'rotoffset :default 5461.3335)
+            (the-as handle #f)
+            )
           )
-      (set! (-> t0-2 x) 0.0)
-      (set! (-> t0-2 y) 20480.0)
-      (set! (-> t0-2 z) 61440.0)
-      (set! (-> t0-2 w) 1.0)
-      (set! sv-32 (t9-3 a0-5 a1-4 a2-3 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*))
-      )
-    (let ((t2-4 (res-lump-float (-> this entity) 'rotoffset :default 5461.3335))
-          (t3-0 #f)
-          )
-      (set! (-> this formation) (s5-0 s4-0 s3-0 s2-0 s1-0 s0-0 (the-as vector sv-32) t2-4 (the-as handle t3-0)))
-      )
     )
   (set! (-> this formation-timer) (the-as uint (current-time)))
   (logclear! (-> this mask) (process-mask actor-pause))

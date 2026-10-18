@@ -24,12 +24,12 @@ jobs:
       # minimal checkout if we're NOT uploading artifacts
       - name: Checkout Repository
         if: ${{ ! inputs.uploadArtifacts }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # full checkout with tags if we ARE uploading artifacts
       - name: Checkout Repository with Tags
         if: ${{ inputs.uploadArtifacts }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -39,13 +39,15 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: 1
           HOMEBREW_NO_ANALYTICS: 1
         run: |
-          if ! brew install ninja nasm; then
+          if ! brew install ninja nasm openssl@3 brotli nghttp2; then
             brew update
-            brew install ninja nasm
+            brew install ninja nasm openssl@3 brotli nghttp2
           fi
+          # keg-only, so give CMake's FindOpenSSL an explicit hint
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
 
       - name: Setup sccache
-        uses: hendrikmuhs/ccache-action@v1.2.20
+        uses: hendrikmuhs/ccache-action@v1.2.24
         with:
           variant: sccache
           key: macos-15-intel-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
@@ -79,7 +81,7 @@ jobs:
           strip ./build/lsp/lsp
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: ${{ inputs.uploadArtifacts }}
         with:
           name: opengoal-macos-${{ inputs.cachePrefix }}

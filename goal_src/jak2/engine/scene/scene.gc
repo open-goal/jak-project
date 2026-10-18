@@ -46,7 +46,7 @@
   )
 
 (defmethod scene-actor-method-9 ((this scene-actor) (arg0 scene-player))
-  (local-vars (s4-0 (pointer process)) (sv-96 process) (sv-112 process))
+  (local-vars (s4-0 (pointer process)))
   (let ((s1-0 (if (-> this level)
                   (level-get *level* (-> this level))
                   (-> *level* default-level)
@@ -66,19 +66,17 @@
        (goto cfg-211)
        )
       )
-    (let* ((s4-1 (art-group-get-by-name *level* (-> this art-group) (the-as (pointer uint32) #f)))
-           (s2-0 (if (type? s4-1 skeleton-group)
-                     (the-as skeleton-group s4-1)
-                     )
-                 )
-           (s0-0 (-> arg0 level))
-           (s3-0
-             (or (string= (-> this name) "jak-highres")
-                 (string= (-> this name) "jak-highres-prison")
-                 (string= (-> this name) "darkjak-highres")
-                 )
-             )
-           )
+    (let ((s2-0
+            (as-type (art-group-get-by-name *level* (-> this art-group) (the-as (pointer uint32) #f)) skeleton-group)
+            )
+          (s0-0 (-> arg0 level))
+          (s3-0
+            (or (string= (-> this name) "jak-highres")
+                (string= (-> this name) "jak-highres-prison")
+                (string= (-> this name) "darkjak-highres")
+                )
+            )
+          )
       (set! (-> arg0 level) #f)
       (set! s4-0
             (when s2-0
@@ -88,26 +86,26 @@
                               )
                           )
                     )
-                (set! sv-96 (get-process *default-dead-pool* manipy #x4000))
-                (set! s4-0 (when sv-96
-                             (let ((t9-7 (method-of-type manipy activate)))
-                               (t9-7 (the-as manipy sv-96) arg0 (-> this name) (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process
-                               sv-96
-                               manipy-init
-                               (-> arg0 root trans)
-                               s1-1
-                               s2-0
-                               #f
-                               (if (and s3-0 (logtest? (game-secrets big-head little-head) (-> *game-info* secrets)))
-                                   1
-                                   0
-                                   )
-                               )
-                             (-> sv-96 ppointer)
-                             )
-                      )
+                (let ((sv-96 (get-process *default-dead-pool* manipy #x4000)))
+                  (set! s4-0
+                        (when sv-96
+                          ((method-of-type manipy activate) (the-as manipy sv-96) arg0 (-> this name) (the-as pointer #x70004000))
+                          (run-now-in-process
+                            sv-96
+                            manipy-init
+                            (-> arg0 root trans)
+                            s1-1
+                            s2-0
+                            #f
+                            (if (and s3-0 (logtest? (game-secrets big-head little-head) (-> *game-info* secrets)))
+                                1
+                                0
+                                )
+                            )
+                          (-> sv-96 ppointer)
+                          )
+                        )
+                  )
                 (set! (-> arg0 level) s0-0)
                 (send-event (ppointer->process s4-0) 'anim-mode 'clone-anim)
                 (send-event (ppointer->process s4-0) 'blend-shape #t)
@@ -165,16 +163,19 @@
                     )
                   )
                 (when (and s4-0 (logtest? (-> this flags) 2))
-                  (set! sv-112 (get-process *default-dead-pool* manipy #x4000))
-                  (let ((s0-1 (when sv-112
-                                (let ((t9-24 (method-of-type manipy activate)))
-                                  (t9-24 (the-as manipy sv-112) (ppointer->process s4-0) (-> this name) (the-as pointer #x70004000))
+                  (let* ((sv-112 (get-process *default-dead-pool* manipy #x4000))
+                         (s0-1 (when sv-112
+                                 ((method-of-type manipy activate)
+                                  (the-as manipy sv-112)
+                                  (ppointer->process s4-0)
+                                  (-> this name)
+                                  (the-as pointer #x70004000)
                                   )
-                                (run-now-in-process sv-112 manipy-init (-> arg0 root trans) s1-1 s2-0 #f 0)
-                                (-> sv-112 ppointer)
-                                )
-                              )
-                        )
+                                 (run-now-in-process sv-112 manipy-init (-> arg0 root trans) s1-1 s2-0 #f 0)
+                                 (-> sv-112 ppointer)
+                                 )
+                               )
+                         )
                     (send-event (ppointer->process s0-1) 'mirror #t)
                     (send-event (ppointer->process s0-1) 'anim-mode 'mirror)
                     (if (nonzero? (-> this light-index))
@@ -466,14 +467,14 @@
                         (-> *level* default-level)
                         )
                     )
-              (v1-55 (when level
-                       (let ((s0-0 (art-group-get-by-name *level* (-> s2-0 art-group) (the-as (pointer uint32) #f))))
-                         (if (type? s0-0 skeleton-group)
-                             s0-0
-                             )
-                         )
-                       )
-                     )
+              (v1-55
+                (if level
+                    (the-as
+                      art-group
+                      (as-type (art-group-get-by-name *level* (-> s2-0 art-group) (the-as (pointer uint32) #f)) skeleton-group)
+                      )
+                    )
+                )
               )
           (cond
             ((or (not s1-0) (not (or (= (-> s1-0 status) 'active) (= (-> s1-0 status) 'reserved))))
@@ -609,15 +610,13 @@
 
 ;; WARN: Return type mismatch pointer vs none.
 (defun draw-subtitle-image ((arg0 subtitle-image) (arg1 font-context))
-  (local-vars (sv-16 pointer) (sv-32 int))
-  (let ((gp-0 (-> arg0 width))
-        (s5-0 (-> arg0 height))
-        )
-    (let ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf)))
-      (set! sv-16 (-> s4-0 base))
-      (unpack-comp-rle (the-as (pointer int8) sv-16) (the-as (pointer int8) (-> arg0 data)))
-      (&+! (-> s4-0 base) (logand -16 (+ (shr (* gp-0 s5-0) 1) 15)))
-      )
+  (let* ((gp-0 (-> arg0 width))
+         (s5-0 (-> arg0 height))
+         (s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+         (sv-16 (-> s4-0 base))
+         )
+    (unpack-comp-rle (the-as (pointer int8) sv-16) (the-as (pointer int8) (-> arg0 data)))
+    (&+! (-> s4-0 base) (logand -16 (+ (shr (* gp-0 s5-0) 1) 15)))
     (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id subtitle)
                                  )
@@ -647,8 +646,8 @@
         ;       )
         ;   (t9-2 a0-13 sv-16 (the-as int a2-8) (the-as int a3-1) (the-as gs-psm t0-1))
         ;   )
-        (set! sv-32 (+ (log2 (the-as int (+ gp-0 -1))) 1))
-        (let ((v1-17 (+ (log2 (the-as int (+ s5-0 -1))) 1)))
+        (let ((sv-32 (+ (log2 (the-as int (+ s5-0 -1))) 1))
+              (v1-17 (+ (log2 (the-as int (+ s5-0 -1))) 1)))
           (dma-buffer-add-gs-set s3-0
                                  (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
@@ -751,15 +750,9 @@
                                 (new 'stack 'font-context *font-default-matrix* 20 290 0.0 (font-color default) (font-flags shadow kerning))
                                 )
                               )
-                          (let ((v1-20 s2-0))
-                            (set! (-> v1-20 width) (the float 465))
-                            )
-                          (let ((v1-21 s2-0))
-                            (set! (-> v1-21 height) (the float 70))
-                            )
-                          (let ((v1-22 s2-0))
-                            (set! (-> v1-22 scale) 0.5)
-                            )
+                          (set-width! s2-0 465)
+                          (set-height! s2-0 70)
+                          (set-scale! s2-0 0.5)
                           (set! (-> s2-0 flags) (font-flags shadow kerning middle large))
                           (case (-> s3-0 type)
                             ((string)
@@ -775,9 +768,7 @@
                                ;;       (log-string-bytes (the-as string s3-0) file)
                                ;;       (file-stream-close file)))
                                (set! s3-0 (convert-korean-text (the-as string s3-0)))
-                               (let ((v1-27 s2-0))
-                                 (set! (-> v1-27 scale) 0.6)
-                                 )
+                               (set-scale! s2-0 0.6)
                                )
                              (set! (-> s2-0 flags) (font-flags kerning middle middle-vert large))
                              (+! (-> s2-0 origin x) -1.0)
@@ -1330,12 +1321,7 @@
               )
           (when (logtest? gp-4 (scene-controls special-fma-spheres))
             (dotimes (s5-3 (-> self scene actor length))
-              (let* ((s4-1 (handle->process (-> self scene actor s5-3 process)))
-                     (v1-63 (if (type? s4-1 process-drawable)
-                                (the-as process-drawable s4-1)
-                                )
-                            )
-                     )
+              (let ((v1-63 (as-type (handle->process (-> self scene actor s5-3 process)) process-drawable)))
                 (if (and v1-63 (nonzero? (-> v1-63 draw)))
                     (add-debug-sphere
                       #t
@@ -1350,12 +1336,7 @@
             )
           (when (logtest? gp-4 (scene-controls scene-controls-7))
             (dotimes (s5-4 (-> self scene actor length))
-              (let* ((s4-2 (handle->process (-> self scene actor s5-4 process)))
-                     (v1-79 (if (type? s4-2 process-drawable)
-                                (the-as process-drawable s4-2)
-                                )
-                            )
-                     )
+              (let ((v1-79 (as-type (handle->process (-> self scene actor s5-4 process)) process-drawable)))
                 (if (and v1-79 (nonzero? (-> v1-79 draw)))
                     (format
                       *stdcon*
@@ -1374,12 +1355,7 @@
             )
           (when (logtest? gp-4 (scene-controls scene-controls-8))
             (dotimes (gp-5 (-> self scene actor length))
-              (let* ((s5-5 (handle->process (-> self scene actor gp-5 process)))
-                     (v1-94 (if (type? s5-5 process-drawable)
-                                (the-as process-drawable s5-5)
-                                )
-                            )
-                     )
+              (let ((v1-94 (as-type (handle->process (-> self scene actor gp-5 process)) process-drawable)))
                 (if (and v1-94 (nonzero? (-> v1-94 draw)))
                     (add-debug-text-3d
                       #t
@@ -1407,15 +1383,9 @@
               (new 'stack 'font-context *font-default-matrix* 36 60 0.0 (font-color default) (font-flags shadow kerning))
               )
             )
-        (let ((v1-121 gp-6))
-          (set! (-> v1-121 width) (the float 440))
-          )
-        (let ((v1-122 gp-6))
-          (set! (-> v1-122 height) (the float 48))
-          )
-        (let ((v1-123 gp-6))
-          (set! (-> v1-123 scale) 0.5)
-          )
+        (set-width! gp-6 440)
+        (set-height! gp-6 48)
+        (set-scale! gp-6 0.5)
         (set! (-> gp-6 flags) (font-flags shadow kerning middle large))
         (print-game-text
           (lookup-text!

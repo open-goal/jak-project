@@ -423,6 +423,9 @@
         (-> v1-17 id)
         )
       (set! (-> self gun active?) #f)
+      ;; og:preserve-this trigger effects
+      (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+        (pc-clear-trigger-effect! (pc-trigger-effect-option right)))
       (cond
         ((and (not (logtest? (surface-flag gun-fast-exit) (-> self control current-surface flags)))
               (not (focus-test? self dead))
@@ -684,6 +687,19 @@
       )
     )
   (set! (-> self game gun-type) (the-as pickup-type arg0))
+
+  ;; og:preserve-this trigger effects
+  (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+    (case (-> self game gun-type)
+      (((pickup-type gun-red-1))
+       (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 4))
+      (((pickup-type gun-yellow-1))
+       (pc-send-trigger-effect-weapon! (pc-trigger-effect-option right) 2 4 4))
+      (((pickup-type gun-blue-1))
+       (pc-send-trigger-effect-vibrate! (pc-trigger-effect-option right) 0 4 30))
+      (((pickup-type gun-dark-1))
+       (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 2))))
+
   (set! (-> self gun track-turnv-range) 81920.0)
   (set! (-> self gun track-tilt-range) 0.0)
   (set! (-> self gun track-turn-range) 0.0)

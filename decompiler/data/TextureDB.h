@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -11,6 +12,12 @@
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
+struct ResolvedTextureData {
+  u16 w;
+  u16 h;
+  std::vector<u32> rgba;
+};
+
 struct TextureDB {
   TextureDB();
   struct TextureData {
@@ -25,11 +32,15 @@ struct TextureDB {
   std::map<u32, TextureData> textures;
   std::unordered_map<u32, std::string> tpage_names;
   std::unordered_map<std::string, std::set<u32>> texture_ids_per_level;
+  std::optional<fs::path> merge_texture_dir;
+  std::optional<fs::path> replace_texture_dir;
 
   // special textures for animation.
   std::map<u32, tfrag3::IndexTexture> index_textures_by_combo_id;
 
   std::unordered_map<std::string, u32> animated_tex_output_to_anim_slot;
+
+  ResolvedTextureData resolve_texture(u32 id) const;
 
   static constexpr int kPlaceholderWhiteTexturePage = INT16_MAX;
   static constexpr int kPlaceholderWhiteTextureId = 0;
@@ -57,6 +68,8 @@ struct TextureDB {
 
   void merge_textures(const fs::path& base_path);
   void replace_textures(const fs::path& path);
+  void merge_texture(u32 id, std::vector<u32>& rgba) const;
+  std::optional<ResolvedTextureData> replace_texture(u32 id) const;
 
   std::string generate_texture_dest_adjustment_table() const;
 };

@@ -515,172 +515,143 @@ TEST_F(FormRegressionTestJak1, ExprDisasmVif) {
       "    daddiu sp, sp, 192";
   std::string type = "(function (pointer vif-tag) int symbol symbol int)";
   std::string expected =
-      "(let ((gp-0 0))\n"
-      "  (while (< gp-0 (* arg1 4))\n"
-      "   (let ((s0-0 4))\n"
-      "    (let ((s1-0 (-> arg0 0)))\n"
-      "     (format arg2 \" #x~X:\" arg0)\n"
-      "     (dotimes (v1-0 (-> *vif-disasm-table* length))\n"
-      "      (set! sv-16 (-> s1-0 cmd))\n"
-      "      (when\n"
-      "       (=\n"
-      "        (logand sv-16 (-> *vif-disasm-table* v1-0 mask))\n"
-      "        (-> *vif-disasm-table* v1-0 tag)\n"
-      "        )\n"
-      "       (let ((a0-12 (-> *vif-disasm-table* v1-0 print)))\n"
-      "        (cond\n"
-      "         ((zero? a0-12)\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D)~%\"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 1)\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :~s #x~X)~%\"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> *vif-disasm-table* v1-0 string2)\n"
-      "           (-> s1-0 imm)\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 2)\n"
-      "          (let ((t1-1 (-> s1-0 imm)))\n"
-      "           (format\n"
-      "            arg2\n"
-      "            \"  (~s :irq ~D :wl ~D :cl ~D)~%\"\n"
-      "            (-> *vif-disasm-table* v1-0 string1)\n"
-      "            (-> s1-0 irq)\n"
-      "            (shr (shl t1-1 48) 56)\n"
-      "            (shr (shl t1-1 56) 56)\n"
-      "            )\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 3)\n"
-      "          (set! s0-0 8)\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :~s #x~X)~%\"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> *vif-disasm-table* v1-0 string2)\n"
-      "           (-> arg0 1)\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 4)\n"
-      "          (set! s0-0 20)\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :~s \"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> *vif-disasm-table* v1-0 string2)\n"
-      "           )\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"#x~X #x~X #x~X #x~X)~%\"\n"
-      "           (-> arg0 1)\n"
-      "           (-> arg0 2)\n"
-      "           (-> arg0 3)\n"
-      "           (-> arg0 4)\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 5)\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :instructions #x~D :addr #x~X)~%\"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> s1-0 num)\n"
-      "           (-> s1-0 imm)\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 6)\n"
-      "          (if (-> s1-0 imm)\n"
-      "           (set! s0-0 #x100000)\n"
-      "           (set! s0-0 (the-as int (* (-> s1-0 imm) 16)))\n"
-      "           )\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :qwc #x~D)~%\"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> s1-0 imm)\n"
-      "           )\n"
-      "          (set! sv-32 (&-> arg0 1))\n"
-      "          (set! sv-48 0)\n"
-      "          (while (< sv-48 (the-as int (-> s1-0 imm)))\n"
-      "           (format\n"
-      "            arg2\n"
-      "            \"  #x~X:    #x~8x #x~8x #x~8x #x~8x~%\"\n"
-      "            (+ (+ (* sv-48 16) 4) (the-as int arg0))\n"
-      "            (-> sv-32 (* sv-48 4))\n"
-      "            (-> sv-32 (+ (* sv-48 4) 1))\n"
-      "            (-> sv-32 (+ (* sv-48 4) 2))\n"
-      "            (-> sv-32 (+ (* sv-48 4) 3))\n"
-      "            )\n"
-      "           (set! sv-48 (+ sv-48 1))\n"
-      "           )\n"
-      "          #f\n"
-      "          )\n"
-      "         ((= a0-12 7)\n"
-      "          (set!\n"
-      "           s0-0\n"
-      "           (the-as\n"
-      "            int\n"
-      "            (+\n"
-      "             (logand\n"
-      "              -4\n"
-      "              (+ (* (-> *vif-disasm-table* v1-0 val) (-> s1-0 num)) 3)\n"
-      "              )\n"
-      "             4\n"
-      "             )\n"
-      "            )\n"
-      "           )\n"
-      "          (set! sv-64 (-> s1-0 imm))\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \"  (~s :irq ~D :num ~D :addr #x~X \"\n"
-      "           (-> *vif-disasm-table* v1-0 string1)\n"
-      "           (-> s1-0 irq)\n"
-      "           (-> s1-0 num)\n"
-      "           (shr (shl sv-64 54) 54)\n"
-      "           )\n"
-      "          (format\n"
-      "           arg2\n"
-      "           \":msk ~D :flg ~D :usn ~D [skip ~d])~%\"\n"
-      "           (-> s1-0 msk)\n"
-      "           (shr (shl sv-64 48) 63)\n"
-      "           (shr (shl sv-64 49) 63)\n"
-      "           (the-as uint s0-0)\n"
-      "           )\n"
-      "          (if arg3\n"
-      "           (disasm-vif-details\n"
-      "            arg2\n"
-      "            (the-as (pointer uint8) arg0)\n"
-      "            (logand sv-16 (vif-cmd cmd-mask))\n"
-      "            (the-as int (-> s1-0 num))\n"
-      "            )\n"
-      "           )\n"
-      "          )\n"
-      "         ((= a0-12 8)\n"
-      "          (format arg2 \"  (*unknown* vif-tag #x~X)~%\" (-> s1-0 cmd))\n"
-      "          )\n"
-      "         )\n"
-      "        )\n"
-      "       (set! v1-0 (-> *vif-disasm-table* length))\n"
-      "       )\n"
-      "      )\n"
-      "     )\n"
-      "    (+! gp-0 s0-0)\n"
-      "    (&+! arg0 s0-0)\n"
-      "    )\n"
-      "   )\n"
-      "  (- gp-0 (* arg1 4))\n"
-      "  )";
+      R"((let ((gp-0 0))
+  (while (< gp-0 (* arg1 4))
+    (let ((s0-0 4))
+      (let ((s1-0 (-> arg0 0)))
+        (format arg2 " #x~X:" arg0)
+        (dotimes (v1-0 (-> *vif-disasm-table* length))
+          (let ((sv-16 (-> s1-0 cmd)))
+            (when (= (logand sv-16 (-> *vif-disasm-table* v1-0 mask)) (-> *vif-disasm-table* v1-0 tag))
+              (let ((a0-12 (-> *vif-disasm-table* v1-0 print)))
+                (cond
+                  ((zero? a0-12)
+                   (format arg2 "  (~s :irq ~D)~%" (-> *vif-disasm-table* v1-0 string1) (-> s1-0 irq))
+                   )
+                  ((= a0-12 1)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     (-> s1-0 imm)
+                     )
+                   )
+                  ((= a0-12 2)
+                   (let ((t1-1 (-> s1-0 imm)))
+                     (format
+                       arg2
+                       "  (~s :irq ~D :wl ~D :cl ~D)~%"
+                       (-> *vif-disasm-table* v1-0 string1)
+                       (-> s1-0 irq)
+                       (shr (shl t1-1 48) 56)
+                       (shr (shl t1-1 56) 56)
+                       )
+                     )
+                   )
+                  ((= a0-12 3)
+                   (set! s0-0 8)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     (-> arg0 1)
+                     )
+                   )
+                  ((= a0-12 4)
+                   (set! s0-0 20)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s "
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     )
+                   (format arg2 "#x~X #x~X #x~X #x~X)~%" (-> arg0 1) (-> arg0 2) (-> arg0 3) (-> arg0 4))
+                   )
+                  ((= a0-12 5)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> s1-0 num)
+                     (-> s1-0 imm)
+                     )
+                   )
+                  ((= a0-12 6)
+                   (if (-> s1-0 imm)
+                       (set! s0-0 #x100000)
+                       (set! s0-0 (the-as int (* (-> s1-0 imm) 16)))
+                       )
+                   (format arg2 "  (~s :irq ~D :qwc #x~D)~%" (-> *vif-disasm-table* v1-0 string1) (-> s1-0 irq) (-> s1-0 imm))
+                   (let ((sv-32 (&-> arg0 1))
+                         (sv-48 0)
+                         )
+                     (while (< sv-48 (the-as int (-> s1-0 imm)))
+                       (format
+                         arg2
+                         "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
+                         (+ (+ (* sv-48 16) 4) (the-as int arg0))
+                         (-> sv-32 (* sv-48 4))
+                         (-> sv-32 (+ (* sv-48 4) 1))
+                         (-> sv-32 (+ (* sv-48 4) 2))
+                         (-> sv-32 (+ (* sv-48 4) 3))
+                         )
+                       (+! sv-48 1)
+                       )
+                     )
+                   #f
+                   )
+                  ((= a0-12 7)
+                   (set! s0-0 (the-as int (+ (logand -4 (+ (* (-> *vif-disasm-table* v1-0 val) (-> s1-0 num)) 3)) 4)))
+                   (let ((sv-64 (-> s1-0 imm)))
+                     (format
+                       arg2
+                       "  (~s :irq ~D :num ~D :addr #x~X "
+                       (-> *vif-disasm-table* v1-0 string1)
+                       (-> s1-0 irq)
+                       (-> s1-0 num)
+                       (shr (shl sv-64 54) 54)
+                       )
+                     (format
+                       arg2
+                       ":msk ~D :flg ~D :usn ~D [skip ~d])~%"
+                       (-> s1-0 msk)
+                       (shr (shl sv-64 48) 63)
+                       (shr (shl sv-64 49) 63)
+                       (the-as uint s0-0)
+                       )
+                     )
+                   (if arg3
+                       (disasm-vif-details
+                         arg2
+                         (the-as (pointer uint8) arg0)
+                         (logand sv-16 (vif-cmd cmd-mask))
+                         (the-as int (-> s1-0 num))
+                         )
+                       )
+                   )
+                  ((= a0-12 8)
+                   (format arg2 "  (*unknown* vif-tag #x~X)~%" (-> s1-0 cmd))
+                   )
+                  )
+                )
+              (set! v1-0 (-> *vif-disasm-table* length))
+              )
+            )
+          )
+        )
+      (+! gp-0 s0-0)
+      (&+! arg0 s0-0)
+      )
+    )
+  (- gp-0 (* arg1 4))
+  )
+)";
   test_with_expr(func, type, expected, false, "",
                  {{"L139", " #x~X:"},
                   {"L138", "  (~s :irq ~D)~%"},

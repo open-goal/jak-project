@@ -1,0 +1,9 @@
+("COLART.DGO"
+ ("net-artifact.o"
+  "tpage-1605.go"
+  "pre-artifact-a-ag.go"
+  "pre-artifact-d-ag.go"
+  "pre-artifact-b-ag.go"
+  "pre-artifact-c-ag.go"
+  "colart.o"
+ ))

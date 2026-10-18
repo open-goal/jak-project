@@ -39,11 +39,11 @@
   )
 
 
-(defmethod relocate ((this water-anim) (arg0 int))
+(defmethod relocate ((this water-anim) (offset int))
   (if (nonzero? (-> this flow))
-      (&+! (-> this flow) arg0)
+      (&+! (-> this flow) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defskelgroup skel-water-anim-nest-dark-eco-largepool water-anim-nest-dark-eco water-anim-nest-dark-eco-largepool-lod0-jg -1
@@ -326,13 +326,9 @@
      v0-1
      )
     (('water)
-     (let* ((s5-0 (the-as object (-> arg3 param 0)))
-            (s4-0 (the-as object (-> arg3 param 1)))
-            (gp-0 (if (type? (the-as process s4-0) process-focusable)
-                      (the-as uint s4-0)
-                      )
-                  )
-            )
+     (let ((s5-0 (the-as object (-> arg3 param 0)))
+           (gp-0 (the-as object (as-type (-> arg3 param 1) process-focusable)))
+           )
        (when (and (logtest? (-> self flags) (water-flags deadly))
                   (logtest? (water-flags touch-water) (-> (the-as water-info s5-0) flags))
                   (the-as uint gp-0)
@@ -453,14 +449,14 @@
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod offset! ((this water-anim))
   "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
-  (local-vars (sv-16 res-tag))
   (set! (-> this play-ambient-sound?) #t)
   (set! (-> this visible) #t)
   (set! (-> this look)
         (res-lump-value (-> this entity) 'look int :default (the-as uint128 -1) :time -1000000000.0)
         )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16)))
+         )
     (when v1-4
       (+! (-> this root trans x) (-> v1-4 x))
       (+! (-> this root trans y) (-> v1-4 y))
@@ -517,7 +513,6 @@
 ;; WARN: Return type mismatch water-flags vs none.
 (defmethod water-anim-init! ((this water-anim))
   "Initialize a [[water-anim]]."
-  (local-vars (sv-16 res-tag))
   (set! (-> this attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
                                                (-> this entity)
                                                'attack-event
@@ -541,19 +536,19 @@
     (set! (-> this attack-id) a0-7)
     )
   (set! (-> this target) (the-as handle #f))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
-                                        (-> this entity)
-                                        'water-height
-                                        'exact
-                                        -1000000000.0
-                                        (the-as pointer #f)
-                                        (& sv-16)
-                                        *res-static-buf*
-                                        )
-                       )
-               )
-        )
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
+                                         (-> this entity)
+                                         'water-height
+                                         'exact
+                                         -1000000000.0
+                                         (the-as pointer #f)
+                                         (& sv-16)
+                                         *res-static-buf*
+                                         )
+                        )
+                )
+         )
     (when v1-10
       (set! (-> this water-height) (-> v1-10 0))
       (set! (-> this wade-height) (-> v1-10 1))
@@ -600,11 +595,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this water-anim) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (water-anim-method-27 this)
   (reset-root! this)
   (water-anim-init! this)

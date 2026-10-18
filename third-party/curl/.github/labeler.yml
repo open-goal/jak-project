@@ -7,297 +7,563 @@
 # triaging, but is intended to add labels to the easy cases. If the matching
 # language becomes more powerful, more cases should be able to be handled.
 #
-# The biggest low-hanging problem is this:
-# It looks like there's no way of specifying that a label be added if *all* the
-# files match *any* one of a number of globs. This feature request is tracked
-# in https://github.com/actions/labeler/issues/423
+# Labels are added in two ways: the any-glob-to-all-files ones are added if all
+# the files fit into the category, and the any-glob-to-any-file ones are added
+# as long as any file matches. The first ones are for "major" categories (the
+# PR is all about that one topic, like HTTP/3), while the second ones are
+# "addendums" that give useful information about a PR that is really mostly
+# something else (e.g. CI if the PR also touches CI jobs).
+#
+# N.B. any-glob-to-all-files is misnamed; it acts like one-glob-to-all-files.
+# Therefore, to get any-glob-to-all-files semantics with multiple matching
+# patterns, they must be joined with commas to a single string surrounded by
+# braces. For example: '{lib/**,src/**}'.
+#
+# See https://github.com/actions/labeler/ for documentation on this file.
+---
+
+appleOS:
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              .github/workflows/macos.yml,\
+              lib/config-mac.h,\
+              lib/macos*,\
+              lib/vtls/apple.*,\
+              m4/curl-apple-sectrust.m4\
+              }"
 
 authentication:
-- all: ['docs/mk-ca-bundle.1']
-- all: ['docs/libcurl/opts/CURLINFO_HTTPAUTH*']
-- all: ['docs/libcurl/opts/CURLINFO_PROXYAUTH*']
-- all: ['docs/libcurl/opts/CURLOPT_KRB*']
-- all: ['docs/libcurl/opts/CURLOPT_SASL*']
-- all: ['docs/libcurl/opts/CURLOPT_SERVICE_NAME*']
-- all: ['docs/libcurl/opts/CURLOPT_USERNAME*']
-- all: ['docs/libcurl/opts/CURLOPT_USERPWD*']
-- all: ['docs/libcurl/opts/CURLOPT_XOAUTH*']
-- all: ['lib/*gssapi*']
-- all: ['lib/*krb5*']
-- all: ['lib/*ntlm*']
-- all: ['lib/curl_sasl.*']
-- all: ['lib/http_aws*']
-- all: ['lib/http_digest.*']
-- all: ['lib/http_negotiate.*']
-- all: ['lib/vauth/**']
-- all: ['tests/server/fake_ntlm.c']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindGSS.cmake,\
+              CMake/FindLibgsasl.cmake,\
+              docs/internals/CREDENTIALS.md,\
+              docs/libcurl/opts/CURLINFO_HTTPAUTH*,\
+              docs/libcurl/opts/CURLINFO_PROXYAUTH*,\
+              docs/libcurl/opts/CURLOPT_KRB*,\
+              docs/libcurl/opts/CURLOPT_SASL*,\
+              docs/libcurl/opts/CURLOPT_SERVICE_NAME*,\
+              docs/libcurl/opts/CURLOPT_USERNAME*,\
+              docs/libcurl/opts/CURLOPT_USERPWD*,\
+              docs/libcurl/opts/CURLOPT_XOAUTH*,\
+              lib/*gssapi*,\
+              lib/*ntlm*,\
+              lib/creds.*,\
+              lib/curl_ntlm*,\
+              lib/curl_sasl.*,\
+              lib/http_aws*,\
+              lib/http_digest.*,\
+              lib/http_negotiate.*,\
+              lib/http_ntlm.*,\
+              lib/vauth/**\
+              }"
 
 build:
-- all: ['**/CMakeLists.txt']
-- all: ['**/Makefile.am']
-- all: ['**/Makefile.inc']
-- all: ['**/Makefile.mk']
-- all: ['**/*.m4']
-- all: ['**/*.mk']
-- all: ['lib/libcurl*.in']
-- all: ['CMake/**']
-- all: ['configure.ac']
-- all: ['m4/**']
-- all: ['MacOSX-Framework']
-- all: ['packages/**']
-- all: ['plan9/**']
-- all: ['projects/**']
-- all: ['winbuild/**']
-- all: ['libcurl.def']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              **/CMakeLists.txt,\
+              **/Makefile.am,\
+              **/Makefile.inc,\
+              **/*.m4,\
+              *.m4,\
+              docs/INSTALL-CMAKE.md,\
+              lib/curl_config-cmake.h.in,\
+              lib/libcurl*.in,\
+              CMake/**,\
+              CMakeLists.txt,\
+              configure.ac,\
+              m4/**,\
+              Makefile.*,\
+              projects/**,\
+              lib/libcurl.def,\
+              tests/cmake/**\
+              }"
 
 CI:
-- any: ['.azure-pipelines.yml']
-- any: ['.circleci/**']
-- any: ['.cirrus.yml']
-- any: ['.github/**']
-- any: ['appveyor.yml']
-- any: ['tests/azure.pm']
-- any: ['tests/appveyor.pm']
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - '.circleci/**'
+              - '.github/**'
+              - 'appveyor.*'
+              - 'scripts/ci*'
+              - 'tests/azure.pm'
+              - 'tests/appveyor.pm'
+              - 'tests/CI.md'
 
 cmake:
-- all: ['**/CMakeLists.txt']
-- all: ['CMake/**']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              **/CMakeLists.txt,\
+              CMake/**,\
+              docs/INSTALL-CMAKE.md,\
+              lib/curl_config-cmake.h.in,\
+              tests/cmake/**\
+              }"
 
 cmdline tool:
-- any: ['docs/cmdline-opts/**']
-- any: ['src/**']
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - 'docs/cmdline-opts/**'
+              - 'src/**'
 
 connecting & proxies:
-- all: ['docs/CONNECTION-FILTERS.md']
-- all: ['docs/libcurl/opts/CURLINFO_CONNECT*']
-- all: ['docs/libcurl/opts/CURLINFO_PROXY*']
-- all: ['docs/libcurl/opts/CURLOPT_ADDRESS*']
-- all: ['docs/libcurl/opts/CURLOPT_CONNECT*']
-- all: ['docs/libcurl/opts/CURLOPT_HAPROXY*']
-- all: ['docs/libcurl/opts/CURLOPT_OPENSOCKET*']
-- all: ['docs/libcurl/opts/CURLOPT_PRE_PROXY*']
-- all: ['docs/libcurl/opts/CURLOPT_PROXY*']
-- all: ['docs/libcurl/opts/CURLOPT_SOCKOPT*']
-- all: ['docs/libcurl/opts/CURLOPT_SOCKS*']
-- all: ['docs/libcurl/opts/CURLOPT_TCP*']
-- all: ['docs/libcurl/opts/CURLOPT_TIMEOUT*']
-- all: ['lib/cf-*proxy.*']
-- all: ['lib/cf-socket.*']
-- all: ['lib/cfilters.*']
-- all: ['lib/conncache.*']
-- all: ['lib/connect.*']
-- all: ['lib/http_proxy.*']
-- all: ['lib/if2ip.*']
-- all: ['lib/noproxy.*']
-- all: ['lib/socks.*']
-- all: ['tests/server/socksd.c']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/cmdline-opts/happy-eyeballs*,\
+              docs/cmdline-opts/ipv*,\
+              docs/cmdline-opts/*proxy*,\
+              docs/internals/CONNECTION-FILTERS.md,\
+              docs/examples/ipv6.c,\
+              docs/libcurl/opts/CURLINFO_CONNECT*,\
+              docs/libcurl/opts/CURLINFO_PROXY*,\
+              docs/libcurl/opts/CURLOPT_ADDRESS*,\
+              docs/libcurl/opts/CURLOPT_CONNECT*,\
+              docs/libcurl/opts/CURLOPT_HAPROXY*,\
+              docs/libcurl/opts/CURLOPT_OPENSOCKET*,\
+              docs/libcurl/opts/CURLOPT_PRE_PROXY*,\
+              docs/libcurl/opts/CURLOPT_PROXY*,\
+              docs/libcurl/opts/CURLOPT_SOCKOPT*,\
+              docs/libcurl/opts/CURLOPT_SOCKS*,\
+              docs/libcurl/opts/CURLOPT_TCP*,\
+              docs/libcurl/opts/CURLOPT_TIMEOUT*,\
+              lib/cf-https-connect.*,\
+              lib/cf-ip-happy.*,\
+              lib/cf-*proxy.*,\
+              lib/cf-socket.*,\
+              lib/cfilters.*,\
+              lib/conncache.*,\
+              lib/connect.*,\
+              lib/http_proxy.*,\
+              lib/if2ip.*,\
+              lib/proxy.*,\
+              lib/socks.*,\
+              src/tool_cb_soc.*,\
+              tests/http/*proxy*,\
+              tests/http/*socks*,\
+              tests/server/socksd.c\
+              }"
 
 cookies:
-- all: ['docs/HTTP-COOKIES.md']
-- all: ['docs/libcurl/opts/CURLINFO_COOKIE*']
-- all: ['docs/libcurl/opts/CURLOPT_COOKIE*']
-- all: ['lib/cookie.*']
-- all: ['lib/psl.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindLibpsl.cmake,\
+              docs/HTTP-COOKIES.md,\
+              docs/cmdline-opts/cookie*,\
+              docs/cmdline-opts/junk-session-cookies.md,\
+              docs/libcurl/opts/CURLINFO_COOKIE*,\
+              docs/libcurl/opts/CURLOPT_COOKIE*,\
+              docs/examples/cookie_interface.c,\
+              lib/cookie.*,\
+              lib/psl.*\
+              }"
 
 cryptography:
-- all: ['docs/CIPHERS.md']
-- all: ['docs/RUSTLS.md']
-- all: ['docs/libcurl/opts/CURLOPT_EGDSOCKET*']
-- all: ['lib/*sha256*']
-- all: ['lib/curl_des.*']
-- all: ['lib/curl_hmac.*']
-- all: ['lib/curl_md?.*']
-- all: ['lib/md?.*']
-- all: ['lib/rand.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/CIPHERS.md,\
+              docs/RUSTLS.md,\
+              docs/libcurl/opts/CURLOPT_EGDSOCKET*,\
+              lib/*sha256*,\
+              lib/*sha512*,\
+              lib/curl_hmac.*,\
+              lib/curl_md?.*,\
+              lib/curl_ntlm_core.*,\
+              lib/md?.*,\
+              lib/rand.*\
+              }"
 
 DICT:
-- all: ['lib/dict.*']
-- all: ['tests/dictserver.py']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/dict.*,\
+              tests/dictserver.py\
+              }"
 
 documentation:
-- all: ['**/*.md']
-- all: ['**/*.txt', '!**/CMakeLists.txt']
-- all: ['**/*.1']
-- all: ['**/*.3']
-- all: ['CHANGES']
-- all: ['docs/**', '!docs/examples/**']
-- all: ['GIT-INFO']
-- all: ['LICENSES/**']
-- all: ['README']
-- all: ['RELEASE-NOTES']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              .github/workflows/checkdocs.yml,\
+              .github/scripts/pyspelling*,\
+              .github/scripts/requirements-docs.txt,\
+              .github/scripts/requirements-proselint.txt,\
+              .github/scripts/typos*,\
+              .github/scripts/verify-examples.pl,\
+              .github/scripts/verify-synopsis.pl,\
+              **/*.md,\
+              **/*.txt,\
+              **/*.1,\
+              CHANGES.md,\
+              docs/**,\
+              LICENSES/**,\
+              README,\
+              RELEASE-NOTES,\
+              scripts/badwords.*,\
+              scripts/cd*,\
+              scripts/mdlinkcheck,\
+              scripts/nroff2cd,\
+              scripts/release-notes.pl\
+              }"
+          - all-globs-to-all-files:
+              # negative matches
+              - '!**/CMakeLists.txt'
+              - '!**/Makefile.am'
 
 FTP:
-- all: ['docs/libcurl/opts/CURLINFO_FTP*']
-- all: ['docs/libcurl/opts/CURLOPT_FTP*']
-- all: ['docs/libcurl/opts/CURLOPT_WILDCARDMATCH*']
-- all: ['lib/curl_fnmatch.*']
-- all: ['lib/curl_range.*']
-- all: ['lib/ftp*']
-- all: ['tests/ftp*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/cmdline-opts/ftp*,\
+              docs/libcurl/opts/CURLINFO_FTP*,\
+              docs/libcurl/opts/CURLOPT_FTP*,\
+              docs/libcurl/opts/CURLOPT_WILDCARDMATCH*,\
+              docs/examples/ftp*,\
+              lib/curl_fnmatch.*,\
+              lib/curl_range.*,\
+              lib/ftp*,\
+              tests/ftp*,\
+              tests/http/*ftpd*,\
+              tests/http/testenv/*ftpd*,\
+              tests/libtest/*_ftp_*\
+              }"
 
 GOPHER:
-- all: ['lib/gopher*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/gopher*\
+              }"
 
 HTTP:
-- all: ['docs/HSTS.md']
-- all: ['docs/HTTP-COOKIES.md']
-- all: ['docs/libcurl/opts/CURLINFO_COOKIE*']
-- all: ['docs/libcurl/opts/CURLOPT_COOKIE*']
-- all: ['docs/libcurl/opts/CURLINFO_HTTP_**']
-- all: ['docs/libcurl/opts/CURLINFO_REDIRECT*']
-- all: ['docs/libcurl/opts/CURLINFO_REFER*']
-- all: ['docs/libcurl/opts/CURLOPT_FOLLOWLOCATION*']
-- all: ['docs/libcurl/opts/CURLOPT_HSTS*']
-- all: ['docs/libcurl/opts/CURLOPT_HTTP*']
-- all: ['docs/libcurl/opts/CURLOPT_POST.*']
-- all: ['docs/libcurl/opts/CURLOPT_POSTFIELD*']
-- all: ['docs/libcurl/opts/CURLOPT_POSTREDIR*']
-- all: ['docs/libcurl/opts/CURLOPT_REDIR*']
-- all: ['docs/libcurl/opts/CURLOPT_REFER*']
-- all: ['docs/libcurl/opts/CURLOPT_TRAILER*']
-- all: ['docs/libcurl/opts/CURLOPT_TRANSFER_ENCODING*']
-- all: ['lib/cf-https*']
-- all: ['lib/cf-h1*']
-- all: ['lib/cf-h2*']
-- all: ['lib/cookie.*']
-- all: ['lib/http*']
-- all: ['tests/http*']
-- all: ['tests/http-server.pl']
-- all: ['tests/http/*']
-- all: ['tests/nghttp*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/HTTPSRR.md,\
+              docs/HSTS.md,\
+              docs/examples/hsts*,\
+              docs/examples/http-*,\
+              docs/examples/httpput*,\
+              docs/examples/https*,\
+              docs/examples/*post*,\
+              docs/HTTP-COOKIES.md,\
+              docs/libcurl/opts/CURLINFO_COOKIE*,\
+              docs/libcurl/opts/CURLINFO_HTTP*,\
+              docs/libcurl/opts/CURLINFO_REDIRECT*,\
+              docs/libcurl/opts/CURLINFO_REFER*,\
+              docs/libcurl/opts/CURLOPT_COOKIE*,\
+              docs/libcurl/opts/CURLOPT_FOLLOWLOCATION*,\
+              docs/libcurl/opts/CURLOPT_HSTS*,\
+              docs/libcurl/opts/CURLOPT_HTTP*,\
+              docs/libcurl/opts/CURLOPT_POST.*,\
+              docs/libcurl/opts/CURLOPT_POSTFIELD*,\
+              docs/libcurl/opts/CURLOPT_POSTREDIR*,\
+              docs/libcurl/opts/CURLOPT_REDIR*,\
+              docs/libcurl/opts/CURLOPT_REFER*,\
+              docs/libcurl/opts/CURLOPT_TRAILER*,\
+              docs/libcurl/opts/CURLOPT_TRANSFER_ENCODING*,\
+              lib/cf-https*,\
+              lib/cf-h1*,\
+              lib/cf-h2*,\
+              lib/cookie.*,\
+              lib/hsts.*,\
+              lib/http*,\
+              tests/http*,\
+              tests/http-server.pl,\
+              tests/http/*,\
+              tests/nghttp*\
+              }"
 
 HTTP/2:
-- all: ['docs/HTTP2.md']
-- all: ['docs/libcurl/opts/CURLOPT_STREAM*']
-- all: ['lib/http2*']
-- all: ['tests/http2-server.pl']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindNGHTTP2.cmake,\
+              CMake/FindQuiche.cmake,\
+              docs/libcurl/opts/CURLOPT_STREAM*,\
+              docs/examples/http2*,\
+              lib/http2*,\
+              tests/http2-server.pl\
+              }"
 
 HTTP/3:
-- all: ['.github/workflows/ngtcp2*']
-- all: ['.github/workflows/quiche*']
-- all: ['docs/HTTP3.md']
-- all: ['lib/vquic/**']
-- all: ['tests/http3-server.pl']
-- all: ['tests/nghttpx.conf']
-
-Hyper:
-- all: ['docs/HYPER.md']
-- all: ['lib/c-hyper.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              .github/workflows/http3-linux.yml,\
+              CMake/FindNGHTTP3.cmake,\
+              CMake/FindNGTCP2.cmake,\
+              docs/cmdline-opts/proxy-http3.md,\
+              docs/HTTP3.md,\
+              docs/examples/http3*,\
+              lib/cf-h3-proxy.*,\
+              lib/vquic/**,\
+              tests/http3-server.pl,\
+              tests/nghttpx.conf,\
+              tests/http/*httpsrr*\
+              }"
 
 IMAP:
-- all: ['lib/imap*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/imap*,\
+              docs/examples/imap*\
+              }"
 
 LDAP:
-- all: ['lib/*ldap*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/*ldap*\
+              }"
 
 libcurl API:
-- all: ['docs/libcurl/ABI.md']
-- any: ['include/curl/**']
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - 'docs/libcurl/ABI.md'
+              - 'docs/libcurl/curl_*.md'
+              - 'include/curl/**'
+
+logging:
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/cmdline-opts/trace*,\
+              docs/libcurl/curl_global_trace*,\
+              lib/curl_trc*,\
+              tests/http/test_15_tracing.py\
+              }"
 
 MIME:
-- all: ['docs/libcurl/curl_mime_*']
-- all: ['docs/libcurl/opts/CURLOPT_MIME*']
-- all: ['lib/mime*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/libcurl/curl_form*,\
+              docs/libcurl/curl_mime_*,\
+              docs/libcurl/opts/CURLOPT_MIME*,\
+              docs/libcurl/opts/CURLOPT_HTTPPOST*,\
+              lib/formdata*,\
+              lib/mime*,\
+              src/tool_formparse.*\
+              }"
 
 MQTT:
-- all: ['docs/MQTT.md']
-- all: ['lib/mqtt*']
-- all: ['tests/server/mqttd.c']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/internals/MQTT.md,\
+              lib/mqtt*,\
+              tests/server/mqttd.c\
+              }"
 
 name lookup:
-- all: ['docs/libcurl/opts/CURLINFO_NAMELOOKUP*']
-- all: ['docs/libcurl/opts/CURLOPT_DNS*']
-- all: ['docs/libcurl/opts/CURLOPT_DOH*']
-- all: ['docs/libcurl/opts/CURLOPT_RESOLVE*']
-- all: ['lib/asyn*']
-- all: ['lib/curl_gethostname.*']
-- all: ['lib/doh*']
-- all: ['lib/host*']
-- all: ['lib/idn*']
-- all: ['lib/inet_pton.*']
-- all: ['lib/socketpair*']
-- all: ['tests/server/resolve.c']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindLibidn2.cmake,\
+              docs/cmdline-opts/doh*,\
+              docs/cmdline-opts/dns*,\
+              docs/examples/resolve.c,\
+              docs/internals/THRDPOOL-AND-QUEUE.md,\
+              docs/libcurl/opts/CURLINFO_NAMELOOKUP*,\
+              docs/libcurl/opts/CURLOPT_DNS*,\
+              docs/libcurl/opts/CURLOPT_DOH*,\
+              docs/libcurl/opts/CURLOPT_RESOLVE*,\
+              lib/*addrinfo*,\
+              lib/asyn*,\
+              lib/cf-dns.*,\
+              lib/curl_gethostname.*,\
+              lib/dns*,\
+              lib/doh*,\
+              lib/host*,\
+              lib/idn*,\
+              lib/socketpair*,\
+              lib/thrdpool.*,\
+              lib/thrdqueue.*,\
+              tests/http/testenv/dnsd.*,\
+              tests/http/*httpsrr*,\
+              tests/http/*resolve.py,\
+              tests/server/dnsd.c,\
+              tests/server/resolve.c\
+              }"
 
 POP3:
-- all: ['lib/pop3.*']
-
-RTMP:
-- all: ['lib/curl_rtmp.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/examples/pop3*,\
+              lib/pop3.*\
+              }"
 
 RTSP:
-- all: ['docs/libcurl/opts/CURLINFO_RTSP*']
-- all: ['docs/libcurl/opts/CURLOPT_RTSP*']
-- all: ['lib/rtsp.*']
-- all: ['tests/rtspserver.pl']
-- all: ['tests/server/rtspd.c']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/libcurl/opts/CURLINFO_RTSP*,\
+              docs/libcurl/opts/CURLOPT_RTSP*,\
+              lib/rtsp.*,\
+              tests/rtspserver.pl,\
+              tests/server/rtspd.c\
+              }"
 
 SCP/SFTP:
-- all: ['docs/libcurl/opts/CURLOPT_SSH*']
-- all: ['lib/vssh/**']
-- all: ['tests/sshhelp.pm']
-- all: ['tests/sshserver.pl']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindLibssh.cmake,\
+              CMake/FindLibssh2.cmake,\
+              docs/cmdline-opts/knownhosts.md,\
+              docs/libcurl/opts/CURLOPT_SSH*,\
+              docs/examples/sftp*,\
+              lib/vssh/**,\
+              tests/sshhelp.pm,\
+              tests/sshserver.pl,\
+              tests/http/*scp*,\
+              tests/http/*sftp*,\
+              tests/http/testenv/sshd.py\
+              }"
 
 script:
-- all: ['**/*.pl']
-- all: ['**/*.sh']
-- all: ['curl-config.in']
-- all: ['docs/curl-config.1']
-- all: ['docs/mk-ca-bundle.1']
-- all: ['docs/THANKS-filter']
-- all: ['scripts/**']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              **/*.pl,\
+              **/*.sh,\
+              curl-config.in,\
+              docs/curl-config.md,\
+              docs/mk-ca-bundle.md,\
+              docs/wcurl.md,\
+              docs/THANKS-filter,\
+              scripts/**\
+              }"
 
 SMB:
-- all: ['lib/smb.*']
-- all: ['tests/smbserver.py']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/smb.*,\
+              tests/smbserver.py\
+              }"
 
 SMTP:
-- all: ['docs/libcurl/opts/CURLOPT_MAIL*']
-- all: ['lib/smtp.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/cmdline-opts/mail*,\
+              docs/examples/smtp-*,\
+              docs/libcurl/opts/CURLOPT_MAIL*,\
+              lib/smtp.*\
+              }"
 
 tests:
-- any: ['tests/**']
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - 'docs/tests/**'
+              - 'tests/**'
 
 TFTP:
-- all: ['lib/tftp.*']
-- all: ['tests/tftpserver.pl']
-- all: ['tests/server/tftp*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              lib/tftp.*,\
+              tests/tftpserver.pl,\
+              tests/server/tftp*\
+              }"
 
 TLS:
-- all: ['docs/SSL*']
-- all: ['docs/libcurl/opts/CURLINFO_CA*']
-- all: ['docs/libcurl/opts/CURLINFO_CERT*']
-- all: ['docs/libcurl/opts/CURLINFO_SSL*']
-- all: ['docs/libcurl/opts/CURLINFO_TLS*']
-- all: ['docs/libcurl/opts/CURLOPT_CA*']
-- all: ['docs/libcurl/opts/CURLOPT_CERT*']
-- all: ['docs/libcurl/opts/CURLOPT_PINNEDPUBLICKEY*']
-- all: ['docs/libcurl/opts/CURLOPT_SSL*']
-- all: ['docs/libcurl/opts/CURLOPT_TLS*']
-- all: ['docs/libcurl/opts/CURLOPT_USE_SSL*']
-- all: ['lib/vtls/**']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              CMake/FindGnuTLS.cmake,\
+              CMake/FindMbedTLS.cmake,\
+              CMake/FindWolfSSL.cmake,\
+              CMake/FindRustls.cmake,\
+              docs/CIPHERS-TLS12.md,\
+              docs/SSL*,\
+              docs/cmdline-opts/dump-ca-embed.md,\
+              docs/cmdline-opts/*cert*,\
+              docs/cmdline-opts/*ssl*,\
+              docs/cmdline-opts/*tls*,\
+              docs/examples/ssl*,\
+              docs/examples/*ssl.*,\
+              docs/examples/*tls.*,\
+              docs/internals/TLS-SESSIONS.md,\
+              docs/libcurl/curl_global_sslset*,\
+              docs/libcurl/curl_easy_ssls*,\
+              docs/libcurl/opts/CURLINFO_CA*,\
+              docs/libcurl/opts/CURLINFO_CERT*,\
+              docs/libcurl/opts/CURLINFO_EARLYDATA*,\
+              docs/libcurl/opts/CURLINFO_SSL*,\
+              docs/libcurl/opts/CURLINFO_TLS*,\
+              docs/libcurl/opts/CURLOPT_CA*,\
+              docs/libcurl/opts/CURLOPT_CERT*,\
+              docs/libcurl/opts/CURLOPT_PINNEDPUBLICKEY*,\
+              docs/libcurl/opts/CURLOPT_SSL*,\
+              docs/libcurl/opts/CURLOPT_TLS*,\
+              docs/libcurl/opts/CURLOPT_USE_SSL*,\
+              lib/vtls/**,\
+              m4/curl-gnutls.m4,\
+              m4/curl-mbedtls.m4,\
+              m4/curl-openssl.m4,\
+              m4/curl-rustls.m4,\
+              m4/curl-schannel.m4,\
+              m4/curl-wolfssl.m4,\
+              src/tool_ssls.*\
+              }"
 
 URL:
-- all: ['docs/libcurl/curl_url*']
-- all: ['docs/URL-SYNTAX.md']
-- all: ['include/curl/urlapi.h']
-- all: ['lib/urlapi*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/libcurl/curl_url*,\
+              docs/URL-SYNTAX.md,\
+              docs/examples/parseurl*,\
+              include/curl/urlapi.h,\
+              lib/urlapi*\
+              }"
 
 WebSocket:
-- all: ['docs/WEBSOCKET.md*']
-- all: ['docs/libcurl/curl_ws_*']
-- all: ['docs/libcurl/libcurl-ws.3']
-- all: ['docs/libcurl/opts/CURLOPT_WS_*']
-- all: ['include/curl/websockets.h']
-- all: ['lib/ws.*']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              docs/internals/WEBSOCKET.md,\
+              docs/examples/websocket*,\
+              docs/libcurl/curl_ws_*,\
+              docs/libcurl/libcurl-ws*,\
+              docs/libcurl/opts/CURLOPT_WS_*,\
+              include/curl/websockets.h,\
+              lib/ws.*,\
+              tests/http/test_20_websockets.py,\
+              tests/http/testenv/ws*,\
+              tests/libtest/cli_ws*\
+              }"
 
 Windows:
-- all: ['CMake/Platforms/WindowsCache.cmake']
-- all: ['lib/*win32*']
-- all: ['lib/curl_multibyte.*']
-- all: ['lib/rename.*']
-- all: ['lib/vtls/schannel*']
-- all: ['m4/curl-schannel.m4']
-- all: ['projects/**']
-- all: ['src/tool_doswin.c']
-- all: ['winbuild/**']
-- all: ['libcurl.def']
+  - all:
+      - changed-files:
+          - any-glob-to-all-files: "{\
+              .github/workflows/windows.yml,\
+              appveyor.*,\
+              CMake/win32-cache.cmake,\
+              lib/*win32*,\
+              lib/curlx/fopen.*,\
+              lib/curlx/multibyte.*,\
+              lib/curlx/winapi.*,\
+              lib/libcurl.def,\
+              lib/vtls/schannel*,\
+              m4/curl-schannel.m4,\
+              projects/Windows/**,\
+              src/tool_doswin.c\
+              }"

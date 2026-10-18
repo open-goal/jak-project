@@ -317,7 +317,6 @@
   )
 
 (defbehavior target-mech-punch-pick target ((arg0 symbol))
-  (local-vars (sv-144 control-info) (sv-160 float))
   (combo-tracker-method-12
     (-> self control unknown-combo-tracker00)
     *null-vector*
@@ -339,25 +338,22 @@
          )
     (when s2-0
       (let ((s3-0 (get-trans s2-0 3)))
-        (set! sv-144 (-> self control))
-        (let ((s0-0 s3-0)
-              (s1-0 deg-diff)
-              )
-          (set! sv-160 (y-angle sv-144))
-          (let* ((a1-4 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s0-0 (-> sv-144 trans))))
-                 (f0-0 (s1-0 sv-160 a1-4))
+        (let* ((sv-144 (-> self control))
+               (s0-0 s3-0)
+               (f0-0
+                 (deg-diff (y-angle sv-144) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s0-0 (-> sv-144 trans))))
                  )
-            (cond
-              ((>= f0-0 5461.3335)
-               (set! (-> self mech walk-anim-leg) 0)
-               0
                )
-              ((>= -5461.3335 f0-0)
-               (set! (-> self mech walk-anim-leg) 1)
-               )
-              (else
-                (set! (-> self mech walk-anim-leg) 2)
-                )
+          (cond
+            ((>= f0-0 5461.3335)
+             (set! (-> self mech walk-anim-leg) 0)
+             0
+             )
+            ((>= -5461.3335 f0-0)
+             (set! (-> self mech walk-anim-leg) 1)
+             )
+            (else
+              (set! (-> self mech walk-anim-leg) 2)
               )
             )
           )
@@ -1636,7 +1632,8 @@
                     )
                   )
                 (format 0 "frame: ~f~%" (ja-frame-num 0))
-                (when (and (fill-and-probe-using-spheres *collide-cache* s5-6) (< 12.5 (ja-frame-num 0)))
+                ;; og:preserve-this high fps fix
+                (when (and (fill-and-probe-using-spheres *collide-cache* s5-6) (< 12.5 (* DISPLAY_FPS_RATIO (ja-frame-num 0))))
                   (sound-play "mech-setdown")
                   (let ((v1-73 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
                     (set! (-> v1-73 command) (sound-command set-param))

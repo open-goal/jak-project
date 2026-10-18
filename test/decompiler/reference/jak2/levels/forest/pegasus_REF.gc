@@ -197,12 +197,10 @@
 ;; definition for method 12 of type pegasus
 (defmethod run-logic? ((this pegasus))
   "Calls [[process-tree::12]] if we are considered in-range of the [[pegasus]], otherwise returns [[#t]]"
-  (let ((min-distance 491520.0))
-    (if (< (* min-distance min-distance) (vector-vector-distance-squared (-> this root trans) (camera-pos)))
-        ((method-of-type enemy run-logic?) this)
-        #t
-        )
-    )
+  (if (< (square 491520.0) (vector-vector-distance-squared (-> this root trans) (camera-pos)))
+      ((method-of-type enemy run-logic?) this)
+      #t
+      )
   )
 
 ;; definition for method 137 of type pegasus
@@ -221,13 +219,9 @@
           (-> target gun fire-dir-out)
           (vector-length inaccuracy-dir)
           )
-        (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> this root trans)))
-              (threshold 20480.0)
-              )
-          (if (< inaccuracy-mag (* threshold threshold))
-              (set-time! (-> this targetted-timer))
-              )
-          )
+        (if (< (vector-vector-distance-squared inaccuracy-vec (-> this root trans)) (square 20480.0))
+            (set-time! (-> this targetted-timer))
+            )
         )
       )
     )
@@ -1346,7 +1340,6 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this pegasus))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
-  (local-vars (tag res-tag))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pegasus" (the-as (pointer uint32) #f)))
@@ -1373,11 +1366,11 @@
       (set! (-> this path-info path-info-idx path-data) curve)
       (logior! (-> curve flags) (path-control-flag display draw-line draw-point))
       )
-    (set! tag (new 'static 'res-tag))
-    (let ((data
-            (res-lump-data (-> this entity) 'path-connection pointer :tag-ptr (& tag) :time (the float path-info-idx))
-            )
-          )
+    (let* ((tag (new 'static 'res-tag))
+           (data
+             (res-lump-data (-> this entity) 'path-connection pointer :tag-ptr (& tag) :time (the float path-info-idx))
+             )
+           )
       (cond
         (data
           (set! (-> this path-info path-info-idx num-data) (the-as int (-> tag elt-count)))
@@ -1463,23 +1456,23 @@
   TASK_MANAGER_CODE_HOOK
   (lambda :behavior task-manager
     ()
-    (local-vars (data int))
     (set-time! (-> self start-time))
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-pegasus :init hud-init-by-other :to self)))
     (while (> (-> self data-int32 0) 0)
-      (set! data (-> self data-int32 1))
-      (when (-> self actor-group 0)
-        (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
-          (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
-            (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
-                (set! data (+ data -1))
-                )
+      (let ((data (-> self data-int32 1)))
+        (when (-> self actor-group 0)
+          (dotimes (actor-group (the-as int (-> self actor-group 0 0)))
+            (let ((actor (-> (&+ (-> self actor-group 0) (* actor-group 8)) 3)))
+              (if (and actor (logtest? (-> actor extra perm status) (entity-perm-status subtask-complete)))
+                  (+! data -1)
+                  )
+              )
             )
           )
-        )
-      (let ((_data data))
-        (set! (-> self data-int32 0) _data)
-        (set! (-> *game-info* counter) (the float _data))
+        (let ((_data data))
+          (set! (-> self data-int32 0) _data)
+          (set! (-> *game-info* counter) (the float _data))
+          )
         )
       (suspend)
       )

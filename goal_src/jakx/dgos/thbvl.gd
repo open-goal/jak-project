@@ -1,0 +1,10 @@
+("THBVL.DGO"
+ ("cougar-chassis-ag.o"
+  "cougar-door-c-ag.go"
+  "cougar-f-bumper-a-ag.go"
+  "cougar-f-fender-c-ag.go"
+  "cougar-hood-c-ag.go"
+  "cougar-r-fender-b-ag.go"
+  "wheel-g-ag.go"
+  "thbvl.o"
+ ))

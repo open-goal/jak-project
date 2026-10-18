@@ -62,7 +62,8 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
             m_dst,
             pool.alloc_single_element_form<GenericElement>(
                 nullptr, GenericOperator::make_fixed(FixedOperatorKind::ADDRESS_OF),
-                pool.alloc_single_element_form<StackSpillValueElement>(nullptr, -1, offset, false)),
+                pool.alloc_single_element_form<StackSpillValueElement>(
+                    nullptr, -1, offset, make_stack_slot_access(offset), false)),
             true, env.stack_slot_entries.at(offset).typespec);
       }
     } else {
@@ -843,10 +844,16 @@ FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const
   if (kv != env.stack_slot_entries.end()) {
     type = kv->second.typespec;
   }
-  return pool.alloc_element<SetVarElement>(m_dst,
-                                           pool.alloc_single_element_form<StackSpillValueElement>(
-                                               nullptr, m_size, m_offset, m_is_signed),
-                                           true, type);
+  std::optional<TypeSpec> read_type;
+  if (env.has_type_analysis()) {
+    read_type = env.get_types_before_op(m_my_idx).get_slot(m_offset).typespec();
+  }
+  return pool.alloc_element<SetVarElement>(
+      m_dst,
+      pool.alloc_single_element_form<StackSpillValueElement>(
+          nullptr, m_size, m_offset, env.get_stack_slot_access_for_op(m_my_idx, m_offset),
+          m_is_signed, read_type),
+      true, type);
 }
 
 FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -866,6 +873,7 @@ FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env& env) cons
     }
   }
 
-  return pool.alloc_element<StackSpillStoreElement>(m_value, m_size, m_offset, cast_type);
+  return pool.alloc_element<StackSpillStoreElement>(
+      m_value, m_size, m_offset, env.get_stack_slot_access_for_op(m_my_idx, m_offset), cast_type);
 }
 }  // namespace decompiler

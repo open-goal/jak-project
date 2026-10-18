@@ -56,6 +56,13 @@ class GLDisplay : public GfxDisplay {
     int width = 0;
     int height = 0;
   } m_pending_size;
+
+  // splash screen
+  GLuint m_splash_texture = 0;
+  GLuint m_splash_program = 0;
+  GLuint m_splash_vao = 0;
+  void init_splash();
+  void draw_splash(int fb_w, int fb_h);
 };
 
 extern const GfxRendererModule gRendererOpenGL;

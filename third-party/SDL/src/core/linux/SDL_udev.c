@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,7 +36,22 @@
 #include "SDL_evdev_capabilities.h"
 #include "../unix/SDL_poll.h"
 
-static const char *SDL_UDEV_LIBS[] = { "libudev.so.1", "libudev.so.0" };
+#define SDL_UDEV_FALLBACK_LIBS "libudev.so.1", "libudev.so.0"
+
+static const char *SDL_UDEV_LIBS[] = { SDL_UDEV_FALLBACK_LIBS };
+
+#ifdef SDL_UDEV_DYNAMIC
+#define SDL_UDEV_DLNOTE_LIBS SDL_UDEV_DYNAMIC, SDL_UDEV_FALLBACK_LIBS
+#else
+#define SDL_UDEV_DLNOTE_LIBS SDL_UDEV_FALLBACK_LIBS
+#endif
+
+SDL_ELF_NOTE_DLOPEN(
+    "events-udev",
+    "Support for events through libudev",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_RECOMMENDED,
+    SDL_UDEV_DLNOTE_LIBS
+)
 
 static SDL_UDEV_PrivateData *_this = NULL;
 
@@ -68,6 +83,7 @@ static bool SDL_UDEV_load_syms(void)
 
     SDL_UDEV_SYM(udev_device_get_action);
     SDL_UDEV_SYM(udev_device_get_devnode);
+    SDL_UDEV_SYM(udev_device_get_driver);
     SDL_UDEV_SYM(udev_device_get_syspath);
     SDL_UDEV_SYM(udev_device_get_subsystem);
     SDL_UDEV_SYM(udev_device_get_parent_with_subsystem_devtype);
@@ -219,51 +235,58 @@ bool SDL_UDEV_Scan(void)
     return true;
 }
 
-bool SDL_UDEV_GetProductInfo(const char *device_path, Uint16 *vendor, Uint16 *product, Uint16 *version, int *class)
+bool SDL_UDEV_GetProductInfo(const char *device_path, struct input_id *inpid, int *class, char **driver)
 {
     struct stat statbuf;
     char type;
     struct udev_device *dev;
-    const char* val;
+    const char *val;
     int class_temp;
 
     if (!_this) {
         return false;
     }
 
-    if (stat(device_path, &statbuf) == -1) {
+    if (stat(device_path, &statbuf) < 0) {
         return false;
     }
 
     if (S_ISBLK(statbuf.st_mode)) {
         type = 'b';
-    }
-    else if (S_ISCHR(statbuf.st_mode)) {
+    } else if (S_ISCHR(statbuf.st_mode)) {
         type = 'c';
-    }
-    else {
+    } else {
         return false;
     }
 
     dev = _this->syms.udev_device_new_from_devnum(_this->udev, type, statbuf.st_rdev);
-
     if (!dev) {
         return false;
     }
 
     val = _this->syms.udev_device_get_property_value(dev, "ID_VENDOR_ID");
     if (val) {
-        *vendor = (Uint16)SDL_strtol(val, NULL, 16);
+        inpid->vendor = (Uint16)SDL_strtol(val, NULL, 16);
     }
 
     val = _this->syms.udev_device_get_property_value(dev, "ID_MODEL_ID");
     if (val) {
-        *product = (Uint16)SDL_strtol(val, NULL, 16);
+        inpid->product = (Uint16)SDL_strtol(val, NULL, 16);
     }
 
     val = _this->syms.udev_device_get_property_value(dev, "ID_REVISION");
     if (val) {
-        *version = (Uint16)SDL_strtol(val, NULL, 16);
+        inpid->version = (Uint16)SDL_strtol(val, NULL, 16);
+    }
+
+    if (driver) {
+        val = _this->syms.udev_device_get_driver(dev);
+        if (!val) {
+            val = _this->syms.udev_device_get_property_value(dev, "ID_USB_DRIVER");
+        }
+        if (val) {
+            *driver = SDL_strdup(val);
+        }
     }
 
     class_temp = device_class(dev);
@@ -274,6 +297,45 @@ bool SDL_UDEV_GetProductInfo(const char *device_path, Uint16 *vendor, Uint16 *pr
     _this->syms.udev_device_unref(dev);
 
     return true;
+}
+
+char *SDL_UDEV_GetProductSerial(const char *device_path)
+{
+    struct stat statbuf;
+    char type;
+    struct udev_device *dev;
+    const char *val;
+    char *result = NULL;
+
+    if (!_this) {
+        return NULL;
+    }
+
+    if (stat(device_path, &statbuf) < 0) {
+        return NULL;
+    }
+
+    if (S_ISBLK(statbuf.st_mode)) {
+        type = 'b';
+    } else if (S_ISCHR(statbuf.st_mode)) {
+        type = 'c';
+    } else {
+        return NULL;
+    }
+
+    dev = _this->syms.udev_device_new_from_devnum(_this->udev, type, statbuf.st_rdev);
+    if (!dev) {
+        return NULL;
+    }
+
+    val = _this->syms.udev_device_get_property_value(dev, "ID_SERIAL_SHORT");
+    if (val && *val) {
+        result = SDL_strdup(val);
+    }
+
+    _this->syms.udev_device_unref(dev);
+
+    return result;
 }
 
 void SDL_UDEV_UnloadLibrary(void)

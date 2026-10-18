@@ -14,7 +14,8 @@
 
 // used for - decompiler_out/<jak1> and iso_data/<jak1>
 const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
-                                                                      {"jak2", "jak2"}};
+                                                                      {"jak2", "jak2"},
+                                                                      {"jak3", "jak3"}};
 
 IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
   lg::info(
@@ -32,6 +33,7 @@ IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
 }
 
 std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
+    const std::string& game_name,
     const fs::path& extracted_iso_path,
     const uint64_t expected_hash,
     const int expected_num_files) {
@@ -77,6 +79,13 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   lg::info("\tRegion - {}", get_territory_name(version_info.region));
   lg::info("\tSerial - {}", dbEntry->first);
   lg::info("\tUses Decompiler Config Version - {}", version_info.decomp_config_version);
+
+  // Make sure the game provided matches the expected game (game arg must be provided for jak 2/3)
+  if (version_info.game_name != game_name) {
+    lg::error("Serial '{}' is for {}, expecting an ISO for {}", serial.value(),
+              version_info.game_name, game_name);
+    return {std::nullopt, ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB};
+  }
 
   // - Number of Files
   if (version_info.num_files != expected_num_files) {
@@ -125,11 +134,13 @@ ExtractorErrorCode decompile(const fs::path& in_folder,
 const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
     {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
-ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& data_subfolder) {
+ExtractorErrorCode compile(const fs::path& iso_data_path,
+                           const std::string& data_subfolder,
+                           emitter::InstructionSet instr_str) {
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Compiler compiler(game_name_to_version(version_info.game_name));
+  Compiler compiler(game_name_to_version(version_info.game_name), instr_str);
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
   file_util::set_iso_data_dir(absolute(iso_data_path));
@@ -181,6 +192,11 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
   std::string decomp_config_override = "{}";
+#if defined(__aarch64__) || defined(_M_ARM64)
+  std::string instr_set_name = "arm64";
+#else
+  std::string instr_set_name = "x86";
+#endif
 
   lg::initialize();
 
@@ -204,9 +220,21 @@ int main(int argc, char** argv) {
   app.add_flag("-c,--compile", flag_compile, "Compile the game");
   app.add_flag("-p,--play", flag_play, "Play the game");
   app.add_flag("-f,--folder", flag_folder, "Take ISO input from a folder");
+  app.add_option("--instruction-set", instr_set_name,
+                 "Select the x86 or ARM64 code generation backend.");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
+
+  emitter::InstructionSet instr_set;
+  if (instr_set_name == "x86") {
+    instr_set = emitter::InstructionSet::X86;
+  } else if (instr_set_name == "arm64") {
+    instr_set = emitter::InstructionSet::ARM64;
+  } else {
+    lg::error("Instruction set '{}' must be 'x86' or 'arm64'", instr_set_name);
+    return 1;
+  }
 
   lg::info("Working Directory - {}", fs::current_path().string());
 
@@ -290,7 +318,7 @@ int main(int argc, char** argv) {
       const auto [hash, file_count] = calculate_extraction_hash(iso_file);
       // Validate the result to determine the release
       const auto [version_info, validate_code] =
-          validate(temp_iso_extract_location, hash, file_count);
+          validate(game_name, temp_iso_extract_location, hash, file_count);
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
@@ -334,7 +362,7 @@ int main(int argc, char** argv) {
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_data_path);
       // Validate
-      auto [version_info, validate_code] = validate(iso_data_path, hash, file_count);
+      auto [version_info, validate_code] = validate(game_name, iso_data_path, hash, file_count);
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
@@ -382,7 +410,7 @@ int main(int argc, char** argv) {
   }
 
   if (flag_compile) {
-    const auto status_code = compile(iso_data_path, data_subfolder);
+    const auto status_code = compile(iso_data_path, data_subfolder, instr_set);
     if (status_code != ExtractorErrorCode::SUCCESS) {
       return static_cast<int>(status_code);
     }

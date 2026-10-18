@@ -1,0 +1,10 @@
+("KCROSCTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-2219.go"
+  "tpage-2220.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "kcrosctf.o"
+ ))

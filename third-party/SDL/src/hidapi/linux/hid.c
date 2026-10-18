@@ -147,7 +147,7 @@ static void register_error_str(wchar_t **error_str, const char *msg)
 #endif
 }
 
-/* Semilar to register_error_str, but allows passing a format string with va_list args into this function. */
+/* Similar to register_error_str, but allows passing a format string with va_list args into this function. */
 static void register_error_str_vformat(wchar_t **error_str, const char *format, va_list args)
 {
 	char msg[256];
@@ -906,7 +906,7 @@ static struct hid_device_info * create_device_info_for_device(struct udev_device
 
 		cur_dev = root;
 		while (cur_dev) {
-			if (HIDAPI_IGNORE_DEVICE(cur_dev->bus_type, cur_dev->vendor_id, cur_dev->product_id, cur_dev->usage_page, cur_dev->usage)) {
+			if (HIDAPI_IGNORE_DEVICE(cur_dev->bus_type, cur_dev->vendor_id, cur_dev->product_id, cur_dev->usage_page, cur_dev->usage, false)) {
 				struct hid_device_info *tmp = cur_dev;
 
 				cur_dev = tmp->next;

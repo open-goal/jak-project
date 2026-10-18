@@ -1,0 +1,12 @@
+("COLISEUS.DGO"
+ ("tpage-3874.o"
+  "tpage-1672.go"
+  "tpage-1850.go"
+  "coli-statue-female-s-break-ag.go"
+  "coli-statue-female-c-break-ag.go"
+  "coli-statue-chain-ag.go"
+  "coli-statue-female-ag.go"
+  "coli-atlas-globe-ag.go"
+  "coli-atlas-statue-ag.go"
+  "coliseus.o"
+ ))

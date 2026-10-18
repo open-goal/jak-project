@@ -253,7 +253,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
   )
 
 (defmethod update-vis! ((this level) (vis-info level-vis-info) (unused uint) (in-bsp-vis-string (pointer uint8)))
-  (local-vars (t0-3 uint128) (extra-vis-length int) (extra-vis-dest (pointer int8)))
+  (local-vars (t0-3 uint128))
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))
          (curr-vis-string-offset (-> vis-info current-vis-string))
          (desired-vis-string-offset (-> vis-info vis-string cam-leaf-idx))
@@ -322,6 +322,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
                                                    )
                                        )
                                )
+              ;; og:preserve-this
               (spad-start (&-> (the-as (pointer int8) *fake-scratchpad-data*) 0))
               (spad-end (the-as (pointer int8) (&+ *fake-scratchpad-data* 2048)))
               (list-len (-> this bsp visible-list-length))
@@ -329,6 +330,7 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
           (when (zero? (the-as vis-info-flag lower-flag-bits))
             (let ((qwc (/ (+ list-len 15) 16)))
               (dotimes (a0-19 qwc)
+                ;; og:preserve-this
                 (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-19 16)))) (the int128 0))
                 )
               )
@@ -340,12 +342,14 @@ It's not super clear to me why they ditched this system. Maybe the visibility da
                 ((= comp-mode 1)
                  (let ((qwc2 (/ (+ list-len 15) 16)))
                    (dotimes (a0-23 qwc2)
+                     ;; og:preserve-this
                      (set! (-> (the-as (pointer int128) (&+ spad-start (* a0-23 16)))) (the int128 0))
                      )
                    )
-                 (set! extra-vis-length (-> this bsp extra-vis-list-length))
-                 (set! extra-vis-dest (&+ spad-start (- list-len extra-vis-length)))
-                 (let ((extra-vis-in (unpack-vis (-> this bsp drawable-trees) spad-start (the-as (pointer int8) vis-buf))))
+                 (let* ((extra-vis-length (-> this bsp extra-vis-list-length))
+                        (extra-vis-dest (&+ spad-start (- list-len extra-vis-length)))
+                        (extra-vis-in (unpack-vis (-> this bsp drawable-trees) spad-start (the-as (pointer int8) vis-buf)))
+                        )
                    (dotimes (extra-vis-idx extra-vis-length)
                      (let ((vis-byte (-> extra-vis-in 0)))
                        (set! extra-vis-in (&-> extra-vis-in 1))

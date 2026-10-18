@@ -16,6 +16,7 @@
 #include "goalc/compiler/symbol_info.h"
 #include "goalc/data_compiler/game_text_common.h"
 #include "goalc/debugger/Debugger.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
@@ -46,6 +47,7 @@ struct GlobalConstantInfo {
 class Compiler {
  public:
   Compiler(GameVersion version,
+           emitter::InstructionSet instr_set,
            const std::optional<REPL::Config> repl_config = {},
            const std::string& user_profile = "#f",
            std::unique_ptr<REPL::Wrapper> repl = nullptr);
@@ -85,6 +87,7 @@ class Compiler {
     m_ts.add_type_to_allowed_redefinition_list(type_name);
   }
   Debugger& get_debugger() { return m_debugger; }
+  emitter::InstructionSet instruction_set() const { return m_instr_set; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
@@ -118,6 +121,7 @@ class Compiler {
 
  private:
   GameVersion m_version;
+  emitter::InstructionSet m_instr_set;
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
   std::unique_ptr<None> m_none = nullptr;
@@ -500,6 +504,7 @@ class Compiler {
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);

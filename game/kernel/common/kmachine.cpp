@@ -19,6 +19,7 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
+#include "game/runtime.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -79,32 +80,55 @@ void InitCD() {
  * Initialize the GS and display the splash screen.
  */
 void InitVideo() {
-  // undefined auStack_b0 [96];
-  // sceGsResetGraph(0, 1, 3, 0);
-  // sceGsSetDefLoadImage(auStack_b0, 0x2c00, 8, 0, 0, 0, 0x200, 0xe0);
-  // FlushCache(0);
-  // sceGsExecLoadImage(auStack_b0, 0x1000000);
-  // sceGsSetDefLoadImage(auStack_b0, 0x2c00, 8, 0, 0, 0xe0, 0x200, 0xe0);
-  // FlushCache(0);
-  // sceGsExecLoadImage(auStack_b0, 0x1070000);
-
-  // DisplayEnv display_W;
-  // memset(&display_W, 0, 0x28);
-  // display_W.gs_pmode2 = display_W.gs_pmode2 & 0xfffffffffffffffd | 1;
-  // display_W.gs_pmode = display_W.gs_pmode & 0xfffffffffffffffd | 0x60;
-  // display_W.gs_display_fb = display_W.gs_display_fb & 0xffc00000fff00000 | 0x1160;
-  // display_W.gs_display = display_W.gs_display & 0xff800000e0000000 | 0x1bf9ff0204a28c;
-  // display_W.gs_bgcolor._0_1_ = 0;
-  // display_W.gs_bgcolor._1_1_ = 0;
-  // display_W.gs_bgcolor._2_1_ = 0;
-
-  // sceGsSyncV(0);
-  // sceGsPutDispEnv(&display_W);
-  // for (int i = 0; i < 4; i++) {
-  //   sceGsSyncV(0);
-  // }
-  // display_W.gs_pmode = display_W.gs_pmode | 2;
-  // sceGsPutDispEnv(&display_W);
+  if (!SplashScreen) {
+    lg::info("InitVideo: skipping splash!\n");
+    return;
+  }
+  std::map<int, std::string> lang_to_splash_map{
+      {SCE_JAPANESE_LANGUAGE, "JAP"},   {SCE_ENGLISH_LANGUAGE, "USA"},
+      {SCE_FRENCH_LANGUAGE, "FRE"},     {SCE_SPANISH_LANGUAGE, "SPA"},
+      {SCE_GERMAN_LANGUAGE, "GER"},     {SCE_ITALIAN_LANGUAGE, "ITA"},
+      {SCE_PORTUGUESE_LANGUAGE, "POR"}, {SCE_KOREAN_LANGUAGE, "KOR"},
+  };
+  auto lang = ee::sceScfGetLanguage();
+  if (!lang_to_splash_map.contains(lang)) {
+    lg::warn("InitVideo: no splash for lang {}, falling back to english...\n", lang);
+    lang = SCE_ENGLISH_LANGUAGE;
+  }
+  auto filename = "SCREEN1." + lang_to_splash_map.at(lang);
+  auto path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
+              "iso" / filename;
+  if (lang != SCE_ENGLISH_LANGUAGE && !fs::exists(path)) {
+    lg::warn("InitVideo: file {} not found, falling back to english...\n", filename);
+    path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] / "iso" /
+           "SCREEN1.USA";
+  }
+  if (!fs::exists(path)) {
+    lg::warn("InitVideo: splash screen not found!\n");
+    return;
+  }
+  auto data = file_util::read_binary_file(path);
+  // width is always 512, height is sometimes different (e.g. demo screens), so we infer from file
+  // size
+  constexpr int kWidth = 512;
+  if (data.size() % (kWidth * 4) != 0) {
+    lg::error("InitVideo: splash size {} not divisible by stride {}", data.size(), kWidth * 4);
+    return;
+  }
+  int kHeight = data.size() / (kWidth * 4);
+  if ((int)data.size() != kWidth * kHeight * 4) {
+    lg::error("InitVideo: unexpected size {}, expected {} for splash screen", data.size(),
+              kWidth * kHeight * 4);
+    return;
+  }
+  Gfx::g_splash.data = std::move(data);
+  Gfx::g_splash.width = kWidth;
+  Gfx::g_splash.height = kHeight;
+  Gfx::g_splash.ready.store(true);
+  SplashTimer.start();
+  while (SplashTimer.getSeconds() < SPLASH_SCREEN_TIME) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
 }
 
 /*!
@@ -510,6 +534,24 @@ void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
 void pc_texture_upload_now(u32 page, u32 mode) {
   if (Gfx::GetCurrentRenderer()) {
     Gfx::GetCurrentRenderer()->texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+  }
+}
+
+void pc_force_reload_all() {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_all();
+  }
+}
+
+void pc_force_reload_level(u32 name) {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_level(std::string(Ptr<String>(name).c()->data()));
+  }
+}
+
+void pc_force_reload_common() {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_common();
   }
 }
 
@@ -1121,6 +1163,9 @@ void init_common_pc_port_functions(
   // Called from the game thread at initialization. The game thread is the only one to touch the
   // mips2c function table (through the linker and ugh this function), so no locking is needed.
   make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_func_symbol_func("__pc-force-reload-all-levels", (void*)pc_force_reload_all);
+  make_func_symbol_func("__pc-force-reload-level", (void*)pc_force_reload_level);
+  make_func_symbol_func("__pc-force-reload-common-level", (void*)pc_force_reload_common);
 
   // -- DISPLAY RELATED --
   // Returns the name of the display with the given id or #f if not found / empty

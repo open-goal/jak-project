@@ -1,0 +1,10 @@
+("SIGVL2.DGO"
+ ("cougar-chassis-ag.o"
+  "cougar-door-e-ag.go"
+  "cougar-f-bumper-e-ag.go"
+  "cougar-f-fender-d-ag.go"
+  "cougar-hood-d-ag.go"
+  "cougar-r-fender-d-ag.go"
+  "wheel-u-ag.go"
+  "sigvl2.o"
+ ))

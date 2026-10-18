@@ -8,29 +8,29 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build-linux:
-    name: Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
-    runs-on: ubuntu-latest
+  build-linux-cmake:
+    name: CMake Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
       matrix:
-        platform: 
+        platform:
           - { name: x86, flags: "-m32" }
           - { name: x64, flags: "-m64" }
         compiler:
-          - { name: GNU,  CC: gcc   }
-          - { name: LLVM, CC: clang }
-        flavor: 
+          - { name: GNU, CC: gcc, CXX: g++ }
+          - { name: LLVM, CC: clang, CXX: clang++ }
+        flavor:
           - Debug
           - Release
-        mode: 
-          - { name: default, args: ""                }
+        mode:
+          - { name: default, args: "" }
           - { name: NO_LIBC, args: -DZYAN_NO_LIBC=ON }
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v4
 
       - if: matrix.platform.name == 'x86'
         name: Bootstrap
@@ -47,40 +47,133 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_C_FLAGS=${{ matrix.platform.flags }} -DCMAKE_CXX_FLAGS=${{ matrix.platform.flags }} -DZYAN_DEV_MODE=ON ${{ matrix.mode.args }} ..
-          
+
       - name: Build
         run: |
           cmake --build build --config ${{ matrix.flavor }}
 
-  build-windows:
-    name: Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+  build-linux-meson:
+    name: Meson Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: x86, flags: "-m32" }
+          - { name: x64, flags: "-m64" }
+        compiler:
+          - { name: GNU, CC: gcc, CXX: g++ }
+          - { name: LLVM, CC: clang, CXX: clang++ }
+        flavor:
+          - debug
+          - release
+        mode:
+          - { name: default, args: -Dtests=enabled  }
+          - { name: NO_LIBC, args: -Dnolibc=true }
+
+    steps:
+      - name: Setup meson
+        run: |
+          pipx install meson
+          sudo apt-get install -y ninja-build
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - if: matrix.platform.name == 'x86'
+        name: Bootstrap
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
+          sudo apt-get install -y g++-multilib g++
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.compiler.CC }}
+          CXX: ${{ matrix.compiler.CXX }}
+        run: |
+          meson setup build-${{ matrix.flavor }} --buildtype=${{ matrix.flavor }} ${{ matrix.mode.args }} -Dc_extra_args="${{ matrix.platform.flags }}" -Dcpp_extra_args="${{ matrix.platform.flags }}"
+
+      - name: Build
+        run: |
+          meson compile -C build-${{ matrix.flavor }}
+
+      - name: Run tests
+        run: |
+          meson test -C build-${{ matrix.flavor }}
+
+  build-windows-cmake:
+    name: CMake Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
     runs-on: windows-latest
 
     strategy:
       fail-fast: false
       matrix:
-        platform: 
+        platform:
           - { name: x86, flags: "Win32" }
-          - { name: x64, flags: "x64"   }
+          - { name: x64, flags: "x64" }
         compiler:
           - { name: MSVC }
-        flavor: 
+        flavor:
           - Debug
           - Release
-        mode: 
-          - { name: default, args: ""                }
+        mode:
+          - { name: default, args: "" }
           - { name: NO_LIBC, args: -DZYAN_NO_LIBC=ON }
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v4
 
       - name: Configure
         run: |
           mkdir build
           cd build
           cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform.flags }} -DZYAN_DEV_MODE=ON ${{ matrix.mode.args }} ..
-          
+
       - name: Build
         run: |
           cmake --build build --config ${{ matrix.flavor }}
+
+  build-windows-meson:
+    name: Meson Build ${{ matrix.platform.name }} ${{ matrix.compiler.name }} ${{ matrix.flavor }} (${{ matrix.mode.name }})
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: x86, flags: "amd64_x86" }
+          - { name: x64, flags: "amd64" }
+        compiler:
+          - { name: MSVC }
+        flavor:
+          - debug
+          - release
+        mode:
+          - { name: default, args: -Dtests=enabled }
+          - { name: NO_LIBC, args: -Dnolibc=true }
+
+    steps:
+      - name: Setup meson
+        run: |
+          pipx install meson
+          choco install ninja
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          $VCPATH = vswhere -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath -latest
+          & $VCPATH\VC\Auxiliary\Build\vcvarsall.bat ${{ matrix.platform.flags }}
+          meson setup build-${{ matrix.flavor }} --buildtype=${{ matrix.flavor }} ${{ matrix.mode.args }}
+
+      - name: Build
+        run: |
+          meson compile -C build-${{ matrix.flavor }}
+
+      - name: Run tests
+        run: |
+          meson test -C build-${{ matrix.flavor }}

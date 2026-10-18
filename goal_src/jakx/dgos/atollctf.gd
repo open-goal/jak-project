@@ -1,0 +1,10 @@
+("ATOLLCTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-2760.go"
+  "tpage-2761.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "atollctf.o"
+ ))

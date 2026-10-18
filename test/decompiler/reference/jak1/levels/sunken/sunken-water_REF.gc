@@ -135,7 +135,7 @@
                 )
               (set! (-> self draw color-mult w) 0.5)
               (if (= f30-0 1.0)
-                  (logior! (-> self flags) (water-flags wt19))
+                  (logior! (-> self flag) (water-flag deadly))
                   )
               )
             )
@@ -147,7 +147,7 @@
           (update! (-> self sound))
           )
          (else
-           (logclear! (-> self flags) (water-flags wt19))
+           (logclear! (-> self flag) (water-flag deadly))
            (when (!= (-> self deadly-fade) 0.0)
              (seek! (-> self deadly-fade) 0.0 (* 8.0 (seconds-per-frame)))
              (let ((f30-1 (-> self deadly-fade)))
@@ -160,7 +160,7 @@
                  )
                (set! (-> self draw color-mult w) 0.5)
                (if (= f30-1 0.0)
-                   (logclear! (-> self flags) (water-flags wt19))
+                   (logclear! (-> self flag) (water-flag deadly))
                    )
                )
              )
@@ -180,7 +180,7 @@
          )
        )
       (else
-        (when (logtest? (water-flags wt19) (-> self flags))
+        (when (logtest? (water-flag deadly) (-> self flag))
           (draw-ripple self)
           (update! (-> self sound))
           (set! (-> self playing-deadly-sound?) #t)
@@ -209,7 +209,7 @@
                         (s5-0
                           0.5
                           )
-                        ((logtest? (water-flags wt19) (-> this flags))
+                        ((logtest? (water-flag deadly) (-> this flag))
                          1.0
                          )
                         (else
@@ -221,8 +221,8 @@
       (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
         (set! s5-0 #f)
         (if (= f0-16 0.0)
-            (logior! (-> this flags) (water-flags wt19))
-            (logclear! (-> this flags) (water-flags wt19))
+            (logior! (-> this flag) (water-flag deadly))
+            (logclear! (-> this flag) (water-flag deadly))
             )
         )
       (set! (-> this use-sync?) s5-0)
@@ -230,8 +230,8 @@
       )
     (when s5-0
       (if (< (get-current-phase (-> this sync)) (-> this deadly-time))
-          (set! (-> this flags) (the-as water-flags (logior (water-flags wt19) (-> this flags))))
-          (set! (-> this flags) (the-as water-flags (logclear (-> this flags) (water-flags wt19))))
+          (set! (-> this flag) (the-as water-flag (logior (water-flag deadly) (-> this flag))))
+          (set! (-> this flag) (the-as water-flag (logclear (-> this flag) (water-flag deadly))))
           )
       )
     )
@@ -247,7 +247,7 @@
     )
   (set! (-> this play-ambient-sound?) #f)
   (cond
-    ((logtest? (water-flags wt19) (-> this flags))
+    ((logtest? (water-flag deadly) (-> this flag))
      (set! (-> this draw color-mult quad) (-> this deadly-color-mult quad))
      (set! (-> this draw color-emissive quad) (-> this deadly-color-emissive quad))
      (set! (-> this deadly-fade) 1.0)

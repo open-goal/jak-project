@@ -758,13 +758,14 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
       }
     } else {
       idx_in_level_texture = out.textures.size();
+      auto resolved = tex_db.resolve_texture(pc_combo_tex_id);
       auto& new_tex = out.textures.emplace_back();
       new_tex.combo_id = pc_combo_tex_id;
-      new_tex.w = tex_it->second.w;
-      new_tex.h = tex_it->second.h;
+      new_tex.w = resolved.w;
+      new_tex.h = resolved.h;
       new_tex.debug_name = tex_it->second.name;
       new_tex.debug_tpage_name = tex_db.tpage_names.at(tex_it->second.page);
-      new_tex.data = tex_it->second.rgba_bytes;
+      new_tex.data = std::move(resolved.rgba);
     }
   }
 
@@ -1529,6 +1530,7 @@ void create_modifiable_vertex_data(
               vtx_to_mod_vtx[vidx] = idx;
               // add the vertex
               effect.mod.vertices.push_back(out.vertices.at(vidx));
+              effect.mod.mod_to_global_vertex_idx.push_back(vidx);
               // look up where this one came from in the EE memory layout
               auto src = vtx_srcs.at(vidx - first_out_vertex);
               ASSERT(src.combined_lump4 < UINT16_MAX);

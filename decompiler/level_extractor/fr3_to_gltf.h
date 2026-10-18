@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <unordered_map>
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/FileUtil.h"
@@ -11,6 +12,8 @@
  * Export the background geometry (tie, tfrag, shrub) to a GLTF binary format (.glb) file.
  */
 void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& glb_file);
-void save_level_foreground_as_gltf(const tfrag3::Level& level,
-                                   const std::map<std::string, level_tools::ArtData>& art_data,
-                                   const fs::path& glb_path);
+void save_level_foreground_as_gltf(
+    const tfrag3::Level& level,
+    const std::map<std::string, level_tools::ArtData>& art_data,
+    const fs::path& glb_path,
+    const std::unordered_map<std::string, u32>& animated_tex_output_to_anim_slot);

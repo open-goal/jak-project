@@ -201,41 +201,41 @@ void Compiler::set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegV
 
   // first, get the value we want to modify:
   ASSERT(m_ts.lookup_type(dst->parent()->type())->get_preferred_reg_class() == RegClass::INT_128);
-  RegVal* original_original = dst->parent()->to_xmm128(form, env);
+  RegVal* original_original = dst->parent()->to_simd128(form, env);
 
-  // next, get the 64-bit part we want to modify in the lower 64 bits of an XMM
-  RegVal* xmm_temp = fe->make_ireg(original_original->type(), RegClass::INT_128);
+  // next, get the 64-bit part we want to modify in the lower 64 bits of a SIMD register
+  RegVal* simd_temp = fe->make_ireg(original_original->type(), RegClass::INT_128);
   if (get_top) {
-    env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, original_original, original_original,
+    env->emit_ir<IR_Int128Math3Asm>(form, true, simd_temp, original_original, original_original,
                                     IR_Int128Math3Asm::Kind::PCPYUD);
   } else {
-    env->emit_ir<IR_RegSet>(form, xmm_temp, original_original);
+    env->emit_ir<IR_RegSet>(form, simd_temp, original_original);
   }
 
-  // convert that xmm to a GPR.
+  // convert that SIMD value to a GPR.
   RegVal* gpr_64_section = fe->make_gpr(original_original->type());
-  env->emit_ir<IR_RegSet>(form, gpr_64_section, xmm_temp);
+  env->emit_ir<IR_RegSet>(form, gpr_64_section, simd_temp);
 
   // set the bits in the GPR
   int corrected_offset = get_top ? dst->offset() - 64 : dst->offset();
   set_bits_in_bitfield(form, dst->size(), corrected_offset, gpr_64_section, src, fe, env);
 
-  // back to xmm
-  env->emit_ir<IR_RegSet>(form, xmm_temp, gpr_64_section);
+  // back to SIMD
+  env->emit_ir<IR_RegSet>(form, simd_temp, gpr_64_section);
 
-  // rebuild the xmm
+  // rebuild the SIMD value
   if (get_top) {
-    env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, xmm_temp, original_original,
+    env->emit_ir<IR_Int128Math3Asm>(form, true, simd_temp, simd_temp, original_original,
                                     IR_Int128Math3Asm::Kind::PCPYLD);
   } else {
-    env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, xmm_temp, xmm_temp,
+    env->emit_ir<IR_Int128Math3Asm>(form, true, simd_temp, simd_temp, simd_temp,
                                     IR_Int128Math3Asm::Kind::PCPYLD);
-    env->emit_ir<IR_Int128Math3Asm>(form, true, xmm_temp, xmm_temp, original_original,
+    env->emit_ir<IR_Int128Math3Asm>(form, true, simd_temp, simd_temp, original_original,
                                     IR_Int128Math3Asm::Kind::PCPYUD);
   }
 
   // set
-  do_set(form, dst->parent(), xmm_temp, xmm_temp, env);
+  do_set(form, dst->parent(), simd_temp, simd_temp, env);
 }
 
 /*!

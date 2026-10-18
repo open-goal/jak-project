@@ -68,6 +68,8 @@ std::vector<math::Vector<float, n>> extract_keyframed_gltf_vecn(
 UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
                                              const tinygltf::Animation& anim,
                                              const std::map<int, int>& node_to_joint,
+                                             const std::string& master_art_group,
+                                             int master_art_group_index,
                                              float framerate) {
   UncompressedJointAnim out;
   out.name = anim.name;
@@ -75,6 +77,8 @@ UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
   const int max_joint = find_max_joint(anim, node_to_joint);
   lg::info("Max joint is {}", max_joint);
   out.joints.resize(max_joint + 1);
+  out.master_art_group_name = master_art_group;
+  out.master_art_group_index = master_art_group_index;
 
   for (const auto& channel : anim.channels) {
     const int channel_node_idx = channel.target_node;
@@ -238,6 +242,8 @@ CompressedAnim compress_animation(const UncompressedJointAnim& in) {
   out.name = in.name;
   out.framerate = in.framerate;
   out.frames.resize(in.frames);
+  out.master_art_group_name = in.master_art_group_name;
+  out.master_art_group_index = in.master_art_group_index;
   for (int matrix = 0; matrix < 2; matrix++) {
     const auto& joint_data = in.joints.at(matrix);
     if (is_matrix_constant(joint_data)) {

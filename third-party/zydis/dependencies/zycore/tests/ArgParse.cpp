@@ -57,7 +57,7 @@ auto cvt_string_view(const ZyanStringView *sv)
 /* Unnamed args                                                                                   */
 /* ---------------------------------------------------------------------------------------------- */
 
-static auto UnnamedArgTest(ZyanU64 min, ZyanU64 max)
+static auto UnnamedArgTest(ZyanUSize min, ZyanUSize max)
 {
     const char* argv[]
     {

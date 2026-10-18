@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -433,7 +433,7 @@ static SDL_WSCONS_input_data *SDL_WSCONS_Init_Keyboard(const char *dev)
     }
 
     input->keyboardID = SDL_GetNextObjectID();
-    SDL_AddKeyboard(input->keyboardID, NULL, false);
+    SDL_AddKeyboard(input->keyboardID, NULL);
 
     input->keymap.map = SDL_calloc(KS_NUMKEYCODES, sizeof(struct wscons_keymap));
     if (!input->keymap.map) {

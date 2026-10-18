@@ -1,0 +1,241 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: process-nettable-h.gc
+;; name in dgo: process-nettable-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(deftype net-process-class-info (structure)
+  ((msg-map            (array symbol))
+   (msg-count          int32)
+   (send-packet-count  int32)
+   (recv-packet-count  int32)
+   (send-byte-count    int32)
+   (recv-byte-count    int32)
+   (owner-type         type)
+   )
+  )
+
+
+(define *net-process-class-count* 0)
+
+(define *net-process-class-array*
+  (new 'static 'boxed-array :type net-process-class-info :length 0 :allocated-length 96)
+  )
+
+(define *net-process-class-names* (the-as (pointer symbol) (new 'static 'array uint32 95
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             #x0
+                                                             )
+                                                           )
+        )
+
+;; WARN: Function net-process-class-register has a return type of none, but the expression builder found a return statement.
+(defun net-process-class-register ((arg0 net-process-class-info))
+  (dotimes (v1-0 *net-process-class-count*)
+    (when (= (-> *net-process-class-names* v1-0) (-> arg0 owner-type symbol))
+      (set! (-> *net-process-class-array* v1-0) arg0)
+      (return #f)
+      )
+    )
+  (when (>= *net-process-class-count* 96)
+    (format 0 "net-process-class-count limit exceeded~%")
+    (break!)
+    0
+    )
+  (set! (-> *net-process-class-array* *net-process-class-count*) arg0)
+  (set! (-> *net-process-class-names* *net-process-class-count*) (-> arg0 owner-type symbol))
+  (set! *net-process-class-count* (+ *net-process-class-count* 1))
+  0
+  (none)
+  )
+
+(deftype net-process-id (uint16)
+  ()
+  )
+
+(deftype proximity-ownership-params (basic)
+  ((ownable-radius           float)
+   (force-local              symbol)
+   (last-ownership-req-time  int32)
+   (min-ownership-req-delay  int32)
+   (consider-ai-players      symbol)
+   )
+  (:methods
+    (proximity-ownership-params-method-9 () none)
+    )
+  )
+
+
+(deftype process-nettable (process)
+  ((owner-idx             int8)
+   (net-flags             uint64)
+   (desired-owner-idx     int8)
+   (net-id                uint16)
+   (jump-in-send-pending  uint16)
+   (prox                  basic)
+   (owner-link            list-link  :inline)
+   (active-link           list-link  :inline)
+   )
+  (:methods
+    (process-nettable-method-15 () none)
+    (process-nettable-method-16 () none)
+    (process-nettable-method-17 () none)
+    (process-nettable-method-18 () none)
+    (process-nettable-method-19 () none)
+    (process-nettable-method-20 () none)
+    (process-nettable-method-21 () none)
+    (process-nettable-method-22 () none)
+    (process-nettable-method-23 () none)
+    (process-nettable-method-24 () none)
+    (process-nettable-method-25 () none)
+    (process-nettable-method-26 () none)
+    (process-nettable-method-27 () none)
+    (process-nettable-method-28 () none)
+    (process-nettable-method-29 () none)
+    (process-nettable-method-30 () none)
+    (process-nettable-method-31 () none)
+    (process-nettable-method-32 () none)
+    (process-nettable-method-33 () none)
+    (process-nettable-method-34 (_type_ int rgba) none)
+    (process-nettable-method-35 (_type_ int) none)
+    (process-nettable-method-36 (_type_) none)
+    (process-nettable-method-37 (_type_ net-process-class-info) none)
+    (process-nettable-method-38 () none)
+    (process-nettable-method-39 () none)
+    (process-nettable-method-40 (_type_) net-process-class-info)
+    (process-nettable-method-41 (_type_ int) process)
+    )
+  )
+
+
+(defmethod process-nettable-method-37 ((this process-nettable) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map 0) 'create)
+  (set! (-> arg0 msg-map 1) 'destroy)
+  (set! (-> arg0 msg-map 2) 'destroy-silent)
+  (set! (-> arg0 msg-map 3) 'ownership-request)
+  (set! (-> arg0 msg-map 4) 'ownership-update)
+  (set! (-> arg0 msg-map 5) 'ownership-reject)
+  (set! (-> arg0 msg-map 6) 'please-describe)
+  (set! (-> arg0 msg-map 7) 'state)
+  (set! (-> arg0 msg-count) 8)
+  0
+  (none)
+  )
+
+;; og:preserve-this manually must be made a recursive function
+(defun-recursive write-msg-map-rec none ((arg0 type) (arg1 net-process-class-info))
+  (let* ((s3-0 37)
+         (s5-0 (the-as (function process-nettable net-process-class-info none) (-> arg0 method-table s3-0)))
+         )
+    (cond
+      ((= arg0 process-nettable)
+       (set! (-> arg1 msg-count) 0)
+       (s5-0 (the-as process-nettable #f) arg1)
+       )
+      (else
+        (write-msg-map-rec (-> arg0 parent) arg1)
+        (if (!= (-> arg0 parent method-table s3-0) s5-0)
+            (s5-0 (the-as process-nettable #f) arg1)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )

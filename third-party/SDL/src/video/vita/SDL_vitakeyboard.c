@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,7 +45,7 @@ void VITA_InitKeyboard(void)
     sceHidKeyboardEnumerate(&keyboard_hid_handle, 1);
 
     if (keyboard_hid_handle > 0) {
-        SDL_AddKeyboard((SDL_KeyboardID)keyboard_hid_handle, NULL, false);
+        SDL_AddKeyboard((SDL_KeyboardID)keyboard_hid_handle, NULL);
     }
 }
 

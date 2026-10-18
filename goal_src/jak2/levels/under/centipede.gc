@@ -173,7 +173,7 @@
 
 (defmethod general-event-handler ((this centipede) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('under-break-floor)
      (go (method-of-object this thru-grating))
@@ -185,17 +185,18 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs centipede.
-(defmethod relocate ((this centipede) (arg0 int))
+(defmethod relocate ((this centipede) (offset int))
   (if (nonzero? (-> this bobbing))
-      (&+! (-> this bobbing) arg0)
+      (&+! (-> this bobbing) offset)
       )
   (if (nonzero? (-> this legs-sound))
-      (&+! (-> this legs-sound) arg0)
+      (&+! (-> this legs-sound) offset)
       )
-  (the-as centipede ((method-of-type nav-enemy relocate) this arg0))
+  (the-as centipede ((method-of-type nav-enemy relocate) this offset))
   )
 
 (defmethod deactivate ((this centipede))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (when (-> this set-camera-mode?)
     (set! (-> this set-camera-mode?) #f)
     (remove-setting-by-arg0 *setting-control* 'mode-name)
@@ -509,10 +510,10 @@
 
 (defmethod in-aggro-range? ((this centipede) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   (when arg0
     (if (not arg1)
         (set! arg1 (get-trans arg0 0))
@@ -524,10 +525,8 @@
              (a0-2 (-> this fact))
              )
         (when (and (< f0-0 (+ f1-0 (-> a0-2 notice-top))) (< (- f1-0 (-> a0-2 notice-bottom)) f0-0))
-          (let* ((f30-0 (-> this enemy-info notice-nav-radius))
-                 (f0-1 f30-0)
-                 )
-            (or (>= (* f0-1 f0-1) (vector-vector-xz-distance-squared (-> v1-4 trans) arg1))
+          (let ((f30-0 (-> this enemy-info notice-nav-radius)))
+            (or (>= (square f30-0) (vector-vector-xz-distance-squared (-> v1-4 trans) arg1))
                 (is-in-mesh? (-> this nav) arg1 f30-0)
                 )
             )
@@ -554,9 +553,8 @@
     (when targ
       (let* ((targ-pos (get-trans targ 0))
              (y-off (- (-> targ-pos y) (-> this root trans y)))
-             (dist 28672.0)
              )
-        (and (>= (* dist dist) (vector-vector-xz-distance-squared (-> this root trans) targ-pos))
+        (and (>= (square 28672.0) (vector-vector-xz-distance-squared (-> this root trans) targ-pos))
              (or (>= y-off -12288.0) (or (>= 24576.0 y-off) (focus-test? targ edge-grab)))
              )
         )
@@ -611,9 +609,9 @@
 
 (defmethod common-post ((this centipede))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -656,11 +654,9 @@
             (vector+! s3-0 s3-0 (-> s2-0 state mesh bounds))
             )
           0
-          (let ((f0-2 1024.0))
-            (if (>= (* f0-2 f0-2) (vector-vector-xz-distance-squared (-> s4-0 best-other-tri intersect) (-> s5-0 trans)))
-                (set! (-> s5-0 gspot-pos y) (-> s4-0 best-other-tri intersect y))
-                )
-            )
+          (if (>= (square 1024.0) (vector-vector-xz-distance-squared (-> s4-0 best-other-tri intersect) (-> s5-0 trans)))
+              (set! (-> s5-0 gspot-pos y) (-> s4-0 best-other-tri intersect y))
+              )
           )
         )
       )
@@ -1109,7 +1105,7 @@
       (let* ((v1-5 (- (current-time) (-> self state-time)))
              (f1-2 (* 0.00952381 (the float v1-5)))
              )
-        (quaternion-slerp! (-> self root quat) (-> self src-quat) (-> self dest-quat) (- 1.0 (* f1-2 f1-2)))
+        (quaternion-slerp! (-> self root quat) (-> self src-quat) (-> self dest-quat) (- 1.0 (square f1-2)))
         )
       (centipede-method-188 self)
       (suspend)

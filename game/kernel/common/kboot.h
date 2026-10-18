@@ -1,16 +1,20 @@
 #pragma once
 #include "common/common_types.h"
+#include "common/util/Timer.h"
 
 #define GAME_TERRITORY_SCEA 0  // sony america
 #define GAME_TERRITORY_SCEE 1  // sony europe
 #define GAME_TERRITORY_SCEI 2  // sony inc. (japan)
 #define GAME_TERRITORY_SCEK 3  // sony korea
 
+#define SPLASH_SCREEN_TIME 3.f  // how long to display the splash screen for
+
 enum class RuntimeExitStatus {
   RUNNING = 0,
   RESTART_RUNTIME = 1,
   EXIT = 2,
   RESTART_IN_DEBUG = 3,
+  RESTART_IN_RETAIL = 4,
 };
 
 enum class VideoMode {
@@ -46,6 +50,9 @@ extern u32 MasterUseKernel;
 
 // Added in Jak X
 extern bool USE_OVERLORD2_W;
+// Added in PC port for splash screen
+extern Timer SplashTimer;
+extern u32 SplashScreen;
 
 struct MasterConfig {
   u16 language;          //! GOAL language 0

@@ -63,7 +63,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs path-control.
 (defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
-  (local-vars (tag res-tag))
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (when (zero? this)
       (go process-drawable-art-error "memory")
@@ -80,8 +79,9 @@
               )
           )
         )
-      (set! tag (new 'static 'res-tag))
-      (let ((data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
+      (let* ((tag (new 'static 'res-tag))
+             (data (res-lump-data ent name pointer :tag-ptr (& tag) :time time))
+             )
         (cond
           (data
             (set! (-> this cverts) (the-as (inline-array vector) data))

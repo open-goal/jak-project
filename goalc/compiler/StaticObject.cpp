@@ -59,7 +59,7 @@ StaticObject::LoadInfo StaticFloat::get_load_info() const {
   info.requires_load = true;
   info.load_size = 4;
   info.load_signed = false;
-  info.prefer_xmm = true;
+  info.prefer_simd = true;
   return info;
 }
 
@@ -90,7 +90,7 @@ std::string StaticStructure::print() const {
 StaticObject::LoadInfo StaticStructure::get_load_info() const {
   LoadInfo info;
   info.requires_load = false;
-  info.prefer_xmm = false;
+  info.prefer_simd = false;
   return info;
 }
 

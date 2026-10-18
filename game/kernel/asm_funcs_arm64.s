@@ -16,9 +16,8 @@
 _arg_call_arm64:
   stp	x29, x30, [sp, #-16]!
   mov	x29, sp
-  ldr x8, [sp], #16
 
-  ; Putting an exclamation point after the close-bracket 
+  ; Putting an exclamation point after the close-bracket
   ; means that the calculated effective address is written back to the base register. (pre-indexing)
   stp q15, q14, [sp, #-32]!
   stp q13, q12, [sp, #-32]!
@@ -27,10 +26,11 @@ _arg_call_arm64:
 
   blr x8
 
+  ;; restore the vector pairs in the same order they were saved
   ldp q9, q8, [sp], #32
-  ldp q10, q11, [sp], #32
-  ldp q12, q13, [sp], #32
-  ldp q14, q15, [sp], #32
+  ldp q11, q10, [sp], #32
+  ldp q13, q12, [sp], #32
+  ldp q15, q14, [sp], #32
 
   ldp	x29, x30, [sp], #16
   ret
@@ -40,14 +40,13 @@ _arg_call_arm64:
 ;; 
 ;; Put arguments on the stack and put a pointer to this array in the first arg.
 ;; this function pushes all 8 OpenGOAL registers into a stack array.
-;; then it calls the function pointed to by x0 (RAX in x86) with a pointer to this array.
+;; it calls the function in x8 with a pointer to this array.
 ;; it returns the return value of the called function.
 .global _stack_call_arm64
 .align 4
 _stack_call_arm64:
   stp	x29, x30, [sp, #-16]!
   mov	x29, sp
-  ldr x8, [sp], #16
 
   stp q15, q14, [sp, #-32]!
   stp q13, q12, [sp, #-32]!
@@ -63,25 +62,29 @@ _stack_call_arm64:
   ; arg 2 (RDX in x86)
   ; arg 1 (RSI in x86)
   ; arg 0 (RDI in x86)
-  stp x7, x6, [sp, #-16]!
-  stp x5, x4, [sp, #-16]!
-  stp x3, x2, [sp, #-16]!
-  stp x1, x0, [sp, #-16]!
+  ; put x0 at the lowest address and x7 at the highest
+  stp x6, x7, [sp, #-16]!
+  stp x4, x5, [sp, #-16]!
+  stp x2, x3, [sp, #-16]!
+  stp x0, x1, [sp, #-16]!
 
   ; set first argument
-  mov x19, sp
+  ; pass the array address as the first argument
+  mov x0, sp
   ; call function
   blr x8
-  ; restore arguments
-  ldp x1, x0, [sp], #16
-  ldp x3, x2, [sp], #16
-  ldp x5, x4, [sp], #16
-  ldp x7, x6, [sp], #16
+  ; keep x0 because it holds the return value
+  ldr x1, [sp, #8]
+  ldp x2, x3, [sp, #16]
+  ldp x4, x5, [sp, #32]
+  ldp x6, x7, [sp, #48]
+  add sp, sp, #64
 
+  ;; restore the vector pairs in the same order they were saved
   ldp q9, q8, [sp], #32
-  ldp q10, q11, [sp], #32
-  ldp q12, q13, [sp], #32
-  ldp q14, q15, [sp], #32
+  ldp q11, q10, [sp], #32
+  ldp q13, q12, [sp], #32
+  ldp q15, q14, [sp], #32
 
   ldp	x29, x30, [sp], #16
   ; return!
@@ -89,71 +92,78 @@ _stack_call_arm64:
 
 ;; Call c++ code through mips2c.
 ;; GOAL will call a dynamically generated trampoline.
-;; The trampoline will have pushed the exec function and stack offset onto the stack
+;; x9 holds the C function and x10 holds the fake GOAL stack size.
 .global _mips2c_call_arm64
 .align 4
 _mips2c_call_arm64:
   stp	x29, x30, [sp, #-16]!
   mov	x29, sp
-  ;; TODO - this is really weird using half an XMM, this makes the arm assembly
-  ;; more difficult - this probably isn't required for arm?
-  ;; grab the address to call and put it in xmm0
-  ;; TODO - this stack pointer manipulation might be a problem for ARM64 which requires 16byte alignment
-  ;; sub sp, 8
-  ldr q0, [sp, #+16]
-  ;; grab the stack offset
-  ldr x0, [sp, #+8]
 
   ;; first, save quadword registers
-  stp q15, q14, [sp, #-32]!
-  stp q13, q12, [sp, #-32]!
-  stp q11, q10, [sp, #-32]!
-  stp q9, q8, [sp, #-32]!
-
-  ; NOTE - in x86 the 2 special registers are saved (R10 and R11)
-  ; we don't need to do that in ARM64, there are plenty of registers to work with
+  ;; save all 128 bits because AAPCS64 only preserves the low half
+  sub	sp, sp, #128
+  stp	q8, q9, [sp]
+  stp	q10, q11, [sp, #32]
+  stp	q12, q13, [sp, #64]
+  stp	q14, q15, [sp, #96]
 
   ;; oof
-  sub sp, sp, 1280
-  str x0, [sp, #+64] ; arg 0 (RDI in x86) and 
-  str x1, [sp, #+80] ; arg 1 (RSI in x86)
-  str x2, [sp, #+96] ; arg 2 (RDX in x86) and arg 3 (RCX in x86)
-  str x3, [sp, #+112] ; arg 2 (RDX in x86) and arg 3 (RCX in x86)
-  str x4, [sp, #+128] ; arg 4 (R8 in x86) and arg 5 (R8 in x86)
-  str x5, [sp, #+144] ; arg 4 (R8 in x86) and arg 5 (R8 in x86)
-  str x6, [sp, #+160] ; arg 6 (R10 in x86) and arg 7 (R11 in x86)
-  str x7, [sp, #+176] ; arg 6 (R10 in x86) and arg 7 (R11 in x86)
-  str x20, [sp, #+352] ;; s6 (pp) (R13 in x86) and s7 (st) (R14 in x86)
-  str x21, [sp, #+368] ;; s6 (pp) (R13 in x86) and s7 (st) (R14 in x86)
+  ;; 1280-byte MIPS register context
+  sub	sp, sp, #1280
+  ; arg 0 (RDI in x86) and
+  str	x0, [sp, #64]	;; a0
+  ; arg 1 (RSI in x86)
+  str	x1, [sp, #80]	;; a1
+  ; arg 2 (RDX in x86) and arg 3 (RCX in x86)
+  str	x2, [sp, #96]	;; a2
+  ; arg 2 (RDX in x86) and arg 3 (RCX in x86)
+  str	x3, [sp, #112]	;; a3
+  ; arg 4 (R8 in x86) and arg 5 (R8 in x86)
+  str	x4, [sp, #128]	;; t0
+  ; arg 4 (R8 in x86) and arg 5 (R8 in x86)
+  str	x5, [sp, #144]	;; t1
+  ; arg 6 (R10 in x86) and arg 7 (R11 in x86)
+  str	x6, [sp, #160]	;; t2
+  ; arg 6 (R10 in x86) and arg 7 (R11 in x86)
+  str	x7, [sp, #176]	;; t3
+  ;; s6 (pp) (R13 in x86) and s7 (st) (R14 in x86)
+  str	x20, [sp, #352]	;; s6 (pp)
+  ;; s6 (pp) (R13 in x86) and s7 (st) (R14 in x86)
+  str	x21, [sp, #368]	;; s7 (st)
 
-  mov x0, sp ; move the stack pointer to arg 0
-  sub x0, x0, x22 ; R15 is a "special" offset TODO - whats special about it?
-  str x0, [sp, #+464] ;; mip2c code's MIPS stack
+  ;; store the context as a GOAL pointer in the MIPS sp slot
+  mov	x11, sp
+  sub	x11, x11, x22
+  ;; mip2c code's MIPS stack
+  str	x11, [sp, #464]	;; r29 (sp)
 
-  mov x0, sp ;; move the stack pointer to the new position
+  ; move the stack pointer to arg 0
+  mov	x0, sp		;; pass the context as the sole argument
 
-  sub sp, sp, x8 ;; allocate space on the stack for GOAL fake stack
-  stp x8, x8, [sp, #-16]! ;; and remember this so we can find our way back
+  ;; allocate space on the stack for GOAL fake stack
+  ;; round the fake GOAL stack to 16 bytes
+  add	x11, x10, #15
+  and	x11, x11, #-16
+  sub	sp, sp, x11
+  ;; and remember this so we can find our way back
+  str	x11, [sp, #-16]!	;; save the stack size across the C call
 
-  ;; TODO - this used to be a movq rax, xmm0
-  ;; TODO - not sure why an `xmm` was used because that movq only uses the lower 64bits anyway
-  mov x0, v0.d[0] ; represents the lower 64 bits of q0
-  blr x8 ;; call!
+  ;; call!
+  blr	x9
 
   ;; unallocate
-  ldp x8, x8, [sp], #16
-  add sp, sp, x8
+  ldr	x11, [sp], #16
+  add	sp, sp, x11	;; restore sp to the context base
 
-  ldr x8, [sp, #+32]
+  ldr	x0, [sp, #32]	;; return the v0 slot written by mips2c
 
-  add sp, sp, 1280 ; reset the stackpointer back
-
-  ldp q9, q8, [sp], #32
-  ldp q10, q11, [sp], #32
-  ldp q12, q13, [sp], #32
-  ldp q14, q15, [sp], #32
-
-  add sp, sp, 24 ;; 16 for the stuff pushed by trampoline
+  ; reset the stackpointer back
+  add	sp, sp, #1280
+  ldp	q8, q9, [sp]
+  ldp	q10, q11, [sp, #32]
+  ldp	q12, q13, [sp, #64]
+  ldp	q14, q15, [sp, #96]
+  add	sp, sp, #128
   ldp	x29, x30, [sp], #16
   ret
 
@@ -175,7 +185,12 @@ _call_goal_asm_arm64:
   ;; saved registers we need to modify for GOAL should be preserved
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
-  str x22, [sp, #-16]!
+  stp x22, x27, [sp, #-16]!
+  sub sp, sp, #128
+  stp q8, q9, [sp]
+  stp q10, q11, [sp, #32]
+  stp q12, q13, [sp, #64]
+  stp q14, q15, [sp, #96]
 
   ;; x0 - first arg
   ;; x1 - second arg
@@ -183,6 +198,7 @@ _call_goal_asm_arm64:
   ;; x3 - function pointer
   ;; x4 - st (goes in x20 and x21)
   ;; x5 - off (goes in x22)
+  ;; x6 holds the executable mapping base for x27
 
   ;; set GOAL process
   mov x20, x4
@@ -190,11 +206,17 @@ _call_goal_asm_arm64:
   mov x21, x4
   ;; offset
   mov x22, x5
+  mov x27, x6
   ;; call GOAL by function pointer
   blr x3
 
   ;; restore saved registers.
-  ldr x22, [sp], #16
+  ldp q8, q9, [sp]
+  ldp q10, q11, [sp, #32]
+  ldp q12, q13, [sp, #64]
+  ldp q14, q15, [sp, #96]
+  add sp, sp, #128
+  ldp x22, x27, [sp], #16
   ldp x20, x21, [sp], #16
   ldp	x29, x30, [sp], #16
   ret
@@ -207,7 +229,12 @@ _call_goal8_asm_arm64:
   ;; saved registers we need to modify for GOAL should be preserved
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
-  str x22, [sp, #-16]!
+  stp x22, x27, [sp, #-16]!
+  sub sp, sp, #128
+  stp q8, q9, [sp]
+  stp q10, q11, [sp, #32]
+  stp q12, q13, [sp, #64]
+  stp q14, q15, [sp, #96]
 
   ;; x0 - first arg (func)
   ;; x1 - second arg (arg array)
@@ -215,6 +242,7 @@ _call_goal8_asm_arm64:
   ;; x3 - pp (goes in r13)
   ;; x4  - st (goes in r14)
   ;; x5  - off (goes in r15)
+  ;; x6 holds the executable mapping base for x27
 
   ;; set GOAL function pointer
   mov x20, x3
@@ -222,6 +250,8 @@ _call_goal8_asm_arm64:
   mov x21, x4
   ;; offset
   mov x22, x5
+  ;; save the executable mapping before loading x6 from the argument array
+  mov x27, x6
   ;; move function to temp
   mov x8, x0
   ;; extract arguments
@@ -237,7 +267,12 @@ _call_goal8_asm_arm64:
   blr x8
 
   ;; retore registers.
-  ldr x22, [sp], #16
+  ldp q8, q9, [sp]
+  ldp q10, q11, [sp, #32]
+  ldp q12, q13, [sp, #64]
+  ldp q14, q15, [sp, #96]
+  add sp, sp, #128
+  ldp x22, x27, [sp], #16
   ldp x20, x21, [sp], #16
   ldp	x29, x30, [sp], #16
   ret
@@ -254,27 +289,43 @@ _call_goal_on_stack_asm_arm64:
   ;; x3 - function pointer
   ;; x4  - st (goes in x21 and x20)
   ;; x5  - offset (goes in x22)
+  ;; x6 holds the executable mapping base for x27
 
   ;; saved registers we need to modify for GOAL should be preserved
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
+  stp x22, x27, [sp, #-16]!
+  sub sp, sp, #128
+  stp q8, q9, [sp]
+  stp q10, q11, [sp, #32]
+  stp q12, q13, [sp, #64]
+  stp q14, q15, [sp, #96]
+
   ;; also stash the current stack pointer on the stack
   ;; NOTE - you cannot directly store or load the `sp` register in arm64
+  ;; save the native sp through x9 because str cannot use sp as data
   mov x9, sp
-  stp x22, x9, [sp, #-16]!
-
   ;; switch to new stack
   mov sp, x0
+  str x9, [sp, #-16]!
 
-  mov x20, x4 ;; set GOAL function pointer  
+  ;; set GOAL function pointer
+  mov x20, x4 ;; set GOAL process
   mov x21, x4 ;; symbol table
   mov x22, x5 ;; offset
+  mov x27, x6
   ;; call GOAL by function pointer
   blr x3
 
   ;; restore registers
-  ldp x22, x9, [sp], #16
+  ldr x9, [sp], #16
   mov sp, x9
+  ldp q8, q9, [sp]
+  ldp q10, q11, [sp, #32]
+  ldp q12, q13, [sp, #64]
+  ldp q14, q15, [sp, #96]
+  add sp, sp, #128
+  ldp x22, x27, [sp], #16
   ldp x20, x21, [sp], #16
   ldp	x29, x30, [sp], #16
   ret

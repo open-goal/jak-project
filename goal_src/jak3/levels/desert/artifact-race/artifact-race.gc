@@ -125,9 +125,8 @@
         )
       (let ((f0-1 (vector-vector-xz-distance-squared (-> this root trans) s5-0))
             (f1-2 (fabs (- (-> s5-0 y) (-> this root trans y))))
-            (f2-2 (+ 8192.0 (-> s5-0 w)))
             )
-        (when (and (>= (* f2-2 f2-2) f0-1) (< f1-2 32768.0))
+        (when (and (>= (square (+ 8192.0 (-> s5-0 w))) f0-1) (< f1-2 32768.0))
           (sound-play "artifact-pickup")
           (+! (-> *game-info* counter) -1.0)
           (go (method-of-object this die))
@@ -768,7 +767,6 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod set-time-limit ((this task-manager-desert-artifact-race))
-  (local-vars (sv-16 res-tag))
   (let ((t9-0 (method-of-type task-manager set-time-limit)))
     (t9-0 this)
     )
@@ -826,8 +824,9 @@
     )
   (let ((a0-18 (-> this ent)))
     (when a0-18
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((s5-0 (res-lump-data a0-18 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (s5-0 (res-lump-data a0-18 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and s5-0 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this max-count) (-> s5-0 0 length))
@@ -902,9 +901,7 @@
       )
     (until (or v1-40 (and *target* (focus-test? *target* pilot)))
       (suspend)
-      (let ((f0-6 143360.0))
-        (set! v1-40 (< (* f0-6 f0-6) (vector-vector-distance-squared (-> self begin-pos) (target-pos 0))))
-        )
+      (set! v1-40 (< (square 143360.0) (vector-vector-distance-squared (-> self begin-pos) (target-pos 0))))
       )
     (set-setting! 'airlock #f 0.0 0)
     (set! (-> self count) 0)

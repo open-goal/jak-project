@@ -270,7 +270,8 @@ Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
   IRegConstraint constraint;
   constraint.instr_idx = 0;             // constraint at the start of the function
   constraint.ireg = input_arg->ireg();  // constrain this register
-  constraint.desired_register = emitter::gRegInfo.get_gpr_arg_reg(0);  // to the first argument
+  constraint.desired_register =
+      emitter::reg_info(m_instr_set).get_gpr_arg_reg(0);  // to the first argument
   method_env->constrain(constraint);
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
   method_env->emit_ir<IR_ValueReset>(form, std::vector<RegVal*>{input_arg});
@@ -314,7 +315,7 @@ Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
   }
 
   method_env->emit_ir<IR_Return>(form, method_env->make_gpr(input->type()), input,
-                                 emitter::gRegInfo.get_gpr_ret_reg());
+                                 emitter::reg_info(m_instr_set).get_gpr_ret_reg());
 
   // add this function to the object file
   auto fe = env->function_env();
@@ -351,9 +352,11 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
   constraint.instr_idx = 0;             // constraint at the start of the function
   constraint.ireg = input_arg->ireg();  // constrain this register
   if (bitfield_128) {
-    constraint.desired_register = emitter::gRegInfo.get_xmm_arg_reg(0);  // to the first argument
+    constraint.desired_register =
+        emitter::reg_info(m_instr_set).get_simd_arg_reg(0);  // to the first argument
   } else {
-    constraint.desired_register = emitter::gRegInfo.get_gpr_arg_reg(0);  // to the first argument
+    constraint.desired_register =
+        emitter::reg_info(m_instr_set).get_gpr_arg_reg(0);  // to the first argument
   }
 
   method_env->constrain(constraint);
@@ -381,10 +384,10 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
 
   if (bitfield_128) {
     method_env->emit_ir<IR_Return>(form, method_env->make_ireg(input->type(), RegClass::INT_128),
-                                   input, emitter::gRegInfo.get_gpr_ret_reg());
+                                   input, emitter::reg_info(m_instr_set).get_gpr_ret_reg());
   } else {
     method_env->emit_ir<IR_Return>(form, method_env->make_gpr(input->type()), input,
-                                   emitter::gRegInfo.get_gpr_ret_reg());
+                                   emitter::reg_info(m_instr_set).get_gpr_ret_reg());
   }
 
   // add this function to the object file
@@ -566,13 +569,14 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   for (auto& parm : lambda.params) {
     arg_types.push_back(parm.type);
   }
-  auto arg_regs = get_arg_registers(m_ts, arg_types);
+  auto arg_regs = get_arg_registers(m_ts, arg_types, m_instr_set);
 
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
     auto ireg_arg = new_func_env->make_ireg(
-        lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+        lambda.params.at(i).type,
+        arg_regs.at(i).is_gpr(m_instr_set) ? RegClass::GPR_64 : RegClass::INT_128);
     ireg_arg->mark_as_settable();
     constr.ireg = ireg_arg->ireg();
     constr.desired_register = arg_regs.at(i);
@@ -586,7 +590,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
     IRegConstraint constr;
     constr.contrain_everywhere = true;
-    constr.desired_register = emitter::gRegInfo.get_process_reg();
+    constr.desired_register = emitter::reg_info(m_instr_set).get_process_reg();
     constr.ireg = self_var->ireg();
     self_var->set_rlet_constraint(constr.desired_register);
     new_func_env->constrain(constr);
@@ -609,8 +613,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   func_block_env->emit_ir<IR_ValueReset>(form, reset_args_for_coloring);
 
   for (u32 i = 0; i < lambda.params.size(); i++) {
-    auto ireg = new_func_env->make_ireg(
-        lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+    auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, arg_regs.at(i).is_gpr(m_instr_set)
+                                                                      ? RegClass::GPR_64
+                                                                      : RegClass::INT_128);
     ireg->mark_as_settable();
     if (!new_func_env->params.insert({m_goos.intern_ptr(lambda.params.at(i).name), ireg}).second) {
       throw_compiler_error(form, "defmethod has multiple arguments named {}",
@@ -641,10 +646,10 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     lambda_ts.add_arg(new_func_env->asm_func_return_type);
   } else if (result && !dynamic_cast<None*>(result) && result->type() != TypeSpec("none")) {
     RegVal* final_result;
-    emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
+    emitter::Register ret_hw_reg = emitter::reg_info(m_instr_set).get_gpr_ret_reg();
     if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
-      ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
-      final_result = result->to_xmm128(form, new_func_env.get());
+      ret_hw_reg = emitter::reg_info(m_instr_set).get_simd_ret_reg();
+      final_result = result->to_simd128(form, new_func_env.get());
       return_reg->change_class(RegClass::INT_128);
     } else {
       final_result = result->to_gpr(form, new_func_env.get());

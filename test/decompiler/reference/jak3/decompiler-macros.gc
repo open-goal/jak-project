@@ -1758,5 +1758,32 @@
     )
   )
 
+(defmacro square (x)
+  `(* ,x ,x)
+  )
+
+(defmacro light-trail-tracker-spawn (type
+                                     &key (init light-trail-tracker-init-by-other)
+                                     &key (params-type light-trail-tracker-spawn-params)
+                                     &key (from *default-dead-pool*)
+                                     &key (to self)
+                                     &key (name "light-trail")
+                                     &key (stack *scratch-memory-top*)
+                                     &key (unk 1)
+                                     &key (param-list ()))
+  "Specialized `process-spawn` macro for [[light-trail-tracker]]s.
+   Returns a pointer to the new process, or `#f` (or is it 0?) if something goes wrong."
+  (with-gensyms (params mem proc)
+    `(let ((,params (new 'stack-no-clear ',params-type)))
+       ,@(apply (lambda (x) `(set! (-> ,params ,(car x)) ,(cadr x))) param-list)
+       (let* ((,mem (estimate-light-trail-mem-usage
+                      (the uint (-> ,params max-num-crumbs))
+                      (the uint (= (-> ,params appearance lie-mode) (lie-mode use-two-strips)))))
+              (,proc (get-process ,from ,type (+ ,mem 8192) ,unk)))
+         (when ,proc
+           ((method-of-type process activate) ,proc ,to ,name ,stack)
+           (run-now-in-process ,proc ,init ,params)
+           (-> ,proc ppointer))))))
+
 (import "goal_src/jak3/engine/data/tpages.gc")
 (import "goal_src/jak3/engine/data/textures.gc")

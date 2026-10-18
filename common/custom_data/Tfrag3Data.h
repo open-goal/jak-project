@@ -517,11 +517,23 @@ struct CollisionMesh {
 
 // MERC
 
-struct MercVertex {
-  alignas(32) float pos[3];
+struct alignas(32) MercVertex {
+  union {
+    float pos[3];
+    struct {
+      float x, y, z;
+    };
+    math::Vector3f pos_vec;
+  };
   float pad0;
 
-  float normal[3];
+  union {
+    float normal[3];
+    struct {
+      float nx, ny, nz;
+    };
+    math::Vector3f normal_vec;
+  };
   float pad1;
 
   float weights[3];
@@ -578,6 +590,7 @@ struct MercModifiableDrawGroup {
   std::vector<u8> fragment_mask;
   Blerc blerc;
   u32 expect_vidx_end = 0;
+  std::vector<u32> mod_to_global_vertex_idx;  // not serialized, used for glb export
 
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;

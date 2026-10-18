@@ -21,11 +21,11 @@ AutoSplitterBlock g_auto_splitter_block_jak3;
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
-    char state[128];
-    char large_image_key[128];
-    char large_image_text[128];
-    char small_image_key[128];
-    char small_image_text[128];
+    char state[128] = {};
+    char large_image_key[128] = {};
+    char large_image_text[128] = {};
+    char small_image_key[128] = {};
+    char small_image_text[128] = {};
     auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
     if (info) {
       // Get the data from GOAL
@@ -47,6 +47,7 @@ void update_discord_rpc(u32 discord_info) {
       float percent_completed = info->percent_completed;
       std::bitset<64> focus_status = info->focus_status;
       auto vehicle = static_cast<VehicleType>(info->current_vehicle);
+      auto gun = static_cast<PickupType>(info->active_gun);
       char* task = Ptr<String>(info->task).c()->data();
 
       // Construct the DiscordRPC Object
@@ -57,15 +58,16 @@ void update_discord_rpc(u32 discord_info) {
       if (strcmp(task, "unknown") != 0) {
         strcpy(large_image_key, task);
       } else {
+        auto base_level_name = get_base_level_name(level_name_remap, level);
         // if we are in an outdoors level, use the picture for the corresponding time of day
-        if (!indoors(indoor_levels, level)) {
-          char level_with_tod[128];
-          strcpy(level_with_tod, level);
+        if (!indoors(indoor_levels, base_level_name.c_str())) {
+          char level_with_tod[128] = {};
+          strcpy(level_with_tod, base_level_name.c_str());
           strcat(level_with_tod, "-");
           strcat(level_with_tod, time_of_day_str(time));
           strcpy(large_image_key, level_with_tod);
         } else {
-          strcpy(large_image_key, level);
+          strcpy(large_image_key, base_level_name.c_str());
         }
       }
       strcpy(large_image_text, full_level_name);
@@ -96,21 +98,23 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_key, "focus-status-mech");
         strcpy(small_image_text, "Controlling a Dark Maker bot");
       } else if (FOCUS_TEST(focus_status, FocusStatus::Pilot)) {
-        // TODO vehicle images
         strcpy(small_image_key, "focus-status-pilot");
         auto vehicle_name = VehicleTypeToString(vehicle);
         if (!strcmp(task, "comb-travel") || !strcmp(task, "comb-wild-ride")) {
+          strcpy(small_image_key, vehicle_type_to_string.at(VehicleType::h_sled).c_str());
           strcpy(small_image_text, "Driving the Catacombs Rail Rider");
         } else if (!strcmp(task, "desert-glide")) {
-          strcpy(small_image_text, "Flying the Glider");
+          strcpy(small_image_key, vehicle_type_to_string.at(VehicleType::h_glider).c_str());
+          strcpy(small_image_text, "Flying the Monk Glider");
         } else if (!strcmp(task, "factory-sky-battle")) {
+          strcpy(small_image_key, vehicle_type_to_string.at(VehicleType::h_hellcat).c_str());
           strcpy(small_image_text, "Flying the Hellcat");
         } else {
           if (vehicle_name != "Unknown") {
+            strcpy(small_image_key, vehicle_type_to_string.at(vehicle).c_str());
             strcpy(small_image_text, fmt::format("Driving the {}", vehicle_name).c_str());
           } else {
-            strcpy(small_image_key, "");
-            strcpy(small_image_text, "");
+            strcpy(small_image_text, "Driving a Zoomer");
           }
         }
       } else if (FOCUS_TEST(focus_status, FocusStatus::Indax)) {
@@ -124,10 +128,16 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_text, "Light Jak");
       } else if (FOCUS_TEST(focus_status, FocusStatus::Turret)) {
         strcpy(small_image_key, "focus-status-turret");
-        strcpy(small_image_text, "In a Gunpod");
+        strcpy(small_image_text, "In a Turret");
       } else if (FOCUS_TEST(focus_status, FocusStatus::Gun)) {
-        strcpy(small_image_key, "focus-status-gun");
-        strcpy(small_image_text, "Using a Gun");
+        auto gun_name = PickupTypeToString(gun);
+        if (gun_name != "Unknown") {
+          strcpy(small_image_key, pickup_type_to_string.at(gun).c_str());
+          strcpy(small_image_text, fmt::format("Using the {}", gun_name).c_str());
+        } else {
+          strcpy(small_image_key, "gun-none");
+          strcpy(small_image_text, "Using a Gun");
+        }
       } else {
         strcpy(small_image_key, "");
         strcpy(small_image_text, "");

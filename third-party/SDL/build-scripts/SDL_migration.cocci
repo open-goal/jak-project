@@ -111,12 +111,48 @@ expression e1;
 - SDL_GetEventState(e1)
 + SDL_EventEnabled(e1)
 
+
+// SDL_JoystickEventState() - replaced with SDL_SetJoystickEventsEnabled()
+@@
+@@
+(
+- SDL_JoystickEventState(SDL_IGNORE)
++ SDL_SetJoystickEventsEnabled(false)
+|
+- SDL_JoystickEventState(SDL_DISABLE)
++ SDL_SetJoystickEventsEnabled(false)
+|
+- SDL_JoystickEventState(SDL_ENABLE)
++ SDL_SetJoystickEventsEnabled(true)
+|
+- SDL_JoystickEventState(SDL_QUERY)
++ SDL_JoystickEventsEnabled()
+)
+
+
+// SDL_GameControllerEventState() - replaced with SDL_SetGamepadEventsEnabled()
+@@
+@@
+(
+- SDL_GameControllerEventState(SDL_IGNORE)
++ SDL_SetGamepadEventsEnabled(false)
+|
+- SDL_GameControllerEventState(SDL_DISABLE)
++ SDL_SetGamepadEventsEnabled(false)
+|
+- SDL_GameControllerEventState(SDL_ENABLE)
++ SDL_SetGamepadEventsEnabled(true)
+|
+- SDL_GameControllerEventState(SDL_QUERY)
++ SDL_GamepadEventsEnabled()
+)
+
 @@
 expression e;
 @@
 - SDL_JoystickGetDevicePlayerIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetJoystickInstancePlayerIndex(GetJoystickInstanceFromIndex(e))
++ SDL_GetJoystickPlayerIndexForID(GetJoystickInstanceFromIndex(e))
 
 @@
 expression e;
@@ -130,7 +166,7 @@ expression e;
 @@
 - SDL_JoystickPathForIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetJoystickInstancePath(GetJoystickInstanceFromIndex(e))
++ SDL_GetJoystickPathForID(GetJoystickInstanceFromIndex(e))
 
 @@
 expression e;
@@ -144,28 +180,28 @@ expression e;
 @@
 - SDL_GameControllerMappingForDeviceIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetGamepadInstanceMapping(GetJoystickInstanceFromIndex(e))
++ SDL_GetGamepadMappingForID(GetJoystickInstanceFromIndex(e))
 
 @@
 expression e;
 @@
 - SDL_GameControllerNameForIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetGamepadInstanceName(GetJoystickInstanceFromIndex(e))
++ SDL_GetGamepadNameForID(GetJoystickInstanceFromIndex(e))
 
 @@
 expression e;
 @@
 - SDL_GameControllerPathForIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetGamepadInstancePath(GetJoystickInstanceFromIndex(e))
++ SDL_GetGamepadPathForID(GetJoystickInstanceFromIndex(e))
 
 @@
 expression e;
 @@
 - SDL_GameControllerTypeForIndex(e)
 + /* FIXME MIGRATION: check for valid instance */
-+ SDL_GetGamepadInstanceType(GetJoystickInstanceFromIndex(e))
++ SDL_GetGamepadTypeForID(GetJoystickInstanceFromIndex(e))
 
 
 // SDL_Has3DNow() has been removed; there is no replacement.
@@ -3686,6 +3722,11 @@ typedef SDL_JoystickGUID, SDL_GUID;
 @@
 - SDL_JoystickGUID
 + SDL_GUID
+@@
+@@
+- SDL_JoystickGetGUIDString
++ SDL_GUIDToString
+  (...)
 @@
 @@
 - SDL_GUIDFromString

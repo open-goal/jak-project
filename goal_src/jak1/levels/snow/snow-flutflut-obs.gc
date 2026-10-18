@@ -458,8 +458,7 @@
     (behavior ()
       (plat-trans)
       (let* ((f0-1 (fmin 1.0 (/ (the float (- (current-time) (-> self state-time))) (the float (-> self rise-time)))))
-             (f0-2 (- 1.0 f0-1))
-             (f0-3 (* f0-2 f0-2))
+             (f0-3 (square (- 1.0 f0-1)))
              (f30-0 (- 1.0 f0-3)))
         (vector-lerp! (-> self basetrans) (-> self appear-trans-bottom) (-> self appear-trans-top) f30-0)
         (quaternion-slerp! (-> self root quat) (-> self appear-quat-bottom) (-> self appear-quat-top) f30-0)
@@ -543,8 +542,7 @@
   :trans
     (behavior ()
       (plat-trans)
-      (let* ((f0-1 (fmin 1.0 (/ (the float (- (current-time) (-> self state-time))) (the float (-> self fall-time)))))
-             (f30-0 (* f0-1 f0-1)))
+      (let ((f30-0 (square (fmin 1.0 (/ (the float (- (current-time) (-> self state-time))) (the float (-> self fall-time)))))))
         (vector-lerp! (-> self basetrans) (-> self start-trans) (-> self appear-trans-bottom) f30-0)
         (quaternion-slerp! (-> self root quat) (-> self appear-quat-top) (-> self appear-quat-bottom) f30-0)
         (let ((f0-3 (- 1.0 f30-0))) (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 1.0))
@@ -608,7 +606,7 @@
     (behavior ()
       (when *target*
         (if (and (>= 798720.0 (-> (target-pos 0) y))
-                 (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                 (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                            (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))))
           (go elevator-travel-to-cave)))
       (plat-trans)

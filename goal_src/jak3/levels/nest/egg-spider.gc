@@ -660,7 +660,6 @@
 ;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
 (defmethod event-handler ((this egg-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Commmon handler for events."
-  (local-vars (sv-16 float) (sv-32 float))
   (case arg2
     (('attack)
      (let ((s1-0 (the-as attack-info (-> arg3 param 1))))
@@ -668,13 +667,7 @@
        (when (= (-> s1-0 mode) 'vehicle)
          (set! (-> this vehicle-attack?) #t)
          (vector-float*! (-> s1-0 vector) (-> s1-0 vector) 1.0)
-         (let ((s0-0 lerp))
-           (set! sv-16 (the-as float 40960.0))
-           (set! sv-32 (the-as float 81920.0))
-           (let ((a2-2 (rnd-float-range this 0.0 1.0)))
-             (set! (-> s1-0 vector y) (s0-0 sv-16 sv-32 a2-2))
-             )
-           )
+         (set! (-> s1-0 vector y) (lerp (the-as float 40960.0) (the-as float 81920.0) (rnd-float-range this 0.0 1.0)))
          )
        )
      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
@@ -1438,7 +1431,6 @@
 
 
 (defmethod check-can-rid ((this spider-manager))
-  (local-vars (sv-16 process-tree))
   (let ((s2-0 (the-as (pointer process-tree) (-> this child)))
         (s5-0 0)
         )
@@ -1447,18 +1439,19 @@
           )
       (set! (-> this can-rid) (the-as handle #f))
       (while s2-0
-        (set! sv-16 (as-type (-> s2-0 0) egg-spider))
-        (when sv-16
-          (when (not (logtest? (-> (the-as egg-spider sv-16) draw status) (draw-control-status on-screen)))
-            (let ((f0-0 (vector-vector-xz-distance (-> (the-as egg-spider sv-16) root trans) (target-pos 0))))
-              (when (< (the float dist) f0-0)
-                (set! dist f0-0)
-                (set! (-> this can-rid) (process->handle (the-as process sv-16)))
+        (let ((sv-16 (as-type (-> s2-0 0) egg-spider)))
+          (when sv-16
+            (when (not (logtest? (-> (the-as egg-spider sv-16) draw status) (draw-control-status on-screen)))
+              (let ((f0-0 (vector-vector-xz-distance (-> (the-as egg-spider sv-16) root trans) (target-pos 0))))
+                (when (< (the float dist) f0-0)
+                  (set! dist f0-0)
+                  (set! (-> this can-rid) (process->handle (the-as process sv-16)))
+                  )
                 )
+              (+! s4-0 1)
               )
-            (+! s4-0 1)
+            (+! s5-0 1)
             )
-          (+! s5-0 1)
           )
         (set! s2-0 (-> s2-0 0 brother))
         )
@@ -1668,7 +1661,6 @@
 
 (defmethod init-from-entity! ((this spider-manager) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'trsqv)))
     (set! (-> this root) s4-0)
@@ -1680,14 +1672,16 @@
   (set! (-> this max-spawn-delay) 60)
   (set! (-> this min-spot-delay) 150)
   (set! (-> this max-spot-delay) 300)
-  (set! sv-16 (new 'static 'res-tag))
-  (res-lump-data (-> this entity) 'nav-mesh-actor pointer :tag-ptr (& sv-16))
-  (set! (-> this num-nav-mesh) (the-as int (-> sv-16 elt-count)))
-  (set! sv-32 (new 'static 'res-tag))
-  (let ((v1-16 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32))))
+  (let ((sv-16 (new 'static 'res-tag)))
+    (res-lump-data (-> this entity) 'nav-mesh-actor pointer :tag-ptr (& sv-16))
+    (set! (-> this num-nav-mesh) (the-as int (-> sv-16 elt-count)))
+    )
+  (let* ((sv-32 (new 'static 'res-tag))
+         (v1-16 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-32)))
+         )
     (cond
       ((and v1-16 (nonzero? (-> sv-32 elt-count)))
-       (set! (-> this actor-group) (the-as (pointer actor-group) v1-16))
+       (set! (-> this actor-group) v1-16)
        (set! (-> this actor-group-count) (the-as int (-> sv-32 elt-count)))
        )
       (else

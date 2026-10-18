@@ -279,7 +279,6 @@
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 10 effect-control) has a return type of none, but the expression builder found a return statement.
 (defmethod do-effect ((this effect-control) (arg0 string) (arg1 float) (arg2 int))
-  (local-vars (sv-288 res-lump))
   (let* ((v1-2 (rtype-of arg0))
          (s3-0 (cond
                  ((= v1-2 symbol)
@@ -459,17 +458,16 @@
              (set! (-> v1-131 death-timer-org) (-> v1-131 death-timer))
              (set! (-> v1-131 death-draw-overlap) (-> (the-as death-info s3-1) overlap))
              )
-           (when (-> (the-as death-info s3-1) sound)
-             (let* ((s2-3 this)
-                    (s1-0 (method-of-object s2-3 play-effect-sound))
-                    (s0-0 (-> (the-as death-info s3-1) sound))
-                    )
-               (set! sv-288 (-> this res))
-               (let ((t1-5 (string->sound-name (-> (the-as death-info s3-1) sound))))
-                 (s1-0 s2-3 (the-as symbol s0-0) arg1 arg2 sv-288 t1-5)
+           (if (-> (the-as death-info s3-1) sound)
+               (play-effect-sound
+                 this
+                 (the-as symbol (-> (the-as death-info s3-1) sound))
+                 arg1
+                 arg2
+                 (-> this res)
+                 (string->sound-name (-> (the-as death-info s3-1) sound))
                  )
                )
-             )
            (send-event (-> this process) 'death-start (the-as death-info s3-1))
            )
          )
@@ -487,473 +485,440 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod do-effect-for-surface ((this effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 pat-surface))
-  (local-vars
-    (sv-64
-      (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)
-      )
-    (sv-80 sparticle-system)
-    (sv-96 vector)
-    (sv-112 matrix)
-    (sv-128
-      (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)
-      )
-    (sv-144 sparticle-system)
-    (sv-160 vector)
-    (sv-176 matrix)
-    (sv-192 symbol)
-    (sv-208
-      (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none)
-      )
-    (sv-224 sparticle-system)
-    (sv-240 vector)
-    (sv-256 matrix)
-    )
   (let ((s1-0 (the-as sound-name #f)))
     (-> *display* frames (-> *display* last-screen) run-time)
-    (set! sv-192 arg0)
-    (cond
-      ((string= (the-as string sv-192) "effect-walk-step-left")
-       (set! s1-0 (sound-name-with-material "walk" arg4 "1"))
-       )
-      ((string= (the-as string sv-192) "effect-run-step-left")
-       (set! s1-0 (sound-name-with-material "run" arg4 "1"))
-       )
-      ((string= (the-as string sv-192) "effect-mech-step-left")
-       (set! s1-0 (sound-name-with-material "mwlk" arg4 "1"))
-       )
-      ((string= (the-as string sv-192) "effect-walk-step-right")
-       (set! s1-0 (sound-name-with-material "walk" arg4 "2"))
-       )
-      ((string= (the-as string sv-192) "effect-run-step-right")
-       (set! s1-0 (sound-name-with-material "run" arg4 "2"))
-       )
-      ((string= (the-as string sv-192) "effect-mech-step-right")
-       (set! s1-0 (sound-name-with-material "mwlk" arg4 "2"))
-       )
-      ((string= (the-as string sv-192) "effect-roll")
-       (set! s1-0 (sound-name-with-material "roll" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-slide")
-       (set! s1-0 (sound-name-with-material "slide" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-land")
-       (set! s1-0 (sound-name-with-material "land" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-zoom-land")
-       (set! s1-0 (sound-name-with-material "zoom-land" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-zoom-hit")
-       (set! s1-0 (sound-name-with-material "zoom-hit" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-flut-land")
-       (set! s1-0 (sound-name-with-material "flut-land" arg4 ""))
-       )
-      ((string= (the-as string sv-192) "effect-land-poof")
-       (do-effect
-         this
-         (-> (new 'static 'boxed-array :type string
-               "group-land-poof-unk"
-               "group-land-poof-ice"
-               "group-land-poof-qsd"
-               "group-land-poof-wtr"
-               "group-land-poof-tar"
-               "group-land-poof-san"
-               "group-land-poof-wod"
-               "group-land-poof-grs"
-               "group-land-poof-pmt"
-               "group-land-poof-snw"
-               "group-land-poof-dsn"
-               "group-land-poof-unk"
-               "group-land-poof-lav"
-               "group-land-poof-cwd"
-               "group-land-poof-grv"
-               "group-land-poof-drt"
-               "group-land-poof-mtl"
-               "group-land-poof-str"
-               "group-land-poof-pmt"
-               "group-land-poof-swm"
-               "group-land-poof-unk"
-               "group-land-poof-mtl"
-               "group-land-poof-neu"
-               "group-land-poof-stn"
-               "group-land-poof-cmt"
-               "group-land-poof-car"
-               "group-land-poof-gmt"
-               "group-land-poof-smt"
-               "group-land-poof-hwd"
-               "group-land-poof-sqi"
-               "group-land-poof-mhm"
-               "group-land-poof-for"
-               "group-land-poof-mhs"
-               "group-land-poof-dma"
-               )
-             (-> arg4 material)
-             )
-         arg1
-         -1
+    (let ((sv-192 arg0))
+      (cond
+        ((string= (the-as string sv-192) "effect-walk-step-left")
+         (set! s1-0 (sound-name-with-material "walk" arg4 "1"))
          )
-       )
-      ((string= (the-as string sv-192) "effect-run-poof")
-       (do-effect
-         this
-         (-> (new 'static 'boxed-array :type string
-               "group-run-poof-unk"
-               "group-run-poof-ice"
-               "group-run-poof-qsd"
-               "group-run-poof-wtr"
-               "group-run-poof-tar"
-               "group-run-poof-san"
-               "group-run-poof-wod"
-               "group-run-poof-grs"
-               "group-run-poof-pmt"
-               "group-run-poof-snw"
-               "group-run-poof-dsn"
-               "group-run-poof-unk"
-               "group-run-poof-lav"
-               "group-run-poof-cwd"
-               "group-run-poof-grv"
-               "group-run-poof-drt"
-               "group-run-poof-mtl"
-               "group-run-poof-str"
-               "group-run-poof-pmt"
-               "group-run-poof-swm"
-               "group-run-poof-unk"
-               "group-run-poof-mtl"
-               "group-run-poof-neu"
-               "group-run-poof-stn"
-               "group-run-poof-cmt"
-               "group-run-poof-car"
-               "group-run-poof-gmt"
-               "group-run-poof-smt"
-               "group-run-poof-hwd"
-               "group-run-poof-sqi"
-               "group-run-poof-mhm"
-               "group-run-poof-for"
-               "group-run-poof-mhs"
-               "group-run-poof-dma"
-               )
-             (-> arg4 material)
-             )
-         arg1
-         -1
+        ((string= (the-as string sv-192) "effect-run-step-left")
+         (set! s1-0 (sound-name-with-material "run" arg4 "1"))
          )
-       )
-      ((string= (the-as string sv-192) "effect-just-footprint")
-       (do-effect
-         this
-         (-> (new 'static 'boxed-array :type string
-               "group-just-footprint-unk"
-               "group-just-footprint-ice"
-               "group-just-footprint-qsd"
-               "group-just-footprint-wtr"
-               "group-just-footprint-tar"
-               "group-just-footprint-san"
-               "group-just-footprint-wod"
-               "group-just-footprint-grs"
-               "group-just-footprint-pmt"
-               "group-just-footprint-snw"
-               "group-just-footprint-dsn"
-               "group-just-footprint-unk"
-               "group-just-footprint-lav"
-               "group-just-footprint-cwd"
-               "group-just-footprint-grv"
-               "group-just-footprint-drt"
-               "group-just-footprint-mtl"
-               "group-just-footprint-str"
-               "group-just-footprint-pmt"
-               "group-just-footprint-swm"
-               "group-just-footprint-unk"
-               "group-just-footprint-mtl"
-               "group-just-footprint-neu"
-               "group-just-footprint-stn"
-               "group-just-footprint-cmt"
-               "group-just-footprint-car"
-               "group-just-footprint-gmt"
-               "group-just-footprint-smt"
-               "group-just-footprint-hwd"
-               "group-just-footprint-sqi"
-               "group-just-footprint-mhm"
-               "group-just-footprint-for"
-               "group-just-footprint-mhs"
-               "group-just-footprint-dma"
-               )
-             (-> arg4 material)
-             )
-         arg1
-         -1
+        ((string= (the-as string sv-192) "effect-mech-step-left")
+         (set! s1-0 (sound-name-with-material "mwlk" arg4 "1"))
          )
-       )
-      ((string= (the-as string sv-192) "effect-just-poof")
-       (do-effect
-         this
-         (-> (new 'static 'boxed-array :type string
-               "group-just-poof-unk"
-               "group-just-poof-ice"
-               "group-just-poof-qsd"
-               "group-just-poof-wtr"
-               "group-just-poof-tar"
-               "group-just-poof-san"
-               "group-just-poof-wod"
-               "group-just-poof-grs"
-               "group-just-poof-pmt"
-               "group-just-poof-snw"
-               "group-just-poof-dsn"
-               "group-just-poof-unk"
-               "group-just-poof-lav"
-               "group-just-poof-cwd"
-               "group-just-poof-grv"
-               "group-just-poof-drt"
-               "group-just-poof-mtl"
-               "group-just-poof-str"
-               "group-just-poof-pmt"
-               "group-just-poof-swm"
-               "group-just-poof-unk"
-               "group-just-poof-mtl"
-               "group-just-poof-neu"
-               "group-just-poof-stn"
-               "group-just-poof-cmt"
-               "group-just-poof-car"
-               "group-just-poof-gmt"
-               "group-just-poof-smt"
-               "group-just-poof-hwd"
-               "group-just-poof-sqi"
-               "group-just-poof-mhm"
-               "group-just-poof-for"
-               "group-just-poof-mhs"
-               "group-just-poof-dma"
-               )
-             (-> arg4 material)
-             )
-         arg1
-         -1
+        ((string= (the-as string sv-192) "effect-walk-step-right")
+         (set! s1-0 (sound-name-with-material "walk" arg4 "2"))
          )
-       )
-      ((string= (the-as string sv-192) "effect-slide-poof")
-       (do-effect
-         this
-         (-> (new 'static 'boxed-array :type string
-               "group-slide-poof-unk"
-               "group-slide-poof-ice"
-               "group-slide-poof-qsd"
-               "group-slide-poof-wtr"
-               "group-slide-poof-tar"
-               "group-slide-poof-san"
-               "group-slide-poof-wod"
-               "group-slide-poof-grs"
-               "group-slide-poof-pmt"
-               "group-slide-poof-snw"
-               "group-slide-poof-dsn"
-               "group-slide-poof-unk"
-               "group-slide-poof-lav"
-               "group-slide-poof-cwd"
-               "group-slide-poof-grv"
-               "group-slide-poof-drt"
-               "group-slide-poof-mtl"
-               "group-slide-poof-str"
-               "group-slide-poof-pmt"
-               "group-slide-poof-swm"
-               "group-slide-poof-unk"
-               "group-slide-poof-mtl"
-               "group-slide-poof-neu"
-               "group-slide-poof-stn"
-               "group-slide-poof-cmt"
-               "group-slide-poof-car"
-               "group-slide-poof-gmt"
-               "group-slide-poof-smt"
-               "group-slide-poof-hwd"
-               "group-slide-poof-sqi"
-               "group-slide-poof-mhm"
-               "group-slide-poof-for"
-               "group-slide-poof-mhs"
-               "group-slide-poof-dma"
-               )
-             (-> arg4 material)
-             )
-         arg1
-         -1
+        ((string= (the-as string sv-192) "effect-run-step-right")
+         (set! s1-0 (sound-name-with-material "run" arg4 "2"))
          )
-       )
-      ((string= (the-as string sv-192) "effect-droppings")
-       (let ((s0-1 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
-                                             #x8e
-                                             #x2a9
-                                             #x2aa
-                                             #x2ab
-                                             #x2ac
-                                             #x75
-                                             #x8b
-                                             #x77
-                                             #x2ad
-                                             #x79
-                                             #x2ae
-                                             #x8e
-                                             #x2af
-                                             #x8d
-                                             #x2b0
-                                             #x76
-                                             #x2b1
-                                             #x2b2
-                                             #x2ad
-                                             #x2b3
-                                             #x8e
-                                             #x2b1
-                                             #x2b4
-                                             #x8c
-                                             #x2b5
-                                             #x2b6
-                                             #x2b7
-                                             #x2b8
-                                             #x2b9
-                                             #x2ba
-                                             #x2bb
-                                             #x78
-                                             #x2bc
-                                             #x2bd
-                                             )
-                                           (-> arg4 material)
-                                           )
-                       )
-                   )
-             )
-         (when (nonzero? s0-1)
-           (set! sv-64 sp-launch-particles-var)
-           (set! sv-80 *sp-particle-system-2d*)
-           (set! sv-112 *launch-matrix*)
-           (set! sv-96 (-> sv-112 trans))
-           (let ((v1-80 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2)) quad)))
-             (set! (-> sv-96 quad) v1-80)
-             )
-           (let ((a3-6 #f)
-                 (t0-1 #f)
-                 (t1-1 1.0)
+        ((string= (the-as string sv-192) "effect-mech-step-right")
+         (set! s1-0 (sound-name-with-material "mwlk" arg4 "2"))
+         )
+        ((string= (the-as string sv-192) "effect-roll")
+         (set! s1-0 (sound-name-with-material "roll" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-slide")
+         (set! s1-0 (sound-name-with-material "slide" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-land")
+         (set! s1-0 (sound-name-with-material "land" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-zoom-land")
+         (set! s1-0 (sound-name-with-material "zoom-land" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-zoom-hit")
+         (set! s1-0 (sound-name-with-material "zoom-hit" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-flut-land")
+         (set! s1-0 (sound-name-with-material "flut-land" arg4 ""))
+         )
+        ((string= (the-as string sv-192) "effect-land-poof")
+         (do-effect
+           this
+           (-> (new 'static 'boxed-array :type string
+                 "group-land-poof-unk"
+                 "group-land-poof-ice"
+                 "group-land-poof-qsd"
+                 "group-land-poof-wtr"
+                 "group-land-poof-tar"
+                 "group-land-poof-san"
+                 "group-land-poof-wod"
+                 "group-land-poof-grs"
+                 "group-land-poof-pmt"
+                 "group-land-poof-snw"
+                 "group-land-poof-dsn"
+                 "group-land-poof-unk"
+                 "group-land-poof-lav"
+                 "group-land-poof-cwd"
+                 "group-land-poof-grv"
+                 "group-land-poof-drt"
+                 "group-land-poof-mtl"
+                 "group-land-poof-str"
+                 "group-land-poof-pmt"
+                 "group-land-poof-swm"
+                 "group-land-poof-unk"
+                 "group-land-poof-mtl"
+                 "group-land-poof-neu"
+                 "group-land-poof-stn"
+                 "group-land-poof-cmt"
+                 "group-land-poof-car"
+                 "group-land-poof-gmt"
+                 "group-land-poof-smt"
+                 "group-land-poof-hwd"
+                 "group-land-poof-sqi"
+                 "group-land-poof-mhm"
+                 "group-land-poof-for"
+                 "group-land-poof-mhs"
+                 "group-land-poof-dma"
                  )
-             (sv-64 sv-80 s0-1 sv-112 (the-as sparticle-launch-state a3-6) (the-as sparticle-launch-control t0-1) t1-1)
+               (-> arg4 material)
+               )
+           arg1
+           -1
+           )
+         )
+        ((string= (the-as string sv-192) "effect-run-poof")
+         (do-effect
+           this
+           (-> (new 'static 'boxed-array :type string
+                 "group-run-poof-unk"
+                 "group-run-poof-ice"
+                 "group-run-poof-qsd"
+                 "group-run-poof-wtr"
+                 "group-run-poof-tar"
+                 "group-run-poof-san"
+                 "group-run-poof-wod"
+                 "group-run-poof-grs"
+                 "group-run-poof-pmt"
+                 "group-run-poof-snw"
+                 "group-run-poof-dsn"
+                 "group-run-poof-unk"
+                 "group-run-poof-lav"
+                 "group-run-poof-cwd"
+                 "group-run-poof-grv"
+                 "group-run-poof-drt"
+                 "group-run-poof-mtl"
+                 "group-run-poof-str"
+                 "group-run-poof-pmt"
+                 "group-run-poof-swm"
+                 "group-run-poof-unk"
+                 "group-run-poof-mtl"
+                 "group-run-poof-neu"
+                 "group-run-poof-stn"
+                 "group-run-poof-cmt"
+                 "group-run-poof-car"
+                 "group-run-poof-gmt"
+                 "group-run-poof-smt"
+                 "group-run-poof-hwd"
+                 "group-run-poof-sqi"
+                 "group-run-poof-mhm"
+                 "group-run-poof-for"
+                 "group-run-poof-mhs"
+                 "group-run-poof-dma"
+                 )
+               (-> arg4 material)
+               )
+           arg1
+           -1
+           )
+         )
+        ((string= (the-as string sv-192) "effect-just-footprint")
+         (do-effect
+           this
+           (-> (new 'static 'boxed-array :type string
+                 "group-just-footprint-unk"
+                 "group-just-footprint-ice"
+                 "group-just-footprint-qsd"
+                 "group-just-footprint-wtr"
+                 "group-just-footprint-tar"
+                 "group-just-footprint-san"
+                 "group-just-footprint-wod"
+                 "group-just-footprint-grs"
+                 "group-just-footprint-pmt"
+                 "group-just-footprint-snw"
+                 "group-just-footprint-dsn"
+                 "group-just-footprint-unk"
+                 "group-just-footprint-lav"
+                 "group-just-footprint-cwd"
+                 "group-just-footprint-grv"
+                 "group-just-footprint-drt"
+                 "group-just-footprint-mtl"
+                 "group-just-footprint-str"
+                 "group-just-footprint-pmt"
+                 "group-just-footprint-swm"
+                 "group-just-footprint-unk"
+                 "group-just-footprint-mtl"
+                 "group-just-footprint-neu"
+                 "group-just-footprint-stn"
+                 "group-just-footprint-cmt"
+                 "group-just-footprint-car"
+                 "group-just-footprint-gmt"
+                 "group-just-footprint-smt"
+                 "group-just-footprint-hwd"
+                 "group-just-footprint-sqi"
+                 "group-just-footprint-mhm"
+                 "group-just-footprint-for"
+                 "group-just-footprint-mhs"
+                 "group-just-footprint-dma"
+                 )
+               (-> arg4 material)
+               )
+           arg1
+           -1
+           )
+         )
+        ((string= (the-as string sv-192) "effect-just-poof")
+         (do-effect
+           this
+           (-> (new 'static 'boxed-array :type string
+                 "group-just-poof-unk"
+                 "group-just-poof-ice"
+                 "group-just-poof-qsd"
+                 "group-just-poof-wtr"
+                 "group-just-poof-tar"
+                 "group-just-poof-san"
+                 "group-just-poof-wod"
+                 "group-just-poof-grs"
+                 "group-just-poof-pmt"
+                 "group-just-poof-snw"
+                 "group-just-poof-dsn"
+                 "group-just-poof-unk"
+                 "group-just-poof-lav"
+                 "group-just-poof-cwd"
+                 "group-just-poof-grv"
+                 "group-just-poof-drt"
+                 "group-just-poof-mtl"
+                 "group-just-poof-str"
+                 "group-just-poof-pmt"
+                 "group-just-poof-swm"
+                 "group-just-poof-unk"
+                 "group-just-poof-mtl"
+                 "group-just-poof-neu"
+                 "group-just-poof-stn"
+                 "group-just-poof-cmt"
+                 "group-just-poof-car"
+                 "group-just-poof-gmt"
+                 "group-just-poof-smt"
+                 "group-just-poof-hwd"
+                 "group-just-poof-sqi"
+                 "group-just-poof-mhm"
+                 "group-just-poof-for"
+                 "group-just-poof-mhs"
+                 "group-just-poof-dma"
+                 )
+               (-> arg4 material)
+               )
+           arg1
+           -1
+           )
+         )
+        ((string= (the-as string sv-192) "effect-slide-poof")
+         (do-effect
+           this
+           (-> (new 'static 'boxed-array :type string
+                 "group-slide-poof-unk"
+                 "group-slide-poof-ice"
+                 "group-slide-poof-qsd"
+                 "group-slide-poof-wtr"
+                 "group-slide-poof-tar"
+                 "group-slide-poof-san"
+                 "group-slide-poof-wod"
+                 "group-slide-poof-grs"
+                 "group-slide-poof-pmt"
+                 "group-slide-poof-snw"
+                 "group-slide-poof-dsn"
+                 "group-slide-poof-unk"
+                 "group-slide-poof-lav"
+                 "group-slide-poof-cwd"
+                 "group-slide-poof-grv"
+                 "group-slide-poof-drt"
+                 "group-slide-poof-mtl"
+                 "group-slide-poof-str"
+                 "group-slide-poof-pmt"
+                 "group-slide-poof-swm"
+                 "group-slide-poof-unk"
+                 "group-slide-poof-mtl"
+                 "group-slide-poof-neu"
+                 "group-slide-poof-stn"
+                 "group-slide-poof-cmt"
+                 "group-slide-poof-car"
+                 "group-slide-poof-gmt"
+                 "group-slide-poof-smt"
+                 "group-slide-poof-hwd"
+                 "group-slide-poof-sqi"
+                 "group-slide-poof-mhm"
+                 "group-slide-poof-for"
+                 "group-slide-poof-mhs"
+                 "group-slide-poof-dma"
+                 )
+               (-> arg4 material)
+               )
+           arg1
+           -1
+           )
+         )
+        ((string= (the-as string sv-192) "effect-droppings")
+         (let ((s0-1 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
+                                               #x8e
+                                               #x2a9
+                                               #x2aa
+                                               #x2ab
+                                               #x2ac
+                                               #x75
+                                               #x8b
+                                               #x77
+                                               #x2ad
+                                               #x79
+                                               #x2ae
+                                               #x8e
+                                               #x2af
+                                               #x8d
+                                               #x2b0
+                                               #x76
+                                               #x2b1
+                                               #x2b2
+                                               #x2ad
+                                               #x2b3
+                                               #x8e
+                                               #x2b1
+                                               #x2b4
+                                               #x8c
+                                               #x2b5
+                                               #x2b6
+                                               #x2b7
+                                               #x2b8
+                                               #x2b9
+                                               #x2ba
+                                               #x2bb
+                                               #x78
+                                               #x2bc
+                                               #x2bd
+                                               )
+                                             (-> arg4 material)
+                                             )
+                         )
+                     )
+               )
+           (when (nonzero? s0-1)
+             (let ((sv-64 sp-launch-particles-var)
+                   (sv-80 *sp-particle-system-2d*)
+                   (sv-112 *launch-matrix*)
+                   )
+               (vector-copy!
+                 (-> sv-112 trans)
+                 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2))
+                 )
+               (sv-64 sv-80 s0-1 sv-112 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+               )
              )
            )
          )
-       )
-      ((string= (the-as string sv-192) "effect-jump-droppings")
-       (let ((s0-2 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
-                                             #x2be
-                                             #x2bf
-                                             #x2c0
-                                             #x2c1
-                                             #x2c2
-                                             #x86
-                                             #x2c3
-                                             #x89
-                                             #x2c4
-                                             #x88
-                                             #x2c5
-                                             #x2be
-                                             #x2c6
-                                             #x2c7
-                                             #x2c8
-                                             #x87
-                                             #x2c9
-                                             #x2ca
-                                             #x2c4
-                                             #x2cb
-                                             #x2be
-                                             #x2c9
-                                             #x2cc
-                                             #x2cd
-                                             #x2ce
-                                             #x2cf
-                                             #x2d0
-                                             #x2d1
-                                             #x2d2
-                                             #x2d3
-                                             #x2d4
-                                             #x8a
-                                             #x2d5
-                                             #x2d6
+        ((string= (the-as string sv-192) "effect-jump-droppings")
+         (let ((s0-2 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
+                                               #x2be
+                                               #x2bf
+                                               #x2c0
+                                               #x2c1
+                                               #x2c2
+                                               #x86
+                                               #x2c3
+                                               #x89
+                                               #x2c4
+                                               #x88
+                                               #x2c5
+                                               #x2be
+                                               #x2c6
+                                               #x2c7
+                                               #x2c8
+                                               #x87
+                                               #x2c9
+                                               #x2ca
+                                               #x2c4
+                                               #x2cb
+                                               #x2be
+                                               #x2c9
+                                               #x2cc
+                                               #x2cd
+                                               #x2ce
+                                               #x2cf
+                                               #x2d0
+                                               #x2d1
+                                               #x2d2
+                                               #x2d3
+                                               #x2d4
+                                               #x8a
+                                               #x2d5
+                                               #x2d6
+                                               )
+                                             (-> arg4 material)
                                              )
-                                           (-> arg4 material)
-                                           )
-                       )
+                         )
+                     )
+               )
+           (when (nonzero? s0-2)
+             (let ((sv-128 sp-launch-particles-var)
+                   (sv-144 *sp-particle-system-2d*)
+                   (sv-176 *launch-matrix*)
                    )
-             )
-         (when (nonzero? s0-2)
-           (set! sv-128 sp-launch-particles-var)
-           (set! sv-144 *sp-particle-system-2d*)
-           (set! sv-176 *launch-matrix*)
-           (set! sv-160 (-> sv-176 trans))
-           (let ((v1-97 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2)) quad)))
-             (set! (-> sv-160 quad) v1-97)
-             )
-           (let ((a3-7 #f)
-                 (t0-2 #f)
-                 (t1-2 1.0)
+               (vector-copy!
+                 (-> sv-176 trans)
+                 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2))
                  )
-             (sv-128 sv-144 s0-2 sv-176 (the-as sparticle-launch-state a3-7) (the-as sparticle-launch-control t0-2) t1-2)
+               (sv-128 sv-144 s0-2 sv-176 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+               )
              )
            )
          )
-       )
-      ((let ((t9-40 string=)
-             (a1-45 "effect-board-poof")
-             )
-         (t9-40 (the-as string sv-192) a1-45)
-         )
-       (let ((s0-3 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
-                                             #x2d7
-                                             #x2d8
-                                             #x2d9
-                                             #x2da
-                                             #x2db
-                                             #x2dc
-                                             #x2dd
-                                             #x2de
-                                             #x2df
-                                             #x2e0
-                                             #x2e1
-                                             #x2d7
-                                             #x2e2
-                                             #x2e3
-                                             #x2e4
-                                             #x2e5
-                                             #x2e6
-                                             #x2e7
-                                             #x2df
-                                             #x2e8
-                                             #x2d7
-                                             #x2e6
-                                             #x2e9
-                                             #x2a2
-                                             #x2ea
-                                             #x2eb
-                                             #x2ec
-                                             #x2ed
-                                             #x2ee
-                                             #x2ef
-                                             #x2f0
-                                             #x2f1
-                                             #x2f2
-                                             #x2f3
+        ((string= (the-as string sv-192) "effect-board-poof")
+         (let ((s0-3 (-> *part-id-table* (-> (new 'static 'boxed-array :type uint32
+                                               #x2d7
+                                               #x2d8
+                                               #x2d9
+                                               #x2da
+                                               #x2db
+                                               #x2dc
+                                               #x2dd
+                                               #x2de
+                                               #x2df
+                                               #x2e0
+                                               #x2e1
+                                               #x2d7
+                                               #x2e2
+                                               #x2e3
+                                               #x2e4
+                                               #x2e5
+                                               #x2e6
+                                               #x2e7
+                                               #x2df
+                                               #x2e8
+                                               #x2d7
+                                               #x2e6
+                                               #x2e9
+                                               #x2a2
+                                               #x2ea
+                                               #x2eb
+                                               #x2ec
+                                               #x2ed
+                                               #x2ee
+                                               #x2ef
+                                               #x2f0
+                                               #x2f1
+                                               #x2f2
+                                               #x2f3
+                                               )
+                                             (-> arg4 material)
                                              )
-                                           (-> arg4 material)
-                                           )
-                       )
+                         )
+                     )
+               )
+           (when (nonzero? s0-3)
+             (let ((sv-208 sp-launch-particles-var)
+                   (sv-224 *sp-particle-system-2d*)
+                   (sv-256 *launch-matrix*)
                    )
-             )
-         (when (nonzero? s0-3)
-           (set! sv-208 sp-launch-particles-var)
-           (set! sv-224 *sp-particle-system-2d*)
-           (set! sv-256 *launch-matrix*)
-           (set! sv-240 (-> sv-256 trans))
-           (let ((v1-114 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2)) quad)))
-             (set! (-> sv-240 quad) v1-114)
-             )
-           (let ((a3-8 #f)
-                 (t0-3 #f)
-                 (t1-3 1.0)
+               (vector-copy!
+                 (-> sv-256 trans)
+                 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data arg2))
                  )
-             (sv-208 sv-224 s0-3 sv-256 (the-as sparticle-launch-state a3-8) (the-as sparticle-launch-control t0-3) t1-3)
+               (sv-208 sv-224 s0-3 sv-256 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+               )
              )
            )
          )
-       )
+        )
       )
     (if s1-0
         (play-effect-sound this arg0 arg1 arg2 arg3 s1-0)
@@ -966,9 +931,8 @@
 ;; definition for method 12 of type effect-control
 ;; INFO: Used lq/sq
 (defmethod play-effect-sound ((this effect-control) (arg0 symbol) (arg1 float) (arg2 int) (arg3 basic) (arg4 sound-name))
-  (local-vars (sv-112 res-tag) (sv-128 sound-name) (sv-144 basic) (sv-160 (function vector vector float)))
-  (set! sv-144 arg3)
-  (let ((s0-0 arg4)
+  (let ((sv-144 arg3)
+        (s0-0 arg4)
         (gp-0 (the-as object (new 'stack 'sound-spec)))
         (s5-0 (if (< arg2 0)
                   (the-as vector #f)
@@ -980,15 +944,17 @@
     (logior! (-> (the-as sound-spec gp-0) mask) (sound-mask volume))
     (set! (-> (the-as sound-spec gp-0) pitch-mod) 0)
     (set! (-> (the-as sound-spec gp-0) volume) 1024)
-    (set! sv-112 (new 'static 'res-tag))
-    (let* ((t9-2 (method-of-type res-lump get-property-data))
-           (a1-5 'effect-param)
-           (a2-1 'exact)
-           (a3-1 arg1)
-           (t0-1 #f)
-           (t1-1 (the-as (pointer res-tag) (& sv-112)))
-           (t2-0 *res-static-buf*)
-           (a1-6 (t9-2 (the-as res-lump sv-144) a1-5 a2-1 a3-1 (the-as pointer t0-1) t1-1 t2-0))
+    (let* ((sv-112 (new 'static 'res-tag))
+           (a1-6 ((method-of-type res-lump get-property-data)
+                  (the-as res-lump sv-144)
+                  'effect-param
+                  'exact
+                  arg1
+                  (the-as pointer #f)
+                  (& sv-112)
+                  *res-static-buf*
+                  )
+                 )
            )
       (when a1-6
         (effect-param->sound-spec
@@ -1013,22 +979,16 @@
         )
       )
     (if (or (and (nonzero? (-> (the-as sound-spec gp-0) fo-max))
-                 (let ((f30-0 (* 4096.0 (the float (-> (the-as sound-spec gp-0) fo-max)))))
-                   (set! sv-160 vector-vector-distance)
-                   (let ((a0-8 (ear-trans 0))
-                         (a1-7 s5-0)
-                         )
-                     (< f30-0 (sv-160 a0-8 a1-7))
-                     )
-                   )
+                 (< (* 4096.0 (the float (-> (the-as sound-spec gp-0) fo-max))) (vector-vector-distance (ear-trans 0) s5-0))
                  )
             (= (-> (the-as (pointer int8) gp-0) 9) 126)
             )
         (return 0)
         )
     (when *debug-effect-control*
-      (set! sv-128 s0-0)
-      (string<-charp (clear *temp-string*) (the-as (pointer uint8) (& sv-128)))
+      (let ((sv-128 s0-0))
+        (string<-charp (clear *temp-string*) (the-as (pointer uint8) (& sv-128)))
+        )
       (format
         #t
         "(~5D) effect sound ~A ~S (~S) frame ~F joint ~D "

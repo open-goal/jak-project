@@ -499,9 +499,7 @@
 ;; definition for function steer-attenuation
 (defun steer-attenuation ((arg0 int))
   0.0
-  (let ((f0-2 (- 1.0 (fmax 0.0 (fmin 1.0 (* 0.0033333334 (the float (+ (- -90 arg0) (current-time)))))))))
-    (* f0-2 f0-2)
-    )
+  (square (- 1.0 (fmax 0.0 (fmin 1.0 (* 0.0033333334 (the float (+ (- -90 arg0) (current-time))))))))
   )
 
 ;; definition of type warf-asc
@@ -653,7 +651,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod control-hook-player ((this h-warf))
-  (local-vars (sv-1040 vector))
   (b! (focus-test? *target* dead grabbed) cfg-39 :delay (nop!))
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
     (matrix-rotate-y! s5-0 (* 182.04445 (seconds-per-frame) (* 180.0 (-> this controls steering))))
@@ -692,24 +689,25 @@
       (let ((s1-1 (new 'stack 'boxed-array collide-shape 128))
             (s0-1 (new 'stack-no-clear 'vector))
             )
-        (set! sv-1040 (new 'stack-no-clear 'vector))
-        0
-        (set-vector! s2-0 0.0 0.0 204800.0 1.0)
-        (vector-matrix*! s0-1 s2-0 s3-0)
-        (set-vector! s2-0 0.0 0.0 1658880.0 1.0)
-        (vector-rotate*! sv-1040 s2-0 s3-0)
-        (set! (-> s0-1 w) 32768.0)
-        (set! (-> sv-1040 w) 32768.0)
-        (set! (-> s1-1 length) (fill-actor-list-for-sphere
-                                 *actor-hash*
-                                 s0-1
-                                 sv-1040
-                                 (-> sv-1040 w)
-                                 (the-as (pointer collide-shape) (-> s1-1 data))
-                                 (-> s1-1 allocated-length)
-                                 -1
-                                 )
-              )
+        (let ((sv-1040 (new 'stack-no-clear 'vector)))
+          0
+          (set-vector! s2-0 0.0 0.0 204800.0 1.0)
+          (vector-matrix*! s0-1 s2-0 s3-0)
+          (set-vector! s2-0 0.0 0.0 1658880.0 1.0)
+          (vector-rotate*! sv-1040 s2-0 s3-0)
+          (set! (-> s0-1 w) 32768.0)
+          (set! (-> sv-1040 w) 32768.0)
+          (set! (-> s1-1 length) (fill-actor-list-for-sphere
+                                   *actor-hash*
+                                   s0-1
+                                   sv-1040
+                                   (-> sv-1040 w)
+                                   (the-as (pointer collide-shape) (-> s1-1 data))
+                                   (-> s1-1 allocated-length)
+                                   -1
+                                   )
+                )
+          )
         (let ((a0-41 (find-nearest-focusable
                        (the-as (array collide-shape) s1-1)
                        s0-1
@@ -1024,14 +1022,7 @@
               )
         (when (logtest? (-> this info flags) 1)
           (vector-float*! (-> arg1 tmp) (-> arg1 mat uvec) -1.0)
-          (let ((t9-4 vector-lerp!)
-                (a0-7 (-> arg1 lift-dir))
-                (a1-4 (-> arg1 lift-dir))
-                (a2-3 (-> arg1 tmp))
-                (f0-8 (-> arg1 speed-factor))
-                )
-            (t9-4 a0-7 a1-4 a2-3 (* f0-8 f0-8))
-            )
+          (vector-lerp! (-> arg1 lift-dir) (-> arg1 lift-dir) (-> arg1 tmp) (square (-> arg1 speed-factor)))
           (vector-normalize! (-> arg1 lift-dir) 1.0)
           )
         (vector-float*! (-> s2-0 move-dist) (-> arg1 lift-dir) (the-as float f30-1))

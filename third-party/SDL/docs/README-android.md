@@ -149,7 +149,7 @@ target_link_libraries(yourgame PRIVATE SDL3::SDL3)
 
 If you use ndk-build, add the following before `include $(BUILD_SHARED_LIBRARY)` to your `Android.mk`:
 ```
-LOCAL_SHARED_LIBARARIES := SDL3 SDL3-Headers
+LOCAL_SHARED_LIBRARIES := SDL3 SDL3-Headers
 ```
 And add the following at the bottom:
 ```
@@ -168,7 +168,7 @@ build-scripts/create-android-project.py --variant aar com.yourcompany.yourapp < 
 Customizing your application name
 ================================================================================
 
-To customize your application name, edit AndroidManifest.xml and build.gradle to replace
+To customize your application name, edit build.gradle to replace
 "org.libsdl.app" with an identifier for your product package.
 
 Then create a Java class extending SDLActivity and place it in a directory
@@ -193,6 +193,8 @@ Here's an example of a minimal class file:
 
 Then replace "SDLActivity" in AndroidManifest.xml with the name of your
 class, .e.g. "MyGame"
+
+Then edit app/src/main/res/values/strings.xml and change the name there.
 
 
 Customizing your application icon
@@ -598,7 +600,7 @@ The only caveat is that the APK's support a single architecture.
 
 When configuring the CMake project, you need to use the Android NDK CMake toolchain, and pass the Android home path through `SDL_ANDROID_HOME`.
 ```
-cmake .. -DCMAKE_TOOLCHAIN_FILE=<path/to/android.toolchain.cmake> -DANDROID_ABI=<android-abi> -DSDL_ANDROID_HOME=<path-to-android-sdk-home> -DANDROID_PLATFORM=23 -DSDL_TESTS=ON
+cmake .. -DCMAKE_TOOLCHAIN_FILE=<path/to/android.toolchain.cmake> -DANDROID_ABI=<android-abi> -DSDL_ANDROID_HOME=<path-to-android-sdk-home> -DANDROID_PLATFORM=21 -DSDL_TESTS=ON
 ```
 
 Remarks:

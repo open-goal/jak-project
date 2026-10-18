@@ -28,8 +28,8 @@
        ((-> self control unknown-symbol00)
         (target-collide-set! (-> self control unknown-symbol00) (-> self control unknown-float90))
         )
-       ((-> self control unknown-symbol30)
-        (target-danger-set! (-> self control unknown-symbol30) #f)
+       ((-> self control danger-mode)
+        (target-danger-set! (-> self control danger-mode) #f)
         )
        )
      )
@@ -60,8 +60,8 @@
        )
      )
     (('get-attack-count)
-     (set! v0-0 (+ (-> self control unknown-dword51) (-> arg3 param 0)))
-     (set! (-> self control unknown-dword51) (the-as int v0-0))
+     (set! v0-0 (+ (-> self control attack-count) (-> arg3 param 0)))
+     (set! (-> self control attack-count) (the-as int v0-0))
      v0-0
      )
     (('continue)
@@ -101,7 +101,7 @@
         (rot->dir-targ! (-> self control))
         (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
         (set! v0-0 (current-time))
-        (set! (-> self control unknown-dword11) (the-as time-frame v0-0))
+        (set! (-> self control last-time-on-surface) (the-as time-frame v0-0))
         v0-0
         )
        (('reset)
@@ -205,11 +205,11 @@
      )
     (('rotate-y-angle)
      (quaternion-rotate-y!
-       (-> self control unknown-quaternion00)
-       (-> self control unknown-quaternion00)
+       (-> self control quat-for-control)
+       (-> self control quat-for-control)
        (the-as float (-> arg3 param 0))
        )
-     (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+     (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
          (rot->dir-targ! (-> self control))
          )
      )
@@ -220,7 +220,7 @@
      (set! (-> self water drip-wetness) 0.0)
      )
     (('reset-height)
-     (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
+     (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
      #f
      )
     (('draw)
@@ -398,31 +398,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs symbol.
 (defbehavior target-send-attack target ((arg0 process) (arg1 uint) (arg2 touching-shapes-entry) (arg3 int) (arg4 int))
-  (local-vars
-    (sv-96 touching-prims-entry)
-    (sv-128 touching-prims-entry)
-    (sv-176 touching-prims-entry)
-    (sv-224 int)
-    (sv-240 symbol)
-    (sv-256 symbol)
-    (sv-272 symbol)
-    (sv-288 int)
-    (sv-304 symbol)
-    (sv-320 symbol)
-    (sv-336 symbol)
-    (sv-352 int)
-    (sv-368 symbol)
-    (sv-384 symbol)
-    (sv-400 symbol)
-    (sv-416 int)
-    (sv-432 symbol)
-    (sv-448 symbol)
-    (sv-464 symbol)
-    (sv-480 int)
-    (sv-496 symbol)
-    (sv-512 symbol)
-    (sv-528 symbol)
-    )
   (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> v1-0 from) self)
     (set! (-> v1-0 num-params) 4)
@@ -433,50 +408,28 @@
     (set! (-> v1-0 param 3) (the-as uint arg4))
     (let ((gp-0 (send-event-function arg0 v1-0)))
       (when (and gp-0 (!= gp-0 'push))
-        (let ((v1-5 (-> self control unknown-symbol30)))
+        (let ((v1-5 (-> self control danger-mode)))
           (cond
             ((or (= v1-5 'spin) (= v1-5 'spin-air))
-             (set! sv-96 (prims-touching? arg2 (-> self control) (the-as uint 64)))
-             (cond
-               (sv-96
-                 (let ((s4-0 (get-process *default-dead-pool* part-tracker #x4000)))
-                   (when s4-0
-                     (let ((t9-3 (method-of-type part-tracker activate)))
-                       (t9-3 (the-as part-tracker s4-0) self 'part-tracker (the-as pointer #x70004000))
-                       )
-                     (let ((s3-0 run-function-in-process)
-                           (s2-0 s4-0)
-                           (s1-0 part-tracker-init)
-                           (s0-0 group-spin-hit)
-                           )
-                       (set! sv-224 -1)
-                       (set! sv-240 (the-as symbol #f))
-                       (set! sv-256 (the-as symbol #f))
-                       (set! sv-272 (the-as symbol #f))
-                       (let ((t3-0 (get-intersect-point (new 'stack-no-clear 'vector) sv-96 (-> self control) arg2)))
-                         ((the-as (function object object object object object object object object none) s3-0)
-                          s2-0
-                          s1-0
-                          s0-0
-                          sv-224
-                          sv-240
-                          sv-256
-                          sv-272
-                          t3-0
-                          )
-                         )
-                       )
-                     (-> s4-0 ppointer)
+             (let ((sv-96 (prims-touching? arg2 (-> self control) (the-as uint 64))))
+               (if sv-96
+                   (process-spawn
+                     part-tracker
+                     :init part-tracker-init
+                     group-spin-hit
+                     -1
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (get-intersect-point (new 'stack-no-clear 'vector) sv-96 (-> self control) arg2)
+                     :to self
                      )
+                   (effect-control-method-10 (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74)
                    )
-                 )
-               (else
-                 (effect-control-method-10 (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74)
-                 )
                )
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                74
                #f
@@ -485,79 +438,42 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
              )
             ((= v1-5 'punch)
-             (set! sv-128 (prims-touching? arg2 (-> self control) (the-as uint 64)))
-             (cond
-               (sv-128
-                 (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                   (when s4-1
-                     (let ((t9-11 (method-of-type part-tracker activate)))
-                       (t9-11 (the-as part-tracker s4-1) self 'part-tracker (the-as pointer #x70004000))
-                       )
-                     (let ((s3-1 run-function-in-process)
-                           (s2-1 s4-1)
-                           (s1-1 part-tracker-init)
-                           (s0-1 group-punch-hit)
-                           )
-                       (set! sv-288 -1)
-                       (set! sv-304 (the-as symbol #f))
-                       (set! sv-320 (the-as symbol #f))
-                       (set! sv-336 (the-as symbol #f))
-                       (let ((t3-1 (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)))
-                         ((the-as (function object object object object object object object object none) s3-1)
-                          s2-1
-                          s1-1
-                          s0-1
-                          sv-288
-                          sv-304
-                          sv-320
-                          sv-336
-                          t3-1
-                          )
-                         )
-                       )
-                     (-> s4-1 ppointer)
+             (let ((sv-128 (prims-touching? arg2 (-> self control) (the-as uint 64))))
+               (cond
+                 (sv-128
+                   (process-spawn
+                     part-tracker
+                     :init part-tracker-init
+                     group-punch-hit
+                     -1
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
+                     :to self
                      )
                    )
-                 )
-               ((let ((v0-14 (prims-touching? arg2 (-> self control) (the-as uint 32))))
-                  (set! sv-128 v0-14)
-                  v0-14
-                  )
-                (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s4-2
-                    (let ((t9-16 (method-of-type part-tracker activate)))
-                      (t9-16 (the-as part-tracker s4-2) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (let ((s3-2 run-function-in-process)
-                          (s2-2 s4-2)
-                          (s1-2 part-tracker-init)
-                          (s0-2 group-punch-hit)
-                          )
-                      (set! sv-352 -1)
-                      (set! sv-368 (the-as symbol #f))
-                      (set! sv-384 (the-as symbol #f))
-                      (set! sv-400 (the-as symbol #f))
-                      (let ((t3-2 (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)))
-                        ((the-as (function object object object object object object object object none) s3-2)
-                         s2-2
-                         s1-2
-                         s0-2
-                         sv-352
-                         sv-368
-                         sv-384
-                         sv-400
-                         t3-2
-                         )
-                        )
-                      )
-                    (-> s4-2 ppointer)
+                 ((let ((v0-14 (prims-touching? arg2 (-> self control) (the-as uint 32))))
+                    (set! sv-128 v0-14)
+                    v0-14
+                    )
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    group-punch-hit
+                    -1
+                    (the-as symbol #f)
+                    (the-as symbol #f)
+                    (the-as symbol #f)
+                    (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
+                    :to self
                     )
                   )
-                )
+                 )
                )
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                23
                #f
@@ -568,7 +484,7 @@
             ((= v1-5 'flip)
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                74
                #f
@@ -577,80 +493,43 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1))
              )
             ((= v1-5 'uppercut)
-             (set! sv-176 (prims-touching? arg2 (-> self control) (the-as uint 64)))
-             (cond
-               (sv-176
-                 (let ((s4-3 (get-process *default-dead-pool* part-tracker #x4000)))
-                   (when s4-3
-                     (let ((t9-25 (method-of-type part-tracker activate)))
-                       (t9-25 (the-as part-tracker s4-3) self 'part-tracker (the-as pointer #x70004000))
-                       )
-                     (let ((s3-3 run-function-in-process)
-                           (s2-3 s4-3)
-                           (s1-3 part-tracker-init)
-                           (s0-3 group-punch-hit)
-                           )
-                       (set! sv-416 -1)
-                       (set! sv-432 (the-as symbol #f))
-                       (set! sv-448 (the-as symbol #f))
-                       (set! sv-464 (the-as symbol #f))
-                       (let ((t3-3 (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)))
-                         ((the-as (function object object object object object object object object none) s3-3)
-                          s2-3
-                          s1-3
-                          s0-3
-                          sv-416
-                          sv-432
-                          sv-448
-                          sv-464
-                          t3-3
-                          )
-                         )
-                       )
-                     (-> s4-3 ppointer)
+             (let ((sv-176 (prims-touching? arg2 (-> self control) (the-as uint 64))))
+               (cond
+                 (sv-176
+                   (process-spawn
+                     part-tracker
+                     :init part-tracker-init
+                     group-punch-hit
+                     -1
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (the-as symbol #f)
+                     (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
+                     :to self
                      )
                    )
-                 )
-               ((let ((v0-26 (prims-touching? arg2 (-> self control) (the-as uint 32))))
-                  (set! sv-176 v0-26)
-                  v0-26
-                  )
-                (let ((s4-4 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s4-4
-                    (let ((t9-30 (method-of-type part-tracker activate)))
-                      (t9-30 (the-as part-tracker s4-4) self 'part-tracker (the-as pointer #x70004000))
-                      )
-                    (let ((s3-4 run-function-in-process)
-                          (s2-4 s4-4)
-                          (s1-4 part-tracker-init)
-                          (s0-4 group-punch-hit)
-                          )
-                      (set! sv-480 -1)
-                      (set! sv-496 (the-as symbol #f))
-                      (set! sv-512 (the-as symbol #f))
-                      (set! sv-528 (the-as symbol #f))
-                      (let ((t3-4 (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)))
-                        ((the-as (function object object object object object object object object none) s3-4)
-                         s2-4
-                         s1-4
-                         s0-4
-                         sv-480
-                         sv-496
-                         sv-512
-                         sv-528
-                         t3-4
-                         )
-                        )
-                      )
-                    (-> s4-4 ppointer)
+                 ((let ((v0-26 (prims-touching? arg2 (-> self control) (the-as uint 32))))
+                    (set! sv-176 v0-26)
+                    v0-26
+                    )
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    group-punch-hit
+                    -1
+                    (the-as symbol #f)
+                    (the-as symbol #f)
+                    (the-as symbol #f)
+                    (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
+                    :to self
                     )
                   )
-                )
+                 )
                )
              (effect-control-method-10 (-> self skel effect) 'group-uppercut-hit (the-as float -1.0) 23)
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                23
                #f
@@ -663,7 +542,7 @@
              (effect-control-method-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 17)
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                23
                #f
@@ -674,7 +553,7 @@
             ((= v1-5 'flut-attack)
              (effect-control-method-12
                (-> self skel effect)
-               (-> self control unknown-symbol30)
+               (-> self control danger-mode)
                (the-as float -1.0)
                23
                #f
@@ -695,22 +574,22 @@
   (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (logior! (-> self state-flags) (state-flags prevent-attack prevent-duck remove-prevents))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self control trans))))
-      (set! (-> self control unknown-float41) (lerp-scale
-                                                (-> *TARGET-bank* tongue-pull-speed-min)
-                                                (-> *TARGET-bank* tongue-pull-speed-max)
-                                                (vector-length gp-1)
-                                                (the-as float 20480.0)
-                                                (the-as float 61440.0)
-                                                )
+      (set! (-> self control force-turn-to-strength) (lerp-scale
+                                                       (-> *TARGET-bank* tongue-pull-speed-min)
+                                                       (-> *TARGET-bank* tongue-pull-speed-max)
+                                                       (vector-length gp-1)
+                                                       (the-as float 20480.0)
+                                                       (the-as float 61440.0)
+                                                       )
             )
       (if (zero? (-> self control unknown-int00))
-          (vector-reset! (-> self control unknown-vector40))
+          (vector-reset! (-> self control force-turn-to-direction))
           )
       (vector-flatten! gp-1 gp-1 (-> self control local-normal))
       (vector-normalize! gp-1 (the-as float 1.0))
-      (vector+! (-> self control unknown-vector40) (-> self control unknown-vector40) gp-1)
+      (vector+! (-> self control force-turn-to-direction) (-> self control force-turn-to-direction) gp-1)
       )
-    (set! (-> self control unknown-float50) 1.0)
+    (set! (-> self control force-turn-to-speed) 1.0)
     (+! (-> self control unknown-int00) 1)
     #t
     )
@@ -751,10 +630,10 @@
          )
      )
     (('loading)
-     (if (not (or (and (logtest? (-> self control unknown-surface00 flags) (surface-flags jump))
+     (if (not (or (and (logtest? (-> self control mod-surface flags) (surface-flags jump))
                        (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                        )
-                  (or (logtest? (-> self water flags) (water-flags wt09))
+                  (or (logtest? (-> self water flag) (water-flag touch-water))
                       (logtest? (-> self state-flags) (state-flags dangerous sf02 being-attacked grabbed first-person-mode dying))
                       (logtest? (-> self control root-prim prim-core action)
                                 (collide-action edgegrab-cam swingpole-active racer snowball tube flut)
@@ -791,7 +670,7 @@
         )
        (('tube)
         (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-                 (not (logtest? (-> self water flags) (water-flags wt09)))
+                 (not (logtest? (-> self water flag) (water-flag touch-water)))
                  )
             (go target-tube-start (process->handle (the-as process (-> arg3 param 1))))
             )
@@ -828,8 +707,8 @@
          )
      )
     (('swim)
-     (if (not (or (= (-> self control unknown-surface00 mode) 'swim)
-                  (= (-> self control unknown-surface00 mode) 'dive)
+     (if (not (or (= (-> self control mod-surface mode) 'swim)
+                  (= (-> self control mod-surface mode) 'dive)
                   (= (-> self next-state name) 'target-hit)
                   (logtest? (-> self state-flags) (state-flags being-attacked))
                   )
@@ -838,7 +717,7 @@
          )
      )
     (('wade)
-     (if (and (!= (-> self control unknown-surface00 mode) 'wade)
+     (if (and (!= (-> self control mod-surface mode) 'wade)
               (or (= (-> self next-state name) 'target-stance)
                   (= (-> self next-state name) 'target-walk)
                   (= (-> self next-state name) 'target-stance-look-around)
@@ -867,10 +746,10 @@
           )
          (target-send-attack
            arg0
-           (the-as uint (-> self control unknown-symbol30))
+           (the-as uint (-> self control danger-mode))
            (the-as touching-shapes-entry (-> arg3 param 0))
-           (-> self control unknown-dword50)
-           (-> self control unknown-dword51)
+           (-> self control target-attack-id)
+           (-> self control attack-count)
            )
          (target-standard-event-handler arg0 arg1 arg2 arg3)
          )
@@ -904,7 +783,7 @@
             (< (* 16384.0 (-> *display* time-adjust-ratio))
                (vector-dot
                  (-> self control dynam gravity-normal)
-                 (vector-! (new 'stack-no-clear 'vector) (-> self control transv) (-> self control unknown-vector10))
+                 (vector-! (new 'stack-no-clear 'vector) (-> self control transv) (-> self control last-transv))
                  )
                )
             (begin
@@ -912,7 +791,7 @@
                 (vector-!
                   s4-0
                   (-> self control unknown-sphere-array00 0 prim-core world-sphere)
-                  (-> self control unknown-vector72)
+                  (-> self control actor-contact-pt)
                   )
                 (the-as float 1.0)
                 )
@@ -932,7 +811,7 @@
            )
        (let ((f0-7 (vector-dot
                      (-> self control dynam gravity-normal)
-                     (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector111) (-> self control trans))
+                     (vector-! (new 'stack-no-clear 'vector) (-> self control highest-jump-mark) (-> self control trans))
                      )
                    )
              )
@@ -941,12 +820,12 @@
                         arg0
                         (the-as uint 'bonk)
                         (the-as touching-shapes-entry (-> arg3 param 0))
-                        (-> self control unknown-dword50)
-                        (-> self control unknown-dword51)
+                        (-> self control target-attack-id)
+                        (-> self control attack-count)
                         )
                       (not (logtest? (-> self state-flags) (state-flags being-attacked dying)))
                       )
-             (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
+             (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
              (target-timed-invulnerable (seconds 0.1) self)
              (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))
              )
@@ -1010,13 +889,13 @@ target-standard-event-handler
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
 (defbehavior target-exit target ()
-  (set! (-> self control unknown-surface00) *walk-mods*)
+  (set! (-> self control mod-surface) *walk-mods*)
   (set! (-> self control unknown-vector13 quad) (the-as uint128 0))
-  (set! (-> self control unknown-vector14 quad) (the-as uint128 0))
-  (set! (-> self control unknown-vector15 quad) (the-as uint128 0))
-  (set! (-> self control unknown-vector11 quad) (the-as uint128 0))
-  (set! (-> self control unknown-float41) 0.0)
-  (set! (-> self control unknown-float81) 0.0)
+  (set! (-> self control anim-collide-offset-world quad) (the-as uint128 0))
+  (set! (-> self control old-anim-collide-offset-world quad) (the-as uint128 0))
+  (set! (-> self control draw-offset quad) (the-as uint128 0))
+  (set! (-> self control force-turn-to-strength) 0.0)
+  (set! (-> self control bend-target) 0.0)
   (logclear! (-> self state-flags) (state-flags
                                      sf02
                                      being-attacked
@@ -1029,14 +908,14 @@ target-standard-event-handler
                                      )
              )
   (target-danger-set! 'harmless #f)
-  (logior! (-> self water flags) (water-flags wt04))
-  (logclear! (-> self water flags) (water-flags wt16))
+  (logior! (-> self water flag) (water-flag swim-ground))
+  (logclear! (-> self water flag) (water-flag jump-out))
   (set! (-> self water drip-mult) 1.0)
   (set! (-> self neck flex-blend) 1.0)
   (set! (-> self control unknown-float91) 0.0)
   (logclear! (-> self draw status) (draw-status hidden))
   (logclear! (-> self skel status) (janim-status spool))
-  (logclear! (-> self control status) (cshape-moving-flags csmf14))
+  (logclear! (-> self control status) (cshape-moving-flags t-ceil-sticky))
   0
   (none)
   )

@@ -115,10 +115,10 @@
 
 (defmethod move-between-points ((this elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   #f
   )
 
@@ -146,7 +146,7 @@
           (when (< 0.0 f0-5)
             (vector-float*! (-> s5-0 move-dist) (-> s5-0 move-dist) f0-5)
             (vector+! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s5-0 start-pos))
-            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (the-as vector (-> s4-0 prim-core)))
+            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s4-0 prim-core world-sphere))
             (move-by-vector! (-> target control) (-> s5-0 move-dist))
             )
           )
@@ -158,11 +158,11 @@
 
 (defmethod init-defaults! ((this elevator))
   "Initializes default settings related to the [[elevator]]:
-- `elevator-xz-threshold`
-- `elevator-y-threshold`
-- `elevator-start-pos`
-- `elevator-move-rate`
-- `elevator-flags`"
+   - `elevator-xz-threshold`
+   - `elevator-y-threshold`
+   - `elevator-start-pos`
+   - `elevator-move-rate`
+   - `elevator-flags`"
   (let ((entity (-> this entity)))
     (set! (-> this params xz-threshold) ((method-of-object entity get-property-value-float)
                                          entity
@@ -226,12 +226,12 @@
 
 (defun ease-value-in-out ((value float) (step-amount float))
   "TODO - the math in this function is full of duplication and isn't totally clear
-but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
-which is obviously useful for an elevator."
+   but if the name is to be believed, it's to slow a values grow at the beginning and end of it's range
+   which is obviously useful for an elevator."
   (let* ((step step-amount)
          (f4-0 (- 1.0 step-amount))
          (f3-0 (/ step (- 1.0 f4-0)))
-         (f2-1 (* step step))
+         (f2-1 (square step))
          (f1-6 (+ (* 2.0 step (- f4-0 step)) f2-1))
          (f1-7 (+ (* (- 1.0 f4-0) (- 1.0 f4-0) f3-0) f1-6))
          )
@@ -243,9 +243,7 @@ which is obviously useful for an elevator."
           (+ (* 2.0 step (- value step)) f2-1)
           )
          (else
-           (let ((f0-7 (- 1.0 value)))
-             (- f1-7 (* f0-7 f0-7 f3-0))
-             )
+           (- f1-7 (* (square (- 1.0 value)) f3-0))
            )
          )
        f1-7
@@ -283,12 +281,7 @@ which is obviously useful for an elevator."
        (set! (-> self move-pos 0) (-> self move-pos 1))
        (cond
          ((not (logtest? (-> event param 0) 7))
-          (let ((gp-0 (the-as number (-> event param 0))))
-            (set! (-> self move-pos 1) (if (type? (the-as uint gp-0) float)
-                                           (the-as float gp-0)
-                                           )
-                  )
-            )
+          (set! (-> self move-pos 1) (as-type (-> event param 0) float))
           )
          (else
            (case (-> event param 0)
@@ -307,12 +300,7 @@ which is obviously useful for an elevator."
     (('jump-to)
      (cond
        ((not (logtest? (-> event param 0) 7))
-        (let ((gp-1 (the-as number (-> event param 0))))
-          (set! (-> self move-pos 1) (if (type? (the-as uint gp-1) float)
-                                         (the-as float gp-1)
-                                         )
-                )
-          )
+        (set! (-> self move-pos 1) (as-type (-> event param 0) float))
         )
        (else
          (case (-> event param 0)
@@ -392,36 +380,34 @@ which is obviously useful for an elevator."
 
 (defmethod find-closest-point-in-path! ((this elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
-the provided [[vector]]
+   the provided [[vector]]
 
-@param vec The point at which distance calculations are based off
-@param! next-step If a point is found, `next-pos` will be set to the correct point
-@param arg2 TODO
-@param arg3 TODO
-@returns [[#t]] if a point in the path was found"
-  (local-vars (path-point vector))
+   @param vec The point at which distance calculations are based off
+   @param! next-step If a point is found, `next-pos` will be set to the correct point
+   @param arg2 TODO
+   @param arg3 TODO
+   @returns [[#t]] if a point in the path was found"
   (let ((elev-params (-> this params))
         (smallest-dist 0.0)
         (point-idx-tracker -1.0)
         )
     (dotimes (path-vertex-idx (-> this path curve num-cverts))
-      (set! path-point
-            (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-vertex-idx) 'interp)
+      (let ((path-point
+              (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-vertex-idx) 'interp)
+              )
             )
-      (when (and (or (not arg2) (< (vector-vector-xz-distance path-point arg0) (-> elev-params xz-threshold)))
-                 (or (not arg3)
-                     (< (fabs (- (-> path-point y) (-> arg0 y))) (-> elev-params y-threshold))
-                     (and (= path-vertex-idx (the int (-> this bottom-top 0))) (< (-> arg0 y) (-> path-point y)))
-                     (and (= path-vertex-idx (the int (-> this bottom-top 1))) (< (-> path-point y) (-> arg0 y)))
-                     )
-                 )
-        (let* ((t9-2 vector-vector-distance)
-               (a1-3 arg0)
-               (dist (t9-2 path-point a1-3))
-               )
-          (when (or (= point-idx-tracker -1.0) (< dist smallest-dist))
-            (set! smallest-dist dist)
-            (set! point-idx-tracker (the float path-vertex-idx))
+        (when (and (or (not arg2) (< (vector-vector-xz-distance path-point arg0) (-> elev-params xz-threshold)))
+                   (or (not arg3)
+                       (< (fabs (- (-> path-point y) (-> arg0 y))) (-> elev-params y-threshold))
+                       (and (= path-vertex-idx (the int (-> this bottom-top 0))) (< (-> arg0 y) (-> path-point y)))
+                       (and (= path-vertex-idx (the int (-> this bottom-top 1))) (< (-> path-point y) (-> arg0 y)))
+                       )
+                   )
+          (let ((dist (vector-vector-distance path-point arg0)))
+            (when (or (= point-idx-tracker -1.0) (< dist smallest-dist))
+              (set! smallest-dist dist)
+              (set! point-idx-tracker (the float path-vertex-idx))
+              )
             )
           )
         )
@@ -435,12 +421,7 @@ the provided [[vector]]
 
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod elevator-method-44 ((this elevator))
-  (let* ((target-temp *target*)
-         (target (if (type? target-temp process-focusable)
-                     target-temp
-                     )
-                 )
-         )
+  (let ((target (the-as target (as-type *target* process-focusable))))
     (the-as
       symbol
       (and target (move-between-points this (get-trans target 0) (-> this move-pos 0) (-> this move-pos 1)))
@@ -455,9 +436,8 @@ the provided [[vector]]
 
 (defmethod move-to-next-point! ((this elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
-do so.
-@see [[elevator::47]]"
-  (local-vars (zero float))
+   do so.
+   @see [[elevator::47]]"
   (let ((target *target*))
     (when (and target
                (not (logtest? (focus-status dead inactive in-air grabbed edge-grab pole pilot-riding pilot teleporting)
@@ -465,12 +445,13 @@ do so.
                               )
                     )
                )
-      (set! zero (the-as float 0.0))
-      (when (and (find-closest-point-in-path! this (get-trans target 0) (& zero) #t #t) (!= (-> this move-pos 1) zero))
-        (set! (-> this move-pos 0) (-> this move-pos 1))
-        (set! (-> this move-pos 1) zero)
-        (logior! (-> this elevator-status) (elevator-status moving))
-        (go (method-of-object this running))
+      (let ((zero (the-as float 0.0)))
+        (when (and (find-closest-point-in-path! this (get-trans target 0) (& zero) #t #t) (!= (-> this move-pos 1) zero))
+          (set! (-> this move-pos 0) (-> this move-pos 1))
+          (set! (-> this move-pos 1) zero)
+          (logior! (-> this elevator-status) (elevator-status moving))
+          (go (method-of-object this running))
+          )
         )
       )
     )
@@ -723,8 +704,8 @@ do so.
 (defmethod calc-dist-between-points! ((this elevator) (path-point-x int) (path-point-y int))
   "Calculates the distance between two points in the elevator's path.
 
-@param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
-@param path-point-y The second point in the distance calculation"
+   @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
+   @param path-point-y The second point in the distance calculation"
   (set! (-> this path-seq data path-point-x next-pos) (the float path-point-y))
   (let ((point-x (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-point-x) 'interp))
         (point-y (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float path-point-y) 'interp))
@@ -744,16 +725,16 @@ do so.
 
 (defmethod init-plat! ((this elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
 
-(defmethod relocate ((this elevator) (arg0 int))
+(defmethod relocate ((this elevator) (offset int))
   (if (nonzero? (-> this path-seq))
-      (&+! (-> this path-seq) arg0)
+      (&+! (-> this path-seq) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod activate-elevator ((this elevator))
@@ -767,12 +748,11 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
-  (local-vars (sv-32 float) (sv-36 path-control) (sv-40 target))
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-plat-collision! this)
   (process-drawable-from-entity! this entity)
   (initialize-skeleton this (the-as skeleton-group (get-art-group this)) (the-as pair 0))
@@ -810,24 +790,22 @@ This commonly includes things such as:
         )
       )
     )
-  (set! sv-32 (the-as float 0.0))
-  (set! sv-36 (-> this path))
-  (let ((s5-2 *target*))
-    (set! sv-40 (if (type? s5-2 process-focusable)
-                    s5-2
+  (let ((sv-32 (the-as float 0.0))
+        (sv-36 (-> this path))
+        )
+    (let ((sv-40 (the-as target (as-type *target* process-focusable))))
+      (if (not (and sv-40
+                    (logtest? (-> this params flags) (elevator-flags elevator-flags-4))
+                    (find-closest-point-in-path! this (get-trans sv-40 0) (& sv-32) #f #t)
                     )
+               )
+          (set! sv-32 (-> this params start-pos))
           )
-    )
-  (if (not (and sv-40
-                (logtest? (-> this params flags) (elevator-flags elevator-flags-4))
-                (find-closest-point-in-path! this (get-trans sv-40 0) (& sv-32) #f #t)
-                )
-           )
-      (set! sv-32 (-> this params start-pos))
       )
-  (set! (-> this move-pos 0) sv-32)
-  (set! (-> this move-pos 1) sv-32)
-  (get-point-in-path! sv-36 (-> this basetrans) sv-32 'interp)
+    (set! (-> this move-pos 0) sv-32)
+    (set! (-> this move-pos 1) sv-32)
+    (get-point-in-path! sv-36 (-> this basetrans) sv-32 'interp)
+    )
   (set! (-> this root pause-adjust-distance)
         (+ 122880.0 (-> this params xz-threshold) (total-distance (-> this path)))
         )

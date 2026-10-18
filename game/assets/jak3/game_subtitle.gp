@@ -88,4 +88,89 @@
     :lines "game/assets/jak3/subtitle/subtitle_lines_fi-FI.json"
     :meta "game/assets/jak3/subtitle/subtitle_meta_fi-FI.json"
     :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
-    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json"))
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 13
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_sv-SE.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_sv-SE.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 14
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_da-DK.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_da-DK.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 15
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_no-NO.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_no-NO.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 16
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_pt-BR.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_pt-BR.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 17
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_hu-HU.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_hu-HU.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 18
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_ca-ES.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_ca-ES.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 19
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_is-IS.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_is-IS.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 20
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_pl-PL.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_pl-PL.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 21
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_lt-LT.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_lt-LT.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 22
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_cs-CZ.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_cs-CZ.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 23
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_hr-HR.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_hr-HR.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 24
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_gl-ES.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_gl-ES.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  )

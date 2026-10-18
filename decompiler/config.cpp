@@ -102,6 +102,9 @@ Config make_config_via_json(nlohmann::json& json) {
     config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
   }
   config.disassemble_code = json.at("disassemble_code").get<bool>();
+  if (json.contains("dump_function_metadata")) {
+    config.dump_function_metadata = json.at("dump_function_metadata").get<bool>();
+  }
   config.decompile_code = json.at("decompile_code").get<bool>();
   if (json.contains("format_code")) {
     config.format_code = json.at("format_code").get<bool>();
@@ -332,6 +335,9 @@ Config make_config_via_json(nlohmann::json& json) {
   }
   if (json.contains("rip_streamed_audio")) {
     config.rip_streamed_audio = json.at("rip_streamed_audio").get<bool>();
+  }
+  if (json.contains("rip_music")) {
+    config.rip_music = json.at("rip_music").get<bool>();
   }
 
   if (inputs_json.contains("animated_textures")) {

@@ -298,8 +298,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       const std::string progress_title =
           fmt::format("Compiling {}", version_to_game_name_external(game_version.value()));
       m_requester.send_progress_create_request(progress_title, "compiling project", -1);
-      m_compiler_instances.emplace(game_version.value(),
-                                   std::make_unique<Compiler>(game_version.value()));
+      m_compiler_instances.emplace(
+          game_version.value(),
+          std::make_unique<Compiler>(game_version.value(), emitter::InstructionSet::X86));
       try {
         // TODO - this should happen on a separate thread so the LSP is not blocking during this
         // lengthy step

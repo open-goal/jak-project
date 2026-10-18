@@ -78,8 +78,8 @@ This is updated from the entity system used in Crash 2, which had most of these 
     (set! (-> this allocated-length) data-count)
     (set! (-> this data-size) data-size)
     (set! (-> this length) 0)
-    (set! (-> this data-base) (&-> (-> this tag) data-count))
-    (set! (-> this data-top) (&-> (-> this tag) data-count))
+    (set! (-> this data-base) (&-> this tag data-count))
+    (set! (-> this data-top) (&-> this tag data-count))
     this))
 
 (defmethod length ((this res-lump))
@@ -516,24 +516,23 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 (defmethod mem-usage ((this res-lump) (block memory-usage-block) (flags int))
   "Get the memory usage of this lump and its data"
-  (local-vars (sv-16 int))
   ;; get the name and ID
   (let ((mem-use-id (mem-usage-id res))
         (mem-use-name "res"))
     (cond
-      ((nonzero? (logand flags 256)) (set! mem-use-id (mem-usage-id camera)) (set! mem-use-name "camera"))
-      ((nonzero? (logand flags 64)) (set! mem-use-id (mem-usage-id entity)) (set! mem-use-name "entity"))
-      ((nonzero? (logand flags 128)) (set! mem-use-id (mem-usage-id ambient)) (set! mem-use-name "ambient"))
-      ((nonzero? (logand flags 512)) (set! mem-use-id (mem-usage-id art-joint-geo)) (set! mem-use-name "art-joint-geo")))
+      ((logtest? flags 256) (set! mem-use-id (mem-usage-id camera)) (set! mem-use-name "camera"))
+      ((logtest? flags 64) (set! mem-use-id (mem-usage-id entity)) (set! mem-use-name "entity"))
+      ((logtest? flags 128) (set! mem-use-id (mem-usage-id ambient)) (set! mem-use-name "ambient"))
+      ((logtest? flags 512) (set! mem-use-id (mem-usage-id art-joint-geo)) (set! mem-use-name "art-joint-geo")))
     ;; set up the block
     (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
     (set! (-> block data mem-use-id name) mem-use-name)
     ;; the lump counts as 1 in the count field
-    (set! (-> block data mem-use-id count) (+ (-> block data mem-use-id count) 1))
+    (+! (-> block data mem-use-id count) 1)
     ;; add the size of the lump itself.
     (let ((obj-size (asize-of this)))
-      (set! (-> block data mem-use-id used) (+ (-> block data mem-use-id used) obj-size))
-      (set! (-> block data mem-use-id total) (+ (-> block data mem-use-id total) (logand -16 (+ obj-size 15)))))
+      (+! (-> block data mem-use-id used) obj-size)
+      (+! (-> block data mem-use-id total) (logand -16 (+ obj-size 15))))
     ;; add the tags
     (dotimes (tag-idx (-> this length))
       (when (zero? (-> this tag tag-idx inlined?))
@@ -549,35 +548,34 @@ This is updated from the entity system used in Crash 2, which had most of these 
                ;; this seems identical to the else case.
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
-               (set! (-> block data mem-use-id count) (+ (-> block data mem-use-id count) 1))
+               (+! (-> block data mem-use-id count) 1)
                (let ((v1-47 (asize-of tag-data)))
-                 (set! (-> block data mem-use-id used) (+ (-> block data mem-use-id used) v1-47))
-                 (set! (-> block data mem-use-id total) (+ (-> block data mem-use-id total) (logand -16 (+ v1-47 15))))))
-              ((nav-mesh collide-mesh)
-               ;; these have their own implementation.
-               (mem-usage tag-data block flags))
+                 (+! (-> block data mem-use-id used) v1-47)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-47 15)))))
+              ;; these have their own implementation.
+              ((nav-mesh collide-mesh) (mem-usage (the-as collide-mesh tag-data) block flags))
               ((array)
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
-               (set! (-> block data mem-use-id count) (+ (-> block data mem-use-id count) 1))
+               (+! (-> block data mem-use-id count) 1)
                (let ((v1-63 (asize-of (the-as (array object) tag-data))))
-                 (set! (-> block data mem-use-id used) (+ (-> block data mem-use-id used) v1-63))
-                 (set! (-> block data mem-use-id total) (+ (-> block data mem-use-id total) (logand -16 (+ v1-63 15)))))
+                 (+! (-> block data mem-use-id used) v1-63)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-63 15))))
                ;; call mem usage on all of our children.
-               (set! sv-16 0)
-               (while (< sv-16 (-> (the-as array tag-data) length))
-                 (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
-                   ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags))
-                 (set! sv-16 (+ sv-16 1))))
+               (let ((sv-16 0))
+                 (while (< sv-16 (-> (the-as array tag-data) length))
+                   (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
+                     ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags))
+                   (+! sv-16 1))))
               (else
                ;; unknown type.
                ;; we assume its nothing fancy and use the asize of.
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
-               (set! (-> block data mem-use-id count) (+ (-> block data mem-use-id count) 1))
+               (+! (-> block data mem-use-id count) 1)
                (let ((v1-88 (asize-of tag-data)))
-                 (set! (-> block data mem-use-id used) (+ (-> block data mem-use-id used) v1-88))
-                 (set! (-> block data mem-use-id total) (+ (-> block data mem-use-id total) (logand -16 (+ v1-88 15))))))))))))
+                 (+! (-> block data mem-use-id used) v1-88)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-88 15)))))))))))
   (the-as res-lump 0))
 
 (define *res-static-buf* (malloc 'global 128))

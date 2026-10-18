@@ -711,7 +711,6 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
 void Tie3::draw_debug_window() {
   ImGui::Checkbox("envmap 2nd draw", &m_draw_envmap_second_draw);
   ImGui::SliderFloat("envmap str", &m_envmap_strength, 0, 2);
-  ImGui::Checkbox("Fast ToD", &m_use_fast_time_of_day);
   ImGui::SameLine();
   ImGui::Checkbox("All Visible", &m_debug_all_visible);
   ImGui::Checkbox("Hide Wind", &m_hide_wind);

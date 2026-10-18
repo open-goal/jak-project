@@ -86,11 +86,10 @@
 
 ;; definition for method 219 of type mh-squad-member
 (defmethod pfoc-in-range? ((this mh-squad-member) (arg0 process-focusable))
-  (let* ((s5-0 (get-trans arg0 0))
-         (f0-0 (vector-vector-xz-distance-squared (-> this root trans) s5-0))
-         (f1-0 245760.0)
+  (let ((s5-0 (get-trans arg0 0)))
+    (and (< (vector-vector-xz-distance-squared (-> this root trans) s5-0) (square 245760.0))
+         (< (fabs (- (-> s5-0 y) (-> this root trans y))) 61440.0)
          )
-    (and (< f0-0 (* f1-0 f1-0)) (< (fabs (- (-> s5-0 y) (-> this root trans y))) 61440.0))
     )
   )
 
@@ -226,22 +225,18 @@
          (the-as enemy-aware #f)
          )
        (update-focus this)
-       (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
-             (f1-0 266240.0)
-             )
-         (cond
-           ((< f0-0 (* f1-0 f1-0))
-            (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
-              (set! v0-6 (logior (-> this flags) (citizen-flag persistent)))
-              (set! (-> this flags) (the-as citizen-flag v0-6))
-              v0-6
-              )
+       (cond
+         ((< (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)) (square 266240.0))
+          (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+            (set! v0-6 (logior (-> this flags) (citizen-flag persistent)))
+            (set! (-> this flags) (the-as citizen-flag v0-6))
+            v0-6
             )
-           (else
-             (set! v0-6 (logclear (-> this flags) (citizen-flag persistent)))
-             (set! (-> this flags) (the-as citizen-flag v0-6))
-             v0-6
-             )
+          )
+         (else
+           (set! v0-6 (logclear (-> this flags) (citizen-flag persistent)))
+           (set! (-> this flags) (the-as citizen-flag v0-6))
+           v0-6
            )
          )
        )

@@ -1,5 +1,3 @@
-// https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
-
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -119,7 +117,7 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
   // Called before the first test in this test suite.
   static void SetUpTestSuite() {
     runtime_thread = std::make_unique<std::thread>(std::thread(GoalTest::runtime_no_kernel_jak1));
-    compiler = std::make_unique<Compiler>(GameVersion::Jak1);
+    compiler = std::make_unique<Compiler>(GameVersion::Jak1, emitter::kNativeInstructionSet);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
   }

@@ -8,6 +8,10 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
+#if defined(__APPLE__) && defined(__aarch64__)
+#include "mach/mach.h"
+#include "mach/mach_vm.h"
+#endif
 #elif _WIN32
 #include <io.h>
 
@@ -27,7 +31,6 @@
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
-#include "common/util/FileUtil.h"
 #include "common/versions/versions.h"
 
 #include "game/external/discord.h"
@@ -55,9 +58,6 @@
 #include "game/kernel/jak3/klisten.h"
 #include "game/kernel/jak3/kscheme.h"
 #include "game/kernel/jakx/kboot.h"
-#include "game/kernel/jakx/kdgo.h"
-#include "game/kernel/jakx/klisten.h"
-#include "game/kernel/jakx/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -70,7 +70,6 @@
 #include "game/overlord/jak1/overlord.h"
 #include "game/overlord/jak1/ramdisk.h"
 #include "game/overlord/jak1/srpc.h"
-#include "game/overlord/jak1/ssound.h"
 #include "game/overlord/jak1/stream.h"
 #include "game/overlord/jak2/dma.h"
 #include "game/overlord/jak2/iso_cd.h"
@@ -82,7 +81,6 @@
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
-#include "game/overlord/jak3/init.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
@@ -93,6 +91,7 @@
 #include "system/SystemThread.h"
 
 u8* g_ee_main_mem = nullptr;
+u8* g_ee_main_mem_exec = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
 BackgroundWorker g_background_worker;
@@ -155,6 +154,7 @@ void deci2_runner(SystemThreadInterface& iface) {
 void ee_runner(SystemThreadInterface& iface) {
   prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
+  // Apple Silicon uses separate writable and executable mappings for EE memory.
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
         (u8*)mmap((void*)0x10000000, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
@@ -165,9 +165,15 @@ void ee_runner(SystemThreadInterface& iface) {
                   MAP_ANONYMOUS | MAP_32BIT | MAP_PRIVATE | MAP_POPULATE, 0, 0);
 #endif
   } else {
+#if defined(__APPLE__) && defined(__aarch64__)
+    // mach_vm_remap needs an anonymous writable mapping
+    g_ee_main_mem = (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_READ | PROT_WRITE,
+                              MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#else
     g_ee_main_mem =
         (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
                   MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+#endif
   }
 
   if (g_ee_main_mem == (u8*)(-1)) {
@@ -175,6 +181,35 @@ void ee_runner(SystemThreadInterface& iface) {
     iface.initialization_complete();
     return;
   }
+
+  g_ee_main_mem_exec = g_ee_main_mem;
+
+#if defined(__APPLE__) && defined(__aarch64__)
+  // map the same pages again with read and execute access
+  {
+    mach_vm_address_t exec_addr = 0;
+    vm_prot_t cur_prot = 0, max_prot = 0;
+    kern_return_t kr = mach_vm_remap(
+        mach_task_self(), &exec_addr, EE_MAIN_MEM_SIZE, 0, VM_FLAGS_ANYWHERE, mach_task_self(),
+        (mach_vm_address_t)g_ee_main_mem, false, &cur_prot, &max_prot, VM_INHERIT_NONE);
+    if (kr != KERN_SUCCESS) {
+      lg::error("Cannot map the executable view of main memory: mach_vm_remap returned {}",
+                (int)kr);
+      iface.initialization_complete();
+      return;
+    }
+    kr = mach_vm_protect(mach_task_self(), exec_addr, EE_MAIN_MEM_SIZE, false,
+                         VM_PROT_READ | VM_PROT_EXECUTE);
+    if (kr != KERN_SUCCESS) {
+      lg::error("Cannot make main memory executable: mach_vm_protect returned {}", (int)kr);
+      iface.initialization_complete();
+      return;
+    }
+    g_ee_main_mem_exec = (u8*)exec_addr;
+    lg::debug("Main memory executable view at 0x{:016x} (delta 0x{:x})", (u64)g_ee_main_mem_exec,
+              (u64)(g_ee_main_mem_exec - g_ee_main_mem));
+  }
+#endif
 
   lg::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
   lg::debug("Main memory size 0x{:x} bytes ({:.3f} MB)", EE_MAIN_MEM_SIZE,
@@ -238,6 +273,7 @@ void ee_runner(SystemThreadInterface& iface) {
       break;
     case GameVersion::JakX:
       jakx::goal_main(g_argc, g_argv);
+      break;
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }

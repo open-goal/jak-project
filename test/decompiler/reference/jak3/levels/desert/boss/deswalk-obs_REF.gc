@@ -764,7 +764,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod ragdoll-method-19 ((this dm-tentacle-ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 matrix))
-  (local-vars (f30-0 float) (sv-48 vector))
+  (local-vars (f30-0 float))
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
     (let ((a0-1 (-> this ragdoll-joints arg1)))
@@ -809,14 +809,7 @@
                        (+ (- f0-13 (* (the float (the int (/ f0-13 65536.0))) 65536.0)) (* 3640.889 (the float (-> this chain-pos))))
                        )
                      )
-                (let ((s1-0 arg0)
-                      (s0-0 arg0)
-                      )
-                  (set! sv-48 (-> arg3 rvec))
-                  (let ((f0-16 (* f30-0 (cos f28-0))))
-                    (vector+float*! s1-0 s0-0 sv-48 f0-16)
-                    )
-                  )
+                (vector+float*! arg0 arg0 (-> arg3 rvec) (* f30-0 (cos f28-0)))
                 (vector+float*! arg0 arg0 (-> arg3 fvec) (* f30-0 (sin f28-0)))
                 )
               )
@@ -949,23 +942,17 @@
             )
        (set! (-> self ragdoll mode) (the-as uint 3))
        )
-      (else
-        (let ((f0-0 81920.0))
-          (cond
-            ((< (* f0-0 f0-0)
-                (vector-vector-xz-distance-squared (target-pos 0) (-> self ragdoll ragdoll-joints 0 position))
-                )
-             (set! (-> self ragdoll mode) (the-as uint 0))
-             0
-             )
-            (else
-              (if (zero? (-> self ragdoll mode))
-                  (sound-play "snake-twist" :position (-> self ragdoll ragdoll-joints 0 position))
-                  )
-              (set! (-> self ragdoll mode) (the-as uint 1))
-              )
-            )
+      ((< (square 81920.0)
+          (vector-vector-xz-distance-squared (target-pos 0) (-> self ragdoll ragdoll-joints 0 position))
           )
+       (set! (-> self ragdoll mode) (the-as uint 0))
+       0
+       )
+      (else
+        (if (zero? (-> self ragdoll mode))
+            (sound-play "snake-twist" :position (-> self ragdoll ragdoll-joints 0 position))
+            )
+        (set! (-> self ragdoll mode) (the-as uint 1))
         )
       )
     (cond
@@ -2270,50 +2257,25 @@
     (remove-setting! 'target-height)
     )
   :trans (behavior ()
-    (local-vars (sv-16 float) (sv-32 meters))
     (cond
       ((desw-snake-stump-should-be-up?)
        (ja :num! (seek! max 0.5))
        (rider-trans)
        (rider-post)
-       (cond
-         ((< (ja-aframe-num 0) 6.0)
-          (let* ((gp-0 *setting-control*)
-                 (s5-0 (method-of-object gp-0 set-setting))
-                 (s4-0 self)
-                 (s3-0 'target-height)
-                 (s2-0 'abs)
-                 (s1-0 lerp-scale)
-                 (s0-0 (-> *CAMERA_MASTER-bank* target-height))
-                 )
-            (set! sv-16 (the-as float 14336.0))
-            (let ((a2-1 (ja-aframe-num 0))
-                  (a3-0 2.0)
-                  (t0-0 6.0)
-                  )
-              (s5-0 gp-0 s4-0 s3-0 s2-0 (s1-0 s0-0 sv-16 a2-1 a3-0 t0-0) 0)
-              )
-            )
-          )
-         (else
-           (let* ((gp-1 *setting-control*)
-                  (s5-1 (method-of-object gp-1 set-setting))
-                  (s4-1 self)
-                  (s3-1 'target-height)
-                  (s2-1 'abs)
-                  (s1-1 lerp-scale)
-                  (s0-1 14336.0)
-                  )
-             (set! sv-32 (-> *CAMERA_MASTER-bank* target-height))
-             (let ((a2-3 (ja-aframe-num 0))
-                   (a3-2 11.0)
-                   (t0-2 15.0)
-                   )
-               (s5-1 gp-1 s4-1 s3-1 s2-1 (s1-1 s0-1 sv-32 a2-3 a3-2 t0-2) 0)
-               )
+       (if (< (ja-aframe-num 0) 6.0)
+           (set-setting!
+             'target-height
+             'abs
+             (lerp-scale (-> *CAMERA_MASTER-bank* target-height) (the-as float 14336.0) (ja-aframe-num 0) 2.0 6.0)
+             0
+             )
+           (set-setting!
+             'target-height
+             'abs
+             (lerp-scale 14336.0 (-> *CAMERA_MASTER-bank* target-height) (ja-aframe-num 0) 11.0 15.0)
+             0
              )
            )
-         )
        (if (ja-done? 0)
            (go-virtual up)
            )
@@ -2343,7 +2305,6 @@
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this desw-snake-stump) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -2374,8 +2335,9 @@
     (the-as pair 0)
     )
   (set! (-> this actor-group-count) 0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-22 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-22 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-22 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))

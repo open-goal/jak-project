@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1259,3 +1259,41 @@
 #define SDL_ClickTrayEntry SDL_ClickTrayEntry_REAL
 #define SDL_UpdateTrays SDL_UpdateTrays_REAL
 #define SDL_StretchSurface SDL_StretchSurface_REAL
+#define SDL_SetRelativeMouseTransform SDL_SetRelativeMouseTransform_REAL
+#define SDL_RenderTexture9GridTiled SDL_RenderTexture9GridTiled_REAL
+#define SDL_SetDefaultTextureScaleMode SDL_SetDefaultTextureScaleMode_REAL
+#define SDL_GetDefaultTextureScaleMode SDL_GetDefaultTextureScaleMode_REAL
+#define SDL_CreateGPURenderState SDL_CreateGPURenderState_REAL
+#define SDL_SetGPURenderStateFragmentUniforms SDL_SetGPURenderStateFragmentUniforms_REAL
+#define SDL_SetGPURenderState SDL_SetGPURenderState_REAL
+#define SDL_DestroyGPURenderState SDL_DestroyGPURenderState_REAL
+#define SDL_SetWindowProgressState SDL_SetWindowProgressState_REAL
+#define SDL_SetWindowProgressValue SDL_SetWindowProgressValue_REAL
+#define SDL_GetWindowProgressState SDL_GetWindowProgressState_REAL
+#define SDL_GetWindowProgressValue SDL_GetWindowProgressValue_REAL
+#define SDL_SetRenderTextureAddressMode SDL_SetRenderTextureAddressMode_REAL
+#define SDL_GetRenderTextureAddressMode SDL_GetRenderTextureAddressMode_REAL
+#define SDL_GetGPUDeviceProperties SDL_GetGPUDeviceProperties_REAL
+#define SDL_CreateGPURenderer SDL_CreateGPURenderer_REAL
+#define SDL_PutAudioStreamPlanarData SDL_PutAudioStreamPlanarData_REAL
+#define SDL_GetEventDescription SDL_GetEventDescription_REAL
+#define SDL_PutAudioStreamDataNoCopy SDL_PutAudioStreamDataNoCopy_REAL
+#define SDL_AddAtomicU32 SDL_AddAtomicU32_REAL
+#define SDL_hid_get_properties SDL_hid_get_properties_REAL
+#define SDL_GetPixelFormatFromGPUTextureFormat SDL_GetPixelFormatFromGPUTextureFormat_REAL
+#define SDL_GetGPUTextureFormatFromPixelFormat SDL_GetGPUTextureFormatFromPixelFormat_REAL
+#define JNI_OnLoad JNI_OnLoad_REAL
+#define SDL_SetTexturePalette SDL_SetTexturePalette_REAL
+#define SDL_GetTexturePalette SDL_GetTexturePalette_REAL
+#define SDL_GetGPURendererDevice SDL_GetGPURendererDevice_REAL
+#define SDL_LoadPNG_IO SDL_LoadPNG_IO_REAL
+#define SDL_LoadPNG SDL_LoadPNG_REAL
+#define SDL_SavePNG_IO SDL_SavePNG_IO_REAL
+#define SDL_SavePNG SDL_SavePNG_REAL
+#define SDL_GetSystemPageSize SDL_GetSystemPageSize_REAL
+#define SDL_GetPenDeviceType SDL_GetPenDeviceType_REAL
+#define SDL_CreateAnimatedCursor SDL_CreateAnimatedCursor_REAL
+#define SDL_RotateSurface SDL_RotateSurface_REAL
+#define SDL_LoadSurface_IO SDL_LoadSurface_IO_REAL
+#define SDL_LoadSurface SDL_LoadSurface_REAL
+#define SDL_SetWindowFillDocument SDL_SetWindowFillDocument_REAL

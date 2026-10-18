@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,6 +25,7 @@
 #include <unistd.h> // For getpid() and readlink()
 
 #include "../../core/linux/SDL_system_theme.h"
+#include "../../core/linux/SDL_progressbar.h"
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../SDL_pixels_c.h"
@@ -39,6 +40,7 @@
 #include "SDL_x11messagebox.h"
 #include "SDL_x11shape.h"
 #include "SDL_x11xsync.h"
+#include "SDL_x11xtest.h"
 
 #ifdef SDL_VIDEO_OPENGL_EGL
 #include "SDL_x11opengles.h"
@@ -95,6 +97,14 @@ static SDL_VideoDevice *X11_CreateDevice(void)
 
     if (!x11_display) {
         SDL_X11_UnloadSymbols();
+
+        const char *session = SDL_getenv("XDG_SESSION_TYPE");
+        if (session && SDL_strcasecmp(session, "wayland") == 0) {
+            SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "Failed to connect to the X11 (XWayland) display server");
+        } else {
+            SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "Failed to connect to the X11 display server");
+        }
+
         return NULL;
     }
 
@@ -181,6 +191,9 @@ static SDL_VideoDevice *X11_CreateDevice(void)
     device->AcceptDragAndDrop = X11_AcceptDragAndDrop;
     device->UpdateWindowShape = X11_UpdateWindowShape;
     device->FlashWindow = X11_FlashWindow;
+#ifdef SDL_USE_LIBDBUS
+    device->ApplyWindowProgress = DBUS_ApplyWindowProgress;
+#endif // SDL_USE_LIBDBUS
     device->ShowWindowSystemMenu = X11_ShowWindowSystemMenu;
     device->SetWindowFocusable = X11_SetWindowFocusable;
     device->SyncWindow = X11_SyncWindow;
@@ -233,7 +246,6 @@ static SDL_VideoDevice *X11_CreateDevice(void)
     device->HasScreenKeyboardSupport = X11_HasScreenKeyboardSupport;
     device->ShowScreenKeyboard = X11_ShowScreenKeyboard;
     device->HideScreenKeyboard = X11_HideScreenKeyboard;
-    device->IsScreenKeyboardShown = X11_IsScreenKeyboardShown;
 
     device->free = X11_DeleteDevice;
 
@@ -255,8 +267,9 @@ static SDL_VideoDevice *X11_CreateDevice(void)
 
     data->is_xwayland = X11_IsXWayland(x11_display);
     if (data->is_xwayland) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "Detected XWayland");
+
         device->device_caps |= VIDEO_DEVICE_CAPS_MODE_SWITCHING_EMULATED |
-                               VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS |
                                VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS;
     }
 
@@ -388,6 +401,7 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     GET_ATOM(SDL_SELECTION);
     GET_ATOM(TARGETS);
     GET_ATOM(SDL_FORMATS);
+    GET_ATOM(RESOURCE_MANAGER);
     GET_ATOM(XdndAware);
     GET_ATOM(XdndEnter);
     GET_ATOM(XdndLeave);
@@ -409,19 +423,23 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
 
     if (!X11_InitXinput2(_this)) {
         // Assume a mouse and keyboard are attached
-        SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, false);
-        SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, false);
+        SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL);
+        SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL);
     }
 
 #ifdef SDL_VIDEO_DRIVER_X11_XFIXES
     X11_InitXfixes(_this);
-#endif // SDL_VIDEO_DRIVER_X11_XFIXES
+#endif
 
     X11_InitXsettings(_this);
 
 #ifdef SDL_VIDEO_DRIVER_X11_XSYNC
     X11_InitXsync(_this);
-#endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
+#endif
+
+#ifdef SDL_VIDEO_DRIVER_X11_XTEST
+    X11_InitXTest(_this);
+#endif
 
 #ifndef X_HAVE_UTF8_STRING
 #warning X server does not support UTF8_STRING, a feature introduced in 2000! This is likely to become a hard error in a future libSDL3.
@@ -435,6 +453,10 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     X11_InitTouch(_this);
 
     X11_InitPen(_this);
+
+    // Request currently available mime-types in the clipboard.
+    X11_XConvertSelection(data->display, data->atoms.CLIPBOARD, data->atoms.TARGETS,
+            data->atoms.SDL_FORMATS, GetWindow(_this), CurrentTime);
 
     return true;
 }
@@ -457,6 +479,7 @@ void X11_VideoQuit(SDL_VideoDevice *_this)
     }
 #endif
 
+    X11_QuitXinput2(_this);
     X11_QuitModes(_this);
     X11_QuitKeyboard(_this);
     X11_QuitMouse(_this);

@@ -1,0 +1,905 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: gsound-h.gc
+;; name in dgo: gsound-h
+;; dgos: ENGINE, GAME
+
+;; +++sound-bank-mode
+(defenum sound-bank-mode
+  :type uint32
+  (none 0)
+  (unknown 1)
+  (common 2)
+  (mode 3)
+  (full 4)
+  (half 5)
+  (halfa 6)
+  (halfb 7)
+  (halfc 8)
+  (virtual 9)
+  )
+;; ---sound-bank-mode
+
+
+;; +++stream-status
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  (ss1 1) ;; id-is-playing
+  (ss4 4) ;; is-playing
+  (ss6 6) ;; id-is-playing
+  (ss9 9)
+  )
+;; ---stream-status
+
+(declare-type sound-name uint128)
+(define-extern string->sound-name (function string sound-name))
+
+(define-extern get-sound-buffer-entry (function pointer))
+(define-extern sound-set-ear-trans (function vector vector vector vector vector float int))
+(define-extern ear-trans (function int vector))
+
+;; DECOMP BEGINS
+
+(define *debug-sound-sliders* #f)
+
+(define *music-volume-ducked-by-sound* 1.0)
+
+(deftype sound-stream-name (structure)
+  ((name  uint8  48)
+   )
+  )
+
+
+(deftype sound-id (uint32)
+  ()
+  )
+
+(deftype sound-bank-id (uint32)
+  ()
+  )
+
+(deftype sound-name (uint128)
+  ((lo uint64 :offset   0 :size  64)
+   (hi uint64 :offset  64 :size  64)
+   )
+  )
+
+(define *music-lock* #f)
+
+(deftype sound-rpc-cmd (structure)
+  ((rsvd1    uint16)
+   (command  uint16)
+   )
+  )
+
+
+(deftype sound-play-params (structure)
+  ((mask       uint8)
+   (group      uint8)
+   (volume     int16)
+   (pitch-mod  int16)
+   (bend       int16)
+   (pan        int16)
+   )
+  )
+
+
+(deftype sound-rpc-bank-cmd (sound-rpc-cmd)
+  ((bank-name  uint128)
+   )
+  )
+
+
+(deftype sound-rpc-test-cmd (sound-rpc-cmd)
+  ((ee-addr  pointer)
+   (param0   uint16)
+   )
+  )
+
+
+(deftype sound-rpc-sound-cmd (sound-rpc-cmd)
+  ((id  sound-id)
+   )
+  )
+
+
+(deftype sound-rpc-group-cmd (sound-rpc-cmd)
+  ((group  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
+  ((ee-addr   pointer)
+   (mode      uint32)
+   (priority  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-unload-bank (sound-rpc-cmd)
+  ((mode  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-play (sound-rpc-sound-cmd)
+  ((name    uint128)
+   (params  sound-play-params  :inline)
+   )
+  )
+
+
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-set-param (sound-rpc-sound-cmd)
+  ((params     sound-play-params  :inline)
+   (auto-time  int32)
+   (auto-from  int32)
+   )
+  )
+
+
+(deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
+  ((volume  int32)
+   )
+  )
+
+
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-cancel-dgo (sound-rpc-group-cmd)
+  ((id  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-get-irx-version (sound-rpc-cmd)
+  ((major    uint32)
+   (minor    uint32)
+   (ee-addr  pointer)
+   )
+  )
+
+
+(deftype sound-rpc-set-language (sound-rpc-cmd)
+  ((lang  uint32)
+   )
+  )
+
+
+(deftype sound-rpc-set-stereo-mode (sound-rpc-cmd)
+  ((mode  int32)
+   )
+  )
+
+
+(deftype sound-rpc-set-reverb (sound-rpc-cmd)
+  ((core    uint8)
+   (reverb  int32)
+   (left    uint32)
+   (right   uint32)
+   )
+  )
+
+
+(deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
+  ((ear-trans1    int32  3)
+   (ear-trans0    int32  3)
+   (cam-trans     int32  3)
+   (cam-forward   int32  3)
+   (cam-left      int32  3)
+   (cam-scale     int32)
+   (cam-inverted  int32)
+   )
+  )
+
+
+(deftype sound-rpc-shutdown (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-set-fps (sound-rpc-cmd)
+  ((fps  uint8)
+   )
+  )
+
+
+(deftype sound-rpc-set-globals (sound-rpc-cmd)
+  ((cam-inverted     uint8)
+   (music-pitch-mod  int16)
+   )
+  )
+
+
+(deftype sound-rpc-list-sounds (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-unload-music (sound-rpc-cmd)
+  ()
+  )
+
+
+(deftype sound-rpc-union (structure)
+  ((data               uint32                       12)
+   (load-bank          sound-rpc-load-bank          :overlay-at (-> data 0))
+   (unload-bank        sound-rpc-unload-bank        :overlay-at (-> data 0))
+   (play               sound-rpc-play               :overlay-at (-> data 0))
+   (pause-sound        sound-rpc-pause-sound        :overlay-at (-> data 0))
+   (stop-sound         sound-rpc-stop-sound         :overlay-at (-> data 0))
+   (continue-sound     sound-rpc-continue-sound     :overlay-at (-> data 0))
+   (set-param          sound-rpc-set-param          :overlay-at (-> data 0))
+   (set-master-volume  sound-rpc-set-master-volume  :overlay-at (-> data 0))
+   (pause-group        sound-rpc-pause-group        :overlay-at (-> data 0))
+   (stop-group         sound-rpc-stop-group         :overlay-at (-> data 0))
+   (continue-group     sound-rpc-continue-group     :overlay-at (-> data 0))
+   (get-irx-version    sound-rpc-get-irx-version    :overlay-at (-> data 0))
+   (set-language       sound-rpc-set-language       :overlay-at (-> data 0))
+   (set-reverb         sound-rpc-set-reverb         :overlay-at (-> data 0))
+   (set-fps            sound-rpc-set-fps            :overlay-at (-> data 0))
+   (set-globals        sound-rpc-set-globals        :overlay-at (-> data 0))
+   (shutdown           sound-rpc-shutdown           :overlay-at (-> data 0))
+   (list-sounds        sound-rpc-list-sounds        :overlay-at (-> data 0))
+   (unload-music       sound-rpc-unload-music       :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype sound-info (structure)
+  ((flags          uint32)
+   (num-instances  uint32)
+   (index          uint32)
+   (name           uint128)
+   (group          uint8)
+   (fo-power       float)
+   (fo-min         float)
+   (fo-max         float)
+   (volume         float)
+   (pan            float)
+   (priority       int8)
+   (duck-amount    float)
+   )
+  )
+
+
+(deftype sound-spec (sound-play-params)
+  ((auto-time   int32)
+   (auto-from   int32)
+   (info        sound-info)
+   (info-index  uint32)
+   (trans       vector  :inline)
+   (flags       uint16)
+   (fo-min      float)
+   (fo-max      float)
+   (fo-power    float)
+   )
+  )
+
+
+(deftype sound-handle (structure)
+  ((proc           uint64)
+   (flags          uint64)
+   (fader-cur      float)
+   (fader-targ     float)
+   (dist           float)
+   (viewport       int8)
+   (num-instances  uint8)
+   (svc            uint8)
+   (index          uint8)
+   )
+  )
+
+
+(deftype sound-instance (sound-spec)
+  ((last-update  uint64)
+   (joint        uint8)
+   (sh           sound-handle)
+   (id           uint32)
+   (pan-angle    float)
+   (volumef      float)
+   )
+  )
+
+
+(deftype sound-bank-state (structure)
+  ((name      symbol)
+   (mode      sound-bank-mode)
+   (high      basic)
+   (str-name  basic)
+   )
+  :pack-me
+  )
+
+
+(define *current-sound-id* (the-as sound-id #x10000))
+
+(deftype sound-iop-info (structure)
+  ((freemem             uint32)
+   (freemem2            uint32)
+   (nocd                uint32)
+   (dirtycd             uint32)
+   (chinfo              uint8              48)
+   (id-info             sound-info         48)
+   (pad                 int32              2)
+   (music-position      uint32)
+   (music-status        uint32                       :offset 268)
+   (music-name          string                       :offset 272)
+   (stream-position     uint32             4         :offset 320)
+   (stream-status       stream-status      4)
+   (stream-name         sound-stream-name  4 :inline)
+   (stream-id           sound-id           4)
+   (stream-id-signed    int32              4         :overlay-at (-> stream-id 0))
+   (sound-banks         sound-bank-state   8 :inline :offset 560)
+   (sound-iop-info-pad  int32              4)
+   )
+  )
+
+
+(define *sound-iop-info* (new 'global 'sound-iop-info))
+
+(deftype ambient-sound (basic)
+  ((playing-id   sound-id)
+   (entity       entity)
+   (sound-count  int32)
+   (spec         sound-spec  :inline)
+   (play-time    uint64)
+   (time-base    uint64)
+   (time-random  uint64)
+   )
+  (:methods
+    (new (symbol type basic vector float) _type_)
+    (ambient-sound-method-9 () none)
+    (ambient-sound-method-10 () none)
+    (ambient-sound-method-11 () none)
+    (ambient-sound-method-12 () none)
+    (ambient-sound-method-13 () none)
+    (ambient-sound-method-14 () none)
+    (ambient-sound-method-15 () none)
+    (ambient-sound-method-16 () none)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs ambient-sound.
+;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl a0, a0, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl a0, a0, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl a0, a0, 24]
+;; ERROR: Unsupported inline assembly instruction kind - [srl a1, a1, 24]
+;; (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector) (arg2 float))
+;;   "Set up ambient-sound. Can use an entity-actor (grabs from lump), sound-spec, or name as a string."
+;;   (local-vars
+;;     (r0-0 uint128)
+;;     (v1-10 uint128)
+;;     (v1-64 int)
+;;     (v1-65 int)
+;;     (v1-67 int)
+;;     (v1-68 int)
+;;     (v1-126 uint128)
+;;     (v1-131 uint128)
+;;     (v1-139 uint128)
+;;     (v1-144 uint128)
+;;     (v1-152 uint128)
+;;     (v1-157 uint128)
+;;     (v1-165 uint128)
+;;     (v1-166 int)
+;;     (v1-169 uint128)
+;;     (v1-170 int)
+;;     (v1-176 uint128)
+;;     (v1-181 uint128)
+;;     (v1-189 uint128)
+;;     (v1-194 uint128)
+;;     (v1-202 uint128)
+;;     (v1-207 uint128)
+;;     (v1-215 uint128)
+;;     (v1-219 uint128)
+;;     (a0-58 int)
+;;     (a0-59 int)
+;;     (a0-61 int)
+;;     (a0-62 int)
+;;     (a0-110 uint128)
+;;     (a0-113 uint128)
+;;     (a0-118 uint128)
+;;     (a0-121 uint128)
+;;     (a0-126 uint128)
+;;     (a0-129 uint128)
+;;     (a0-134 uint128)
+;;     (a0-135 int)
+;;     (a0-136 uint128)
+;;     (a0-141 uint128)
+;;     (a0-144 uint128)
+;;     (a0-149 uint128)
+;;     (a0-152 uint128)
+;;     (a0-157 uint128)
+;;     (a0-160 uint128)
+;;     (a0-165 uint128)
+;;     (a0-167 uint128)
+;;     (a1-14 uint128)
+;;     (a1-22 uint128)
+;;     (a1-30 uint128)
+;;     (a1-38 uint128)
+;;     (a1-39 int)
+;;     (a1-45 uint128)
+;;     (a1-53 uint128)
+;;     (a1-61 uint128)
+;;     (a1-69 uint128)
+;;     )
+;;   (with-pp
+;;     (let ((sv-16 (the-as sound-spec #f))
+;;           (sv-32 0)
+;;           (sv-48 (the-as (pointer float) #f))
+;;           (sv-52 (the-as pointer #f))
+;;           (sv-56 0)
+;;           )
+;;       (case (-> arg0 type)
+;;         ((entity-actor)
+;;          (let* ((a0-3
+;;                   ((method-of-type res-lump get-property-struct)
+;;                    (the-as res-lump arg0)
+;;                    'effect-name
+;;                    'exact
+;;                    arg2
+;;                    (the-as structure #f)
+;;                    (the-as (pointer res-tag) #f)
+;;                    *res-static-buf*
+;;                    )
+;;                   )
+;;                 (v1-2 (when a0-3
+;;                         (case (rtype-of a0-3)
+;;                           ((symbol)
+;;                            (symbol->string (the-as symbol a0-3))
+;;                            )
+;;                           ((string)
+;;                            a0-3
+;;                            )
+;;                           (else
+;;                             "unknown"
+;;                             )
+;;                           )
+;;                         )
+;;                       )
+;;                 )
+;;            (when v1-2
+;;              (set! sv-32 (the-as int (string->sound-name (the-as string v1-2))))
+;;              (set! sv-48 (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float)))
+;;              (let* ((sv-64 0)
+;;                     (v1-8
+;;                       ((method-of-type res-lump get-property-data)
+;;                        (the-as res-lump arg0)
+;;                        'effect-param
+;;                        'exact
+;;                        arg2
+;;                        (the-as pointer #f)
+;;                        (the-as (pointer res-tag) (& sv-64))
+;;                        *res-static-buf*
+;;                        )
+;;                       )
+;;                     )
+;;                (when v1-8
+;;                  (set! sv-52 v1-8)
+;;                  (let ((v1-9 (the-as uint128 sv-64)))
+;;                    (.pcpyud v1-10 v1-9 r0-0)
+;;                    )
+;;                  (set! sv-56 (shr (* (the-as int v1-10) 2) 49))
+;;                  )
+;;                )
+;;              )
+;;            )
+;;          )
+;;         ((sound-spec)
+;;          (set! sv-16 (the-as sound-spec arg0))
+;;          (set! sv-32 (the-as int (-> sv-16 info name)))
+;;          )
+;;         ((string)
+;;          (set! sv-32 (the-as int (string->sound-name (the-as string arg0))))
+;;          )
+;;         (else
+;;           (format 0 "ERROR: ambient sound was told to play an unknown ~A.~%" arg0)
+;;           )
+;;         )
+;;       (the-as
+;;         ambient-sound
+;;         (cond
+;;           ((nonzero? sv-32)
+;;            (let ((s5-1 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+;;              (cond
+;;                (sv-16
+;;                  (quad-copy! (the-as pointer (-> (the-as ambient-sound s5-1) spec)) (the-as pointer sv-16) 4)
+;;                  )
+;;                (else
+;;                  (set! (-> (the-as ambient-sound s5-1) spec volume) 1024)
+;;                  (set! (-> (the-as ambient-sound s5-1) spec pitch-mod) 0)
+;;                  (effect-param->sound-spec
+;;                    (-> (the-as ambient-sound s5-1) spec)
+;;                    (the-as (pointer float) sv-52)
+;;                    sv-56
+;;                    (the-as process-focusable pp)
+;;                    )
+;;                  (when (and (>= (the-as uint (shr (shl sv-32 56) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 56) 56)))
+;;                             )
+;;                    (if (and (nonzero? (shr (shl sv-32 56) 56))
+;;                             (>= (the-as uint (shr (shl sv-32 56) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 56) 56)))
+;;                             )
+;;                        (set! sv-32 (logior (logand sv-32 -256) (shr (shl (+ (shr (shl sv-32 56) 56) 32) 56) 56)))
+;;                        )
+;;                    (if (and (nonzero? (shr (shl sv-32 48) 56))
+;;                             (>= (the-as uint (shr (shl sv-32 48) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 48) 56)))
+;;                             )
+;;                        (set! sv-32 (logior (logand sv-32 -65281) (shr (shl (+ (shr (shl sv-32 48) 56) 32) 56) 48)))
+;;                        )
+;;                    (if (and (nonzero? (shr (shl sv-32 40) 56))
+;;                             (>= (the-as uint (shr (shl sv-32 40) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 40) 56)))
+;;                             )
+;;                        (set! sv-32 (logior (logand sv-32 -16711681) (shr (shl (+ (shr (shl sv-32 40) 56) 32) 56) 40)))
+;;                        )
+;;                    (.srl v1-65 v1-64 24)
+;;                    (when (and (nonzero? v1-65)
+;;                               (begin (.srl v1-68 v1-67 24) (>= (the-as uint v1-68) (the-as uint 65)))
+;;                               (let ((v1-69 90))
+;;                                 (.srl a0-59 a0-58 24)
+;;                                 (>= (the-as uint v1-69) (the-as uint a0-59))
+;;                                 )
+;;                               )
+;;                      (let ((v1-72 (logand sv-32 (the-as uint #xffffffff00ffffff))))
+;;                        (.srl a0-62 a0-61 24)
+;;                        (set! sv-32 (logior v1-72 (shr (shl (+ a0-62 32) 56) 32)))
+;;                        )
+;;                      )
+;;                    (if (and (nonzero? (shr (shl sv-32 24) 56))
+;;                             (>= (the-as uint (shr (shl sv-32 24) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 24) 56)))
+;;                             )
+;;                        (set! sv-32
+;;                              (logior (logand sv-32 (the-as uint #xffffff00ffffffff)) (shr (shl (+ (shr (shl sv-32 24) 56) 32) 56) 24))
+;;                              )
+;;                        )
+;;                    (if (and (nonzero? (shr (shl sv-32 16) 56))
+;;                             (>= (the-as uint (shr (shl sv-32 16) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (shl sv-32 16) 56)))
+;;                             )
+;;                        (set! sv-32
+;;                              (logior (logand sv-32 (the-as uint #xffff00ffffffffff)) (shr (shl (+ (shr (shl sv-32 16) 56) 32) 56) 16))
+;;                              )
+;;                        )
+;;                    (if (and (nonzero? (shr (* sv-32 256) 56))
+;;                             (>= (the-as uint (shr (* sv-32 256) 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr (* sv-32 256) 56)))
+;;                             )
+;;                        (set! sv-32
+;;                              (logior (logand sv-32 (the-as uint #xff00ffffffffffff)) (shr (shl (+ (shr (* sv-32 256) 56) 32) 56) 8))
+;;                              )
+;;                        )
+;;                    (if (and (nonzero? (shr sv-32 56))
+;;                             (>= (the-as uint (shr sv-32 56)) (the-as uint 65))
+;;                             (>= (the-as uint 90) (the-as uint (shr sv-32 56)))
+;;                             )
+;;                        (set! sv-32 (logior (logand sv-32 (the-as uint #xffffffffffffff)) (shr (shl (+ (shr sv-32 56) 32) 56) 0)))
+;;                        )
+;;                    (let ((v1-125 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-126 v1-125 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (shl (the-as int v1-126) 56) 56))
+;;                               (begin
+;;                                 (let ((v1-130 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-131 v1-130 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (shl (the-as int v1-131) 56) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-134 90))
+;;                                 (let ((a0-109 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-110 a0-109 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-134) (the-as uint (shr (shl (the-as int a0-110) 56) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-136 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-113 v1-136 r0-0)
+;;                        (let ((a0-114 (logand (the-as int a0-113) -256)))
+;;                          (let ((a1-13 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-14 a1-13 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-114 (shr (shl (+ (shr (shl (the-as int a1-14) 56) 56) 32) 56) 56)) (the-as int v1-136))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-138 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-139 v1-138 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (shl (the-as int v1-139) 48) 56))
+;;                               (begin
+;;                                 (let ((v1-143 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-144 v1-143 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (shl (the-as int v1-144) 48) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-147 90))
+;;                                 (let ((a0-117 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-118 a0-117 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-147) (the-as uint (shr (shl (the-as int a0-118) 48) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-149 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-121 v1-149 r0-0)
+;;                        (let ((a0-122 (logand (the-as int a0-121) -65281)))
+;;                          (let ((a1-21 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-22 a1-21 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-122 (shr (shl (+ (shr (shl (the-as int a1-22) 48) 56) 32) 56) 48)) (the-as int v1-149))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-151 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-152 v1-151 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (shl (the-as int v1-152) 40) 56))
+;;                               (begin
+;;                                 (let ((v1-156 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-157 v1-156 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (shl (the-as int v1-157) 40) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-160 90))
+;;                                 (let ((a0-125 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-126 a0-125 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-160) (the-as uint (shr (shl (the-as int a0-126) 40) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-162 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-129 v1-162 r0-0)
+;;                        (let ((a0-130 (logand (the-as int a0-129) -16711681)))
+;;                          (let ((a1-29 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-30 a1-29 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-130 (shr (shl (+ (shr (shl (the-as int a1-30) 40) 56) 32) 56) 40)) (the-as int v1-162))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-164 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-165 v1-164 r0-0)
+;;                      )
+;;                    (.srl v1-166 (the-as int v1-165) 24)
+;;                    (when (and (nonzero? v1-166)
+;;                               (begin
+;;                                 (let ((v1-168 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-169 v1-168 r0-0)
+;;                                   )
+;;                                 (.srl v1-170 (the-as int v1-169) 24)
+;;                                 (>= (the-as uint v1-170) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-171 90))
+;;                                 (let ((a0-133 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-134 a0-133 r0-0)
+;;                                   )
+;;                                 (.srl a0-135 (the-as int a0-134) 24)
+;;                                 (>= (the-as uint v1-171) (the-as uint a0-135))
+;;                                 )
+;;                               )
+;;                      (let ((v1-173 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-136 v1-173 r0-0)
+;;                        (let ((a0-137 (logand (the-as int a0-136) (the-as uint #xffffffff00ffffff))))
+;;                          (let ((a1-37 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-38 a1-37 r0-0)
+;;                            )
+;;                          (.srl a1-39 (the-as int a1-38) 24)
+;;                          (set! sv-32 (the-as int (make-u128 (logior a0-137 (shr (shl (+ a1-39 32) 56) 32)) (the-as int v1-173))))
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-175 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-176 v1-175 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (shl (the-as int v1-176) 24) 56))
+;;                               (begin
+;;                                 (let ((v1-180 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-181 v1-180 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (shl (the-as int v1-181) 24) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-184 90))
+;;                                 (let ((a0-140 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-141 a0-140 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-184) (the-as uint (shr (shl (the-as int a0-141) 24) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-186 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-144 v1-186 r0-0)
+;;                        (let ((a0-145 (logand (the-as int a0-144) (the-as uint #xffffff00ffffffff))))
+;;                          (let ((a1-44 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-45 a1-44 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-145 (shr (shl (+ (shr (shl (the-as int a1-45) 24) 56) 32) 56) 24)) (the-as int v1-186))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-188 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-189 v1-188 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (shl (the-as int v1-189) 16) 56))
+;;                               (begin
+;;                                 (let ((v1-193 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-194 v1-193 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (shl (the-as int v1-194) 16) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-197 90))
+;;                                 (let ((a0-148 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-149 a0-148 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-197) (the-as uint (shr (shl (the-as int a0-149) 16) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-199 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-152 v1-199 r0-0)
+;;                        (let ((a0-153 (logand (the-as int a0-152) (the-as uint #xffff00ffffffffff))))
+;;                          (let ((a1-52 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-53 a1-52 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-153 (shr (shl (+ (shr (shl (the-as int a1-53) 16) 56) 32) 56) 16)) (the-as int v1-199))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-201 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-202 v1-201 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (* (the-as int v1-202) 256) 56))
+;;                               (begin
+;;                                 (let ((v1-206 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-207 v1-206 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (* (the-as int v1-207) 256) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-210 90))
+;;                                 (let ((a0-156 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-157 a0-156 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-210) (the-as uint (shr (* (the-as int a0-157) 256) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-212 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-160 v1-212 r0-0)
+;;                        (let ((a0-161 (logand (the-as int a0-160) (the-as uint #xff00ffffffffffff))))
+;;                          (let ((a1-60 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-61 a1-60 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-161 (shr (shl (+ (shr (* (the-as int a1-61) 256) 56) 32) 56) 8)) (the-as int v1-212))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    (let ((v1-214 (the-as uint128 sv-32)))
+;;                      (.pcpyud v1-215 v1-214 r0-0)
+;;                      )
+;;                    (when (and (nonzero? (shr (the-as int v1-215) 56))
+;;                               (begin
+;;                                 (let ((v1-218 (the-as uint128 sv-32)))
+;;                                   (.pcpyud v1-219 v1-218 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint (shr (the-as int v1-219) 56)) (the-as uint 65))
+;;                                 )
+;;                               (let ((v1-221 90))
+;;                                 (let ((a0-164 (the-as uint128 sv-32)))
+;;                                   (.pcpyud a0-165 a0-164 r0-0)
+;;                                   )
+;;                                 (>= (the-as uint v1-221) (the-as uint (shr (the-as int a0-165) 56)))
+;;                                 )
+;;                               )
+;;                      (let ((v1-223 (the-as uint128 sv-32)))
+;;                        (.pcpyud a0-167 v1-223 r0-0)
+;;                        (let ((a0-168 (logand (the-as int a0-167) (the-as uint #xffffffffffffff))))
+;;                          (let ((a1-68 (the-as uint128 sv-32)))
+;;                            (.pcpyud a1-69 a1-68 r0-0)
+;;                            )
+;;                          (set! sv-32
+;;                                (the-as
+;;                                  int
+;;                                  (make-u128 (logior a0-168 (shr (shl (+ (shr (the-as int a1-69) 56) 32) 56) 0)) (the-as int v1-223))
+;;                                  )
+;;                                )
+;;                          )
+;;                        )
+;;                      )
+;;                    )
+;;                  (set! (-> (the-as ambient-sound s5-1) spec info) (sound-info-by-name (the-as string sv-32)))
+;;                  )
+;;                )
+;;              (set! (-> (the-as ambient-sound s5-1) playing-id) (new-sound-id))
+;;              (set! (-> (the-as ambient-sound s5-1) entity) #f)
+;;              (set! (-> (the-as ambient-sound s5-1) sound-count) 1)
+;;              (cond
+;;                (sv-48
+;;                  (set! (-> (the-as ambient-sound s5-1) time-base) (the-as uint (the int (* 300.0 (-> sv-48 0)))))
+;;                  (set! (-> (the-as ambient-sound s5-1) time-random) (the-as uint (the int (* 300.0 (-> sv-48 1)))))
+;;                  )
+;;                (else
+;;                  (set! (-> (the-as ambient-sound s5-1) time-base) (the-as uint -1))
+;;                  )
+;;                )
+;;              (set! (-> (the-as ambient-sound s5-1) spec trans quad) (-> arg1 quad))
+;;              s5-1
+;;              )
+;;            )
+;;           (else
+;;             0
+;;             )
+;;           )
+;;         )
+;;       )
+;;     )
+;;   )
+
+(define *jukebox-time* 0)

@@ -95,14 +95,14 @@
 
 ;; WARN: Return type mismatch connection vs none.
 (defmethod set-time-limit ((this task-manager-desert-rescue-bbush))
-  (local-vars (sv-16 res-tag))
   (set-setting! 'pilot-exit #f 0.0 0)
   (let ((t1-1 2))
     (set-setting! 'vehicles 'set (shr t1-1 32) t1-1)
     )
   (set-setting! 'airlock #f 0.0 0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-7 (res-lump-data (entity-by-name "desresc-bbush-info-1") 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-7 (res-lump-data (entity-by-name "desresc-bbush-info-1") 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-7 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-7))
@@ -260,7 +260,8 @@
   :virtual #t
   :event task-manager-event-handler
   :code (behavior ()
-    (give *game-info* 'skill (the float (-> self info user-count)) (the-as handle #f))
+    ;; og:preserve-this pass handle to task-manager for money-per-level tracking
+    (give *game-info* 'skill (the float (-> self info user-count)) (process->handle self))
     (until (< (* 45 (-> self info user-count)) (- (current-time) (-> self state-time)))
       (suspend)
       )

@@ -1405,18 +1405,17 @@
 ;; WARN: Stack slot offset 148 signed mismatch
 ;; WARN: Return type mismatch int vs none.
 (defbehavior progress-post progress ()
-  (local-vars (sv-144 font-context) (sv-148 int) (sv-152 hud-box) (sv-156 symbol))
   (when (-> self current-options)
-    (let ((gp-0 (-> self current-options options))
-          (s4-0 (-> self current-options y-center))
-          (s5-0 (-> self current-options y-space))
-          )
-      (set! sv-144
-            (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
-            )
-      (set! sv-148 (- s4-0 (/ (* s5-0 (length gp-0)) 2)))
-      (set! sv-152 (new 'stack-no-clear 'hud-box))
-      (set! sv-156 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0))))
+    (let* ((gp-0 (-> self current-options options))
+           (s4-0 (-> self current-options y-center))
+           (s5-0 (-> self current-options y-space))
+           (sv-144
+             (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+             )
+           (sv-148 (- s4-0 (/ (* s5-0 (length gp-0)) 2)))
+           (sv-152 (new 'stack-no-clear 'hud-box))
+           (sv-156 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0))))
+           )
       (if sv-156
           (begin-scan sv-152 self)
           )
@@ -1448,22 +1447,28 @@
           s4-1
           (and (= (-> self menu-transition) 0.0) (-> self selected-option) (= s4-1 (-> self option-index)))
           )
-        (if (!= (-> self current-options) *unlocked-secrets*)
-            (set! sv-148 (+ s5-0 7 sv-148))
-            (set! sv-148 (+ sv-148 s5-0))
-            )
+        (set! sv-148 (cond
+                       ((!= (-> self current-options) *unlocked-secrets*)
+                        (+ s5-0 7 sv-148)
+                        )
+                       (else
+                         (+! sv-148 s5-0)
+                         sv-148
+                         )
+                       )
+              )
         )
-      )
-    (when sv-156
-      (set! (-> self scanlines-alpha) (seek-ease
-                                        (-> self scanlines-alpha)
-                                        (- 1.0 (-> self menu-transition))
-                                        (/ (-> self clock time-adjust-ratio) 20)
-                                        0.3
-                                        (/ (-> self clock time-adjust-ratio) 1000)
-                                        )
-            )
-      (end-scan sv-152 (-> self scanlines-alpha))
+      (when sv-156
+        (set! (-> self scanlines-alpha) (seek-ease
+                                          (-> self scanlines-alpha)
+                                          (- 1.0 (-> self menu-transition))
+                                          (/ (-> self clock time-adjust-ratio) 20)
+                                          0.3
+                                          (/ (-> self clock time-adjust-ratio) 1000)
+                                          )
+              )
+        (end-scan sv-152 (-> self scanlines-alpha))
+        )
       )
     )
   (when (and (< 0.8 (-> self anim-frame)) (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))

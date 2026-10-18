@@ -193,4 +193,71 @@ void add_ambients_from_json(const nlohmann::json& json,
     ambient.res_lump.sort_res();
   }
 }
+
+size_t EntityCamera::generate(DataObjectGenerator& gen) const {
+  size_t result = res_lump.generate_header(gen, "entity-camera");
+  for (int i = 0; i < 4; i++) {
+    gen.add_word_float(trans[i]);
+  }
+  gen.add_word(aid);
+  gen.add_word(0);
+  gen.add_word(0);
+  gen.add_word(0);
+  for (int i = 0; i < 4; i++) {
+    gen.add_word_float(quat[i]);
+  }
+  res_lump.generate_tag_list_and_data(gen, result);
+  return result;
+}
+
+size_t generate_cameras_array(DataObjectGenerator& gen, const std::vector<EntityCamera>& cameras) {
+  std::vector<size_t> camera_locs;
+  for (auto& cam : cameras) {
+    camera_locs.push_back(cam.generate(gen));
+  }
+  gen.align_to_basic();
+  gen.add_type_tag("array");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(cameras.size());
+  gen.add_word(cameras.size());
+  gen.add_type_tag("entity-camera");
+  for (size_t i = 0; i < cameras.size(); i++) {
+    gen.link_word_to_byte(gen.add_word(0), camera_locs[i]);
+  }
+  gen.align(4);
+  return result;
+}
+
+void add_cameras_from_json(const nlohmann::json& json,
+                           std::vector<EntityCamera>& camera_list,
+                           u32 base_aid,
+                           decompiler::DecompilerTypeSystem& dts) {
+  for (const auto& cam_json : json) {
+    auto& cam = camera_list.emplace_back();
+    cam.aid = cam_json.value("aid", base_aid + (u32)camera_list.size());
+    cam.trans = vectorm3_from_json(cam_json.at("trans"));
+    cam.quat = math::Vector4f(0, 1, 0, 0);
+    if (cam_json.find("quat") != cam_json.end()) {
+      cam.quat = vector_from_json(cam_json.at("quat"));
+    }
+    if (cam_json.find("lump") != cam_json.end()) {
+      for (const auto& [key, value] : cam_json.at("lump").items()) {
+        if (value.is_string()) {
+          std::string value_string = value.get<std::string>();
+          if (value_string.size() > 0 && value_string[0] == '\'') {
+            cam.res_lump.add_res(
+                std::make_unique<ResSymbol>(key, value_string.substr(1), DEFAULT_RES_TIME));
+          } else {
+            cam.res_lump.add_res(std::make_unique<ResString>(key, value_string, DEFAULT_RES_TIME));
+          }
+          continue;
+        }
+        if (value.is_array()) {
+          cam.res_lump.add_res(res_from_json_array(key, value, dts));
+        }
+      }
+    }
+    cam.res_lump.sort_res();
+  }
+}
 }  // namespace jak1

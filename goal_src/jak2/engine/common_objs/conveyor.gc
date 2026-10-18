@@ -70,19 +70,18 @@
 
 (defmethod init! ((this conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
-  (local-vars (tag res-tag))
   (set! (-> this speed) 24576.0)
   (set! (-> this belt-radius) 11878.4)
   (set! (-> this pull-y-threshold) 10240.0)
   (set! (-> this speed-mult-array) #f)
   (set! (-> this speed-mult-array-len) 0)
-  (let ((entity (-> this entity)))
-    (set! tag (new 'static 'res-tag))
-    (let ((scale-factor (res-lump-data entity 'scale-factor pointer :tag-ptr (& tag))))
-      (when scale-factor
-        (set! (-> this speed-mult-array) (the-as (array float) scale-factor))
-        (set! (-> this speed-mult-array-len) (the-as int (-> tag elt-count)))
-        )
+  (let* ((entity (-> this entity))
+         (tag (new 'static 'res-tag))
+         (scale-factor (res-lump-data entity 'scale-factor pointer :tag-ptr (& tag)))
+         )
+    (when scale-factor
+      (set! (-> this speed-mult-array) (the-as (array float) scale-factor))
+      (set! (-> this speed-mult-array-len) (the-as int (-> tag elt-count)))
       )
     )
   0
@@ -92,7 +91,7 @@
 ;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod set-and-get-ambient-sound! ((this conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
-and return it as well.  Otherwise, set it to `0`"
+   and return it as well.  Otherwise, set it to `0`"
   (let ((actor-options (res-lump-value (-> this entity) 'options actor-option :time -1000000000.0)))
     (the-as
       ambient-sound
@@ -195,11 +194,7 @@ and return it as well.  Otherwise, set it to `0`"
                   (.add.y.vf.x vf1 vf1 vf1)
                   (.add.z.vf.x vf1 vf1 vf1)
                   (.mov a2-5 vf1)
-                  (let ((f0-0 a2-5)
-                        (f1-1 (+ (-> a1-2 world-sphere w) (-> this collide-bounds r)))
-                        )
-                    (b! (>= f0-0 (* f1-1 f1-1)) cfg-8 :delay #f)
-                    )
+                  (b! (>= a2-5 (square (+ (-> a1-2 world-sphere w) (-> this collide-bounds r)))) cfg-8 :delay #f)
                   )
                 (when (< *actor-list-length* 256)
                   (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
@@ -236,11 +231,7 @@ and return it as well.  Otherwise, set it to `0`"
                   (.add.y.vf.x vf1 vf1 vf1)
                   (.add.z.vf.x vf1 vf1 vf1)
                   (.mov a2-12 vf1)
-                  (let ((f0-1 a2-12)
-                        (f1-5 (+ (-> a1-14 world-sphere w) (-> this collide-bounds r)))
-                        )
-                    (b! (>= f0-1 (* f1-5 f1-5)) cfg-17 :delay #f)
-                    )
+                  (b! (>= a2-12 (square (+ (-> a1-14 world-sphere w) (-> this collide-bounds r)))) cfg-17 :delay #f)
                   )
                 (when (< *actor-list-length* 256)
                   (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
@@ -276,11 +267,7 @@ and return it as well.  Otherwise, set it to `0`"
             (.mov a0-10 vf3)
             (let ((s4-0 (-> v1-23 process)))
               (b! (< f0-2 a0-10) cfg-27)
-              (let ((a1-29 (if (type? s4-0 process-focusable)
-                               (the-as process-focusable s4-0)
-                               )
-                           )
-                    )
+              (let ((a1-29 (as-type s4-0 process-focusable)))
                 (if a1-29
                     (conveyor-method-26 this a1-29)
                     )
@@ -298,7 +285,6 @@ and return it as well.  Otherwise, set it to `0`"
 
 (defmethod conveyor-method-21 ((this conveyor))
   "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
-  (local-vars (sv-32 conveyor-section) (sv-48 conveyor-section))
   (let* ((s5-0 (-> this path))
          (s4-0 (-> s5-0 curve num-cverts))
          (s3-0 (new 'stack-no-clear 'vector))
@@ -308,26 +294,28 @@ and return it as well.  Otherwise, set it to `0`"
       (set! (-> this collide-bounds quad) (the-as uint128 0))
       (get-point-in-path! s5-0 s3-0 0.0 'exact)
       (vector+! (the-as vector (-> this collide-bounds)) (the-as vector (-> this collide-bounds)) s3-0)
-      (let ((s1-0 (+ s4-0 -1)))
-        (set! sv-32 (the-as conveyor-section #f))
-        (dotimes (s0-0 s1-0)
-          (set! sv-48 (-> s2-0 data s0-0))
-          (set! (-> sv-48 start quad) (-> s3-0 quad))
-          (get-point-in-path! s5-0 s3-0 (the float (+ s0-0 1)) 'exact)
-          (vector+! (the-as vector (-> this collide-bounds)) (the-as vector (-> this collide-bounds)) s3-0)
-          (vector-! (-> sv-48 pull-dir) s3-0 (-> sv-48 start))
-          (vector-normalize! (-> sv-48 pull-dir) 1.0)
-          (set! (-> sv-48 trailing quad) (-> sv-48 pull-dir quad))
-          (set! (-> sv-48 trailing y) 0.0)
-          (vector-normalize! (-> sv-48 trailing) 1.0)
-          (set-vector! (-> sv-48 radial-dir) (- (-> sv-48 trailing z)) 0.0 (-> sv-48 trailing x) 1.0)
-          (set! (-> sv-48 trailing w) (- (vector-dot s3-0 (the-as vector (-> sv-48 trailing)))))
-          (when (the-as vector sv-32)
-            (vector+! (&+ (the-as vector sv-32) 16) (&+ (the-as vector sv-32) 16) (the-as vector (-> sv-48 trailing)))
-            (vector-normalize! (&+ (the-as vector sv-32) 16) 1.0)
-            (set! (-> sv-32 trailing w) (- (vector-dot (-> sv-48 start) (&+ (the-as vector sv-32) 16))))
+      (let ((s1-0 (+ s4-0 -1))
+            (sv-32 (the-as conveyor-section #f))
             )
-          (set! sv-32 sv-48)
+        (dotimes (s0-0 s1-0)
+          (let ((sv-48 (-> s2-0 data s0-0)))
+            (set! (-> sv-48 start quad) (-> s3-0 quad))
+            (get-point-in-path! s5-0 s3-0 (the float (+ s0-0 1)) 'exact)
+            (vector+! (the-as vector (-> this collide-bounds)) (the-as vector (-> this collide-bounds)) s3-0)
+            (vector-! (-> sv-48 pull-dir) s3-0 (-> sv-48 start))
+            (vector-normalize! (-> sv-48 pull-dir) 1.0)
+            (set! (-> sv-48 trailing quad) (-> sv-48 pull-dir quad))
+            (set! (-> sv-48 trailing y) 0.0)
+            (vector-normalize! (-> sv-48 trailing) 1.0)
+            (set-vector! (-> sv-48 radial-dir) (- (-> sv-48 trailing z)) 0.0 (-> sv-48 trailing x) 1.0)
+            (set! (-> sv-48 trailing w) (- (vector-dot s3-0 (the-as vector (-> sv-48 trailing)))))
+            (when (the-as vector sv-32)
+              (vector+! (&+ (the-as vector sv-32) 16) (&+ (the-as vector sv-32) 16) (the-as vector (-> sv-48 trailing)))
+              (vector-normalize! (&+ (the-as vector sv-32) 16) 1.0)
+              (set! (-> sv-32 trailing w) (- (vector-dot (-> sv-48 start) (&+ (the-as vector sv-32) 16))))
+              )
+            (set! sv-32 sv-48)
+            )
           sv-32
           )
         )
@@ -336,7 +324,7 @@ and return it as well.  Otherwise, set it to `0`"
       (set! (-> this leading quad) (-> s2-1 0 pull-dir quad))
       (set! (-> this leading y) 0.0)
       (vector-normalize! (-> this leading) 1.0)
-      (set! (-> this leading w) (- (vector-dot (the-as vector (-> s2-1 0)) (the-as vector (-> this leading)))))
+      (set! (-> this leading w) (- (vector-dot (-> s2-1 0 start) (the-as vector (-> this leading)))))
       )
     (let ((f0-19 (/ 1.0 (the float s4-0)))
           (f30-0 0.0)
@@ -369,11 +357,11 @@ and return it as well.  Otherwise, set it to `0`"
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this conveyor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (reset-root! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-art-group this)) (the-as pair 0))

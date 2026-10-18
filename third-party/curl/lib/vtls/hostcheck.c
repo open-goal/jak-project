@@ -21,11 +21,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
 
-#if defined(USE_OPENSSL)                        \
-  || defined(USE_SCHANNEL)
+#if defined(USE_OPENSSL) || defined(USE_SCHANNEL)
 /* these backends use functions from this file */
 
 #ifdef HAVE_NETINET_IN_H
@@ -34,15 +32,10 @@
 #ifdef HAVE_NETINET_IN6_H
 #include <netinet/in6.h>
 #endif
+
 #include "curl_memrchr.h"
-
-#include "hostcheck.h"
-#include "strcase.h"
+#include "vtls/hostcheck.h"
 #include "hostip.h"
-
-#include "curl_memory.h"
-/* The last #include file should be: */
-#include "memdebug.h"
 
 /* check the two input strings with given length, but do not
    assume they end in nul-bytes */
@@ -51,7 +44,7 @@ static bool pmatch(const char *hostname, size_t hostlen,
 {
   if(hostlen != patternlen)
     return FALSE;
-  return strncasecompare(hostname, pattern, hostlen);
+  return curl_strnequal(hostname, pattern, hostlen);
 }
 
 /*
@@ -62,7 +55,7 @@ static bool pmatch(const char *hostname, size_t hostlen,
  * We use the matching rule described in RFC6125, section 6.4.3.
  * https://datatracker.ietf.org/doc/html/rfc6125#section-6.4.3
  *
- * In addition: ignore trailing dots in the host names and wildcards, so that
+ * In addition: ignore trailing dots in the hostnames and wildcards, so that
  * the names are used normalized. This is what the browsers do.
  *
  * Do not allow wildcard matching on IP numbers. There are apparently
@@ -91,16 +84,16 @@ static bool hostmatch(const char *hostname,
   DEBUGASSERT(hostlen);
 
   /* normalize pattern and hostname by stripping off trailing dots */
-  if(hostname[hostlen-1]=='.')
+  if(hostname[hostlen - 1] == '.')
     hostlen--;
-  if(pattern[patternlen-1]=='.')
+  if(pattern[patternlen - 1] == '.')
     patternlen--;
 
   if(strncmp(pattern, "*.", 2))
     return pmatch(hostname, hostlen, pattern, patternlen);
 
-  /* detect IP address as hostname and fail the match if so */
-  else if(Curl_host_is_ipnum(hostname))
+  /* detect host as IP address or starting with a dot and fail if so */
+  else if(Curl_host_is_ipnum(hostname) || (hostname[0] == '.'))
     return FALSE;
 
   /* We require at least 2 dots in the pattern to avoid too wide wildcard
@@ -132,4 +125,4 @@ bool Curl_cert_hostcheck(const char *match, size_t matchlen,
   return FALSE;
 }
 
-#endif /* OPENSSL or SCHANNEL */
+#endif /* USE_OPENSSL || USE_SCHANNEL */

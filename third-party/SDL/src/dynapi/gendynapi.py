@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #  Simple DirectMedia Layer
-#  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+#  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 #
 #  This software is provided 'as-is', without any express or implied
 #  warranty.  In no event will the authors be held liable for any damages
@@ -451,7 +451,7 @@ def get_header_list() -> list[Path]:
 
     return ret
 
-# Write the new API in files: _procs.h _overrivides.h and .sym
+# Write the new API in files: _procs.h _overrides.h and .sym
 def add_dyn_api(proc: SdlProcedure) -> None:
     decl_args: list[str] = []
     call_args = []

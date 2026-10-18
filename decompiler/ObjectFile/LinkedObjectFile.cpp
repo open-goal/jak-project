@@ -18,6 +18,7 @@
 
 #include "fmt/format.h"
 #include "third-party/json.hpp"
+#include "third-party/zstd/lib/common/xxhash.h"
 
 namespace decompiler {
 /*!
@@ -708,6 +709,21 @@ std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& 
   }
 
   return result;
+}
+
+// Currently, just hashes the contents of every function, this makes it easy to
+// compare between games to see if something is identical
+void LinkedObjectFile::dump_asm_function_metadata(
+    std::unordered_map<std::string, std::string>& map) {
+  ASSERT(segments <= 3);
+  for (int seg = segments; seg-- > 0;) {
+    // functions
+    for (auto& func : functions_by_seg.at(seg)) {
+      const auto& function_rep = print_function_disassembly(func, seg, false, "");
+      const auto func_hash = XXH64(function_rep.data(), function_rep.size(), 0);
+      map.emplace(func.name(), fmt::format("{}", func_hash));
+    }
+  }
 }
 
 /*!

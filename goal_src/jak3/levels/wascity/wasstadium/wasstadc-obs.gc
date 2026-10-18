@@ -145,12 +145,6 @@
   )
 
 (defmethod wstd-fight-plat-box-method-40 ((this wstd-fight-plat-box))
-  (local-vars
-    (sv-144 (function sparticle-launch-control vector object))
-    (sv-160 vector)
-    (sv-176 vector)
-    (sv-192 vector)
-    )
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -185,16 +179,19 @@
               (vector-normalize! s0-0 1.0)
               (when (< (vector-dot s0-0 (vector-! (new 'stack-no-clear 'vector) (camera-pos) (-> s5-0 s4-0))) 16384.0)
                 (dotimes (s1-2 5)
-                  (let ((s0-1 (-> this part)))
-                    (set! sv-144 (method-of-object s0-1 spawn))
-                    (set! sv-192 (new 'stack-no-clear 'vector))
-                    (set! sv-160 (-> s5-0 s4-0))
-                    (set! sv-176 s2-1)
-                    (let ((v1-39 (rand-vu)))
-                      (.mov vf7 v1-39)
+                  (let* ((s0-1 (-> this part))
+                         (sv-144 (method-of-object s0-1 spawn))
+                         (sv-192 (new 'stack-no-clear 'vector))
+                         )
+                    (let ((sv-160 (-> s5-0 s4-0)))
+                      (let ((sv-176 s2-1))
+                        (let ((v1-39 (rand-vu)))
+                          (.mov vf7 v1-39)
+                          )
+                        (.lvf vf5 (&-> sv-176 quad))
+                        )
+                      (.lvf vf4 (&-> sv-160 quad))
                       )
-                    (.lvf vf5 (&-> sv-176 quad))
-                    (.lvf vf4 (&-> sv-160 quad))
                     (.add.x.vf.w vf6 vf0 vf0)
                     (.mul.x.vf.xyz acc vf5 vf7)
                     (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
@@ -1172,7 +1169,7 @@
   (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num 0.0)
   (ja-post)
   (logclear! (-> self mask) (process-mask actor-pause))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 487) self))
+  (set! (-> self part) (create-launch-control group-wasstada-lava-sploop self))
   ;; og:preserve-this
   ; (set! (-> self translate) arg2)
   (set! (-> self translate) 1.0)
@@ -2386,19 +2383,19 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod set-time-limit ((this task-manager-arena-fight))
-  (local-vars (sv-16 res-tag))
   (let ((t9-0 (method-of-type task-manager set-time-limit)))
     (t9-0 this)
     )
   (let ((a0-3 (entity-by-name "arena-fight-1")))
     (when a0-3
       (set! (-> this entity) (the-as entity-actor a0-3))
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v1-3 (res-lump-data a0-3 'actor-groups pointer :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v1-3 (res-lump-data a0-3 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and v1-3 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-           (set! (-> this actor-group) (the-as (pointer actor-group) v1-3))
+           (set! (-> this actor-group) v1-3)
            )
           (else
             (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
@@ -2854,7 +2851,6 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod set-time-limit ((this task-manager-arena-fight-2))
-  (local-vars (sv-16 res-tag))
   (let ((t9-0 (method-of-type task-manager set-time-limit)))
     (t9-0 this)
     )
@@ -2873,12 +2869,13 @@
   (let ((a0-8 (entity-by-name "arena-fight-1")))
     (when a0-8
       (set! (-> this entity) (the-as entity-actor a0-8))
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v1-10 (res-lump-data a0-8 'actor-groups pointer :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v1-10 (res-lump-data a0-8 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and v1-10 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-           (set! (-> this actor-group) (the-as (pointer actor-group) v1-10))
+           (set! (-> this actor-group) v1-10)
            )
           (else
             (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
@@ -3123,7 +3120,6 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod set-time-limit ((this task-manager-arena-fight-3))
-  (local-vars (sv-16 res-tag))
   (let ((t9-0 (method-of-type task-manager set-time-limit)))
     (t9-0 this)
     )
@@ -3139,12 +3135,13 @@
   (let ((a0-8 (entity-by-name "arena-fight-1")))
     (when a0-8
       (set! (-> this entity) (the-as entity-actor a0-8))
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v1-10 (res-lump-data a0-8 'actor-groups pointer :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v1-10 (res-lump-data a0-8 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and v1-10 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-           (set! (-> this actor-group) (the-as (pointer actor-group) v1-10))
+           (set! (-> this actor-group) v1-10)
            )
           (else
             (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))

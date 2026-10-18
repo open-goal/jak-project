@@ -209,7 +209,6 @@
 
 (defmethod init-from-entity! ((this krimson-wall-break) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-96 entity))
   (set! (-> this level) (level-get *level* (-> this level-name)))
   (stack-size-set! (-> this main-thread) 512)
   (set! (-> this root) (new 'process 'trsqv))
@@ -236,39 +235,20 @@
           (set! s5-1 (-> v0-8 extra trans))
           )
       )
-    (let ((s3-1 (get-process *default-dead-pool* manipy #x20000 1)))
-      (set! (-> this pillar 0)
-            (the-as
-              (pointer manipy)
-              (when s3-1
-                (let ((t9-10 (method-of-type manipy activate)))
-                  (t9-10 (the-as manipy s3-1) this "krimson-wall-break" (the-as pointer #x70004000))
-                  )
-                (let ((s2-1 run-function-in-process)
-                      (s1-0 s3-1)
-                      (s0-0 manipy-init)
-                      )
-                  (set! sv-96 (-> this level entity data 0 entity))
-                  (let ((t0-1 (art-group-get-by-name *level* "skel-krimson-wall-break" (the-as (pointer level) #f)))
-                        (t1-1 #f)
-                        (t2-1 0)
-                        )
-                    ((the-as (function object object object object object object object none) s2-1)
-                     s1-0
-                     s0-0
-                     s4-1
-                     sv-96
-                     t0-1
-                     t1-1
-                     t2-1
-                     )
-                    )
-                  )
-                (-> s3-1 ppointer)
-                )
-              )
+    (set! (-> this pillar 0)
+          (process-spawn
+            manipy
+            :init manipy-init
+            s4-1
+            (-> this level entity data 0 entity)
+            (art-group-get-by-name *level* "skel-krimson-wall-break" (the-as (pointer level) #f))
+            #f
+            0
+            :name "krimson-wall-break"
+            :to this
+            :stack-size #x20000
             )
-      )
+          )
     (send-event (ppointer->process (-> this pillar 0)) 'anim-mode 'clone-anim)
     (send-event (ppointer->process (-> this pillar 0)) 'prefix "a-")
     (set! (-> this pillar 1)

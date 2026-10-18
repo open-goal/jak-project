@@ -869,51 +869,37 @@
 ;; failed to figure out what this is:
 (defstate citb-robotboss-idle (citb-robotboss)
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (local-vars (sv-96 int) (sv-112 int))
-    (the-as
-      symbol
-      (cond
-        ((= message 'shield-off)
-         (stop! (-> self sound))
-         (if (-> self shield-on)
-             (sound-play "robotcage-off")
-             )
-         (set! (-> self shield-on) #f)
-         #f
-         )
-        ((= message 'shield-on)
-         (let ((v0-3 #t))
-           (set! (-> self shield-on) v0-3)
-           v0-3
-           )
-         )
-        ((= message 'die)
-         (cleanup-for-death self)
-         (the-as symbol (deactivate self))
-         )
-        ((or (= message 'touch) (= message 'attack))
-         (let ((s4-0 sound-play-by-name)
-               (s3-0 (make-u128 #x7061 (the-as uint #x7a2d646c65696873)))
-               (s2-0 (new-sound-id))
-               (s1-0 1024)
-               (s0-0 0)
-               )
-           (set! sv-96 0)
-           (set! sv-112 1)
-           (let ((t2-1 (target-pos 0)))
-             (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-96 (the-as sound-group sv-112) (the-as symbol t2-1))
-             )
-           )
-         (the-as symbol (send-event
-                          proc
-                          'shove
-                          (-> block param 0)
-                          (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
+    (the-as symbol (cond
+                     ((= message 'shield-off)
+                      (stop! (-> self sound))
+                      (if (-> self shield-on)
+                          (sound-play "robotcage-off")
                           )
-                 )
-         )
-        )
-      )
+                      (set! (-> self shield-on) #f)
+                      #f
+                      )
+                     ((= message 'shield-on)
+                      (let ((v0-3 #t))
+                        (set! (-> self shield-on) v0-3)
+                        v0-3
+                        )
+                      )
+                     ((= message 'die)
+                      (cleanup-for-death self)
+                      (the-as symbol (deactivate self))
+                      )
+                     ((or (= message 'touch) (= message 'attack))
+                      (sound-play "shield-zap" :position (the-as symbol (target-pos 0)))
+                      (the-as symbol (send-event
+                                       proc
+                                       'shove
+                                       (-> block param 0)
+                                       (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
+                                       )
+                              )
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (let ((gp-0 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-nose-sg* #f :to self)))

@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-static thread_local uintptr_t co_active_buffer[64];
+static thread_local alignas(16) uintptr_t co_active_buffer[64];
 static thread_local cothread_t co_active_handle = 0;
 static void (*co_swap)(cothread_t, cothread_t) = 0;
 
@@ -19,7 +19,7 @@ static void (*co_swap)(cothread_t, cothread_t) = 0;
 #else
   section(text)
 #endif
-static const uint32_t co_swap_function[1024] = {
+const uint32_t co_swap_function[1024] = {
   0x910003f0,  /* mov x16,sp           */
   0xa9007830,  /* stp x16,x30,[x1]     */
   0xa9407810,  /* ldp x16,x30,[x0]     */

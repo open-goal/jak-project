@@ -9,6 +9,8 @@
 ;;  - lerp-scale rewritten to not use accumulator
 ;;  - logf, log2f, cube-root manually fixed due to float hacks
 
+(defmacro square (x)
+  `(* ,x ,x))
 
 ;; DECOMP BEGINS
 
@@ -87,9 +89,7 @@
               (* arg0
                  (+ 0.33333334
                     (* arg0
-                       (+ -0.25
-                          (* arg0 (+ 0.2 (* arg0 (+ -0.16666666 (* arg0 (+ 0.14285715 (* arg0 (+ -0.125 (* 0.11111111 arg0)))))))))
-                          )
+                       (+ -0.25 (* arg0 (+ 0.2 (* arg0 (+ -0.16666666 (* arg0 (+ 0.14285715 (* arg0 (+ -0.125 (/ arg0 9))))))))))
                        )
                     )
                  )
@@ -98,8 +98,6 @@
         )
      )
   )
-
-
 
 (defun logf ((arg0 float))
   "Natural log."
@@ -118,9 +116,7 @@
                      (* f0-5
                         (+ 0.33333334
                            (* f0-5
-                              (+ -0.25
-                                 (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
-                                 )
+                              (+ -0.25 (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (/ f0-5 9))))))))))
                               )
                            )
                         )
@@ -152,9 +148,7 @@
                          (* f0-5
                             (+ 0.33333334
                                (* f0-5
-                                  (+ -0.25
-                                     (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
-                                     )
+                                  (+ -0.25 (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (/ f0-5 9))))))))))
                                   )
                                )
                             )
@@ -168,7 +162,6 @@
       )
     )
   )
-
 
 (deftype float-type (uint32)
   ()
@@ -397,7 +390,6 @@
   (exp (* arg1 (logf arg0)))
   )
 
-
 (defun print-exp ((arg0 float))
   "Print in the format AeB where A is in the range (1, 10)"
   (let* ((f30-1 (floor (/ (logf (fabs arg0)) (logf 10.0))))
@@ -443,7 +435,7 @@
 (defun print-time ((arg0 object) (arg1 time-frame))
   "Print a time-frame as minutes:seconds:milliseconds"
   (let* ((f0-1 (* 0.0033333334 (the float arg1)))
-         (a2-0 (the int (* 0.016666668 f0-1)))
+         (a2-0 (the int (/ f0-1 60)))
          (f0-2 (- f0-1 (* 60.0 (the float a2-0))))
          (a3-0 (the int f0-2))
          (f0-3 (- f0-2 (the float a3-0)))
@@ -455,8 +447,8 @@
   (none)
   )
 
+;; WARN: Return type mismatch uint vs int.
 (defun log2 ((arg0 int))
-  "Log base 2."
   (the-as int (+ (sar (the-as int (the float arg0)) 23) -127))
   )
 
@@ -590,7 +582,9 @@
 
 (defun seekl ((arg0 int) (arg1 int) (arg2 int))
   "Move arg0 toward arg1, by at most arg2."
-  (let* ((v1-0 (- arg1 arg0)) (a3-0 (abs v1-0)))
+  (let* ((v1-0 (- arg1 arg0))
+         (a3-0 (abs v1-0))
+         )
     (cond
       ((>= arg2 a3-0)
        arg1
@@ -678,17 +672,17 @@
   )
 
 (defun rand-vu-float-range ((arg0 float) (arg1 float))
-  "Get a random float in between arg0 and arg1"
+  "Get a random float in between arg0 and arg1."
   (+ arg0 (* (rand-vu) (- arg1 arg0)))
   )
 
 (defun rand-vu-percent? ((arg0 float))
-  "Get a boolean that's true with the given probability (in 0, 1)"
+  "Get a boolean that's true with the given probability (in 0, 1)."
   (>= arg0 (rand-vu))
   )
 
 (defun rand-vu-int-range ((arg0 int) (arg1 int))
-  "Get an integer in the given range (inclusive)"
+  "Get an integer in the given range (inclusive)."
   (if (< arg0 arg1)
       (set! arg1 (+ arg1 1))
       (set! arg0 (+ arg0 1))
@@ -706,6 +700,7 @@
   (the int (* (rand-vu) (the float arg0)))
   )
 
+;; WARN: new jak 2 until loop case, check carefully
 (defun rand-vu-int-count-excluding ((arg0 int) (arg1 int))
   "Get an integer in the range [0, arg0).
    If bit n is set in arg1, exclude this value from being returned."
@@ -715,7 +710,7 @@
     (let ((v1-0 1))
       (while (nonzero? arg0)
         (+! arg0 -1)
-        (if (zero? (logand arg1 v1-0))
+        (if (not (logtest? arg1 v1-0))
             (+! s4-0 1)
             )
         (set! v1-0 (* v1-0 2))
@@ -747,6 +742,7 @@
     )
   )
 
+;; WARN: new jak 2 until loop case, check carefully
 (defun rand-vu-int-range-exclude ((arg0 int) (arg1 int) (arg2 int))
   "Get an integer in the range [0, arg0), excluding arg2.
    Note that this doesn't use bits like rand-vu-int-count-excluding."
@@ -761,12 +757,13 @@
   )
 
 (deftype random-generator (basic)
-  ((seed uint32)
+  ((seed  uint32)
    )
   )
 
 
 (define *random-generator* (new 'global 'random-generator))
+
 (set! (-> *random-generator* seed) (the-as uint #x666edd1e))
 
 (defmacro sext32-64 (x)
@@ -830,7 +827,6 @@
     )
   )
 
-
 (defun int-noise ((arg0 int))
   "Generate random-ish floats in range -1, 1."
   (let ((v1-1 (logxor (shl arg0 13) arg0)))
@@ -860,9 +856,8 @@
 (defun smooth-interp ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Remap arg2 from (arg3, arg4) to (arg0, arg1), using cubic interpolation.
    Satisfies:
-    - f(arg3) = arg0
-    - f(arg4) = arg1
-    - f'(arg3) = f'(arg4) = 0"
+   - f(arg3) = arg0
+   - f(arg4) = arg1
+   - f'(arg3) = f'(arg4) = 0"
   (+ arg0 (* (- arg1 arg0) (smooth-step (/ (- arg2 arg3) (- arg4 arg3)))))
   )
-

@@ -588,7 +588,7 @@
     )
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self focus handle)))
-          ;; og:preserve-this
+          ;; og:preserve-this added
           (go? (the object #f)))
       (if (and (the-as process-focusable gp-0)
                (not (and (the-as process-focusable gp-0)
@@ -745,6 +745,9 @@
         (when a0-2
           (let ((s5-0 (new 'stack-no-clear 'vector)))
             (vector-copy! s5-0 (get-trans a0-2 3))
+            ;; og:preserve-this prevent NaN propagation - if bullseye-joint (3) returns NaNs, fall back to root trans (0)
+            (when (is-nan? (-> s5-0 x))
+              (vector-copy! s5-0 (get-trans a0-2 0)))
             (vector-! gp-0 s5-0 (-> self root trans))
             )
           )
@@ -982,11 +985,7 @@
     )
   :trans (behavior ()
     (if (or (time-elapsed? (-> self state-time) (seconds 15))
-            (let ((f0-0 (vector-vector-xz-distance-squared (-> self root trans) (-> self move-dest)))
-                  (f1-0 20480.0)
-                  )
-              (< f0-0 (* f1-0 f1-0))
-              )
+            (< (vector-vector-xz-distance-squared (-> self root trans) (-> self move-dest)) (square 20480.0))
             )
         (go-virtual scan)
         )
@@ -1082,9 +1081,8 @@
       (when (handle->process (-> self focus handle))
         (let* ((a0-9 (the-as process-focusable (handle->process (-> self focus handle))))
                (f0-0 (vector-vector-xz-distance-squared (get-trans a0-9 3) (-> self root trans)))
-               (f1-0 143360.0)
                )
-          (when (< (* f1-0 f1-0) f0-0)
+          (when (< (square 143360.0) f0-0)
             (spydroid-method-231 self (the-as uint 3))
             (go-virtual hostile)
             )
@@ -1394,7 +1392,7 @@
       (and (< 0.98 (-> arg0 danger-level))
            (and (or (= (-> arg0 danger-type) 0) (= (-> arg0 danger-type) 3) (= (-> arg0 danger-type) 5))
                 (< (fabs (- (-> arg0 sphere y) (-> this root trans y))) 61440.0)
-                (< (vector-vector-xz-distance-squared (-> this root trans) (-> arg0 sphere)) (* f30-0 f30-0))
+                (< (vector-vector-xz-distance-squared (-> this root trans) (-> arg0 sphere)) (square f30-0))
                 )
            )
       )
@@ -1471,22 +1469,18 @@
          (the-as enemy-aware #f)
          )
        (update-focus this)
-       (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
-             (f1-0 266240.0)
-             )
-         (cond
-           ((< f0-0 (* f1-0 f1-0))
-            (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
-              (set! v0-6 (logior (-> this flags) (citizen-flag persistent)))
-              (set! (-> this flags) (the-as citizen-flag v0-6))
-              v0-6
-              )
+       (cond
+         ((< (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)) (square 266240.0))
+          (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+            (set! v0-6 (logior (-> this flags) (citizen-flag persistent)))
+            (set! (-> this flags) (the-as citizen-flag v0-6))
+            v0-6
             )
-           (else
-             (set! v0-6 (logclear (-> this flags) (citizen-flag persistent)))
-             (set! (-> this flags) (the-as citizen-flag v0-6))
-             v0-6
-             )
+          )
+         (else
+           (set! v0-6 (logclear (-> this flags) (citizen-flag persistent)))
+           (set! (-> this flags) (the-as citizen-flag v0-6))
+           v0-6
            )
          )
        )

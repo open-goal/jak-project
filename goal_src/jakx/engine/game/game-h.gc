@@ -1,0 +1,166 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: game-h.gc
+;; name in dgo: game-h
+;; dgos: ENGINE, GAME
+
+;; +++state-flags
+(defenum state-flags
+  :bitfield #t
+  :type uint32
+  (sf0 0)
+  (sf1 1)
+  (sf2 2)
+  (sf3 3)
+  (sf4 4)
+  (sf5 5)
+  (sf6 6)
+  (sf7 7)
+  (sf8 8)
+  (sf9 9)
+  (sf10 10)
+  (sf11 11)
+  (sf12 12)
+  (sf13 13)
+  (sf14 14)
+  (sf15 15)
+  (sf16 16)
+  (sf17 17)
+  (sf18 18)
+  (sf19 19)
+  (sf20 20)
+  (sf21 21)
+  (sf22 22)
+  (sf23 23)
+  (sf24 24)
+  (sf25 25)
+  (hang 26)
+  (sf27 27)
+  (invisible 28)
+  (sf29 29)
+  (sf30 30)
+  (sf31 31)
+  )
+;; ---state-flags
+
+;; +++attack-mask
+(defenum attack-mask
+  :bitfield #t
+  :type uint32
+  (trans        0) ;; 1
+  (vector       1) ;; 2
+  (intersection 2) ;; 4
+  (attacker     3) ;; 8
+  (attack-time  4) ;; 16
+  (invinc-time  5) ;; 32
+  (mode         6) ;; 64
+  (shove-back   7) ;; 128
+  (shove-up     8) ;; 256
+  (speed        9) ;; 512
+  (dist        10) ;; 1024
+  (control     11) ;; 2048
+  (angle       12) ;; 4096
+  (rotate-to   13) ;; 8192
+  (prev-state  14) ;; 16384
+  (id          15) ;; 32768
+  (count       16) ;; hi 1
+  (penetrate-using 17) ;; hi 2
+  (attacker-velocity 18);; hi 4
+  (damage      19) ;; hi 8
+  (shield-damage 20) ;; hi16
+  (vehicle-damage-factor        21) ;; hi 32
+  (vehicle-impulse-factor         22) ;; hi 64
+  (knock 23)
+  (test 24)
+  (wpn-type 25)
+  )
+;; ---attack-mask
+
+(declare-type process-nettable process)
+(declare-type process-drawable process-nettable)
+
+(declare-type nav-control structure)
+(declare-type path-control basic)
+(declare-type vol-control basic)
+(declare-type fact-info basic)
+(declare-type actor-link-info basic)
+(declare-type water-control basic)
+(declare-type carry-info basic)
+(declare-type rigid-body-control basic)
+(declare-type touching-shapes-entry structure)
+
+;; DECOMP BEGINS
+
+(deftype attack-info (structure)
+  "Information about an incoming attack."
+  ((trans                  vector           :inline :offset-assert 0)
+   (vector                 vector           :inline :offset-assert 16)
+   (attacker-velocity      vector           :inline :offset-assert 32)
+   (intersection           vector           :inline :offset-assert 48)
+   (attacker               handle                   :offset-assert 64)
+   (attack-time            time-frame               :offset-assert 72) ;; time-frame
+   (invinc-time            time-frame               :offset-assert 80) ;; time-frame
+   (mask                   attack-mask              :offset-assert 88) ;; attack-mask
+   (mode                   symbol                   :offset-assert 92) ;; guessed by decompiler
+   (shove-back             meters                   :offset-assert 96)
+   (shove-up               meters                   :offset-assert 100)
+   (speed                  meters                   :offset-assert 104)
+   (dist                   meters                   :offset-assert 108)
+   (control                float                    :offset-assert 112)
+   (angle                  symbol                   :offset-assert 116) ;; guessed by decompiler
+   (rotate-to              degrees                  :offset-assert 120) ;; degrees
+   (prev-state             state                    :offset-assert 124) ;; guessed by decompiler
+   (id                     uint32                   :offset-assert 128)
+   (count                  uint8                   :offset-assert 132)
+   (penetrate-using        penetrate                :offset-assert 136) ;; penetrate
+   (damage                 float                    :offset-assert 144)
+   (shield-damage          float                    :offset-assert 148)
+   (vehicle-damage-factor  float                    :offset-assert 152)
+   (vehicle-impulse-factor float                    :offset-assert 156)
+   (knock                  knocked-type             :offset-assert 160) ;; knocked-type
+   (test                   symbol                   :offset-assert 164) ;; guessed by decompiler
+   )
+  :method-count-assert 10
+  :size-assert         #xa8
+  :flag-assert         #xa000000a8
+  ;; field handle is likely a value type.
+  (:methods
+    (attack-info-method-9 () none) ;; 9 ;; (attack-info-method-9 (_type_ attack-info process-drawable process-drawable) none)
+    )
+  )
+
+(deftype process-drawable (process-nettable)
+  ((root        trsqv                     :offset-assert 188) ;; guessed by decompiler
+   (node-list   cspace-array              :offset-assert 192) ;; guessed by decompiler
+   (draw        draw-control              :offset-assert 196) ;; guessed by decompiler
+   (skel        joint-control             :offset-assert 200) ;; guessed by decompiler
+   (nav         nav-control               :offset-assert 204) ;; guessed by decompiler
+   (path        path-control              :offset-assert 208) ;; guessed by decompiler
+   (vol         vol-control               :offset-assert 212) ;; guessed by decompiler
+   (fact        fact-info                 :offset-assert 216) ;; guessed by decompiler
+   (link        actor-link-info           :offset-assert 220) ;; guessed by decompiler
+   (part        sparticle-launch-control  :offset-assert 224) ;; guessed by decompiler
+   (sound       ambient-sound             :offset-assert 228) ;; guessed by decompiler
+   (rbody       rigid-body-control        :offset-assert 232) ;; guessed by decompiler
+   (state-flags state-flags               :offset-assert 236) ;; guessed by decompiler
+   (state-time  time-frame                    :offset-assert 240) ;; time-frame
+   )
+  :method-count-assert 50
+  :size-assert         #xf8
+  :flag-assert         #x32007000f8
+  (:methods
+    (process-drawable-method-42 () none) ;; 42
+    (process-drawable-method-43 () none) ;; 43
+    (process-drawable-method-44 () none) ;; 44
+    (process-drawable-method-45 () none) ;; 45
+    (process-drawable-method-46 () none) ;; 46
+    (process-drawable-method-47 () none) ;; 47
+    (process-drawable-method-48 () none) ;; 48
+    (process-drawable-method-49 () none) ;; 49
+    )
+  (:states
+    process-drawable-idle ;; associated process guessed by decompiler, old: (state process-drawable)
+    (process-drawable-art-error string) ;; associated process guessed by decompiler, old: (state string process-drawable)
+    )
+  )

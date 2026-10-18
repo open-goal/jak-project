@@ -13,8 +13,8 @@
    and knows how to map arbitrary buttons and such to look like an
    Xbox/PlayStation/etc gamepad. This is easier, and better, for many games,
    but isn't necessarily a good fit for complex apps and hardware. A flight
-   simulator, a realistic racing game, etc, might want this interface instead
-   of gamepads. */
+   simulator, a realistic racing game, etc, might want the joystick interface
+   instead of gamepads. */
 
 /* SDL can handle multiple joysticks, but for simplicity, this program only
    deals with the first stick it sees. */
@@ -41,7 +41,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer("examples/input/joystick-polling", 640, 480, 0, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("examples/input/joystick-polling", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }

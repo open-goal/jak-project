@@ -1,6 +1,7 @@
 #include "build_level.h"
 
 #include "decompiler/extractor/extractor_util.h"
+#include "decompiler/level_extractor/extract_collide_frags.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "goalc/build_level/collide/jak3/collide.h"
 #include "goalc/build_level/common/Tfrag.h"
@@ -58,9 +59,19 @@ bool run_build_level(const std::string& input_file,
              fmt::format("Actor IDs must be unique. Found at least two actors with ID {}",
                          duplicates->aid));
   file.actors = std::move(actors);
+  // actor groups
+  if (level_json.contains("actor_groups") && !level_json.at("actor_groups").empty()) {
+    add_actor_groups_from_json(level_json.at("actor_groups"), file.actors, file.actor_groups, 0);
+  }
   // cameras
   // nodes
   // regions
+  if (level_json.contains("region_trees") && !level_json.at("region_trees").empty()) {
+    file.region_array.entities = &file.actors;
+    file.region_array.actor_groups = &file.actor_groups;
+    fill_region_trees(file.region_trees, file.regions, file.region_array,
+                      level_json.at("region_trees"), level_json.value("base_region_id", 0));
+  }
   // subdivs
   // actor birth
   for (size_t i = 0; i < file.actors.size(); i++) {
@@ -87,6 +98,22 @@ bool run_build_level(const std::string& input_file,
     lg::error("No collision geometry was found");
   } else {
     file.collide_hash = construct_collide_hash(mesh_extract_out.collide.faces);
+    // for collision renderer
+    for (auto& face : mesh_extract_out.collide.faces) {
+      math::Vector4f verts[3];
+      for (int i = 0; i < 3; i++) {
+        verts[i].x() = face.v[i].x();
+        verts[i].y() = face.v[i].y();
+        verts[i].z() = face.v[i].z();
+        verts[i].w() = 1.f;
+      }
+      tfrag3::CollisionMesh::Vertex out_verts[3];
+      decompiler::set_vertices_for_tri(out_verts, verts);
+      for (auto& out : out_verts) {
+        out.pat = face.pat.val;
+        pc_level.collision.vertices.push_back(out);
+      }
+    }
   }
 
   // Save the GOAL level
@@ -172,8 +199,7 @@ bool run_build_level(const std::string& input_file,
           if (tex.name == tex0) {
             lg::info("custom level: adding texture {} from tpage {} ({})", tex.name, tex.page,
                      tex_db.tpage_names.at(tex.page));
-            pc_level.textures.push_back(
-                make_texture(id, tex, tex_db.tpage_names.at(tex.page), true));
+            pc_level.textures.push_back(make_texture(id, tex_db, true));
             processed_textures.push_back(tex.name);
           }
         }

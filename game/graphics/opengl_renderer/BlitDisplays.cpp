@@ -167,6 +167,8 @@ void BlitDisplays::do_zoom_blur(SharedRenderState* render_state, ScopedProfilerN
   // GL Setup
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+  glBlendEquation(GL_FUNC_ADD);
   glBindTexture(GL_TEXTURE_2D, m_blur_old_copier.texture());
 
   // draw old image

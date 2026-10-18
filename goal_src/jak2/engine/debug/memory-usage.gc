@@ -39,7 +39,7 @@
   obj
   )
 
-(defmethod mem-usage ((this object) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this object) (usage memory-usage-block) (flags int))
   this
   )
 
@@ -66,9 +66,9 @@
 
 (defun mem-size ((data basic) (inspect-usage? symbol) (arg2 int))
   "@param data The [[basic]] to call `mem-usage` on
-@param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
-@param arg2 TODO - unsure, some sort of bitfield
-@returns The total memory footprint of the provided [[basic]]"
+   @param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
+   @param arg2 TODO - unsure, some sort of bitfield
+   @returns The total memory footprint of the provided [[basic]]"
   (let ((block (new 'stack 'memory-usage-block)))
     (mem-usage data block arg2)
     (if inspect-usage?
@@ -80,11 +80,11 @@
 
 (defmethod compute-memory-usage! ((this level) (force? symbol))
   "Calculates the memory usage of the level, returns and stores the [[memory-usage-block]]
-in `mem-usage-block` as well as the total size in `mem-usage`
+   in `mem-usage-block` as well as the total size in `mem-usage`
 
-@param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
-@returns The [[memory-usage-block]] representing the footprint of the level
-@see [[memory-usage-block::10]]"
+   @param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
+   @returns The [[memory-usage-block]] representing the footprint of the level
+   @see [[memory-usage-block::10]]"
   (if (zero? (-> this mem-usage-block))
       (set! (-> this mem-usage-block) (new 'debug 'memory-usage-block))
       )
@@ -97,23 +97,23 @@ in `mem-usage-block` as well as the total size in `mem-usage`
   (-> this mem-usage-block)
   )
 
-(defmethod mem-usage ((this process-tree) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this process-tree) (usage memory-usage-block) (flags int))
   (let ((v1-0 90))
     (let* ((a0-1 *dead-pool-list*)
            (a3-0 (car a0-1))
            )
       (while (not (null? a0-1))
-        (set! (-> arg0 data v1-0 name) (symbol->string (the-as symbol a3-0)))
+        (set! (-> usage data v1-0 name) (symbol->string (the-as symbol a3-0)))
         (+! v1-0 1)
         (set! a0-1 (cdr a0-1))
         (set! a3-0 (car a0-1))
         )
       )
-    (set! (-> arg0 length) (max (-> arg0 length) v1-0))
+    (set! (-> usage length) (max (-> usage length) v1-0))
     )
-  (set! (-> arg0 data 96 name) "*debug-dead-pool*")
-  (set! *temp-mem-usage* arg0)
-  (when (logtest? arg1 32)
+  (set! (-> usage data 96 name) "*debug-dead-pool*")
+  (set! *temp-mem-usage* usage)
+  (when (logtest? flags 32)
     (let* ((s5-0 90)
            (s4-0 *dead-pool-list*)
            (v1-4 (car s4-0))
@@ -311,7 +311,6 @@ in `mem-usage-block` as well as the total size in `mem-usage`
 (define *max-dma* 0)
 
 (defmethod print-mem-usage ((this memory-usage-block) (level level) (fmt-dest object))
-  (local-vars (sv-16 object) (sv-32 string) (sv-48 int))
   (let ((s3-0 (&- (-> level heap current) (the-as uint (-> level heap base)))))
     (let ((v1-2 (+ (-> this data 61 total) (-> this data 62 total))))
       (< #x10000 v1-2)
@@ -348,218 +347,210 @@ in `mem-usage-block` as well as the total size in `mem-usage`
       (if (< (the-as int s2-0) s3-0)
           (format fmt-dest "~3L")
           )
-      (let ((s0-0 format))
-        (set! sv-16 fmt-dest)
-        (set! sv-32 "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--")
-        (let ((s4-1 (-> level name))
-              (s3-1 (sar s3-0 10))
-              (s2-1 (shr s2-0 10))
-              )
-          (set! sv-48 (sar (memory-used *nk-dead-pool*) 10))
-          (let ((t2-0 (sar (memory-total *nk-dead-pool*) 10))
-                (t9-4 s0-0)
-                (a0-22 sv-16)
-                (a1-8 sv-32)
-                (a2-1 s4-1)
-                (a3-0 s3-1)
-                (t0-0 s2-1)
-                (t1-0 sv-48)
-                )
-            (t9-4 a0-22 a1-8 a2-1 a3-0 t0-0 t1-0 t2-0)
-            (format fmt-dest "~5,'-DK/~5,'-DK--~%" (shr s1-0 10) (sar *max-dma* 10))
-            (when *stats-memory-short*
-              (let ((s3-2 (if (cpad-hold? 1 l3)
-                              #t
-                              fmt-dest
-                              )
+      (let* ((s0-0 format)
+             (sv-16 fmt-dest)
+             (sv-32 "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--")
+             (s4-1 (-> level name))
+             (s3-1 (sar s3-0 10))
+             (s2-1 (shr s2-0 10))
+             (sv-48 (sar (memory-used *nk-dead-pool*) 10))
+             (t2-0 (sar (memory-total *nk-dead-pool*) 10))
+             (t0-0 s2-1)
+             (t1-0 sv-48)
+             )
+        (s0-0 sv-16 sv-32 s4-1 s3-1 t0-0 t1-0 t2-0)
+        (format fmt-dest "~5,'-DK/~5,'-DK--~%" (shr s1-0 10) (sar *max-dma* 10))
+        (when *stats-memory-short*
+          (let ((s3-2 (if (cpad-hold? 1 l3)
+                          #t
+                          fmt-dest
                           )
-                    (s4-2 format)
-                    (s2-2 "heap-~5,'-DK/~5,'-DK----~D---~D/~D~%")
-                    (s1-1 (sar (memory-used *nk-dead-pool*) 10))
-                    (s0-1 (sar (memory-total *nk-dead-pool*) 10))
-                    )
-                (set! t0-0 (the-as int (compact-time *nk-dead-pool*)))
-                (set! t1-0 (the-as int (-> *nk-dead-pool* compact-count)))
-                (set! t2-0 (the-as int (-> *nk-dead-pool* compact-count-targ)))
-                (s4-2 s3-2 s2-2 s1-1 s0-1 t0-0 (the-as uint t1-0) (the-as uint t2-0))
-                )
-              )
-            (when (not *stats-memory-short*)
-              (set! (-> *dma-mem-usage* data 87 total)
-                    (* (dma-buffer-length (-> *display* frames (-> *display* last-screen) debug-buf)) 16)
-                    )
-              (let ((t9-11 format)
-                    (a0-31 fmt-dest)
-                    (a1-11 "  bsp ~192H~5DK ~280Hdebug~456H~5DK~%")
-                    (a2-6 (sar (+ (-> this data 58 total) (-> this data 59 total) (-> this data 60 total)) 10))
-                    (a3-3 (sar (-> *dma-mem-usage* data 87 total) 10))
-                    )
-                (t9-11 a0-31 a1-11 a2-6 a3-3 (the-as none t0-0) (the-as none t1-0) (the-as none t2-0))
-                (format
-                  fmt-dest
-                  "  bsp-leaf-vis ~192H~5DK~%"
-                  (sar (+ (-> this data 61 total) (-> this data 62 total)) 10)
-                  (the-as none a3-3)
-                  )
-                (format fmt-dest "  level-code ~192H~5DK~%" (sar (-> this data 65 total) 10) (the-as none a3-3))
-                )
-              (format
-                fmt-dest
-                "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%"
-                (sar
-                  (+ (-> this data 1 total)
-                     (-> this data 2 total)
-                     (-> this data 3 total)
-                     (-> this data 4 total)
-                     (-> this data 5 total)
-                     (-> this data 6 total)
-                     (-> this data 7 total)
-                     (-> this data 8 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 1 total) 10)
-                )
-              (format
-                fmt-dest
-                "  tie-proto ~192H~5DK ~280Hsky~456H~5DK~%"
-                (sar
-                  (+ (-> this data 9 total)
-                     (-> this data 10 total)
-                     (-> this data 11 total)
-                     (-> this data 12 total)
-                     (-> this data 13 total)
-                     (-> this data 14 total)
-                     (-> this data 16 total)
-                     (-> this data 17 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 88 total) 10)
-                )
-              (format
-                fmt-dest
-                "  tie-instance ~192H~5DK ~280Htie-fragment~456H~5DK~%"
-                (sar (+ (-> this data 18 total) (-> this data 20 total) (-> this data 21 total) (-> this data 22 total)) 10)
-                (sar (-> *dma-mem-usage* data 9 total) 10)
-                )
-              (format
-                fmt-dest
-                "  shrub-proto ~192H~5DK ~280Htie-scissor~456H~5DK~%"
-                (sar
-                  (+ (-> this data 25 total)
-                     (-> this data 26 total)
-                     (-> this data 27 total)
-                     (-> this data 28 total)
-                     (-> this data 29 total)
-                     (-> this data 30 total)
-                     (-> this data 31 total)
-                     (-> this data 32 total)
-                     (-> this data 33 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 15 total) 10)
-                )
-              (format
-                fmt-dest
-                "  shrub-instance ~192H~5DK ~280Hshrubbery~456H~5DK~%"
-                (sar (-> this data 34 total) 10)
-                (sar (-> *dma-mem-usage* data 27 total) 10)
-                )
-              (format
-                fmt-dest
-                "  collision ~192H~5DK ~280Htie-generic~456H~5DK~%"
-                (sar
-                  (+ (-> this data 50 total)
-                     (-> this data 51 total)
-                     (-> this data 52 total)
-                     (-> this data 53 total)
-                     (-> this data 54 total)
-                     (-> this data 55 total)
-                     (-> this data 56 total)
-                     (-> this data 57 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 17 total) 10)
-                )
-              (format
-                fmt-dest
-                "  pris-geo ~192H~5DK ~280Hpris-fragment~456H~5DK~%"
-                (sar
-                  (+ (-> this data 35 total)
-                     (-> this data 36 total)
-                     (-> this data 37 total)
-                     (-> this data 38 total)
-                     (-> this data 39 total)
-                     (-> this data 40 total)
-                     (-> this data 41 total)
-                     (-> this data 42 total)
-                     (-> this data 73 total)
-                     (-> this data 74 total)
-                     (-> this data 75 total)
-                     (-> this data 76 total)
-                     (-> this data 78 total)
-                     (-> this data 81 total)
-                     (-> this data 80 total)
-                     (-> this data 111 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 35 total) 10)
-                )
-              (format
-                fmt-dest
-                "  pris-anim ~192H~5DK ~280Hpris-generic~456H~5DK~%"
-                (sar
-                  (+ (-> this data 67 total)
-                     (-> this data 68 total)
-                     (-> this data 69 total)
-                     (-> this data 70 total)
-                     (-> this data 71 total)
-                     (-> this data 77 total)
-                     (-> this data 79 total)
-                     (-> this data 72 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 89 total) 10)
-                )
-              (format
-                fmt-dest
-                "  textures ~192H~5DK ~280Htextures~456H~5DK~%"
-                (sar (-> this data 82 total) 10)
-                (sar (-> *dma-mem-usage* data 82 total) 10)
-                )
-              (format fmt-dest "  entity ~192H~5DK~%" (sar
-                                                        (+ (-> this data 66 total)
-                                                           (-> this data 43 total)
-                                                           (-> this data 44 total)
-                                                           (-> this data 45 total)
-                                                           (-> this data 49 total)
-                                                           (-> this data 48 total)
-                                                           (-> this data 46 total)
-                                                           (-> this data 47 total)
-                                                           )
-                                                        10
-                                                        )
                       )
-              (format
-                fmt-dest
-                "  misc ~192H~5DK ~280Hsprite~456H~5DK~%"
-                (sar
-                  (+ (-> this data 0 total)
-                     (-> this data 63 total)
-                     (-> this data 64 total)
-                     (-> this data 83 total)
-                     (-> this data 84 total)
-                     )
-                  10
-                  )
-                (sar (-> *dma-mem-usage* data 85 total) 10)
+                (s4-2 format)
+                (s2-2 "heap-~5,'-DK/~5,'-DK----~D---~D/~D~%")
+                (s1-1 (sar (memory-used *nk-dead-pool*) 10))
+                (s0-1 (sar (memory-total *nk-dead-pool*) 10))
                 )
+            (set! t0-0 (the-as int (compact-time *nk-dead-pool*)))
+            (set! t1-0 (the-as int (-> *nk-dead-pool* compact-count)))
+            (set! t2-0 (the-as int (-> *nk-dead-pool* compact-count-targ)))
+            (s4-2 s3-2 s2-2 s1-1 s0-1 t0-0 (the-as uint t1-0) (the-as uint t2-0))
+            )
+          )
+        (when (not *stats-memory-short*)
+          (set! (-> *dma-mem-usage* data 87 total)
+                (* (dma-buffer-length (-> *display* frames (-> *display* last-screen) debug-buf)) 16)
+                )
+          (let ((t9-11 format)
+                (a0-31 fmt-dest)
+                (a1-11 "  bsp ~192H~5DK ~280Hdebug~456H~5DK~%")
+                (a2-6 (sar (+ (-> this data 58 total) (-> this data 59 total) (-> this data 60 total)) 10))
+                (a3-3 (sar (-> *dma-mem-usage* data 87 total) 10))
+                )
+            (t9-11 a0-31 a1-11 a2-6 a3-3 (the-as none t0-0) (the-as none t1-0) (the-as none t2-0))
+            (format
+              fmt-dest
+              "  bsp-leaf-vis ~192H~5DK~%"
+              (sar (+ (-> this data 61 total) (-> this data 62 total)) 10)
+              (the-as none a3-3)
               )
+            (format fmt-dest "  level-code ~192H~5DK~%" (sar (-> this data 65 total) 10) (the-as none a3-3))
+            )
+          (format
+            fmt-dest
+            "  tfrag ~192H~5DK ~280Htfragment~456H~5DK~%"
+            (sar
+              (+ (-> this data 1 total)
+                 (-> this data 2 total)
+                 (-> this data 3 total)
+                 (-> this data 4 total)
+                 (-> this data 5 total)
+                 (-> this data 6 total)
+                 (-> this data 7 total)
+                 (-> this data 8 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 1 total) 10)
+            )
+          (format
+            fmt-dest
+            "  tie-proto ~192H~5DK ~280Hsky~456H~5DK~%"
+            (sar
+              (+ (-> this data 9 total)
+                 (-> this data 10 total)
+                 (-> this data 11 total)
+                 (-> this data 12 total)
+                 (-> this data 13 total)
+                 (-> this data 14 total)
+                 (-> this data 16 total)
+                 (-> this data 17 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 88 total) 10)
+            )
+          (format
+            fmt-dest
+            "  tie-instance ~192H~5DK ~280Htie-fragment~456H~5DK~%"
+            (sar (+ (-> this data 18 total) (-> this data 20 total) (-> this data 21 total) (-> this data 22 total)) 10)
+            (sar (-> *dma-mem-usage* data 9 total) 10)
+            )
+          (format
+            fmt-dest
+            "  shrub-proto ~192H~5DK ~280Htie-scissor~456H~5DK~%"
+            (sar
+              (+ (-> this data 25 total)
+                 (-> this data 26 total)
+                 (-> this data 27 total)
+                 (-> this data 28 total)
+                 (-> this data 29 total)
+                 (-> this data 30 total)
+                 (-> this data 31 total)
+                 (-> this data 32 total)
+                 (-> this data 33 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 15 total) 10)
+            )
+          (format
+            fmt-dest
+            "  shrub-instance ~192H~5DK ~280Hshrubbery~456H~5DK~%"
+            (sar (-> this data 34 total) 10)
+            (sar (-> *dma-mem-usage* data 27 total) 10)
+            )
+          (format
+            fmt-dest
+            "  collision ~192H~5DK ~280Htie-generic~456H~5DK~%"
+            (sar
+              (+ (-> this data 50 total)
+                 (-> this data 51 total)
+                 (-> this data 52 total)
+                 (-> this data 53 total)
+                 (-> this data 54 total)
+                 (-> this data 55 total)
+                 (-> this data 56 total)
+                 (-> this data 57 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 17 total) 10)
+            )
+          (format
+            fmt-dest
+            "  pris-geo ~192H~5DK ~280Hpris-fragment~456H~5DK~%"
+            (sar
+              (+ (-> this data 35 total)
+                 (-> this data 36 total)
+                 (-> this data 37 total)
+                 (-> this data 38 total)
+                 (-> this data 39 total)
+                 (-> this data 40 total)
+                 (-> this data 41 total)
+                 (-> this data 42 total)
+                 (-> this data 73 total)
+                 (-> this data 74 total)
+                 (-> this data 75 total)
+                 (-> this data 76 total)
+                 (-> this data 78 total)
+                 (-> this data 81 total)
+                 (-> this data 80 total)
+                 (-> this data 111 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 35 total) 10)
+            )
+          (format
+            fmt-dest
+            "  pris-anim ~192H~5DK ~280Hpris-generic~456H~5DK~%"
+            (sar
+              (+ (-> this data 67 total)
+                 (-> this data 68 total)
+                 (-> this data 69 total)
+                 (-> this data 70 total)
+                 (-> this data 71 total)
+                 (-> this data 77 total)
+                 (-> this data 79 total)
+                 (-> this data 72 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 89 total) 10)
+            )
+          (format
+            fmt-dest
+            "  textures ~192H~5DK ~280Htextures~456H~5DK~%"
+            (sar (-> this data 82 total) 10)
+            (sar (-> *dma-mem-usage* data 82 total) 10)
+            )
+          (format fmt-dest "  entity ~192H~5DK~%" (sar
+                                                    (+ (-> this data 66 total)
+                                                       (-> this data 43 total)
+                                                       (-> this data 44 total)
+                                                       (-> this data 45 total)
+                                                       (-> this data 49 total)
+                                                       (-> this data 48 total)
+                                                       (-> this data 46 total)
+                                                       (-> this data 47 total)
+                                                       )
+                                                    10
+                                                    )
+                  )
+          (format
+            fmt-dest
+            "  misc ~192H~5DK ~280Hsprite~456H~5DK~%"
+            (sar
+              (+ (-> this data 0 total)
+                 (-> this data 63 total)
+                 (-> this data 64 total)
+                 (-> this data 83 total)
+                 (-> this data 84 total)
+                 )
+              10
+              )
+            (sar (-> *dma-mem-usage* data 85 total) 10)
             )
           )
         )

@@ -12,7 +12,8 @@
 
 (kmemopen global "progress-data")
 
-(define *progress-stack* (the-as (pointer uint8) (malloc 'global #x3800)))
+;; og:preserve-this
+(define *progress-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
 
 (define *progress-process* (the-as (pointer progress) #f))
 
@@ -228,7 +229,12 @@
 
 (defun progress-intro-start ()
   (set! (-> *game-info* mode) 'play)
-  (initialize! *game-info* 'game (the-as game-save #f) "intro-start" (the-as resetter-spec #f))
+  ;; og:preserve-this start speedrun from title screen
+  (cond
+    ((= (-> *pc-settings* speedrunner-mode?) #t)
+      (start-run! *speedrun-info*))
+    (else
+      (initialize! *game-info* 'game (the-as game-save #f) "intro-start" (the-as resetter-spec #f))))
   (set-master-mode 'game)
   0
   )
@@ -493,7 +499,8 @@
         (set-menu-mode *blit-displays-work* #t)
         )
       (set! *progress-process*
-            (process-spawn progress arg1 :name "progress" :to arg0 :stack (&-> *progress-stack* 14336))
+            ;; og:preserve-this
+            (process-spawn progress arg1 :name "progress" :to arg0 :stack (&-> *progress-stack* DPROCESS_STACK_SIZE))
             )
       (set-master-mode 'progress)
       )
@@ -1427,23 +1434,22 @@
   )
 
 (defbehavior progress-post progress ()
-  (local-vars (sv-208 font-context) (sv-212 int) (sv-216 hud-box) (sv-220 symbol))
   (when (-> self current-options)
     (set-selected-color self)
     (set! (-> self scissor-count) -1)
     (progress-method-33 self (-> *progress-work* full-screen))
-    (let ((gp-0 (-> self current-options options)))
-      (let ((s3-0 (-> self current-options y-center))
-            (s5-0 (-> self current-options y-space))
+    (let ((gp-0 (-> self current-options options))
+          (s3-0 (-> self current-options y-center))
+          (s5-0 (-> self current-options y-space))
+          (s2-0 (new-stack-matrix0))
+          (s4-0 *progress-work*)
+          )
+      (mem-copy! (the-as pointer s2-0) (the-as pointer *font-default-matrix*) 64)
+      (let ((sv-208 (new 'stack 'font-context s2-0 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+            (sv-212 (- s3-0 (/ (* s5-0 (length gp-0)) 2)))
+            (sv-216 (new 'stack-no-clear 'hud-box))
             )
-        (let ((s2-0 (new-stack-matrix0))
-              (s4-0 *progress-work*)
-              )
-          (mem-copy! (the-as pointer s2-0) (the-as pointer *font-default-matrix*) 64)
-          (set! sv-208 (new 'stack 'font-context s2-0 0 0 0.0 (font-color default) (font-flags shadow kerning)))
-          (set! sv-212 (- s3-0 (/ (* s5-0 (length gp-0)) 2)))
-          (set! sv-216 (new 'stack-no-clear 'hud-box))
-          (set! sv-220 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0))))
+        (let ((sv-220 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0)))))
           (progress-method-33 self (-> s4-0 small-screen))
           (when sv-220
             (begin-scan sv-216 self)
@@ -1454,53 +1460,52 @@
                 )
               )
             )
-          )
-        (if (or (= (-> self current-options) *title*) (= (-> self current-options) *options-options*))
-            (+ s5-0 20)
+          (if (or (= (-> self current-options) *title*) (= (-> self current-options) *options-options*))
+              (+ s5-0 20)
+              )
+          (dotimes (s5-1 (length gp-0))
+            (set! (-> self current-index) s5-1)
+            (set-scale! sv-208 0.5)
+            (set! (-> sv-208 origin x) 70.0)
+            (set! (-> sv-208 origin y) (the float sv-212))
+            (set-width! sv-208 375)
+            (set-height! sv-208 30)
+            (set! (-> sv-208 flags) (font-flags kerning middle middle-vert large))
+            (let ((v1-51 sv-208))
+              (set! (-> v1-51 color) (if (and (= s5-1 (-> self option-index)) (= (-> self menu-transition) 0.0))
+                                         (font-color font-color-33)
+                                         (font-color font-color-32)
+                                         )
+                    )
+              )
+            (draw-option
+              (-> gp-0 s5-1)
+              self
+              sv-208
+              s5-1
+              (and (= (-> self menu-transition) 0.0) (-> self selected-option) (= s5-1 (-> self option-index)))
+              )
             )
-        )
-      (dotimes (s5-1 (length gp-0))
-        (set! (-> self current-index) s5-1)
-        (set-scale! sv-208 0.5)
-        (set! (-> sv-208 origin x) 70.0)
-        (set! (-> sv-208 origin y) (the float sv-212))
-        (set-width! sv-208 375)
-        (set-height! sv-208 30)
-        (set! (-> sv-208 flags) (font-flags kerning middle middle-vert large))
-        (let ((v1-51 sv-208))
-          (set! (-> v1-51 color) (if (and (= s5-1 (-> self option-index)) (= (-> self menu-transition) 0.0))
-                                     (font-color font-color-33)
-                                     (font-color font-color-32)
-                                     )
-                )
-          )
-        (draw-option
-          (-> gp-0 s5-1)
-          self
-          sv-208
-          s5-1
-          (and (= (-> self menu-transition) 0.0) (-> self selected-option) (= s5-1 (-> self option-index)))
+          (if sv-220
+              (set! (-> self scanlines-alpha) (seek-ease
+                                                (-> self scanlines-alpha)
+                                                (- 1.0 (-> self menu-transition))
+                                                (/ (-> self clock time-adjust-ratio) 20)
+                                                0.3
+                                                (/ (-> self clock time-adjust-ratio) 1000)
+                                                )
+                    )
+              )
+          (progress-method-34 self)
+          ;; og:preserve-this
+          ;; calling end-scan without calling begin-scan will use uninitialized stack memory
+          ;; for box parameters, which may draw a large number of lines and overflow DMA memory.
+          (if sv-220
+              (end-scan sv-216 (-> self scanlines-alpha))
+              )
           )
         )
       )
-    (if sv-220
-        (set! (-> self scanlines-alpha) (seek-ease
-                                          (-> self scanlines-alpha)
-                                          (- 1.0 (-> self menu-transition))
-                                          (/ (-> self clock time-adjust-ratio) 20)
-                                          0.3
-                                          (/ (-> self clock time-adjust-ratio) 1000)
-                                          )
-              )
-        )
-    (progress-method-34 self)
-
-    ;; og:preserve-this
-    ;; calling end-scan without calling begin-scan will use uninitialized stack memory
-    ;; for box parameters, which may draw a large number of lines and overflow DMA memory.
-    (if sv-220
-        (end-scan sv-216 (-> self scanlines-alpha))
-        )
     )
   (when (and (< 0.8 (-> self anim-frame)) (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
     (progress-method-33 self (-> *progress-work* full-screen))

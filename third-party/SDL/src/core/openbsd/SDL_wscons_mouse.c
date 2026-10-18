@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -52,7 +52,7 @@ SDL_WSCONS_mouse_input_data *SDL_WSCONS_Init_Mouse(void)
     }
 
     input->mouseID = SDL_GetNextObjectID();
-    SDL_AddMouse(input->mouseID, NULL, false);
+    SDL_AddMouse(input->mouseID, NULL);
 
 #ifdef WSMOUSEIO_SETMODE
     ioctl(input->fd, WSMOUSEIO_SETMODE, WSMOUSE_COMPAT);

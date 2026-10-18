@@ -364,20 +364,6 @@
 (defmethod general-event-handler ((this rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
    @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (local-vars
-    (sv-96 int)
-    (sv-112 symbol)
-    (sv-128 symbol)
-    (sv-144 symbol)
-    (sv-160 vector)
-    (sv-176 matrix)
-    (sv-192 int)
-    (sv-208 symbol)
-    (sv-224 symbol)
-    (sv-240 symbol)
-    (sv-256 vector)
-    (sv-272 matrix)
-    )
   (case arg2
     (('charge)
      (if (-> this wall)
@@ -453,78 +439,24 @@
      )
     (('event-slide-poof)
      (let ((s5-2 (-> arg3 param 1)))
-       (cond
-         ((= (-> this root ground-pat material) (pat-material grass))
-          (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when s4-1
-              (let ((t9-14 (method-of-type part-tracker activate)))
-                (t9-14 (the-as part-tracker s4-1) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                )
-              (let ((s3-1 run-function-in-process)
-                    (s2-1 s4-1)
-                    (s1-0 part-tracker-init)
-                    (s0-0 group-rhino-slide-poof-grs)
-                    )
-                (set! sv-96 0)
-                (set! sv-112 (the-as symbol #f))
-                (set! sv-128 (the-as symbol #f))
-                (set! sv-144 (the-as symbol #f))
-                (set! sv-176 *launch-matrix*)
-                (set! sv-160 (-> sv-176 trans))
-                (let ((v1-52 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data s5-2)) quad)))
-                  (set! (-> sv-160 quad) v1-52)
-                  )
-                ((the-as (function object object object object object object object object none) s3-1)
-                 s2-1
-                 s1-0
-                 s0-0
-                 sv-96
-                 sv-112
-                 sv-128
-                 sv-144
-                 sv-176
-                 )
-                )
-              (-> s4-1 ppointer)
-              )
-            )
-          )
-         (else
-           (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when s4-2
-               (let ((t9-18 (method-of-type part-tracker activate)))
-                 (t9-18 (the-as part-tracker s4-2) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((s3-2 run-function-in-process)
-                     (s2-2 s4-2)
-                     (s1-1 part-tracker-init)
-                     (s0-1 group-rhino-slide-poof-pmt)
-                     )
-                 (set! sv-192 0)
-                 (set! sv-208 (the-as symbol #f))
-                 (set! sv-224 (the-as symbol #f))
-                 (set! sv-240 (the-as symbol #f))
-                 (set! sv-272 *launch-matrix*)
-                 (set! sv-256 (-> sv-272 trans))
-                 (let ((v1-64 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data s5-2)) quad)))
-                   (set! (-> sv-256 quad) v1-64)
-                   )
-                 ((the-as (function object object object object object object object object none) s3-2)
-                  s2-2
-                  s1-1
-                  s0-1
-                  sv-192
-                  sv-208
-                  sv-224
-                  sv-240
-                  sv-272
-                  )
-                 )
-               (-> s4-2 ppointer)
-               )
+       (if (= (-> this root ground-pat material) (pat-material grass))
+           (part-tracker-spawn
+             :to this
+             :group group-rhino-slide-poof-grs
+             :callback (the-as symbol #f)
+             :userdata (the-as symbol #f)
+             :target (the-as symbol #f)
+             :mat-joint (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data s5-2))
+             )
+           (part-tracker-spawn
+             :to this
+             :group group-rhino-slide-poof-pmt
+             :callback (the-as symbol #f)
+             :userdata (the-as symbol #f)
+             :target (the-as symbol #f)
+             :mat-joint (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data s5-2))
              )
            )
-         )
        )
      )
     (('interesting)

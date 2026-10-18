@@ -1,0 +1,11 @@
+("HVX.DGO"
+ ("haven-ocean.o"
+  "haven-effects.o"
+  "haven-part.o"
+  "haven-obs.o"
+  "train-obs.o"
+  "construction-obs.o"
+  "tpage-1697.go"
+  "jungle-flaming-arrow-ag.go"
+  "havenx-vis.o"
+ ))

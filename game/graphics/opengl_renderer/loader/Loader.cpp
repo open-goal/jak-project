@@ -1,5 +1,7 @@
 #include "Loader.h"
 
+#include <ranges>
+
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
@@ -106,6 +108,55 @@ std::vector<LevelData*> Loader::get_in_use_levels() {
 
 void Loader::draw_debug_window() {
   ImGui::Begin("Loader");
+
+  if (!m_selected_level_for_reload.empty() &&
+      m_loaded_tfrag3_levels.find(m_selected_level_for_reload) == m_loaded_tfrag3_levels.end()) {
+    m_selected_level_for_reload.clear();
+  }
+
+  const char* preview = m_selected_level_for_reload.empty() ? "(select a level)"
+                                                            : m_selected_level_for_reload.c_str();
+  if (ImGui::BeginCombo("Level Select", preview)) {
+    for (const auto& [name, data] : m_loaded_tfrag3_levels) {
+      bool selected = (name == m_selected_level_for_reload);
+      if (ImGui::Selectable(name.c_str(), selected)) {
+        m_selected_level_for_reload = name;
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
+  bool single_reload_pending = !m_single_level_to_reload.empty();
+  bool can_reload_selected =
+      !m_selected_level_for_reload.empty() && !single_reload_pending && !m_want_reload;
+  if (!can_reload_selected) {
+    ImGui::BeginDisabled();
+  }
+  if (ImGui::Button("Force Reload Selected")) {
+    m_single_level_to_reload = m_selected_level_for_reload;
+  }
+  if (!can_reload_selected) {
+    ImGui::EndDisabled();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Force Reload Common")) {
+    m_want_reload_common = true;
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Force Reload All")) {
+    m_want_reload = true;
+  }
+  ImGui::SameLine();
+  if (m_want_reload) {
+    ImGui::TextUnformatted("(waiting for full reload...)");
+  } else if (single_reload_pending) {
+    ImGui::Text("(waiting to reload %s...)", m_single_level_to_reload.c_str());
+  }
+  ImGui::Separator();
+
   std::unique_lock<std::mutex> lk(m_loader_mutex);
   ImVec4 blue(0.3, 0.3, 0.8, 1.0);
   ImVec4 red(0.8, 0.3, 0.3, 1.0);
@@ -380,6 +431,39 @@ const std::string* Loader::get_most_unloadable_level() {
 void Loader::update(TexturePool& texture_pool) {
   Timer loader_timer;
 
+  if (m_want_reload) {
+    std::unique_lock lk(m_loader_mutex);
+    if (m_level_to_load.empty() && m_initializing_tfrag3_levels.empty()) {
+      m_want_reload = false;
+      lk.unlock();
+      do_reload(texture_pool);
+      return;
+    }
+  }
+
+  if (!m_single_level_to_reload.empty()) {
+    std::unique_lock lk(m_loader_mutex);
+    bool in_init = m_initializing_tfrag3_levels.count(m_single_level_to_reload) > 0;
+    if (m_level_to_load.empty() && !in_init) {
+      std::string name = std::move(m_single_level_to_reload);
+      m_single_level_to_reload.clear();
+      lk.unlock();
+      do_reload_level(name, texture_pool);
+      return;
+    }
+  }
+
+  if (m_want_reload_common) {
+    std::unique_lock lk(m_loader_mutex);
+    bool in_init = m_initializing_tfrag3_levels.count(m_single_level_to_reload) > 0;
+    if (m_level_to_load.empty() && !in_init) {
+      m_want_reload_common = false;
+      lk.unlock();
+      do_reload_common(texture_pool);
+      return;
+    }
+  }
+
   {
     // lock because we're accessing m_active_levels
     std::unique_lock<std::mutex> lk(m_loader_mutex);
@@ -543,4 +627,113 @@ std::optional<MercRef> Loader::get_merc_model(const char* model_name) {
   } else {
     return std::nullopt;
   }
+}
+
+void Loader::unload_level_data(const std::string& name, LevelData& lev, TexturePool& tex_pool) {
+  fmt::print("force reload: unloading {}\n", name);
+  {
+    std::unique_lock lk(tex_pool.mutex());
+    for (size_t i = 0; i < lev.level->textures.size(); i++) {
+      auto& tex = lev.level->textures[i];
+      if (tex.load_to_pool) {
+        tex_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id), lev.textures.at(i));
+      }
+    }
+  }
+  for (auto tex : lev.textures) {
+    glDeleteTextures(1, &tex);
+  }
+  for (auto& tie_geo : lev.tie_data) {
+    for (auto& tie_tree : tie_geo) {
+      glDeleteBuffers(1, &tie_tree.vertex_buffer);
+      if (tie_tree.has_wind) {
+        glDeleteBuffers(1, &tie_tree.wind_indices);
+      }
+      glDeleteBuffers(1, &tie_tree.index_buffer);
+    }
+  }
+  for (auto& tfrag_geo : lev.tfrag_vertex_data) {
+    for (auto& buf : tfrag_geo) {
+      glDeleteBuffers(1, &buf);
+    }
+  }
+  for (auto& buf : lev.shrub_vertex_data) {
+    glDeleteBuffers(1, &buf);
+  }
+  glDeleteBuffers(1, &lev.hfrag_indices);
+  glDeleteBuffers(1, &lev.hfrag_vertices);
+  glDeleteBuffers(1, &lev.collide_vertices);
+  glDeleteBuffers(1, &lev.merc_vertices);
+  glDeleteBuffers(1, &lev.merc_indices);
+  for (auto& model : lev.level->merc_data.models) {
+    auto it = m_all_merc_models.find(model.name);
+    if (it == m_all_merc_models.end())
+      continue;
+    MercRef ref{&model, lev.load_id};
+    auto ref_it = std::ranges::find(it->second, ref);
+    if (ref_it != it->second.end())
+      it->second.erase(ref_it);
+  }
+}
+
+void Loader::do_reload_level(const std::string& name, TexturePool& texture_pool) {
+  auto it = m_loaded_tfrag3_levels.find(name);
+  if (it == m_loaded_tfrag3_levels.end()) {
+    return;
+  }
+  unload_level_data(name, *it->second, texture_pool);
+  m_loaded_tfrag3_levels.erase(it);
+
+  std::unique_lock lk(m_loader_mutex);
+  if (m_level_to_load.empty()) {
+    m_level_to_load = name;
+    lk.unlock();
+    m_loader_cv.notify_all();
+  }
+}
+
+void Loader::do_reload_common(TexturePool& tex_pool) {
+  fmt::print("loader: force reloading common level\n");
+  {
+    std::unique_lock lk(tex_pool.mutex());
+    for (size_t i = 0;
+         i < m_common_level.textures.size() && i < m_common_level.level->textures.size(); i++) {
+      auto& tex = m_common_level.level->textures[i];
+      if (tex.load_to_pool) {
+        tex_pool.unload_texture(PcTextureId::from_combo_id(tex.combo_id),
+                                m_common_level.textures[i]);
+      }
+    }
+  }
+  for (auto tex : m_common_level.textures) {
+    glDeleteTextures(1, &tex);
+  }
+  for (auto& model : m_common_level.level->merc_data.models) {
+    auto it = m_all_merc_models.find(model.name);
+    if (it == m_all_merc_models.end())
+      continue;
+    MercRef ref{&model, m_common_level.load_id};
+    auto ref_it = std::ranges::find(it->second, ref);
+    if (ref_it != it->second.end())
+      it->second.erase(ref_it);
+  }
+  m_common_level = LevelData{};
+  load_common(tex_pool, "GAME");
+}
+
+void Loader::do_reload(TexturePool& texture_pool) {
+  fmt::print("loader: force reloading all levels\n");
+  for (auto& [name, lev] : m_loaded_tfrag3_levels) {
+    unload_level_data(name, *lev, texture_pool);
+  }
+  m_loaded_tfrag3_levels.clear();
+
+  for (auto buf : m_garbage_buffers)
+    glDeleteBuffers(1, &buf);
+  m_garbage_buffers.clear();
+  for (auto tex : m_garbage_textures)
+    glDeleteTextures(1, &tex);
+  m_garbage_textures.clear();
+
+  set_want_levels(m_desired_levels);
 }

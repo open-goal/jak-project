@@ -349,7 +349,6 @@
 
 ;; definition for method 17 of type level
 (defmethod load-continue ((this level))
-  (local-vars (sv-16 symbol))
   (when (-> this linking)
     (when (nonzero? (link-resume))
       (set! (-> this linking) #f)
@@ -376,8 +375,9 @@
     )
   (case (-> this status)
     (('loading)
-     (set! sv-16 (the-as symbol #f))
-     (let ((a0-15 (dgo-load-get-next (& sv-16))))
+     (let* ((sv-16 (the-as symbol #f))
+            (a0-15 (dgo-load-get-next (& sv-16)))
+            )
        (when a0-15
          (cond
            ((not sv-16)
@@ -488,7 +488,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 (defun level-update-after-load ((loaded-level level) (level-login-state login-state))
-  (local-vars (current-timer int) (v1-154 int) (initial-timer int) (sv-16 prototype-bucket-tie) (sv-32 int))
+  (local-vars (current-timer int) (v1-154 int) (initial-timer int))
   0
   (let ((level-drawable-trees (-> loaded-level bsp drawable-trees)))
     0
@@ -574,15 +574,17 @@
                (when (< current-login-pos (-> s1-2 length))
                  (dotimes (s0-1 10)
                    (when (< current-login-pos (-> s1-2 length))
-                     (set! sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
-                     (set! sv-32 0)
-                     (while (< sv-32 4)
-                       (let ((a0-28 (-> sv-16 geometry-override sv-32)))
-                         (if (nonzero? a0-28)
-                             (login a0-28)
-                             )
+                     (let ((sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
+                           (sv-32 0)
+                           )
+                       (while (< sv-32 4)
+                         (let ((a0-28 (-> sv-16 geometry-override sv-32)))
+                           (if (nonzero? a0-28)
+                               (login a0-28)
+                               )
+                           )
+                         (+! sv-32 1)
                          )
-                       (set! sv-32 (+ sv-32 1))
                        )
                      (set! current-login-pos (the-as int (+ (the-as uint current-login-pos) 1)))
                      )

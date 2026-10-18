@@ -8,26 +8,28 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
-    {"~+4Vç~-4V", ",c"},
+    // portuguese
+    {"~+4Vç~-4V", "ç"},
 
-    // added for translations TODO - check these for jak 2
     {"O~Y~-25H~-1V/~Z", "Ø"},
     {"o~Y~-23H~+4V/~Z", "ø"},
-    {"A~Y~-13H~+8V,~Z", "Ą"},
-    {"a~Y~-8H~+6V,~Z", "ą"},
-    {"E~Y~-6H~+8V,~Z", "Ę"},
-    {"e~Y~-10H~+7V,~Z", "ę"},
-    {"L~Y~-21H~+0V/~Z", "Ł"},
-    {"l~Y~-16H~+0V/~Z", "ł"},  // TODO - this one is ugly, font character addition (small slash)
-    {"Z~Y~-25H~-11Vº~Z", "Ż"},
-    {"z~Y~-23H~-5Vº~Z", "ż"},
+    {"A~Y~-10H~+4V,~Z", "Ą"},
+    {"a~Y~-7H~+5V,~Z", "ą"},
+    {"E~Y~-10H~+4V,~Z", "Ę"},
+    {"e~Y~-12H~+4V,~Z", "ę"},
+    {"L~Y~-20H~+0V-~Z", "Ł"},
+    {"l~Y~-13H~+0V-~Z", "ł"},  // TODO font character addition (small slash)
+    {"Z~Y~-18H~-30V.~Z", "Ż"},
+    {"z~Y~-15H~-24V.~Z", "ż"},
     {"a~Y~-25H~-5Vº~Z", "å"},
-    {"S~Y~-21H~-5V'~Z", "Ś"},
-    {"s~Y~-25H~-5V'~Z", "ś"},
-    {"n~Y~-25H~-5V'~Z", "ń"},
+    {"S~Y~-24H~-12V'~Z", "Ś"},
+    {"s~Y~-22H~-5V'~Z", "ś"},
+    {"N~Y~-26H~-9V'~Z", "Ń"},
+    {"n~Y~-24H~-5V'~Z", "ń"},
+    {"C~Y~-26H~-14V'~Z", "Ć"},
     {"c~Y~-25H~-5V'~Z", "ć"},
-    {"o~Y~-24H~-4V<TIL>~Z", "õ"},
-    {"a~Y~-24H~-4V<TIL>~Z", "ã"},
+    {"o~Y~-25H~-4V<TIL>~Z", "õ"},
+    {"a~Y~-25H~-4V<TIL>~Z", "ã"},
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},
     {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},
     {"o~Y~-28H~-4V'~-9H'~Z", "ő"},
@@ -62,18 +64,20 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
 
     // acute accents
     {"A~Y~-21H~-5V'~Z", "Á"},
+    {"R~Y~-21H~-5V'~Z", "Ŕ"},
     {"A~Y~-26H~-8V'~Z", "<Á_V2>"},  // unfortunate...
     {"a~Y~-25H~-5V'~Z", "á"},
+    {"r~Y~-25H~-5V'~Z", "ŕ"},
     {"E~Y~-23H~-9V'~Z", "É"},
     {"e~Y~-26H~-5V'~Z", "é"},
-    {"I~Y~-19H~-5V'~Z", "Í"},
+    {"I~Y~-19H~-8V'~Z", "Í"},
     {"i~Y~-19H~-8V'~Z", "í"},
-    {"O~Y~-22H~-4V'~Z", "Ó"},
-    {"o~Y~-26H~-4V'~Z", "ó"},
-    {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"O~Y~-26H~-12V'~Z", "Ó"},
+    {"o~Y~-26H~-5V'~Z", "ó"},
+    {"U~Y~-25H~-8V'~Z", "Ú"},
     {"u~Y~-24H~-3V'~Z", "ú"},
-    {"Z~Y~-24H~-3V'~Z", "Ź"},
-    {"z~Y~-24H~-3V'~Z", "ź"},
+    {"Z~Y~-26H~-14V'~Z", "Ź"},
+    {"z~Y~-23H~-6V'~Z", "ź"},
     // czech specific
     {"Y~Y~-26H~-5V'~Z", "Ý"},
     {"~+7Vy~-7V~Y~-24H~-3V'~Z", "ý"},
@@ -284,16 +288,63 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"~Y~3L<FLAG_PART_FILL>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~1L<FLAG_PART_VERT_STRIPE_RIGHT>~]"
      "~-1H~Y~3L<FLAG_PART_FILL>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
      "<FLAG_DENMARK>"},
-    {"~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_"
-     "PART_TOP_BOTTOM_STRIPE>~Z~-19H~1L<FLAG_PART_VERT_STRIPE_MIDDLE>~Z~-23H~7L<FLAG_PART_VERT_"
-     "STRIPE_RIGHT>~Z~-23H~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
-     "+26H",
+    {"~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-2H~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_"
+     "PART_TOP_BOTTOM_STRIPE>~Z~-10H~1L<FLAG_PART_VERT_STRIPE_LEFT>~Z~-5H~1L<FLAG_PART_VERT_STRIPE_"
+     "LEFT>~Z~-23H~7L<FLAG_PART_VERT_STRIPE_RIGHT>~Z~-22H~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L"
+     "<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
      "<FLAG_NORWAY>"},
-    {"~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_"
-     "PART_TOP_BOTTOM_STRIPE>~Z~-19H~1L<FLAG_PART_VERT_STRIPE_MIDDLE>~Z~-23H~3L<FLAG_PART_VERT_"
-     "STRIPE_RIGHT>~Z~-23H~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
-     "+26H",
+    {"~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-2H~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_"
+     "PART_TOP_BOTTOM_STRIPE>~Z~-10H~1L<FLAG_PART_VERT_STRIPE_LEFT>~Z~-5H~1L<FLAG_PART_VERT_STRIPE_"
+     "LEFT>~Z~-23H~3L<FLAG_PART_VERT_STRIPE_RIGHT>~Z~-22H~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L"
+     "<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
      "<FLAG_ICELAND>"},
+    {"~Y~6L<FLAG_PART_VERT_STRIPE_LARGE>~Z~+15H~3L<FLAG_PART_VERT_STRIPE_LARGE>~Z~+30H~3L<FLAG_"
+     "PART_VERT_STRIPE_LARGE>~Z~+4H~5L<FLAG_PART_PORTUGUAL_1>~Z~+2H~3L<FLAG_PART_PORTUGUAL_2>~Z~+"
+     "2H~1L<FLAG_PART_PORTUGUAL_3>~Z~+47H",
+     "<FLAG_PORTUGUAL>"},
+    {"~Y~3L~~~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-2H~Y~3L~~"
+     "~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~+26H",
+     "<FLAG_DUTCH>"},
+    {"~Y~26L<FLAG_PART_FILL>~]~-1H~Y~26L<FLAG_PART_FILL>~Z~-10H~-3V~5L<PAD_PART_DPAD_D>~Z~-10H"
+     "~+6V~5L<PAD_PART_DPAD_U>~Z~-5H~+1V~5L<PAD_PART_DPAD_L>~Z~-14H~+1V~5L<PAD_PART_DPAD_R>~Z"
+     "~-11H~+1V~7L<FLAG_PART_KOREA_CIRCLE_FILL>~Z~+26H",
+     "<FLAG_BRAZIL>"},
+    {"~Y~3L~~~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~26L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-2H~Y~3L~~"
+     "~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~26L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~+26H",
+     "<FLAG_HUNGARY>"},
+    {"~Y~3L<FLAG_PART_FILL>~Z~5L<FLAG_PART_USA_STRIPES_RIGHT>~]~-2H~Y~3L<FLAG_PART_FILL>~Z~5L"
+     "<FLAG_PART_USA_STRIPES_RIGHT>~Z~+26H",
+     "<FLAG_CATALAN>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-5V~3L<FLAG_PART_HORZ_STRIPE"
+     "_BOTTOM>~]~-2H~+5V~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-5V~3L"
+     "<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~+26H",
+     "<FLAG_POLAND>"},
+    {"~Y~5L~~~Z~26L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-2H~Y~5L~~"
+     "~Z~26L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~+26H",
+     "<FLAG_LITHUANIA>"},
+    {"~Y~1L<FLAG_PART_FILL>~]~-2H~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-5V~3L"
+     "<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-22H~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-22H~-5V~3L"
+     "<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-23H~7L<FLAG_PART_VERT_STRIPE_LEFT>~Z~-26H~-3V~7L"
+     "<PAD_PART_DPAD_D>~Z~+6V~-26H~7L<PAD_PART_DPAD_U>~Z~-21H~+1V~7L<PAD_PART_DPAD_L>~Z~+26H",
+     "<FLAG_CZECH>"},
+    {"~Y~3L~~~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-1H~Y~3L~~"
+     "~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~-11H~+2V~3L"
+     "<FLAG_PART_JAPAN_SUN>~Z~-9H~+2V~1L+~Z~-8V~-8H~7L-~Z~-8V~-3H~7L-~Z~+26H",
+     "<FLAG_CROATIA>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~21L<FLAG_PART_UK_CROSS_LEFT>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>"
+     "~Z~1L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~21L<FLAG_PART_UK_CROSS_"
+     "RIGHT>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~-4H~1L<FLAG_PART_VERT_STRIPE_LEFT>~Z~1L~~"
+     "~Z~-11H~7L<FLAG_PART_KOREA_CIRCLE_FILL>~Z~-8V~-8H~3L-~Z~-8V~-4H~3L-~Z~+26H",
+     "<FLAG_GALICIA>"},
+
+    // korean jamo -- only relevant for the language selection since
+    // non-korean languages don't run through the `convert-korean-text` function and hence the
+    // encoding is "normal"
+    {
+        "~Y~Z\\c03.~Z\\c03\\c1a~Z\\c03О~Y~Z\\c03œ~Z\\c03k~Z\\c03г~Y~Z\\c03\\c0f~Z\\c03ç",
+        "<LANGUAGE_KOREAN>",
+        "~Y~Z\x03.~Z\x03\x1a~Z\x03О~Y~Z\x03œ~Z\x03k~Z\x03г~Y~Z\x03\x0f~Z\x03ç",
+    },
 
     // weird stuff
     // - descenders
@@ -302,6 +353,15 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"~+7Vg~-7V", "g"},
     {"~+7Vq~-7V", "q"},
     {"~+1Vj~-1V", "j"},
+
+    // - cryllic
+    {"~+2Vд~-2V", "д"},
+    {"~+4Vу~-4V", "у"},
+    {"~+4Vр~-4V", "р"},
+    {"~+3Vф~-3V", "ф"},
+    {"~+2Vц~-2V", "ц"},
+    {"~+2VД~-2V", "Д"},
+    {"~+2Vщ~-2V", "щ"},
 
     {"\\\\",
      "~%"},  // this is 2 slashes, duplicated because we use an escape sequence when decompiling
@@ -353,8 +413,6 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"~[~37L", "<COLOR_CREDITS-STAFF-TITLE-1>"},
     {"~[~38L", "<COLOR_CREDITS-STAFF-TITLE-2>"},
     {"~[~39L", "<COLOR_COLOR-39>"}};
-
-// TODO - cryllic
 
 std::vector<EncodeInfo> encode_info_jak3 = {
     {"ˇ", "\x10"},      // caron
@@ -424,6 +482,95 @@ std::vector<EncodeInfo> encode_info_jak3 = {
     {"<PAD_PART_SHOULDER_BOTTOM_RIGHT>", "\xb1"},
     {"<PAD_PART_TRIGGER_BOTTOM_LEFT>", "\xb2"},
     {"<PAD_PART_TRIGGER_BOTTOM_RIGHT>", "\xb3"},
+
+    {"<FLAG_PART_PORTUGUAL_1>", "\xb4"},
+    {"<FLAG_PART_PORTUGUAL_2>", "\xb5"},
+    {"<FLAG_PART_PORTUGUAL_3>", "\xb6"},
+    // b7 have something...anything use it?
+
+    // cryllic
+    // - uppercase
+    {"А", "\xba"},
+    {"Б", "\xbb"},
+    {"В", "\xbc"},
+    {"Г", "\xbd"},
+    {"Д", "\xbe"},
+    {"Е", "\xbf"},
+    // "Ё" - if ever used in subtitles, likely uses the accents at the end
+    {"Ж", "\xc0"},
+    {"З", "\xc1"},
+    {"И", "\xc2"},
+    // blank (c3)
+    // c4
+    // "Й" - if ever used in subtitles, likely uses the accents at the end
+    {"К", "\xc4"},
+    {"Л", "\xc5"},
+    {"М", "\xc6"},
+    {"Н", "\xc7"},
+    {"О", "\xc8"},
+    {"П", "\xc9"},
+    {"Р", "\xca"},
+    {"С", "\xcb"},
+    {"Т", "\xcc"},
+    // blank (cd)
+    // ce
+    {"У", "\xce"},
+    {"Ф", "\xcf"},
+    {"Х", "\xd0"},
+    {"Ц", "\xd1"},
+    {"Ч", "\xd2"},
+    {"Ш", "\xd3"},
+    {"Щ", "\xd4"},
+    {"Ъ", "\xd5"},
+    {"Ы", "\xd6"},
+    {"Ь", "\xd7"},
+    // d8
+    {"Э", "\xd8"},
+    {"Ю", "\xd9"},
+    {"Я", "\xda"},
+    // - lowercase
+    {"а", "\xdb"},
+    {"б", "\xdc"},
+    {"в", "\xdd"},
+    {"г", "\xde"},
+    {"д", "\xdf"},
+    {"е", "\xe0"},
+    {"ё", "\xe1"},
+    // e2
+    {"ж", "\xe2"},
+    {"з", "\xe3"},
+    {"и", "\xe4"},
+    {"й", "\xe5"},
+    {"к", "\xe6"},
+    {"л", "\xe7"},
+    {"м", "\xe8"},
+    {"н", "\xe9"},
+    {"о", "\xea"},
+    {"п", "\xeb"},
+    // ec
+    {"р", "\xec"},
+    {"с", "\xed"},
+    {"т", "\xee"},
+    {"у", "\xef"},
+    {"ф", "\xf0"},
+    {"х", "\xf1"},
+    {"ц", "\xf2"},
+    {"ч", "\xf3"},
+    {"ш", "\xf4"},
+    {"щ", "\xf5"},
+    // f6
+    {"ъ", "\xf6"},
+    {"ы", "\xf7"},
+    {"ь", "\xf8"},
+    {"э", "\xf9"},
+    {"ю", "\xfa"},
+    {"я", "\xfb"},
+    // - extra accents
+    {"RU-TODO-1",
+     "\xfc"},  // NOTE: they never used this in the game text, maybe in subtitles though
+    {"RU-TODO-2",
+     "\xfd"},  // NOTE: they never used this in the game text, maybe in subtitles though
+
     // {"入", "\x1\x00"}},
     // {"年", "\x1\x01"}},
     // punctuation

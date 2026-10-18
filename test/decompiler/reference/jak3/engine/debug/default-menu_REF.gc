@@ -799,7 +799,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch number vs object.
 (defun dm-debug-actor-lod-dist ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-  (local-vars (sv-16 res-tag))
   (when (= arg1 (debug-menu-msg press))
     (when (and *debug-actor* (>= (-> (the-as process-drawable *debug-actor*) draw lod-set max-lod) (/ arg0 8)))
       (let ((a0-4 (&+ (-> (the-as process-drawable *debug-actor*) draw jgeo extra data-base) (* (/ arg0 8) 4))))
@@ -810,22 +809,21 @@
     )
   (cond
     (*debug-actor*
-      (let ((f30-0 0.00024414062))
-        (set! sv-16 (new 'static 'res-tag))
-        (let ((v1-21 (res-lump-data
-                       (-> (the-as process-drawable *debug-actor*) draw jgeo extra)
-                       'lod-dist
-                       (pointer float)
-                       :tag-ptr (& sv-16)
-                       )
-                     )
-              )
-          (* f30-0 (if (and v1-21 (< (/ arg0 8) (the-as int (-> sv-16 elt-count))))
-                       (-> v1-21 (/ arg0 8))
-                       0.0
-                       )
+      (let* ((f30-0 0.00024414062)
+             (sv-16 (new 'static 'res-tag))
+             (v1-21 (res-lump-data
+                      (-> (the-as process-drawable *debug-actor*) draw jgeo extra)
+                      'lod-dist
+                      (pointer float)
+                      :tag-ptr (& sv-16)
+                      )
+                    )
              )
-          )
+        (* f30-0 (if (and v1-21 (< (/ arg0 8) (the-as int (-> sv-16 elt-count))))
+                     (-> v1-21 (/ arg0 8))
+                     0.0
+                     )
+           )
         )
       )
     (else
@@ -2821,22 +2819,6 @@
 ;; definition for function debug-menu-make-continue-sub-menu
 ;; INFO: Used lq/sq
 (defun debug-menu-make-continue-sub-menu ((arg0 game-info) (arg1 symbol))
-  (local-vars
-    (sv-16 (function symbol type object object pair))
-    (sv-32 symbol)
-    (sv-48 type)
-    (sv-64 symbol)
-    (sv-80 (function symbol type object object pair))
-    (sv-96 symbol)
-    (sv-112 type)
-    (sv-128 string)
-    (sv-144 (function symbol type object object pair))
-    (sv-160 symbol)
-    (sv-176 type)
-    (sv-192 string)
-    (sv-208 symbol)
-    (sv-224 type)
-    )
   (let ((s4-0 *level-load-list*)
         (s5-0 '())
         )
@@ -2848,34 +2830,20 @@
               (let ((v1-2 (car s3-0))
                     (a0-5 arg1)
                     )
-                (when (if (= a0-5 'test)
-                          (logtest? (continue-flags test) (-> (the-as continue-point v1-2) flags))
-                          #t
-                          )
-                  (let ((s2-0 (method-of-type pair new))
-                        (s1-0 'global)
-                        (s0-0 pair)
+                (if (if (= a0-5 'test)
+                        (logtest? (continue-flags test) (-> (the-as continue-point v1-2) flags))
+                        #t
                         )
-                    (set! sv-16 (method-of-type pair new))
-                    (set! sv-32 'global)
-                    (set! sv-48 pair)
-                    (set! sv-64 'flag)
-                    (set! sv-80 (method-of-type pair new))
-                    (set! sv-96 'global)
-                    (set! sv-112 pair)
-                    (set! sv-128 (-> (the-as continue-point v1-2) name))
-                    (set! sv-144 (method-of-type pair new))
-                    (set! sv-160 'global)
-                    (set! sv-176 pair)
-                    (set! sv-192 (-> (the-as continue-point v1-2) name))
-                    (let* ((a3-1 (cons 'dm-current-continue '()))
-                           (a3-2 (sv-144 sv-160 sv-176 sv-192 a3-1))
-                           (a3-3 (sv-80 sv-96 sv-112 sv-128 a3-2))
-                           )
-                      (set! s5-0 (s2-0 s1-0 s0-0 (sv-16 sv-32 sv-48 sv-64 a3-3) s5-0))
-                      )
+                    (set! s5-0 (cons
+                                 (cons 'flag (cons
+                                               (-> (the-as continue-point v1-2) name)
+                                               (cons (-> (the-as continue-point v1-2) name) (cons 'dm-current-continue '()))
+                                               )
+                                       )
+                                 s5-0
+                                 )
+                          )
                     )
-                  )
                 )
               (set! s3-0 (cdr s3-0))
               )
@@ -2894,20 +2862,7 @@
           (set! a2-6 (car s4-1))
           )
         )
-      (let ((s4-2 (method-of-type pair new))
-            (s3-1 'global)
-            (s2-1 pair)
-            (s1-1 'menu)
-            (s0-1 (method-of-type pair new))
-            )
-        (set! sv-208 'global)
-        (set! sv-224 pair)
-        (let ((a2-7 (symbol->string-debug arg1))
-              (a3-6 s5-1)
-              )
-          (s4-2 s3-1 s2-1 s1-1 (s0-1 sv-208 sv-224 a2-7 a3-6))
-          )
-        )
+      (cons 'menu (cons (symbol->string-debug arg1) s5-1))
       )
     )
   )
@@ -2915,77 +2870,27 @@
 ;; definition for function debug-menu-make-task-sub-menu
 ;; INFO: Used lq/sq
 (defun debug-menu-make-task-sub-menu ((arg0 symbol))
-  (local-vars
-    (sv-16 (function symbol type object object pair))
-    (sv-32 symbol)
-    (sv-48 type)
-    (sv-64 symbol)
-    (sv-80 (function symbol type object object pair))
-    (sv-96 symbol)
-    (sv-112 type)
-    (sv-128 string)
-    (sv-144 (function symbol type object object pair))
-    (sv-160 symbol)
-    (sv-176 type)
-    (sv-192 int)
-    (sv-208 symbol)
-    (sv-224 type)
-    )
   (let ((gp-0 '()))
     (let ((s4-0 (-> *game-info* sub-task-list)))
       (countdown (s3-0 (-> s4-0 length))
         (when (nonzero? s3-0)
           (let ((v1-4 (-> s4-0 s3-0)))
-            (when (= (-> v1-4 level) arg0)
-              (let ((s2-0 (method-of-type pair new))
-                    (s1-0 'global)
-                    (s0-0 pair)
-                    )
-                (set! sv-16 (method-of-type pair new))
-                (set! sv-32 'global)
-                (set! sv-48 pair)
-                (set! sv-64 'flag)
-                (set! sv-80 (method-of-type pair new))
-                (set! sv-96 'global)
-                (set! sv-112 pair)
-                (set! sv-128 (-> v1-4 name))
-                (set! sv-144 (method-of-type pair new))
-                (set! sv-160 'global)
-                (set! sv-176 pair)
-                (set! sv-192 (* s3-0 8))
-                (let* ((a3-1 (cons 'dm-task-menu-pick-func '()))
-                       (a3-2 (sv-144 sv-160 sv-176 sv-192 a3-1))
-                       (a3-3 (sv-80 sv-96 sv-112 sv-128 a3-2))
-                       )
-                  (set! gp-0 (s2-0 s1-0 s0-0 (sv-16 sv-32 sv-48 sv-64 a3-3) gp-0))
-                  )
+            (if (= (-> v1-4 level) arg0)
+                (set! gp-0
+                      (cons (cons 'flag (cons (-> v1-4 name) (cons (* s3-0 8) (cons 'dm-task-menu-pick-func '())))) gp-0)
+                      )
                 )
-              )
             )
           )
         )
       )
-    (let ((s4-1 (method-of-type pair new))
-          (s3-1 'global)
-          (s2-1 pair)
-          (s1-1 'menu)
-          (s0-1 (method-of-type pair new))
-          )
-      (set! sv-208 'global)
-      (set! sv-224 pair)
-      (let ((a2-5 (symbol->string-debug arg0))
-            (a3-5 gp-0)
-            )
-        (s4-1 s3-1 s2-1 s1-1 (s0-1 sv-208 sv-224 a2-5 a3-5))
-        )
-      )
+    (cons 'menu (cons (symbol->string-debug arg0) gp-0))
     )
   )
 
 ;; definition for function debug-menu-make-task-menu
 ;; INFO: Used lq/sq
 (defun debug-menu-make-task-menu ((arg0 debug-menu-context))
-  (local-vars (sv-16 debug-menu-context))
   (let* ((s5-0 (new 'debug 'debug-menu arg0 "Task menu"))
          (s4-0 (new 'debug 'debug-menu-item-submenu "Task" s5-0))
          )
@@ -3011,14 +2916,9 @@
            (a0-3 (car s3-0))
            )
       (while (not (null? s3-0))
-        (let ((s2-0 debug-menu-append-item)
-              (s1-0 s5-0)
-              (s0-0 debug-menu-make-from-template)
-              )
-          (set! sv-16 arg0)
-          (let ((a1-2 (debug-menu-make-task-sub-menu (the-as symbol a0-3))))
-            (s2-0 s1-0 (s0-0 sv-16 a1-2))
-            )
+        (debug-menu-append-item
+          s5-0
+          (debug-menu-make-from-template arg0 (debug-menu-make-task-sub-menu (the-as symbol a0-3)))
           )
         (set! s3-0 (cdr s3-0))
         (set! a0-3 (car s3-0))
@@ -3090,43 +2990,7 @@
 ;; definition for function debug-menu-make-play-menu
 ;; INFO: Used lq/sq
 (defun debug-menu-make-play-menu ((arg0 debug-menu-context))
-  (local-vars
-    (sv-16 type)
-    (sv-32 (function symbol type object object pair))
-    (sv-48 symbol)
-    (sv-64 type)
-    (sv-80 symbol)
-    (sv-96 (function symbol type object object pair))
-    (sv-112 symbol)
-    (sv-128 type)
-    (sv-144 string)
-    (sv-160 (function symbol type object object pair))
-    (sv-176 symbol)
-    (sv-192 type)
-    (sv-208 symbol)
-    (sv-224 type)
-    (sv-240 (function symbol type object object pair))
-    (sv-256 symbol)
-    (sv-272 type)
-    (sv-288 symbol)
-    (sv-304 (function symbol type object object pair))
-    (sv-320 symbol)
-    (sv-336 type)
-    (sv-352 (function symbol type object object pair))
-    (sv-368 symbol)
-    (sv-384 type)
-    (sv-400 int)
-    (sv-416 type)
-    (sv-432 symbol)
-    (sv-448 (function symbol type object object pair))
-    (sv-464 symbol)
-    (sv-480 type)
-    (sv-496 string)
-    (sv-512 (function symbol type object object pair))
-    (sv-528 symbol)
-    (sv-544 type)
-    (sv-560 symbol)
-    )
+  (local-vars (sv-144 string))
   (let ((s5-0 '()))
     (let ((s2-0 #x200000))
       (countdown (s4-0 (-> *game-info* play-list length))
@@ -3139,97 +3003,55 @@
               (when (!= s1-0 s2-0)
                 (let ((s2-1 (method-of-type pair new))
                       (s0-0 'global)
+                      (sv-16 pair)
+                      (sv-32 (method-of-type pair new))
+                      (sv-48 'global)
+                      (sv-64 pair)
+                      (sv-80 'function)
+                      (sv-96 (method-of-type pair new))
+                      (sv-112 'global)
+                      (sv-128 pair)
                       )
-                  (set! sv-16 pair)
-                  (set! sv-32 (method-of-type pair new))
-                  (set! sv-48 'global)
-                  (set! sv-64 pair)
-                  (set! sv-80 'function)
-                  (set! sv-96 (method-of-type pair new))
-                  (set! sv-112 'global)
-                  (set! sv-128 pair)
-                  (cond
-                    ((logtest? (game-task-node-flag act3) s1-0)
-                     (set! sv-144 "=== Burning Bush ===")
-                     )
-                    ((logtest? (game-task-node-flag act2) s1-0)
-                     (set! sv-144 "====== ACT 3 ======")
-                     )
-                    ((logtest? (game-task-node-flag act1) s1-0)
-                     (set! sv-144 "====== ACT 2 ======")
-                     )
-                    (else
-                      (set! sv-144 "======= END =======")
-                      )
-                    )
-                  (set! sv-160 (method-of-type pair new))
-                  (set! sv-176 'global)
-                  (set! sv-192 pair)
-                  (set! sv-208 (the-as symbol #f))
-                  (let* ((a3-1 (cons 'nothing '()))
-                         (a3-2 (sv-160 sv-176 sv-192 sv-208 a3-1))
-                         (a3-3 (sv-96 sv-112 sv-128 sv-144 a3-2))
-                         (a2-4 (sv-32 sv-48 sv-64 sv-80 a3-3))
-                         )
-                    (set! s5-0 (s2-1 s0-0 sv-16 a2-4 s5-0))
-                    )
+                  (set! sv-144 (cond
+                                 ((logtest? (game-task-node-flag act3) s1-0)
+                                  (set! sv-144 "=== Burning Bush ===")
+                                  sv-144
+                                  )
+                                 ((logtest? (game-task-node-flag act2) s1-0)
+                                  (set! sv-144 "====== ACT 3 ======")
+                                  sv-144
+                                  )
+                                 ((logtest? (game-task-node-flag act1) s1-0)
+                                  (set! sv-144 "====== ACT 2 ======")
+                                  sv-144
+                                  )
+                                 (else
+                                   "======= END ======="
+                                   )
+                                 )
+                        )
+                  (set! s5-0
+                        (s2-1
+                          s0-0
+                          sv-16
+                          (sv-32 sv-48 sv-64 sv-80 (sv-96 sv-112 sv-128 sv-144 (cons (the-as symbol #f) (cons 'nothing '()))))
+                          s5-0
+                          )
+                        )
                   )
                 (set! s2-0 (the-as int s1-0))
                 )
               )
-            (let ((s1-1 (method-of-type pair new))
-                  (s0-1 'global)
-                  )
-              (set! sv-224 pair)
-              (set! sv-240 (method-of-type pair new))
-              (set! sv-256 'global)
-              (set! sv-272 pair)
-              (set! sv-288 'function)
-              (set! sv-304 (method-of-type pair new))
-              (set! sv-320 'global)
-              (set! sv-336 pair)
-              (let ((s3-1 (-> s3-0 name)))
-                (set! sv-352 (method-of-type pair new))
-                (set! sv-368 'global)
-                (set! sv-384 pair)
-                (set! sv-400 (* s4-0 8))
-                (let* ((a3-6 (cons 'dm-play-task '()))
-                       (a3-7 (sv-352 sv-368 sv-384 sv-400 a3-6))
-                       (a3-8 (sv-304 sv-320 sv-336 s3-1 a3-7))
-                       (a2-9 (sv-240 sv-256 sv-272 sv-288 a3-8))
-                       (a3-9 s5-0)
-                       )
-                  (set! s5-0 (s1-1 s0-1 sv-224 a2-9 a3-9))
-                  )
-                )
-              )
+            (set! s5-0 (cons (cons 'function (cons (-> s3-0 name) (cons (* s4-0 8) (cons 'dm-play-task '())))) s5-0))
             )
           )
         )
       )
-    (let ((s4-1 (method-of-type pair new))
-          (s3-2 'global)
-          (s2-2 pair)
-          (s1-2 (method-of-type pair new))
-          (s0-2 'global)
+    (let ((a3-15
+            (cons (cons 'function (cons "====== ACT 1 ======" (cons (the-as symbol #f) (cons 'nothing '())))) s5-0)
+            )
           )
-      (set! sv-416 pair)
-      (set! sv-432 'function)
-      (set! sv-448 (method-of-type pair new))
-      (set! sv-464 'global)
-      (set! sv-480 pair)
-      (set! sv-496 "====== ACT 1 ======")
-      (set! sv-512 (method-of-type pair new))
-      (set! sv-528 'global)
-      (set! sv-544 pair)
-      (set! sv-560 (the-as symbol #f))
-      (let* ((a3-11 (cons 'nothing '()))
-             (a3-12 (sv-512 sv-528 sv-544 sv-560 a3-11))
-             (a3-13 (sv-448 sv-464 sv-480 sv-496 a3-12))
-             (a3-15 (s4-1 s3-2 s2-2 (s1-2 s0-2 sv-416 sv-432 a3-13) s5-0))
-             )
-        (debug-menu-make-from-template arg0 (cons 'menu (cons "Play" a3-15)))
-        )
+      (debug-menu-make-from-template arg0 (cons 'menu (cons "Play" a3-15)))
       )
     )
   )
@@ -3298,7 +3120,6 @@
 ;; definition for function debug-menu-context-make-default-menus
 ;; INFO: Used lq/sq
 (defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
-  (local-vars (sv-16 debug-menu-context))
   (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
     (debug-menu-context-set-root-menu arg0 s5-0)
     (debug-menu-append-item
@@ -3961,14 +3782,9 @@
            (a1-7 (car s3-2))
            )
       (while (not (null? s3-2))
-        (let ((s2-0 debug-menu-append-item)
-              (s1-0 s4-2)
-              (s0-0 debug-menu-make-from-template)
-              )
-          (set! sv-16 arg0)
-          (let ((a1-8 (debug-menu-make-continue-sub-menu *game-info* (the-as symbol a1-7))))
-            (s2-0 s1-0 (s0-0 sv-16 a1-8))
-            )
+        (debug-menu-append-item
+          s4-2
+          (debug-menu-make-from-template arg0 (debug-menu-make-continue-sub-menu *game-info* (the-as symbol a1-7)))
           )
         (set! s3-2 (cdr s3-2))
         (set! a1-7 (car s3-2))
@@ -4934,13 +4750,9 @@
            (function
              "Start Editor"
              #f
-             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float)) (when (not (get-nav-graph-editor))
-                                                                        (let ((t9-1 run-nav-graph-editor)
-                                                                              (a0-1 'test)
-                                                                              )
-                                                                          (t9-1 a0-1)
+             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float)) (if (not (get-nav-graph-editor))
+                                                                          (run-nav-graph-editor 'test #f)
                                                                           )
-                                                                        )
                       )
              )
            (function
@@ -4954,24 +4766,22 @@
            (function
              "Toggle Plane Mode"
              #f
-             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                (let ((a0-1 (get-nav-graph-editor)))
-                  (if a0-1
-                      ((method-of-object a0-1 nav-graph-editor-method-64))
+             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float)) (let ((a0-1 (get-nav-graph-editor)))
+                                                                        (if a0-1
+                                                                            (nav-graph-editor-method-64 a0-1)
+                                                                            )
+                                                                        )
                       )
-                  )
-                )
              )
            (function
              "Toggle Hover Mode"
              #f
-             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                (let ((a0-1 (get-nav-graph-editor)))
-                  (if a0-1
-                      ((method-of-object a0-1 nav-graph-editor-method-65))
+             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float)) (let ((a0-1 (get-nav-graph-editor)))
+                                                                        (if a0-1
+                                                                            (nav-graph-editor-method-65 a0-1)
+                                                                            )
+                                                                        )
                       )
-                  )
-                )
              )
            (menu
              "Load"
@@ -4980,13 +4790,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'hover
-                        'foresta
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'hover (the-as string 'foresta))
                         )
-                      )
                     )
                   )
                )
@@ -4995,13 +4801,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'hover
-                        'sewc
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'hover (the-as string 'sewc))
                         )
-                      )
                     )
                   )
                )
@@ -5010,13 +4812,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'hover
-                        'sewg
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'hover (the-as string 'sewg))
                         )
-                      )
                     )
                   )
                )
@@ -5025,13 +4823,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'hover
-                        'sewl
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'hover (the-as string 'sewl))
                         )
-                      )
                     )
                   )
                )
@@ -5040,12 +4834,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'traffic
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'traffic (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5054,12 +4845,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'minimap
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'minimap (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5068,12 +4856,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'flyingsaw_2
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'flyingsaw_2 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5082,12 +4867,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'flyingsaw_3
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'flyingsaw_3 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5096,12 +4878,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'forest-plant-1
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'forest-plant-1 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5110,12 +4889,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'forest-plant-2
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'forest-plant-2 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5124,12 +4900,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'forest-plant-3
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'forest-plant-3 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5138,12 +4911,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'forest-plant-4
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'forest-plant-4 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5152,12 +4922,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'beast
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'beast (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5166,12 +4933,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'wasminimap
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'wasminimap (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5180,12 +4944,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'desrescue
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'desrescue (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5194,12 +4955,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'assault
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'assault (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5208,12 +4966,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'timer-chase-1
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'timer-chase-1 (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5222,12 +4977,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'protect-hq
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'protect-hq (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5236,12 +4988,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'blow-tower
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'blow-tower (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5250,12 +4999,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'desert-lizard
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'desert-lizard (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5264,12 +5010,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'terraformer-walk
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'terraformer-walk (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5278,12 +5021,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'terraformer-fly
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'terraformer-fly (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5292,12 +5032,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'beast-battle
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'beast-battle (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5306,12 +5043,9 @@
                #f
                ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                   (let ((a0-1 (get-nav-graph-editor)))
-                    (when a0-1
-                      (let ((t9-1 (method-of-object a0-1 nav-graph-editor-method-66)))
-                        'desert-chase-marauder
-                        (t9-1)
+                    (if a0-1
+                        (nav-graph-editor-method-66 a0-1 'desert-chase-marauder (the-as string #f))
                         )
-                      )
                     )
                   )
                )
@@ -5319,13 +5053,12 @@
            (function
              "Save"
              #f
-             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                (let ((a0-1 (get-nav-graph-editor)))
-                  (if a0-1
-                      ((method-of-object a0-1 nav-graph-editor-method-67))
+             ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float)) (let ((a0-1 (get-nav-graph-editor)))
+                                                                        (if a0-1
+                                                                            (nav-graph-editor-method-67 a0-1)
+                                                                            )
+                                                                        )
                       )
-                  )
-                )
              )
            )
         )
@@ -5342,20 +5075,7 @@
              ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
                 (when (not *nav-mesh-editor*)
                   (kill-by-type nav-mesh-editor *active-pool*)
-                  (let ((gp-0 (get-process *default-dead-pool* nav-mesh-editor #x4000 1)))
-                    (when gp-0
-                      (let ((t9-2 (method-of-type nav-mesh-editor activate)))
-                        (t9-2 (the-as nav-mesh-editor gp-0) *entity-pool* "nav-mesh-editor" (the-as pointer #x70004000))
-                        )
-                      (let ((t9-3 run-function-in-process)
-                            (a0-4 gp-0)
-                            (a1-4 nav-mesh-editor-init)
-                            )
-                        ((the-as (function object object none) t9-3) a0-4 a1-4)
-                        )
-                      (-> gp-0 ppointer)
-                      )
-                    )
+                  (process-spawn nav-mesh-editor :init nav-mesh-editor-init #f :name "nav-mesh-editor" :to *entity-pool*)
                   )
                 )
              )

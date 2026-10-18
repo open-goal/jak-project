@@ -1,0 +1,10 @@
+("RAZVL.DGO"
+ ("cheetah-chassis-ag.o"
+  "cheetah-door-e-ag.go"
+  "cheetah-f-fender-c-ag.go"
+  "cheetah-hood-c-ag.go"
+  "cheetah-r-fender-b-ag.go"
+  "cheetah-roof-c-ag.go"
+  "wheel-k-ag.go"
+  "razvl.o"
+ ))

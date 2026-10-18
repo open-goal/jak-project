@@ -50,6 +50,7 @@ BEGIN {
         $hstpubsha256f
         $cliprvkeyf
         $clipubkeyf
+        display_file_top
         display_sshdconfig
         display_sshconfig
         display_sftpconfig
@@ -90,13 +91,12 @@ our $sshlog          = undef;                    # ssh client log file
 our $sftplog         = undef;                    # sftp client log file
 our $sftpcmds        = 'curl_sftp_cmds';         # sftp client commands batch file
 our $knownhosts      = 'curl_client_knownhosts'; # ssh knownhosts file
-our $hstprvkeyf      = 'curl_host_rsa_key';      # host private key file
-our $hstpubkeyf      = 'curl_host_rsa_key.pub';  # host public key file
-our $hstpubmd5f      = 'curl_host_rsa_key.pub_md5';  # md5 hash of host public key
-our $hstpubsha256f   = 'curl_host_rsa_key.pub_sha256';  # sha256 hash of host public key
+our $hstprvkeyf      = 'curl_host_key';          # host private key file
+our $hstpubkeyf      = 'curl_host_key.pub';      # host public key file
+our $hstpubmd5f      = 'curl_host_key.pub_md5';  # md5 hash of host public key
+our $hstpubsha256f   = 'curl_host_key.pub_sha256';  # sha256 hash of host public key
 our $cliprvkeyf      = 'curl_client_key';        # client private key file
 our $clipubkeyf      = 'curl_client_key.pub';    # client public key file
-
 
 #***************************************************************************
 # Absolute paths where to look for sftp-server plugin, when not in PATH
@@ -123,7 +123,6 @@ our @sftppath = qw(
     /opt/ssh/libexec
     );
 
-
 #***************************************************************************
 # Absolute paths where to look for httptlssrv (gnutls-serv), when not in PATH
 #
@@ -146,7 +145,6 @@ our @httptlssrvpath = qw(
     /opt/gnutls/sbin
     /opt/gnutls/libexec
     );
-
 
 #***************************************************************************
 # Create or overwrite the given file with lines from an array of strings
@@ -173,22 +171,34 @@ sub dump_array {
     return $error;
 }
 
-
 #***************************************************************************
 # Display contents of the given file
 #
 sub display_file {
     my $filename = $_[0];
     print "=== Start of file $filename\n";
-    if(open(my $displayfh, "<", "$filename")) {
+    if(open(my $displayfh, "<", $filename)) {
         while(my $line = <$displayfh>) {
-            print "$line";
+            print $line;
         }
         close $displayfh;
     }
     print "=== End of file $filename\n";
 }
 
+#***************************************************************************
+# Display first line of the given file
+#
+sub display_file_top {
+    my $filename = $_[0];
+    print "=== Top of file $filename\n";
+    if(open(my $displayfh, "<", $filename)) {
+        my $line = <$displayfh>;
+        print $line;
+        close $displayfh;
+    }
+    print "=== End of file $filename\n";
+}
 
 #***************************************************************************
 # Display contents of the ssh daemon config file
@@ -197,7 +207,6 @@ sub display_sshdconfig {
     display_file($sshdconfig);
 }
 
-
 #***************************************************************************
 # Display contents of the ssh client config file
 #
@@ -205,14 +214,12 @@ sub display_sshconfig {
     display_file($sshconfig);
 }
 
-
 #***************************************************************************
 # Display contents of the sftp client config file
 #
 sub display_sftpconfig {
     display_file($sftpconfig);
 }
-
 
 #***************************************************************************
 # Display contents of the ssh daemon log file
@@ -222,7 +229,6 @@ sub display_sshdlog {
     display_file($sshdlog);
 }
 
-
 #***************************************************************************
 # Display contents of the ssh client log file
 #
@@ -231,7 +237,6 @@ sub display_sshlog {
     display_file($sshlog);
 }
 
-
 #***************************************************************************
 # Display contents of the sftp client log file
 #
@@ -239,7 +244,6 @@ sub display_sftplog {
     die "error: \$sftplog uninitialized" if(not defined $sftplog);
     display_file($sftplog);
 }
-
 
 #***************************************************************************
 # Find a file somewhere in the given path
@@ -256,7 +260,6 @@ sub find_file {
     }
     return "";
 }
-
 
 #***************************************************************************
 # Find an executable file somewhere in the given path
@@ -276,7 +279,6 @@ sub find_exe_file {
     return "";
 }
 
-
 #***************************************************************************
 # Find a file in environment path or in our sftppath
 #
@@ -287,7 +289,6 @@ sub find_file_spath {
     push(@spath, @sftppath);
     return find_file($filename, @spath);
 }
-
 
 #***************************************************************************
 # Find an executable file in environment path or in our httptlssrvpath
@@ -300,14 +301,12 @@ sub find_exe_file_hpath {
     return find_exe_file($filename, @hpath);
 }
 
-
 #***************************************************************************
 # Find ssh daemon and return canonical filename
 #
 sub find_sshd {
     return find_file_spath($sshdexe);
 }
-
 
 #***************************************************************************
 # Find ssh client and return canonical filename
@@ -316,14 +315,12 @@ sub find_ssh {
     return find_file_spath($sshexe);
 }
 
-
 #***************************************************************************
 # Find sftp-server plugin and return canonical filename
 #
 sub find_sftpsrv {
     return find_file_spath($sftpsrvexe);
 }
-
 
 #***************************************************************************
 # Find sftp client and return canonical filename
@@ -332,7 +329,6 @@ sub find_sftp {
     return find_file_spath($sftpexe);
 }
 
-
 #***************************************************************************
 # Find ssh-keygen and return canonical filename
 #
@@ -340,14 +336,13 @@ sub find_sshkeygen {
     return find_file_spath($sshkeygenexe);
 }
 
-
 #***************************************************************************
 # Find httptlssrv (gnutls-serv) and return canonical filename
 #
 sub find_httptlssrv {
     my $p = find_exe_file_hpath($httptlssrvexe);
     if($p) {
-        my @o = `"$p" -l`;
+        my @o = qx("$p" -l);
         my $found;
         for(@o) {
             if(/Key exchange: SRP/) {
@@ -359,7 +354,6 @@ sub find_httptlssrv {
     }
     return "";
 }
-
 
 #***************************************************************************
 # Return version info for the given ssh client or server binaries
@@ -387,7 +381,7 @@ sub sshversioninfo {
             if($tmpstr =~ /OpenSSH[_-](\d+)\.(\d+)(\.(\d+))*/i) {
                 $major = $1;
                 $minor = $2;
-                $patch = $4?$4:0;
+                $patch = $4 ? $4 : 0;
                 $sshid = 'OpenSSH';
                 $versnum = (100*$major) + (10*$minor) + $patch;
                 $versstr = "$sshid $major.$minor.$patch";
@@ -397,7 +391,7 @@ sub sshversioninfo {
             if($tmpstr =~ /OpenSSH[_-]for[_-]Windows[_-](\d+)\.(\d+)(\.(\d+))*/i) {
                 $major = $1;
                 $minor = $2;
-                $patch = $4?$4:0;
+                $patch = $4 ? $4 : 0;
                 $sshid = 'OpenSSH-Windows';
                 $versnum = (100*$major) + (10*$minor) + $patch;
                 $versstr = "$sshid $major.$minor.$patch";
@@ -407,7 +401,7 @@ sub sshversioninfo {
             if($tmpstr =~ /Sun[_-]SSH[_-](\d+)\.(\d+)(\.(\d+))*/i) {
                 $major = $1;
                 $minor = $2;
-                $patch = $4?$4:0;
+                $patch = $4 ? $4 : 0;
                 $sshid = 'SunSSH';
                 $versnum = (100*$major) + (10*$minor) + $patch;
                 $versstr = "$sshid $major.$minor.$patch";
@@ -420,7 +414,6 @@ sub sshversioninfo {
     }
     return ($sshid, $versnum, $versstr, $error);
 }
-
 
 #***************************************************************************
 # End of library

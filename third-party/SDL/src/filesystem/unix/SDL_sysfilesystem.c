@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -78,7 +78,7 @@ static char *search_path_for_binary(const char *bin)
     char *envr;
     size_t alloc_size;
     char *exe = NULL;
-    char *start = envr;
+    char *start;
     char *ptr;
 
     if (!envr_real) {
@@ -86,7 +86,7 @@ static char *search_path_for_binary(const char *bin)
         return NULL;
     }
 
-    envr = SDL_strdup(envr_real);
+    start = envr = SDL_strdup(envr_real);
     if (!envr) {
         return NULL;
     }
@@ -122,7 +122,7 @@ static char *search_path_for_binary(const char *bin)
 }
 #endif
 
-char *SDL_SYS_GetBasePath(void)
+static char *GetExePath(void)
 {
     char *result = NULL;
 
@@ -235,26 +235,41 @@ char *SDL_SYS_GetBasePath(void)
     /* If we had access to argv[0] here, we could check it for a path,
         or troll through $PATH looking for it, too. */
 
-    if (result) { // chop off filename.
-        char *ptr = SDL_strrchr(result, '/');
-        if (ptr) {
-            *(ptr + 1) = '\0';
-        } else { // shouldn't happen, but just in case...
-            SDL_free(result);
-            result = NULL;
-        }
-    }
-
-    if (result) {
-        // try to shrink buffer...
-        char *ptr = (char *)SDL_realloc(result, SDL_strlen(result) + 1);
-        if (ptr) {
-            result = ptr; // oh well if it failed.
-        }
-    }
-
     return result;
 }
+
+char *SDL_SYS_GetBasePath(void)
+{
+    char *path = GetExePath();
+    if (!path) {
+        return NULL;
+    }
+
+    char *ptr = SDL_strrchr(path, '/');
+    SDL_assert(ptr != NULL);  // Should have been an absolute path.
+
+    ptr[1] = '\0'; // chop off filename, leave '/'.
+
+    ptr = (char *) SDL_realloc(path, ((size_t) (ptr - path)) + 2);  // try to shrink this allocation down a little.
+    return ptr ? ptr : path;  // return shrunk buffer if shrink worked out, unchanged original buffer if not.
+}
+
+
+char *SDL_SYS_GetExeName(void)
+{
+    char *path = GetExePath();
+    if (!path) {
+        return NULL;
+    }
+
+    char *ptr = SDL_strrchr(path, '/');
+    SDL_assert(ptr != NULL);  // Should have been an absolute path.
+    const size_t slen = SDL_strlen(ptr);  // counts null terminator because we're still sitting on path separator.
+    SDL_memmove(path, ptr + 1, slen);  // move filename string to start of SDL_realloc'd region.
+    ptr = (char *) SDL_realloc(path, slen);  // try to shrink this allocation down a little.
+    return ptr ? ptr : path;  // return shrunk buffer if shrink worked out, unchanged original buffer if not.
+}
+
 
 char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
@@ -269,15 +284,6 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
     const char *append;
     char *result = NULL;
     char *ptr = NULL;
-    size_t len = 0;
-
-    if (!app) {
-        SDL_InvalidParamError("app");
-        return NULL;
-    }
-    if (!org) {
-        org = "";
-    }
 
     if (!envr) {
         // You end up with "$HOME/.local/share/Game Name 2"
@@ -292,7 +298,7 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
         append = "/";
     }
 
-    len = SDL_strlen(envr);
+    size_t len = SDL_strlen(envr);
     if (envr[len - 1] == '/') {
         append += 1;
     }
@@ -377,7 +383,7 @@ static char *xdg_user_dir_lookup_with_fallback (const char *type, const char *fa
   if (!config_home || config_home[0] == 0)
     {
       l = SDL_strlen (home_dir) + SDL_strlen ("/.config/user-dirs.dirs") + 1;
-      config_file = (char*) SDL_malloc (l);
+      config_file = (char *)SDL_malloc (l);
       if (!config_file)
         goto error;
 
@@ -387,7 +393,7 @@ static char *xdg_user_dir_lookup_with_fallback (const char *type, const char *fa
   else
     {
       l = SDL_strlen (config_home) + SDL_strlen ("/user-dirs.dirs") + 1;
-      config_file = (char*) SDL_malloc (l);
+      config_file = (char *)SDL_malloc (l);
       if (!config_file)
         goto error;
 
@@ -449,7 +455,7 @@ static char *xdg_user_dir_lookup_with_fallback (const char *type, const char *fa
       if (relative)
         {
           l = SDL_strlen (home_dir) + 1 + SDL_strlen (p) + 1;
-          user_dir = (char*) SDL_malloc (l);
+          user_dir = (char *)SDL_malloc (l);
           if (!user_dir)
             goto error2;
 
@@ -458,7 +464,7 @@ static char *xdg_user_dir_lookup_with_fallback (const char *type, const char *fa
         }
       else
         {
-          user_dir = (char*) SDL_malloc (SDL_strlen (p) + 1);
+          user_dir = (char *)SDL_malloc (SDL_strlen (p) + 1);
           if (!user_dir)
             goto error2;
 
@@ -503,7 +509,7 @@ static char *xdg_user_dir_lookup (const char *type)
     // Special case desktop for historical compatibility
     if (SDL_strcmp(type, "DESKTOP") == 0) {
         size_t length = SDL_strlen(home_dir) + SDL_strlen("/Desktop") + 1;
-        user_dir = (char*) SDL_malloc(length);
+        user_dir = (char *)SDL_malloc(length);
         if (!user_dir)
             return NULL;
 

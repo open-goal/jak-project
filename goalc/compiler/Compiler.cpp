@@ -10,6 +10,8 @@
 #include "common/link_types.h"
 #include "common/util/FileUtil.h"
 
+#include "goalc/compiler/CodeGenerator.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
@@ -19,10 +21,12 @@
 using namespace goos;
 
 Compiler::Compiler(GameVersion version,
+                   emitter::InstructionSet instr_set,
                    const std::optional<REPL::Config> repl_config,
                    const std::string& user_profile,
                    std::unique_ptr<REPL::Wrapper> repl)
     : m_version(version),
+      m_instr_set(instr_set),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
       m_make(repl_config, user_profile),
@@ -43,6 +47,11 @@ Compiler::Compiler(GameVersion version,
   // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  // goal-lib defaults this to x86 for older compilers
+  m_goos.set_global_variable_by_name(
+      "INSTRUCTION_SET",
+      m_goos.intern(m_instr_set == emitter::InstructionSet::ARM64 ? "arm64" : "x86"));
 
   // user profile stuff
   if (user_profile != "#f" && fs::exists(file_util::get_jak_project_dir() / "goal_src" / "user" /
@@ -176,7 +185,7 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
     fe->emit_ir<IR_Return>(code, fe->make_gpr(result->type()), result->to_gpr(code, fe.get()),
-                           emitter::gRegInfo.get_gpr_ret_reg());
+                           emitter::reg_info(m_instr_set).get_gpr_ret_reg());
   }
 
   if (!fe->code().empty()) {
@@ -253,6 +262,7 @@ void Compiler::color_object_file(FileEnv* env) {
   for (auto& f : env->functions()) {
     AllocationInput input;
     input.is_asm_function = f->is_asm_func;
+    input.instr_set = m_instr_set;
     for (auto& i : f->code()) {
       input.instructions.push_back(i->to_rai());
       // input.debug_instruction_names.push_back(i->print());
@@ -307,7 +317,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   try {
     auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
     debug_info->clear();
-    CodeGenerator gen(env, debug_info, m_version);
+    CodeGenerator gen(env, debug_info, m_version, m_instr_set);
     bool ok = true;
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
@@ -331,7 +341,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
                                                    bool omit_ir) {
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
-  CodeGenerator gen(env, debug_info, m_version);
+  CodeGenerator gen(env, debug_info, m_version, m_instr_set);
   *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader, omit_ir);

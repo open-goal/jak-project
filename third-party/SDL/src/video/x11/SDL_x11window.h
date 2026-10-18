@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -63,6 +63,7 @@ struct SDL_WindowData
     bool xinput2_keyboard_enabled;
     bool mouse_grabbed;
     Uint64 last_focus_event_time;
+    unsigned long ignore_button_press_serial;
     PendingFocusEnum pending_focus;
     Uint64 pending_focus_time;
     bool pending_move;
@@ -111,6 +112,7 @@ struct SDL_WindowData
 
     bool pending_size;
     bool pending_position;
+    bool fs_repositioned;
     bool window_was_maximized;
     bool previous_borders_nonzero;
     bool toggle_borders;
@@ -118,6 +120,7 @@ struct SDL_WindowData
     bool was_shown;
     bool emit_size_move_after_property_notify;
     SDL_HitTestResult hit_test_result;
+    bool pending_grab;
 
     XPoint xim_spot;
     char *preedit_text;
@@ -128,7 +131,7 @@ struct SDL_WindowData
 };
 
 extern void X11_SetNetWMState(SDL_VideoDevice *_this, Window xwindow, SDL_WindowFlags flags);
-extern Uint32 X11_GetNetWMState(SDL_VideoDevice *_this, SDL_Window *window, Window xwindow);
+extern SDL_WindowFlags X11_GetNetWMState(SDL_VideoDevice *_this, SDL_Window *window, Window xwindow);
 
 extern bool X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
 extern char *X11_GetWindowTitle(SDL_VideoDevice *_this, Window xwindow);

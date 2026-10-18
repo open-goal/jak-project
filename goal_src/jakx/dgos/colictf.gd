@@ -1,0 +1,10 @@
+("COLICTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-1348.go"
+  "tpage-1349.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "colictf.o"
+ ))

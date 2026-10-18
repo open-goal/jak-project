@@ -60,4 +60,6 @@ struct ListenerMessageHeader {
 
 constexpr int DECI2_PORT = 8112;  // TODO - is this a good choice?
 
+constexpr int DEBUG_SERVER_PORT = 8128;
+
 constexpr u16 DECI2_PROTOCOL = 0xe042;

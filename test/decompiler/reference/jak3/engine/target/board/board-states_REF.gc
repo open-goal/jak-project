@@ -944,10 +944,6 @@
     (target-board-handler proc argc message block)
     )
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
-    (local-vars
-      (sv-144 (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
-      (sv-160 entity-actor)
-      )
     (if (= arg2 'hit)
         (set! arg2 #f)
         )
@@ -1005,36 +1001,21 @@
                (part-tracker-spawn part-tracker :to self :group group-board-quick-jump)
                )
              )
-           (let* ((s1-1 (get-process *default-dead-pool* manipy #x20000 1))
-                  (s2-4
-                    (when s1-1
-                      (let ((t9-20 (method-of-type manipy activate)))
-                        (t9-20 (the-as manipy s1-1) self "manipy" (the-as pointer #x70004000))
-                        )
-                      (let ((s2-5 run-function-in-process)
-                            (s0-1 s1-1)
-                            )
-                        (set! sv-144 manipy-init)
-                        (set! sv-160 (-> self entity))
-                        (let ((t0-2 (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer level) #f)))
-                              (t1-1 #f)
-                              (t2-1 0)
-                              )
-                          ((the-as (function object object object object object object object none) s2-5)
-                           s0-1
-                           sv-144
-                           s3-5
-                           sv-160
-                           t0-2
-                           t1-1
-                           t2-1
-                           )
-                          )
-                        )
-                      (-> s1-1 ppointer)
-                      )
-                    )
-                  )
+           (let ((s2-4
+                   (process-spawn
+                     manipy
+                     :init manipy-init
+                     s3-5
+                     (-> self entity)
+                     (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer level) #f))
+                     #f
+                     0
+                     :name "manipy"
+                     :to self
+                     :stack-size #x20000
+                     )
+                   )
+                 )
              (when s2-4
                (quaternion-copy! (-> (the-as process-drawable (-> s2-4 0)) root quat) (-> self control quat-for-control))
                (send-event (ppointer->process s2-4) 'anim-mode 'play1)

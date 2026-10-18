@@ -134,13 +134,9 @@
           (vector-float*! (-> gp-0 move-dist) s3-1 -2.0)
           (let ((s3-2 (new 'stack-no-clear 'collide-query)))
             (let ((a1-20 (new 'stack-no-clear 'bounding-box)))
-              (let* ((f0-21 409.6)
-                     (f1-9 3072.0)
-                     (f1-11 (* f1-9 f1-9))
-                     (f2-0 10240.0)
-                     (f0-22 (+ f0-21 (sqrtf (+ f1-11 (* f2-0 f2-0)))))
-                     (v1-38 (new 'stack-no-clear 'vector))
-                     )
+              (let ((f0-22 (+ 409.6 (sqrtf (+ (square 3072.0) (square 10240.0)))))
+                    (v1-38 (new 'stack-no-clear 'vector))
+                    )
                 (set-vector! v1-38 f0-22 f0-22 f0-22 1.0)
                 (vector+! (-> a1-20 max) (-> s5-0 collision-pt) v1-38)
                 (vector-! (-> a1-20 min) (-> s5-0 collision-pt) v1-38)
@@ -1487,17 +1483,16 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch sound-id vs object.
 (defbehavior foot-impact terraformer-leg ()
-  (local-vars (sv-256 entity-actor) (sv-272 entity-actor))
   (set-zero! *camera-smush-control*)
-  (let* ((gp-0 lerp-scale)
-         (s5-0 3686.4)
-         (s4-0 0.0)
-         (a2-0 (vector-vector-distance-squared (-> self foot-lock old-position) (target-pos 0)))
-         (f0-0 204800.0)
-         (a3-0 (* f0-0 f0-0))
-         (f0-2 1024000.0)
-         (f0-4 (gp-0 s5-0 s4-0 a2-0 a3-0 (* f0-2 f0-2)))
-         )
+  (let ((f0-4 (lerp-scale
+                3686.4
+                0.0
+                (vector-vector-distance-squared (-> self foot-lock old-position) (target-pos 0))
+                (square 204800.0)
+                (square 1024000.0)
+                )
+              )
+        )
     (activate! *camera-smush-control* f0-4 75 600 1.1 1.07 (-> *display* camera-clock))
     )
   (let ((gp-1 (new 'stack-no-clear 'vector)))
@@ -1581,26 +1576,14 @@
                          (let ((t9-24 (method-of-type manipy activate)))
                            (t9-24 s3-4 self "manipy" (the-as pointer #x70004000))
                            )
-                         (let ((s4-6 run-function-in-process)
-                               (s2-1 s3-4)
-                               (s1-0 manipy-init)
-                               (s0-0 gp-1)
-                               )
-                           (set! sv-256 (-> self entity))
-                           (let ((t0-3 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer level) #f)))
-                                 (t1-2 #f)
-                                 (t2-2 0)
-                                 )
-                             ((the-as (function object object object object object object object none) s4-6)
-                              s2-1
-                              s1-0
-                              s0-0
-                              sv-256
-                              t0-3
-                              t1-2
-                              t2-2
-                              )
-                             )
+                         (run-now-in-process
+                           s3-4
+                           manipy-init
+                           gp-1
+                           (-> self entity)
+                           (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer level) #f))
+                           #f
+                           0
                            )
                          (-> s3-4 ppointer)
                          )
@@ -1648,36 +1631,20 @@
                 )
               )
             )
-          (let* ((s3-5 (get-process *default-dead-pool* manipy #x20000 1))
-                 (s4-7 (when s3-5
-                         (let ((t9-32 (method-of-type manipy activate)))
-                           (t9-32 (the-as manipy s3-5) self "manipy" (the-as pointer #x70004000))
-                           )
-                         (let ((s4-8 run-function-in-process)
-                               (s2-2 s3-5)
-                               (s1-1 manipy-init)
-                               (s0-1 gp-1)
-                               )
-                           (set! sv-272 (-> self entity))
-                           (let ((t0-4 (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer level) #f)))
-                                 (t1-3 #f)
-                                 (t2-3 0)
-                                 )
-                             ((the-as (function object object object object object object object none) s4-8)
-                              s2-2
-                              s1-1
-                              s0-1
-                              sv-272
-                              t0-4
-                              t1-3
-                              t2-3
-                              )
-                             )
-                           )
-                         (-> s3-5 ppointer)
-                         )
-                       )
-                 )
+          (let ((s4-7 (process-spawn
+                        manipy
+                        :init manipy-init
+                        gp-1
+                        (-> self entity)
+                        (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer level) #f))
+                        #f
+                        0
+                        :name "manipy"
+                        :to self
+                        :stack-size #x20000
+                        )
+                      )
+                )
             (when s4-7
               (send-event (ppointer->process s4-7) 'rot-quat s5-1)
               (send-event (ppointer->process s4-7) 'anim-mode 'play1)
@@ -1749,7 +1716,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior terraformer-leg-update-ik terraformer-leg ()
-  (local-vars (sv-720 int))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (cond
       ((nonzero? (-> self joint-ik))
@@ -1779,17 +1745,9 @@
       (else
         (when (< (terraformer-leg-frames-till-down) 12.0)
           (set! (-> self last-effect) 0)
-          (let ((s5-2 sound-play-by-name)
-                (s4-1 (make-u128 (the-as uint #x6e642d6f7672) (the-as uint #x65732d746e696f6a)))
-                (s3-0 (new-sound-id))
-                (s2-0 1024)
-                (s1-0 0)
-                (s0-0 0)
-                )
-            (set! sv-720 0)
-            (let ((t2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 6))))
-              (s5-2 (the-as sound-name s4-1) s3-0 s2-0 s1-0 s0-0 (the-as sound-group sv-720) t2-1)
-              )
+          (sound-play
+            "joint-servo-dn"
+            :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 6))
             )
           )
         )
@@ -1963,13 +1921,9 @@
               )
             (vector-! s4-0 (-> (the-as process-drawable s5-0) root trans) s4-0)
             (set! (-> s4-0 y) 0.0)
-            (let ((f0-1 (vector-length-squared s4-0))
-                  (f1-0 1.0)
-                  )
-              (if (< f0-1 (* f1-0 f1-0))
-                  (set! (-> s4-0 x) 1.0)
-                  )
-              )
+            (if (< (vector-length-squared s4-0) (square 1.0))
+                (set! (-> s4-0 x) 1.0)
+                )
             (vector-normalize! s4-0 1.0)
             (set! (-> s4-0 y) 0.3)
             (vector-float*! s4-0 s4-0 4096.0)
@@ -2323,11 +2277,9 @@
         (dotimes (s3-0 s5-0)
           (let ((s2-0 (handle->process (-> self mines s3-0))))
             (when (and (the-as terraformer-mine s2-0)
-                       (let ((f0-0 (vector-vector-distance-squared (-> s4-0 root trans) (-> (the-as terraformer-mine s2-0) root trans)))
-                             (f1-0 32768.0)
-                             )
-                         (< f0-0 (* f1-0 f1-0))
-                         )
+                       (< (vector-vector-distance-squared (-> s4-0 root trans) (-> (the-as terraformer-mine s2-0) root trans))
+                          (square 32768.0)
+                          )
                        )
               (send-event s4-0 'explode)
               (send-event s2-0 'explode)
@@ -2357,11 +2309,9 @@
         )
       )
     )
-  (let ((s5-3 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node terraformer-lod0-jg main)))
-        (f0-1 1433600.0)
-        )
+  (let ((s5-3 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node terraformer-lod0-jg main))))
     (cond
-      ((< (* f0-1 f0-1) (vector-vector-distance-squared s5-3 (target-pos 0)))
+      ((< (square 1433600.0) (vector-vector-distance-squared s5-3 (target-pos 0)))
        (set! (-> self mines-to-launch) 0)
        (set! v0-11 (current-time))
        (set! (-> self mine-timer) (the-as time-frame v0-11))
@@ -2622,21 +2572,17 @@
     (terraformer-update-mine-vars #f)
     (when (-> self graph)
       (let ((gp-0 (-> self graph node (-> self current-node))))
-        (let ((f0-1 (vector-vector-distance-squared (-> self root trans) (-> gp-0 position)))
-              (f1-0 2048.0)
+        (when (< (vector-vector-distance-squared (-> self root trans) (-> gp-0 position)) (square 2048.0))
+          (cond
+            ((> (-> gp-0 edge-count) 0)
+             (set! (-> self current-node) (-> self graph edge (-> gp-0 edge-index) dest-node-id))
+             )
+            (else
+              (set! (-> self current-node) (the-as uint 0))
+              0
               )
-          (when (< f0-1 (* f1-0 f1-0))
-            (cond
-              ((> (-> gp-0 edge-count) 0)
-               (set! (-> self current-node) (-> self graph edge (-> gp-0 edge-index) dest-node-id))
-               )
-              (else
-                (set! (-> self current-node) (the-as uint 0))
-                0
-                )
-              )
-            (set! gp-0 (-> self graph node (-> self current-node)))
             )
+          (set! gp-0 (-> self graph node (-> self current-node)))
           )
         (vector-seek! (-> self root trans) (-> gp-0 position) 2048.0)
         (let ((s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))

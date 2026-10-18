@@ -1,0 +1,10 @@
+("THCVL.DGO"
+ ("wheel-d-ag.o"
+  "wombat-chassis-ag.go"
+  "wombat-door-c-ag.go"
+  "wombat-f-fender-b-ag.go"
+  "wombat-hood-c-ag.go"
+  "wombat-r-fender-a-ag.go"
+  "wombat-roof-b-ag.go"
+  "thcvl.o"
+ ))

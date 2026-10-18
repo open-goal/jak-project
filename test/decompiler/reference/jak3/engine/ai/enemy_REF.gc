@@ -244,7 +244,7 @@
                  (send-event this 'instant-death)
                  )
                 (else
-                  (play-damage-sound this 2)
+                  (play-damage-or-death-sound this 2)
                   )
                 )
               )
@@ -589,7 +589,7 @@
 
 ;; definition for method 146 of type enemy
 ;; INFO: Used lq/sq
-(defmethod play-damage-sound ((this enemy) (arg0 int))
+(defmethod play-damage-or-death-sound ((this enemy) (arg0 int))
   "Pick and play the damage/death sound."
   (let ((name (static-sound-name "")))
     (let ((v1-0 arg0))
@@ -1124,7 +1124,6 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod setup-enemy! ((this enemy) (arg0 enemy-info))
   "Initialize the enemy by setting all the enemy-specific fields."
-  (local-vars (sv-16 res-tag))
   (when (coin-flip? this)
     (let ((a0-2 (-> this node-list data 2)))
       (set! (-> a0-2 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint-flip-z!))
@@ -1185,8 +1184,9 @@
         )
     (reset-to-collide-spec (-> this focus) (the-as collide-spec cspec))
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-47 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-47 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-47 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) v1-47)
@@ -1705,7 +1705,7 @@
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this enemy) (proc process) (argc int) (msg symbol) (block event-message-block))
   "Commmon handler for events."
-  (local-vars (s5-6 rgbaf) (sv-640 event-message-block) (sv-656 process) (sv-672 event-message-block))
+  (local-vars (s5-6 rgbaf))
   (cond
     ((= msg 'go-gun-dark-2-stretch)
      (go-gun-dark-2-stretch this)
@@ -1766,23 +1766,14 @@
        )
      )
     ((= msg 'attack-no-avoid)
-     (let* ((s2-0 (-> block param 1))
-            (s3-4 this)
-            (s1-0 (method-of-object s3-4 handle-incoming-attack!))
-            (s0-0 proc)
-            )
-       (set! sv-640 block)
-       (let ((a3-3 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block))
-             (t1-0 (-> block param 0))
-             )
-         (s1-0
-           s3-4
-           (the-as process-drawable s0-0)
-           sv-640
-           a3-3
-           (the-as attack-info s2-0)
-           (the-as touching-shapes-entry t1-0)
-           )
+     (let ((s2-0 (-> block param 1)))
+       (handle-incoming-attack!
+         this
+         (the-as process-drawable proc)
+         block
+         (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)
+         (the-as attack-info s2-0)
+         (the-as touching-shapes-entry (-> block param 0))
          )
        )
      (damage-enemy-from-attack! this proc block)
@@ -1794,23 +1785,13 @@
            ((and (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
                  (not (logtest? (-> this focus-status) (focus-status grabbed)))
                  )
-            (let* ((s1-1 this)
-                   (s0-1 (method-of-object s1-1 handle-incoming-attack!))
-                   )
-              (set! sv-656 proc)
-              (set! sv-672 block)
-              (let ((a3-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block))
-                    (t1-1 (-> block param 0))
-                    )
-                (s0-1
-                  s1-1
-                  (the-as process-drawable sv-656)
-                  sv-672
-                  a3-4
-                  (the-as attack-info s2-1)
-                  (the-as touching-shapes-entry t1-1)
-                  )
-                )
+            (handle-incoming-attack!
+              this
+              (the-as process-drawable proc)
+              block
+              (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)
+              (the-as attack-info s2-1)
+              (the-as touching-shapes-entry (-> block param 0))
               )
             (send-event (ppointer->process (-> this parent)) 'child-hit)
             (let ((f0-1 0.0))
@@ -2765,13 +2746,8 @@
               (format 0 "Intensity ~f (handle ~d)~%" f30-4 (process->handle this))
               )
              (else
-               (let* ((f1-2 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
-                      (f0-26 1.0)
-                      (f2-0 61440.0)
-                      (f1-3 (fmin f1-2 (* f2-0 f2-0)))
-                      (f2-3 61440.0)
-                      )
-                 (set! f30-4 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
+               (let ((f1-2 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans))))
+                 (set! f30-4 (* (- 1.0 (/ (fmin f1-2 (square 61440.0)) (square 61440.0))) (rnd-float-range this 0.8 1.0)))
                  )
                )
              )
@@ -2813,11 +2789,7 @@
          )
         (((knocked-type blue-shot))
          (let* ((f1-5 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
-                (f0-36 1.0)
-                (f2-6 122880.0)
-                (f1-6 (fmin f1-5 (* f2-6 f2-6)))
-                (f2-9 122880.0)
-                (f30-7 (* (- f0-36 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
+                (f30-7 (* (- 1.0 (/ (fmin f1-5 (square 122880.0)) (square 122880.0))) (rnd-float-range this 0.8 1.0)))
                 )
            (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
            (cond
@@ -2938,12 +2910,8 @@
     (or (>= (-> arg0 on-surface-count) 3)
         (and (logtest? (-> gp-0 status) (collide-status on-ground)) (>= 16384.0 (-> gp-0 transv y)))
         (and (>= (-> arg0 move-count) 3)
-             (let ((f0-1 40.96))
-               (>= (* f0-1 f0-1) (vector-vector-distance-squared (-> gp-0 trans-old) (-> gp-0 trans-old-old)))
-               )
-             (let ((f0-4 40.96))
-               (>= (* f0-4 f0-4) (vector-vector-distance-squared (-> gp-0 trans-old-old) (-> gp-0 trans-old-old-old)))
-               )
+             (>= (square 40.96) (vector-vector-distance-squared (-> gp-0 trans-old) (-> gp-0 trans-old-old)))
+             (>= (square 40.96) (vector-vector-distance-squared (-> gp-0 trans-old-old) (-> gp-0 trans-old-old-old)))
              )
         )
     )

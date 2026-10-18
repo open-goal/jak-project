@@ -96,6 +96,8 @@
   )
 )
 
+(define-extern gun-trigger-buttons-swap! (function cpad-info none))
+
 ;; DECOMP BEGINS
 
 (deftype scf-time (structure)
@@ -392,6 +394,7 @@
         (set! (-> pad old-righty 0) (-> pad righty))
         (cpad-get-data pad)
         (adjust-to-screen-flip pad)
+        (gun-trigger-buttons-swap! pad)
         (cond
           ((not (logtest? (-> pad valid) 128))
            (dotimes (motor-idx 2)
@@ -782,7 +785,8 @@
        (set! (-> mouse button0-rel 0) (logclear (-> mouse button0-abs 0) (-> mouse button0-abs 1)))
        )
       )
-    (if (and (-> mouse active) (-> mouse valid) (-> mouse cursor))
+    ;; og:preserve-this added pc port check
+    (if (and (-> mouse active) (-> mouse valid) (-> mouse cursor) (#if PC_PORT (not *disable-mouse*) #t))
         (add-debug-cursor
           #t
           (bucket-id debug-no-zbuf2)

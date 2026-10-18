@@ -18,6 +18,8 @@ struct UncompressedSingleJointAnim {
 
 struct UncompressedJointAnim {
   std::string name;
+  std::string master_art_group_name;
+  int master_art_group_index = -1;
   std::vector<UncompressedSingleJointAnim> joints;
   float framerate = 60;
   int frames = 0;
@@ -44,6 +46,8 @@ struct CompressedJointMetadata {
 
 struct CompressedAnim {
   std::string name;
+  std::string master_art_group_name;
+  int master_art_group_index = -1;
   CompressedFrame fixed;
   std::vector<CompressedFrame> frames;
   bool matrix_animated[2] = {false, false};
@@ -56,12 +60,17 @@ struct CompressedAnim {
  * @param model The GLTF model containing the animation
  * @param anim The animation to convert
  * @param node_to_joint Mapping from GLTF node index to the joint index
+ * @param master_art_group The master art group to link this animation to, if set.
+ * @param master_art_group_index The index of the slot in the master art group to link this
+ * animation to.
  * @param framerate Number of key-frames per second. (this doesn't have to match frame rate, the
  * game will interpolate between keyframes as needed.)
  */
 UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
                                              const tinygltf::Animation& anim,
                                              const std::map<int, int>& node_to_joint,
+                                             const std::string& master_art_group,
+                                             int master_art_group_index,
                                              float framerate);
 
 CompressedAnim compress_animation(const UncompressedJointAnim& in);

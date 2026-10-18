@@ -127,40 +127,34 @@
         (.add.mul.y.vf.x acc vf2 vf1 acc)
         (.add.mul.z.vf.x vf1 vf2 vf1 acc)
         (.mov v1-5 vf1)
-        (let ((f0-0 v1-5)
-              (f1-0 409.6)
+        (cond
+          ((< v1-5 (square 409.6))
+           (go-virtual idle)
+           )
+          ((time-elapsed? (-> self state-time) (seconds 4))
+           (go-virtual hatch)
+           )
+          (else
+            (vector-v++!
+              (-> self root transv)
+              (compute-acc-due-to-gravity (the-as collide-shape-moving (-> self root)) (new-stack-vector0) 1.0)
               )
-          (cond
-            ((< f0-0 (* f1-0 f1-0))
-             (go-virtual idle)
-             )
-            ((time-elapsed? (-> self state-time) (seconds 4))
-             (go-virtual hatch)
-             )
-            (else
-              (vector-v++!
-                (-> self root transv)
-                (compute-acc-due-to-gravity (the-as collide-shape-moving (-> self root)) (new-stack-vector0) 1.0)
-                )
-              (let ((a2-1 (new 'stack-no-clear 'collide-query)))
-                (set! (-> a2-1 collide-with) (collide-spec backgnd enemy obstacle hit-by-others-list pusher))
-                (set! (-> a2-1 ignore-process0) self)
-                (set! (-> a2-1 ignore-process1) #f)
-                (set! (-> a2-1 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-                (set! (-> a2-1 action-mask) (collide-action solid))
-                (fill-cache-integrate-and-collide
-                  (the-as collide-shape-moving (-> self root))
-                  (-> (the-as collide-shape-moving (-> self root)) transv)
-                  a2-1
-                  (meters 0)
-                  )
+            (let ((a2-1 (new 'stack-no-clear 'collide-query)))
+              (set! (-> a2-1 collide-with) (collide-spec backgnd enemy obstacle hit-by-others-list pusher))
+              (set! (-> a2-1 ignore-process0) self)
+              (set! (-> a2-1 ignore-process1) #f)
+              (set! (-> a2-1 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+              (set! (-> a2-1 action-mask) (collide-action solid))
+              (fill-cache-integrate-and-collide
+                (the-as collide-shape-moving (-> self root))
+                (-> (the-as collide-shape-moving (-> self root)) transv)
+                a2-1
+                (meters 0)
                 )
               )
             )
           )
-        (let* ((f0-1 81920.0)
-               (f0-3 (* f0-1 f0-1))
-               )
+        (let ((f0-3 (square 81920.0)))
           (.lvf vf1 (&-> gp-0 quad))
           (.add.w.vf.x vf2 vf0 vf0)
           (.mul.vf vf1 vf1 vf1)
@@ -169,9 +163,7 @@
           (.add.mul.z.vf.x vf1 vf2 vf1 acc)
           (.mov v1-27 vf1)
           (cond
-            ((and (< f0-3 v1-27) (let* ((f0-4 81920.0)
-                                        (f0-6 (* f0-4 f0-4))
-                                        )
+            ((and (< f0-3 v1-27) (let ((f0-6 (square 81920.0)))
                                    (.lvf vf1 (&-> (-> self root transv) quad))
                                    (.add.w.vf.x vf2 vf0 vf0)
                                    (.mul.vf vf1 vf1 vf1)
@@ -296,11 +288,6 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod spawn-shell-particles ((this metalkor-shot))
   "TODO - confirm"
-  (local-vars
-    (sv-224 (function vector entity-actor skeleton-group vector object none :behavior manipy))
-    (sv-240 vector)
-    (sv-256 entity-actor)
-    )
   (let* ((s4-0 (-> this root))
          (v0-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
@@ -365,37 +352,17 @@
           (matrix->quaternion gp-1 s2-0)
           )
         (sound-play "nboss-shoot-hit")
-        (let* ((s1-1 (get-process *default-dead-pool* manipy #x4000))
-               (s2-2
-                 (when s1-1
-                   (let ((t9-10 (method-of-type manipy activate)))
-                     (t9-10 (the-as manipy s1-1) *default-pool* (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                     )
-                   (let ((s2-3 run-function-in-process)
-                         (s0-0 s1-1)
-                         )
-                     (set! sv-224 manipy-init)
-                     (set! sv-240 s4-2)
-                     (set! sv-256 (-> this entity))
-                     (let ((t0-2 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f)))
-                           (t1-2 #f)
-                           (t2-2 0)
-                           )
-                       ((the-as (function object object object object object object object none) s2-3)
-                        s0-0
-                        sv-224
-                        sv-240
-                        sv-256
-                        t0-2
-                        t1-2
-                        t2-2
-                        )
-                       )
-                     )
-                   (-> s1-1 ppointer)
-                   )
-                 )
-               )
+        (let ((s2-2 (process-spawn
+                      manipy
+                      :init manipy-init
+                      s4-2
+                      (-> this entity)
+                      (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f))
+                      #f
+                      0
+                      )
+                    )
+              )
           (when s2-2
             (send-event (ppointer->process s2-2) 'anim-mode 'play1)
             (send-event (ppointer->process s2-2) 'anim "idle")
@@ -525,7 +492,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior metalkor-update-ik metalkor-legs ()
-  (local-vars (sv-736 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -628,22 +594,15 @@
                 )
               )
             ((method-of-type cam-float-seeker update!) (-> self foot-locks s4-0 lock) 0.0)
-            (cond
-              ((-> self foot-locks s4-0 initialized)
-               (let ((s2-1 vector-lerp!)
-                     (s1-0 s3-0)
-                     (s0-0 s3-0)
-                     )
-                 (set! sv-736 (the-as vector (+ (the-as uint (-> self foot-locks 0 old-position)) (* s4-0 64))))
-                 (let ((a3-6 (parameter-ease-sin-clamp (-> self foot-locks s4-0 lock value))))
-                   (s2-1 s1-0 s0-0 sv-736 a3-6)
-                   )
-                 )
-               )
-              (else
+            (if (-> self foot-locks s4-0 initialized)
+                (vector-lerp!
+                  s3-0
+                  s3-0
+                  (the-as vector (+ (the-as uint (-> self foot-locks 0 old-position)) (* s4-0 64)))
+                  (parameter-ease-sin-clamp (-> self foot-locks s4-0 lock value))
+                  )
                 (set! (-> self foot-locks s4-0 initialized) #t)
                 )
-              )
             (handle-copy! (-> self joint-ik s4-0) s3-0)
             (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> self foot-locks 0 old-position)) (* s4-0 64))))
                   (-> s3-0 quad)
@@ -1188,11 +1147,7 @@
                               (.add.mul.y.vf.x acc vf2 vf1 acc)
                               (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                               (.mov v1-26 vf1)
-                              (let ((f0-7 v1-26)
-                                    (f1-5 409.6)
-                                    )
-                                (< f0-7 (* f1-5 f1-5))
-                                )
+                              (< v1-26 (square 409.6))
                               )
                  )
         (+! s3-0 1)
@@ -2217,49 +2172,17 @@
     (process-spawn metalkor-rays (-> self root trans) (-> self root quat) :to self)
     )
   :trans (behavior ()
-    (local-vars (sv-384 symbol) (sv-400 symbol) (sv-416 vector) (sv-432 matrix))
     (let ((f30-0 (ja-aframe-num 0)))
       (ja :num! (seek!))
       (when (and (< f30-0 40.0) (>= (ja-aframe-num 0) 40.0))
         (send-event (ppointer->process (-> self parent)) 'exploding)
         (activate! *camera-smush-control* 1638.4 37 210 1.0 0.995 (-> self clock))
-        (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-0
-            (let ((t9-6 (method-of-type part-tracker activate)))
-              (t9-6
-                (the-as part-tracker gp-0)
-                *entity-pool*
-                (symbol->string (-> part-tracker symbol))
-                (the-as pointer #x70004000)
-                )
-              )
-            (let ((s5-0 run-function-in-process)
-                  (s4-0 gp-0)
-                  (s3-0 part-tracker-init)
-                  (s2-0 group-metalkor-explode)
-                  (s1-0 0)
-                  (s0-0 #f)
-                  )
-              (set! sv-384 (the-as symbol #f))
-              (set! sv-400 (the-as symbol #f))
-              (set! sv-432 *launch-matrix*)
-              (set! sv-416 (-> sv-432 trans))
-              (let ((v1-27 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node metalkor-explode-lod0-jg head)) quad)))
-                (set! (-> sv-416 quad) v1-27)
-                )
-              ((the-as (function object object object object object object object object none) s5-0)
-               s4-0
-               s3-0
-               s2-0
-               s1-0
-               s0-0
-               sv-384
-               sv-400
-               sv-432
-               )
-              )
-            (-> gp-0 ppointer)
-            )
+        (part-tracker-spawn
+          :to *entity-pool*
+          :group group-metalkor-explode
+          :userdata (the-as symbol #f)
+          :target (the-as symbol #f)
+          :mat-joint (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node metalkor-explode-lod0-jg head))
           )
         )
       )

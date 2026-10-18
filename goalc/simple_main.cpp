@@ -3,6 +3,7 @@
 #include "common/versions/versions.h"
 
 #include "goalc/compiler/Compiler.h"
+#include "goalc/emitter/InstructionSet.h"
 
 int main(int argc, char** argv) {
   // logging
@@ -27,16 +28,17 @@ int main(int argc, char** argv) {
   std::unique_ptr<Compiler> compiler;
   ReplStatus status = ReplStatus::OK;
   try {
-    compiler = std::make_unique<Compiler>(game_version, std::nullopt, "",
-                                          std::make_unique<REPL::Wrapper>(game_version));
+    compiler = std::make_unique<Compiler>(game_version, emitter::InstructionSet::X86, std::nullopt,
+                                          "", std::make_unique<REPL::Wrapper>(game_version));
     while (status != ReplStatus::WANT_EXIT) {
       if (status == ReplStatus::WANT_RELOAD) {
         lg::info("Reloading compiler...");
         if (compiler) {
           compiler->save_repl_history();
         }
-        compiler = std::make_unique<Compiler>(game_version, std::nullopt, "",
-                                              std::make_unique<REPL::Wrapper>(game_version));
+        compiler =
+            std::make_unique<Compiler>(game_version, emitter::InstructionSet::X86, std::nullopt, "",
+                                       std::make_unique<REPL::Wrapper>(game_version));
         status = ReplStatus::OK;
       }
       std::string input_from_stdin = compiler->get_repl_input();

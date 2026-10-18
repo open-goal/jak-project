@@ -172,9 +172,7 @@
          )
         (else
           (if (or (not (closest-point-on-mesh (-> this nav) s5-0 (-> gp-0 trans) (-> s3-0 current-poly)))
-                  (let ((f0-0 32768.0))
-                    (< (* f0-0 f0-0) (vector-vector-xz-distance-squared s5-0 (-> gp-0 trans)))
-                    )
+                  (< (square 32768.0) (vector-vector-xz-distance-squared s5-0 (-> gp-0 trans)))
                   (< (- (-> gp-0 trans y) (-> s5-0 y)) -8192.0)
                   )
               (return #t)
@@ -500,10 +498,8 @@
            (a0-2 (-> this fact))
            )
       (when (and (< f0-0 (+ f1-0 (-> a0-2 notice-top))) (< (- f1-0 (-> a0-2 notice-bottom)) f0-0))
-        (let* ((f30-0 (-> this enemy-info notice-nav-radius))
-               (f0-1 f30-0)
-               )
-          (or (>= (* f0-1 f0-1) (vector-vector-xz-distance-squared (-> v1-4 trans) arg1))
+        (let ((f30-0 (-> this enemy-info notice-nav-radius)))
+          (or (>= (square f30-0) (vector-vector-xz-distance-squared (-> v1-4 trans) arg1))
               (is-in-mesh? (-> this nav) arg1 f30-0)
               )
           )
@@ -639,7 +635,6 @@
 
 ;; WARN: Return type mismatch int vs object.
 (defmethod setup-enemy! ((this nav-enemy) (arg0 nav-enemy-info))
-  (local-vars (sv-16 res-tag))
   (when (coin-flip? this)
     (let ((a0-2 (-> this node-list data 2)))
       (set! (-> a0-2 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint-flip-z!))
@@ -743,8 +738,9 @@
         )
     (reset-to-collide-spec (-> this focus) (the-as collide-spec cspec))
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-104 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-104 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-104 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-104))

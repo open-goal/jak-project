@@ -16,6 +16,7 @@
    (x-origin float)
    (z-origin float)))
 
+
 (define *lb-editor-parms* (new 'global 'lb-editor-parms))
 
 (set! (-> *lb-editor-parms* boundary) #f)
@@ -776,7 +777,7 @@
            (f2-2 (* 0.5 (+ f0-0 f2-0)))
            (f1-1 (- f3-2 f1-0))
            (f0-1 (- f2-2 f0-0))
-           (f0-4 (sqrtf (+ (* f1-1 f1-1) (* f0-1 f0-1)))))
+           (f0-4 (sqrtf (+ (square f1-1) (square f0-1)))))
       (set-vector! (-> arg0 rejector) f3-2 0.0 f2-2 f0-4)))
   0
   (none))
@@ -898,7 +899,7 @@
           (a2-0 (-> arg0 data (-> arg0 data s5-0 v1)))
           (a3-0 (-> arg0 data (-> arg0 data s5-0 v2)))
           (s4-0 (new 'stack-no-clear 'vector)))
-      (normal-of-plane s4-0 (the-as vector a1-0) (the-as vector a2-0) (the-as vector a3-0))
+      (normal-of-plane s4-0 (-> a1-0 v) (-> a2-0 v) (-> a3-0 v))
       (if (or (!= (-> s4-0 x) 0.0) (!= (-> s4-0 z) 0.0)) (format 0 "ERROR in the load-boundary code : tell Eddie!!!~%"))
       (when (< (-> s4-0 y) 0.0)
         (let ((v1-22 (-> arg0 data s5-0 v0)))
@@ -1355,7 +1356,7 @@
     (let ((f0-1 (- (-> a1-0 x) (-> arg0 rejector x)))
           (f1-2 (- (-> a1-0 z) (-> arg0 rejector z))))
       (cond
-        ((< (+ (* f0-1 f0-1) (* f1-2 f1-2)) (* (-> arg0 rejector w) (-> arg0 rejector w)))
+        ((< (+ (square f0-1) (square f1-2)) (* (-> arg0 rejector w) (-> arg0 rejector w)))
          (if (logtest? (-> arg0 flags) (load-boundary-flags closed))
            (set! s5-0 (check-closed-boundary arg0 a1-0 a2-0))
            (set! s5-0 (check-open-boundary arg0 a1-0 a2-0))))

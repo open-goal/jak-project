@@ -3,10 +3,41 @@
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 
+#include "game/kernel/common/codegen.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kscheme.h"
 
 #include "fmt/format.h"
+
+void flush_icache_for_linked_object(const ObjectFileHeader* ofh) {
+  // link state 0 turns code_infos file offsets into heap addresses
+  for (int seg = 0; seg < N_SEG; seg++) {
+    if (ofh->code_infos[seg].offset && ofh->code_infos[seg].size) {
+      flush_icache_goal(ofh->code_infos[seg].offset, ofh->code_infos[seg].size);
+    }
+  }
+}
+
+void flush_icache_for_linked_object_v2(Ptr<uint8_t> code_start, uint32_t code_size) {
+  if (code_start.offset && code_size) {
+    flush_icache_goal(code_start.offset, code_size);
+  }
+}
+
+uint32_t arm64_other_seg_mov32_link_v3(Ptr<uint8_t> link, ObjectFileHeader* ofh, int current_seg) {
+  uint8_t target_seg = *link;
+  ASSERT(target_seg < ofh->segment_count);
+
+  uint32_t* link_data = (link + 1).cast<uint32_t>().c();
+  uint32_t patch_loc = link_data[1] + ofh->code_infos[current_seg].offset;
+
+  // discarded debug segments use a null GOAL pointer
+  uint32_t value =
+      ofh->code_infos[target_seg].offset ? (link_data[0] + ofh->code_infos[target_seg].offset) : 0;
+
+  arm64_write_mov32(Ptr<uint32_t>(patch_loc).c(), value);
+  return 1 + 2 * 4;
+}
 
 namespace {
 // turn on printf's for debugging linking issues.

@@ -108,6 +108,7 @@ struct Config {
   std::string all_types_file;
 
   bool disassemble_code = false;
+  bool dump_function_metadata = false;
   bool decompile_code = false;
   bool format_code = false;
   bool write_scripts = false;
@@ -176,6 +177,7 @@ struct Config {
   bool levels_extract;
   bool save_texture_pngs = false;
   bool rip_streamed_audio = false;
+  bool rip_music = false;
 
   DecompileHacks hacks;
 

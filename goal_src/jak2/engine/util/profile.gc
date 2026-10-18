@@ -10,6 +10,7 @@
 
 ;; DMA templates for profile drawing
 (deftype profile-work (structure)
+  "DMA templates for profile drawing."
   ((sprite-tmpl  dma-gif-packet  :inline)
    (line-tmpl    dma-gif-packet  :inline)
    (last-index   int32)
@@ -62,7 +63,7 @@
 (define *profile-ticks* #f)
 
 (defmethod start-frame! ((this profile-segment-array))
-  "Start a frame."
+  "Restart the profiler for the start of a frame."
   (set! (-> this count) 0)
   (set! (-> this depth) 0)
   (set! (-> this max-depth) 0)
@@ -73,7 +74,7 @@
   )
 
 (defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
-  "Push a new segment onto the profiling stack."
+  "Start an event."
   (when (and *dproc* *debug-segment*)
     (let ((s4-0 (-> this data (-> this count))))
       (let ((s3-0 (-> this base-time)))
@@ -93,7 +94,7 @@
   )
 
 (defmethod end-segment! ((this profile-segment-array))
-  "Pop the last pushed segment."
+  "Stop the most recently started event."
   (when (and *dproc* *debug-segment*)
     (let* ((v1-4 (+ (-> this depth) -1))
            (s5-0 (-> this segment v1-4))
@@ -383,8 +384,7 @@
   )
 
 (defmethod postprocess-data! ((this profile-array))
-  "Summarize data collected."
-
+  "Create the collapsed summary of the collected data."
   ;; loop over both EE and VU profilers
   (dotimes (s5-0 2)
     ;; each of the two display-frames has its own profile-array
@@ -393,8 +393,7 @@
     (let ((s3-0 (-> *profile-array* data s5-0))
           (s4-0 *profile-collapse*)
           )
-      (mem-copy! (&-> s3-0 type) (&-> (-> this data s5-0) type) 8240)
-
+      (mem-copy! (&-> s3-0 type) (&-> this data s5-0 type) 8240)
       (cond
         ((zero? s5-0)
          ;; we're the EE profiler.
@@ -552,8 +551,7 @@
   )
 
 (defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
-  "Draw the two bars at the top."
-  (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
+  "Generate DMA data for drawing the profile bars."
   (dma-buffer-add-gs-set arg0
                          (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                          (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
@@ -631,12 +629,7 @@
            (cond
              (*profile-ticks*
                (let ((s0-0 draw-string-xy))
-                 (set! sv-16 format)
-                 (let ((a0-16 (clear *temp-string*))
-                       (a1-37 "~5D")
-                       )
-                   (sv-16 a0-16 a1-37 s1-0)
-                   )
+                 (format (clear *temp-string*) "~5D" s1-0)
                  (s0-0
                    *temp-string*
                    arg0
@@ -682,12 +675,7 @@
               (cond
                 (*profile-ticks*
                   (let ((s0-2 draw-string-xy))
-                    (set! sv-32 format)
-                    (let ((a0-26 (clear *temp-string*))
-                          (a1-45 "~5D")
-                          )
-                      (sv-32 a0-26 a1-45 s1-2)
-                      )
+                    (format (clear *temp-string*) "~5D" s1-2)
                     (s0-2
                       *temp-string*
                       arg0
@@ -728,9 +716,8 @@
   (none)
   )
 
-
 (defmethod draw-text! ((this profile-array))
-  "Draw the table of times."
+  "Generate DMA data for drawing the profile information screen."
   (let ((gp-0 *profile-collapse*))
     (dotimes (s5-0 (-> gp-0 count))
       (when (or (nonzero? (-> gp-0 data s5-0 count)) (nonzero? (-> gp-0 data s5-0 vu-count)))

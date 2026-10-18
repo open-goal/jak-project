@@ -84,6 +84,7 @@
    robber-initial-notice
    robber-tired))
 
+
 (defskelgroup *robber-sg*
   robber
   robber-lod0-jg
@@ -97,17 +98,16 @@
     (('attack) (go robber-die))))
 
 (defbehavior robber-task-complete? robber ()
-  (local-vars (sv-16 symbol))
   (process-entity-status! self (entity-perm-status complete) #t)
   (when (or (-> self link prev) (-> self link next))
-    (set! sv-16 (the-as symbol #f))
-    (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
-    (cond
-      (sv-16
-       (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-       (format #t "robber task is complete~%"))
-      (else))
-    sv-16))
+    (let ((sv-16 (the-as symbol #f)))
+      (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+      (cond
+        (sv-16
+         (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+         (format #t "robber task is complete~%"))
+        (else))
+      sv-16)))
 
 (defbehavior robber-find-ground robber ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -146,7 +146,7 @@
     (matrix->quaternion (-> self root quat) s5-0)
     (set! (-> self run-blend-interp) (acos (vector-dot gp-0 (-> self facing))))
     (set! (-> self run-blend-interp) (* 0.0002746582 (-> self run-blend-interp)))
-    (if (< (vector-dot (-> self facing) (the-as vector (-> s5-0 vector))) 0.0)
+    (if (< (vector-dot (-> self facing) (-> s5-0 vector 0)) 0.0)
       (set! (-> self run-blend-interp) (- (-> self run-blend-interp))))
     (let ((v0-10 (-> self facing))) (set! (-> v0-10 quad) (-> gp-0 quad)) v0-10)))
 

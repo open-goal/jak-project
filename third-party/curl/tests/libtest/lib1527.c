@@ -23,43 +23,41 @@
  ***************************************************************************/
 
 /*
- * This unit test PUT http data over proxy. Same  http header will be generated
+ * This unit test PUT http data over proxy. Same http header is generated
  * for server and proxy
  */
 
-#include "test.h"
+#include "first.h"
 
-#include "memdebug.h"
+static const char t1527_data[] = "Hello Cloud!\n";
+static size_t const t1527_datalen = sizeof(t1527_data) - 1;
 
-static char data [] = "Hello Cloud!\n";
-
-static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *stream)
+static size_t t1527_read_cb(char *ptr, size_t size, size_t nmemb, void *stream)
 {
-  size_t  amount = nmemb * size; /* Total bytes curl wants */
-  if(amount < strlen(data)) {
-    return strlen(data);
+  size_t amount = nmemb * size; /* Total bytes curl wants */
+  if(amount < t1527_datalen) {
+    return t1527_datalen;
   }
   (void)stream;
-  memcpy(ptr, data, strlen(data));
-  return strlen(data);
+  memcpy(ptr, t1527_data, t1527_datalen);
+  return t1527_datalen;
 }
 
-
-int test(char *URL)
+static CURLcode test_lib1527(const char *URL)
 {
   CURL *curl = NULL;
-  CURLcode res = CURLE_FAILED_INIT;
+  CURLcode result = CURLE_FAILED_INIT;
   /* http header list */
   struct curl_slist *hhl = NULL, *tmp = NULL;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -74,21 +72,21 @@ int test(char *URL)
   }
   hhl = tmp;
 
-  test_setopt(curl, CURLOPT_URL, URL);
-  test_setopt(curl, CURLOPT_PROXY, libtest_arg2);
-  test_setopt(curl, CURLOPT_HTTPHEADER, hhl);
-  test_setopt(curl, CURLOPT_POST, 0L);
-  test_setopt(curl, CURLOPT_UPLOAD, 1L);
-  test_setopt(curl, CURLOPT_VERBOSE, 1L);
-  test_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-  test_setopt(curl, CURLOPT_HEADER, 1L);
-  test_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
-  test_setopt(curl, CURLOPT_READFUNCTION, read_callback);
-  test_setopt(curl, CURLOPT_HTTPPROXYTUNNEL, 1L);
-  test_setopt(curl, CURLOPT_INFILESIZE, (long)strlen(data));
-  test_setopt(curl, CURLOPT_HEADEROPT, CURLHEADER_UNIFIED);
+  easy_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_PROXY, libtest_arg2);
+  easy_setopt(curl, CURLOPT_HTTPHEADER, hhl);
+  easy_setopt(curl, CURLOPT_POST, 0L);
+  easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+  easy_setopt(curl, CURLOPT_HEADER, 1L);
+  easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+  easy_setopt(curl, CURLOPT_READFUNCTION, t1527_read_cb);
+  easy_setopt(curl, CURLOPT_HTTPPROXYTUNNEL, 1L);
+  easy_setopt(curl, CURLOPT_INFILESIZE, (long)t1527_datalen);
+  easy_setopt(curl, CURLOPT_HEADEROPT, CURLHEADER_UNIFIED);
 
-  res = curl_easy_perform(curl);
+  result = curl_easy_perform(curl);
 
 test_cleanup:
 
@@ -98,5 +96,5 @@ test_cleanup:
 
   curl_global_cleanup();
 
-  return (int)res;
+  return result;
 }

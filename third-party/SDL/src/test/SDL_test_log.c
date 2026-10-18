@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,9 +20,7 @@
 */
 
 /*
-
  Used by the test framework and test cases.
-
 */
 
 /* quiet windows compiler warnings */
@@ -75,21 +73,46 @@ static const char *SDLTest_TimestampToString(const time_t timestamp)
 }
 
 /*
- * Prints given message with a timestamp in the TEST category and INFO priority.
+ * Prints given message with a timestamp in the TEST category and given priority.
  */
-void SDLTest_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+static void SDLTest_LogMessageV(SDL_LogPriority priority, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap)
 {
-    va_list list;
     char logMessage[SDLTEST_MAX_LOGMESSAGE_LENGTH];
 
     /* Print log message into a buffer */
     SDL_memset(logMessage, 0, SDLTEST_MAX_LOGMESSAGE_LENGTH);
-    va_start(list, fmt);
-    (void)SDL_vsnprintf(logMessage, SDLTEST_MAX_LOGMESSAGE_LENGTH - 1, fmt, list);
-    va_end(list);
+    (void)SDL_vsnprintf(logMessage, SDLTEST_MAX_LOGMESSAGE_LENGTH - 1, fmt, ap);
 
-    /* Log with timestamp and newline */
-    SDL_LogMessage(SDL_LOG_CATEGORY_TEST, SDL_LOG_PRIORITY_INFO, " %s: %s", SDLTest_TimestampToString(time(0)), logMessage);
+    /* Log with timestamp and newline. Messages with lower priority are slightly indented. */
+    if (priority > SDL_LOG_PRIORITY_INFO) {
+        SDL_LogMessage(SDL_LOG_CATEGORY_TEST, priority, "%s: %s", SDLTest_TimestampToString(time(NULL)), logMessage);
+    } else {
+        SDL_LogMessage(SDL_LOG_CATEGORY_TEST, priority, " %s: %s", SDLTest_TimestampToString(time(NULL)), logMessage);
+    }
+}
+
+/*
+ * Prints given message with a timestamp in the TEST category and given priority.
+ */
+void SDLTest_LogMessage(SDL_LogPriority priority, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    SDLTest_LogMessageV(priority, fmt, ap);
+    va_end(ap);
+}
+
+/*
+ * Prints given message with a timestamp in the TEST category and INFO priority.
+ */
+void SDLTest_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    SDLTest_LogMessageV(SDL_LOG_PRIORITY_INFO, fmt, ap);
+    va_end(ap);
 }
 
 /*
@@ -97,17 +120,11 @@ void SDLTest_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
  */
 void SDLTest_LogError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
 {
-    va_list list;
-    char logMessage[SDLTEST_MAX_LOGMESSAGE_LENGTH];
+    va_list ap;
 
-    /* Print log message into a buffer */
-    SDL_memset(logMessage, 0, SDLTEST_MAX_LOGMESSAGE_LENGTH);
-    va_start(list, fmt);
-    (void)SDL_vsnprintf(logMessage, SDLTEST_MAX_LOGMESSAGE_LENGTH - 1, fmt, list);
-    va_end(list);
-
-    /* Log with timestamp and newline */
-    SDL_LogMessage(SDL_LOG_CATEGORY_TEST, SDL_LOG_PRIORITY_ERROR, "%s: %s", SDLTest_TimestampToString(time(0)), logMessage);
+    va_start(ap, fmt);
+    SDLTest_LogMessageV(SDL_LOG_PRIORITY_ERROR, fmt, ap);
+    va_end(ap);
 }
 
 static char nibble_to_char(Uint8 nibble)

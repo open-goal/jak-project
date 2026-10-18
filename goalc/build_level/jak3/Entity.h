@@ -13,6 +13,7 @@ namespace jak3 {
  *  (quat quaternion :inline :offset-assert 64)
  */
 struct EntityActor {
+  std::string name;
   ResLump res_lump;
   math::Vector4f trans;  // w = 1 here
   u32 aid = 0;
@@ -24,14 +25,26 @@ struct EntityActor {
 
   math::Vector4f bsphere;
 
+  size_t slot;
+
   size_t generate(DataObjectGenerator& gen) const;
 };
 
-size_t generate_inline_array_actors(DataObjectGenerator& gen,
-                                    const std::vector<EntityActor>& actors);
+struct ActorGroup {
+  u64 id;
+  std::vector<const EntityActor*> actors;
+  size_t slot;
+};
+
+size_t generate_inline_array_actors(DataObjectGenerator& gen, std::vector<EntityActor>& actors);
+size_t generate_actor_group_array(DataObjectGenerator& gen, std::vector<ActorGroup>& actor_groups);
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,
                           u32 base_aid,
                           decompiler::DecompilerTypeSystem& dts);
+void add_actor_groups_from_json(const nlohmann::json& json,
+                                const std::vector<EntityActor>& actors,
+                                std::vector<ActorGroup>& actor_groups,
+                                u32 base_id);
 }  // namespace jak3

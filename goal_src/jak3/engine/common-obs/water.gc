@@ -183,34 +183,21 @@
 (set! (-> *water-wake-trail* frame-stagger) (the-as uint 1))
 
 (defmethod water-control-method-17 ((this water-control))
-  (when (and (not (handle->process (-> this ripple)))
-             (>= (+ (current-time) (seconds -0.1)) (-> this enter-water-time))
-             )
-    (let ((s5-0 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-      (set! (-> s5-0 tracked-obj) (process->handle (-> this process)))
-      (set! (-> s5-0 appearance) *water-wake-trail*)
-      (set! (-> s5-0 max-num-crumbs) (the int (* 0.25 (the float (-> s5-0 appearance max-age)))))
-      (let* ((v1-18
-               (estimate-light-trail-mem-usage
-                 (the-as uint (-> s5-0 max-num-crumbs))
-                 (the-as uint (= (-> s5-0 appearance lie-mode) (lie-mode use-two-strips)))
-                 )
-               )
-             (s4-0 (get-process *default-dead-pool* light-trail-tracker-water (+ v1-18 8192) 1))
-             )
-        (set! (-> this ripple)
-              (ppointer->handle (when s4-0
-                                  (let ((t9-2 (method-of-type process activate)))
-                                    (t9-2 s4-0 (-> this process) "light-trail" (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process s4-0 light-trail-tracker-init-by-other s5-0)
-                                  (-> s4-0 ppointer)
-                                  )
+  (if (and (not (handle->process (-> this ripple)))
+           (>= (+ (current-time) (seconds -0.1)) (-> this enter-water-time))
+           )
+      (set! (-> this ripple)
+            (ppointer->handle (light-trail-tracker-spawn
+                                light-trail-tracker-water
+                                :to (-> this process)
+                                :param-list ((tracked-obj (process->handle (-> this process)))
+                                 (appearance *water-wake-trail*)
+                                 (max-num-crumbs (the int (* 0.25 (the float (-> *water-wake-trail* max-age)))))
+                                 )
                                 )
-              )
-        )
+                              )
+            )
       )
-    )
   0
   (none)
   )
@@ -221,7 +208,6 @@
   )
 
 (defmethod water-control-method-10 ((this water-control))
-  (local-vars (sv-336 (function vector vector vector vector)) (sv-352 vector))
   (with-pp
     (let ((s4-0 (-> this flags))
           (s5-0 (new 'stack-no-clear 'water-info))
@@ -334,16 +320,14 @@
                        (f30-0 (sqrtf (+ (* (-> v1-102 x) (-> v1-102 x)) (* (-> v1-102 z) (-> v1-102 z)))))
                        (s2-0 (new 'stack-no-clear 'matrix))
                        )
-                  (let ((s1-0 forward-up->inv-matrix)
-                        (s0-0 s2-0)
-                        )
-                    (set! sv-336 vector-flatten!)
-                    (set! sv-352 (-> s2-0 fvec))
-                    (let ((a1-11 (vector-z-quaternion! (-> s2-0 fvec) (-> this process control quat)))
-                          (a2-2 (-> s5-0 normal))
-                          )
-                      (s1-0 s0-0 (sv-336 sv-352 a1-11 a2-2) (-> s5-0 normal))
+                  (forward-up->inv-matrix
+                    s2-0
+                    (vector-flatten!
+                      (-> s2-0 fvec)
+                      (vector-z-quaternion! (-> s2-0 fvec) (-> this process control quat))
+                      (-> s5-0 normal)
                       )
+                    (-> s5-0 normal)
                     )
                   (vector-copy! (-> s2-0 trans) s3-0)
                   (set! (-> *part-id-table* 762 init-specs 1 initial-valuef) (* 0.000004150391 f30-0))
@@ -747,7 +731,6 @@
   )
 
 (defmethod spawn-ripples ((this water-control) (arg0 float) (arg1 vector) (arg2 int) (arg3 vector) (arg4 symbol))
-  (local-vars (sv-112 vector))
   (when (and (logtest? (water-flag part-splash) (-> this flags))
              (logtest? (water-flag part-water) (-> this flags))
              (cond
@@ -755,12 +738,7 @@
                 (= (-> this process type) target)
                 )
                ((< 100 (-> *sp-particle-system-3d* num-alloc 0))
-                (let ((s2-0 vector-vector-distance))
-                  (set! sv-112 arg1)
-                  (let ((a1-1 (camera-pos)))
-                    (< (s2-0 sv-112 a1-1) 81920.0)
-                    )
-                  )
+                (< (vector-vector-distance arg1 (camera-pos)) 81920.0)
                 )
                (else
                  #t
@@ -809,7 +787,6 @@
                   (arg3 collide-action)
                   (arg4 process-drawable)
                   )
-  (local-vars (sv-256 process))
   (when (and (-> arg0 prim) (= (-> arg0 prim region) (-> arg1 region)))
     (set! arg0 arg0)
     (goto cfg-96)
@@ -849,14 +826,13 @@
            )
          )
         (('water-anim)
-         (set! sv-256 (command-get-process
-                        (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car)
-                        (the-as process #f)
-                        )
-               )
-         (let ((s0-0 (if (type? sv-256 process-drawable)
-                         sv-256
+         (let ((s0-0 (as-type
+                       (command-get-process
+                         (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car)
+                         (the-as process #f)
                          )
+                       process-drawable
+                       )
                      )
                )
            (cond
@@ -1053,7 +1029,7 @@
 
 ;; ERROR: Unsupported inline assembly instruction kind - [movz v1, v1, a0]
 (defmethod water-info-init! ((this collide-shape) (arg0 water-info) (arg1 collide-action))
-  (local-vars (v1-4 int) (a0-3 int) (sv-80 int))
+  (local-vars (v1-4 int) (a0-3 int))
   (let ((s4-0 (new 'stack-no-clear 'water-info)))
     (when (find-water-1 (the-as water-sphere (-> this root-prim prim-core)) arg0 s4-0)
       (let ((s3-0 (new 'static 'inline-array water-sphere 30
@@ -1091,8 +1067,9 @@
                   )
             (s2-0 0)
             )
-        (let ((s0-0 (-> this root-prim)))
-          (set! sv-80 30)
+        (let ((s0-0 (-> this root-prim))
+              (sv-80 30)
+              )
           (let ((a0-2 sv-80)
                 (v1-3 (-> this total-prims))
                 )
@@ -1104,7 +1081,7 @@
               (format *stdcon* "find-water exceeded FIND_WATER_MAX_PRIMS ~D/~D~%" (-> this total-prims) 30)
               )
           (while (nonzero? sv-80)
-            (set! sv-80 (+ sv-80 -1))
+            (+! sv-80 -1)
             (when (and (nonzero? (-> s0-0 prim-core prim-type))
                        (logtest? (-> s0-0 prim-core action) arg1)
                        (nonzero? (-> s0-0 prim-core collide-with))

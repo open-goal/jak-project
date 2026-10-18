@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -42,6 +42,8 @@ typedef enum
     FRAG_SHADER_COLOR,
     FRAG_SHADER_TEXTURE_RGB,
     FRAG_SHADER_TEXTURE_RGBA,
+    FRAG_SHADER_TEXTURE_ADVANCED,
+    FRAG_SHADER_TEXTURE_CUSTOM,
 
     NUM_FRAG_SHADERS,
 } GPU_FragmentShaderID;

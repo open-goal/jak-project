@@ -53,7 +53,8 @@ class SFXBlock : public SoundBank {
                                                            s32 vol,
                                                            s32 pan,
                                                            SndPlayParams& params,
-                                                           s32 current_tick) override;
+                                                           s32 current_tick,
+                                                           u32 owner) override;
 
   std::optional<std::string_view> GetName() override { return Name; };
   std::optional<u32> GetSoundByName(const char* name) override;

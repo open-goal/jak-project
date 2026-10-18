@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -75,10 +75,10 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
 #ifdef SDL_IPHONE_KEYBOARD
     SDLUITextField *textField;
-    BOOL hidingKeyboard;
     BOOL rotatingOrientation;
     NSString *committedText;
     NSString *obligateForBackspace;
+    BOOL isOTPMode;
 #endif
 }
 
@@ -91,7 +91,6 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
 #ifdef SDL_IPHONE_KEYBOARD
         [self initKeyboard];
-        hidingKeyboard = NO;
         rotatingOrientation = NO;
 #endif
 
@@ -280,12 +279,17 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
     textField.hidden = YES;
     textFieldFocused = NO;
+    isOTPMode = NO;
 
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 #ifndef SDL_PLATFORM_TVOS
     [center addObserver:self
                selector:@selector(keyboardWillShow:)
                    name:UIKeyboardWillShowNotification
+                 object:nil];
+    [center addObserver:self
+               selector:@selector(keyboardDidShow:)
+                   name:UIKeyboardDidShowNotification
                  object:nil];
     [center addObserver:self
                selector:@selector(keyboardWillHide:)
@@ -339,6 +343,10 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 {
     [super setView:view];
 
+    if (SDL_WasInit(SDL_INIT_JOYSTICK)) {
+        UIKit_SetViewGameControllerInteraction(view, true);
+    }
+
     [view addSubview:textField];
 
     if (textFieldFocused) {
@@ -366,6 +374,9 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 #ifndef SDL_PLATFORM_TVOS
     [center removeObserver:self
                       name:UIKeyboardWillShowNotification
+                    object:nil];
+    [center removeObserver:self
+                      name:UIKeyboardDidShowNotification
                     object:nil];
     [center removeObserver:self
                       name:UIKeyboardWillHideNotification
@@ -477,19 +488,33 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
     if (SDL_TextInputActive(window)) {
         [textField becomeFirstResponder];
     }
+
+    isOTPMode =
+        (SDL_GetTextInputType(props) == SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_HIDDEN) ||
+        (SDL_GetTextInputType(props) == SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_VISIBLE);
 }
 
 /* requests the SDL text field to become focused and accept text input.
  * also shows the onscreen virtual keyboard if no hardware keyboard is attached. */
 - (bool)startTextInput
 {
-    textFieldFocused = YES;
+    if (!textFieldFocused) {
+        textFieldFocused = YES;
+        SDL_SendScreenKeyboardShown();
+    }
+
     if (!textField.window) {
         /* textField has not been added to the view yet,
          * we will try again when that happens. */
         return true;
     }
 
+    if (isOTPMode) {
+        if (textField.text.length == 64 && [textField.text isEqualToString:[@"" stringByPaddingToLength:64 withString:@" " startingAtIndex:0]]) {
+            textField.text = @"";
+            committedText  = @"";
+        }
+    }
     return [textField becomeFirstResponder];
 }
 
@@ -497,7 +522,11 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
  * also hides the onscreen virtual keyboard if no hardware keyboard is attached. */
 - (bool)stopTextInput
 {
-    textFieldFocused = NO;
+    if (textFieldFocused) {
+        textFieldFocused = NO;
+        SDL_SendScreenKeyboardHidden();
+    }
+
     if (!textField.window) {
         /* textField has not been added to the view yet,
          * we will try again when that happens. */
@@ -519,42 +548,30 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
     [self setKeyboardHeight:(int)kbrect.size.height];
 #endif
+}
 
-    /* A keyboard hide transition has been interrupted with a show (keyboardWillHide has been called but keyboardDidHide didn't).
-     * since text input was stopped by the hide, we have to start it again. */
-    if (hidingKeyboard) {
-        SDL_StartTextInput(window);
-        hidingKeyboard = NO;
-    }
+- (void)keyboardDidShow:(NSNotification *)notification
+{
+    SDL_SendScreenKeyboardShown();
 }
 
 - (void)keyboardWillHide:(NSNotification *)notification
 {
-    hidingKeyboard = YES;
     [self setKeyboardHeight:0];
-
-    /* When the user dismisses the software keyboard by the "hide" button in the bottom right corner,
-     * we want to reflect that on SDL_TextInputActive by calling SDL_StopTextInput...on certain conditions */
-    if (SDL_TextInputActive(window)
-        /* keyboardWillHide gets called when a hardware keyboard is attached,
-         * keep text input state active if hiding while there is a hardware keyboard.
-         * if the hardware keyboard gets detached, the software keyboard will appear anyway. */
-        && !SDL_HasKeyboard()
-        /* When the device changes orientation, a sequence of hide and show transitions are triggered.
-         * keep text input state active in this case. */
-        && !rotatingOrientation) {
-        SDL_StopTextInput(window);
-    }
 }
 
 - (void)keyboardDidHide:(NSNotification *)notification
 {
-    hidingKeyboard = NO;
+    SDL_SendScreenKeyboardHidden();
 }
 
 - (void)textFieldTextDidChange:(NSNotification *)notification
 {
     if (textField.markedTextRange == nil) {
+        if (isOTPMode && labs((NSInteger)textField.text.length - (NSInteger)committedText.length) != 1) {
+            return;
+        }
+
         NSUInteger compareLength = SDL_min(textField.text.length, committedText.length);
         NSUInteger matchLength;
 
@@ -564,7 +581,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
                 break;
             }
         }
-        if (matchLength < committedText.length) {
+        if (matchLength < committedText.length && !SDL_HasKeyboard()) {
             size_t deleteLength = SDL_utf8strlen([[committedText substringFromIndex:matchLength] UTF8String]);
             while (deleteLength > 0) {
                 // Send distinct down and up events for each backspace action
@@ -632,8 +649,8 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 // UITextFieldDelegate method.  Invoked when user types something.
 - (BOOL)textField:(UITextField *)_textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
 {
-    if (textField.markedTextRange == nil) {
-        if (textField.text.length < 16) {
+    if (!isOTPMode) {
+        if (textField.markedTextRange == nil && [string length] == 0 && textField.text.length < 16) {
             [self resetTextState];
         }
     }
@@ -653,8 +670,10 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
 - (void)resetTextState
 {
-    textField.text = obligateForBackspace;
-    committedText = textField.text;
+    if (!isOTPMode) {
+        textField.text = obligateForBackspace;
+        committedText = textField.text;
+    }
 }
 
 #endif
@@ -702,17 +721,6 @@ void UIKit_SetTextInputProperties(SDL_VideoDevice *_this, SDL_Window *window, SD
     @autoreleasepool {
         SDL_uikitviewcontroller *vc = GetWindowViewController(window);
         [vc setTextFieldProperties:props];
-    }
-}
-
-bool UIKit_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
-{
-    @autoreleasepool {
-        SDL_uikitviewcontroller *vc = GetWindowViewController(window);
-        if (vc != nil) {
-            return vc.textFieldFocused;
-        }
-        return false;
     }
 }
 

@@ -165,19 +165,9 @@
          (let ((s5-0 (the-as object (-> block param 1))))
            (when (!= (-> (the-as attack-info s5-0) id) (-> self incoming-attack-id))
              (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-0) id))
-             (let* ((gp-0 proc)
-                    (s4-0 (if (type? gp-0 process-drawable)
-                              gp-0
-                              )
-                          )
-                    )
+             (let ((s4-0 (the-as process (as-type proc process-drawable))))
                (when s4-0
-                 (let* ((s3-0 (-> (the-as process-drawable s4-0) root))
-                        (gp-1 (if (type? (the-as collide-shape s3-0) collide-shape)
-                                  s3-0
-                                  )
-                              )
-                        )
+                 (let ((gp-1 (the-as trsqv (as-type (-> (the-as process-drawable s4-0) root) collide-shape))))
                    (when gp-1
                      (when (logtest? (-> (the-as collide-shape gp-1) root-prim prim-core collide-as) (collide-spec projectile))
                        (when (zero? (-> self state-flip))
@@ -239,12 +229,7 @@
                        )
                   )
          (vector-reset! (-> self root transv))
-         (let* ((gp-2 proc)
-                (a0-11 (if (type? (the-as process-focusable gp-2) process-focusable)
-                           gp-2
-                           )
-                       )
-                )
+         (let ((a0-11 (the-as process (as-type proc process-focusable))))
            (when a0-11
              (vector-! (-> self root transv) (-> self root trans) (get-trans (the-as process-focusable a0-11) 0))
              (set! (-> self root transv y) 0.0)
@@ -505,7 +490,8 @@
      )
     (suspend)
     (ja-channel-set! 0)
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -621,7 +607,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -652,8 +637,9 @@
         )
       )
   (let ((s4-4 (-> this root)))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-15 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-15 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16)))
+           )
       (when v1-15
         (+! (-> this root trans x) (-> v1-15 0))
         (+! (-> this root trans y) (-> v1-15 1))
@@ -739,7 +725,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (set! (-> this bridge-id) (res-lump-value (-> this entity) 'extra-id int :time -1000000000.0))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
@@ -782,8 +767,9 @@
         )
       )
   (let ((s4-4 (-> this root)))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-24 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-24 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16)))
+           )
       (when v1-24
         (+! (-> this root trans x) (-> v1-24 0))
         (+! (-> this root trans y) (-> v1-24 1))
@@ -868,7 +854,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -904,8 +889,9 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-under-int-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-18 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-18 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+         )
     (when (and v1-18 (nonzero? (-> sv-16 elt-count)))
       (let ((a0-25 (-> v1-18 0 data 0 actor)))
         (if (and a0-25 (logtest? (-> a0-25 extra perm status) (entity-perm-status subtask-complete)))
@@ -1015,7 +1001,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (init-plat-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1025,8 +1010,9 @@
     )
   (stop-bouncing! this)
   (let ((s5-1 (-> this root)))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-8 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-8 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16)))
+           )
       (when v1-8
         (+! (-> s5-1 trans x) (-> v1-8 0))
         (+! (-> s5-1 trans y) (-> v1-8 1))

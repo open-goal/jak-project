@@ -1,0 +1,13 @@
+("HAVTOURS.DGO"
+ ("tpage-2327.o"
+  "tpage-2329.go"
+  "tpage-2328.go"
+  "tpage-2465.go"
+  "tpage-3600.go"
+  "jungle-stone-snake-head-ag.go"
+  "haven-gen-light-debris-ag.go"
+  "haven-gen-light-ag.go"
+  "haven-trashcan-ag.go"
+  "finish-banner-ag.go"
+  "havtours.o"
+ ))

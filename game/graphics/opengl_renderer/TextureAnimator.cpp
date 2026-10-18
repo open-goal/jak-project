@@ -2910,17 +2910,21 @@ GLint TextureAnimator::run_clouds(const SkyInput& input, bool hires) {
     }
   }
 
-  FramebufferTexturePairContext ctxt(final_tex);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-  glUniform1i(m_uniforms.enable_tex, 2);
-  glBindTexture(GL_TEXTURE_2D, blend_tex.texture());
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glUniform1f(m_uniforms.minimum, input.cloud_min);
-  glUniform1f(m_uniforms.maximum, input.cloud_max);
-  glDisable(GL_BLEND);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+  {
+    FramebufferTexturePairContext ctxt(final_tex);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUniform1i(m_uniforms.enable_tex, 2);
+    glBindTexture(GL_TEXTURE_2D, blend_tex.texture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glUniform1f(m_uniforms.minimum, input.cloud_min);
+    glUniform1f(m_uniforms.maximum, input.cloud_max);
+    glDisable(GL_BLEND);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+  }
+  // generate mipmaps only after final_tex is no longer attached to the bound
+  // framebuffer, matching run_slime and opengl_upload_resize_texture.
   glBindTexture(GL_TEXTURE_2D, final_tex.texture());
   glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);

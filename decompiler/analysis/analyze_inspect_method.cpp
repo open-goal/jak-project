@@ -315,6 +315,10 @@ FieldPrint get_field_print(const std::string& str) {
   if (c1 == '1' || c1 == '2') {
     c1 = next();
   }
+  if (c1 != 'T' && c1 == 'd') {
+    printf("HACK: skipping %s\n", str.data());
+    return handle_custom_prints(field_print, str);
+  }
   ASSERT(c1 == 'T');
 
   // next the name:
@@ -336,9 +340,12 @@ FieldPrint get_field_print(const std::string& str) {
     // (format "~Tstack[~D] @ #x~X~%" (-> obj allocated-length) (-> obj stack))
     if (num_char == '~') {
       num_char = next();
-      ASSERT(num_char == 'D');
+      if (num_char != 'D') {
+        return handle_custom_prints(field_print, str);
+      }
+      ASSERT_MSG(num_char == 'D', fmt::format("unexpected: {}", num_char));
       num_char = next();
-      ASSERT(num_char == ']');
+      ASSERT_MSG(num_char == ']', fmt::format("unexpected: {}", num_char));
       // distinguish from dynamic arrays that are set to size 0
       field_print.array_size = size = FieldPrint::DYNAMIC_ARRAY;
     }
@@ -1022,13 +1029,29 @@ bool get_ptr_offset_constant_nonzero(const SimpleExpression& math, Register base
 bool get_ptr_offset(AtomicOp* ir, Register dst, Register base, int* result) {
   auto as_set = dynamic_cast<SetVarOp*>(ir);
   if (!as_set) {
+    printf("not a set, actual type: %s\n", typeid(*ir).name());
     return false;
   }
   if (as_set->dst().reg() != dst) {
+    printf("bad dst");
     return false;
   }
 
   return get_ptr_offset_constant_nonzero(as_set->src(), base, result);
+}
+
+bool get_ptr_offset_load_var_op(AtomicOp* ir, Register dst, Register base, int* result) {
+  auto as_load = dynamic_cast<LoadVarOp*>(ir);
+  if (!as_load) {
+    printf("not a set, actual type: %s\n", typeid(*ir).name());
+    return false;
+  }
+  if (as_load->get_set_destination().reg() != dst) {
+    printf("bad dst");
+    return false;
+  }
+
+  return get_ptr_offset_constant_nonzero(as_load->src(), base, result);
 }
 
 int identify_array_field(int idx,
@@ -1050,6 +1073,10 @@ int identify_array_field(int idx,
     ptr = get_ptr_offset(get_op, make_gpr(Reg::A3), make_gpr(Reg::GP), &offset);
   } else {
     ptr = get_ptr_offset(get_op, make_gpr(Reg::A2), make_gpr(Reg::GP), &offset);
+    // maybe they load it the other way (inline?)
+    if (!ptr) {
+      ptr = get_ptr_offset_load_var_op(get_op, make_gpr(Reg::A2), make_gpr(Reg::GP), &offset);
+    }
   }
 
   if (!ptr) {
@@ -1352,6 +1379,10 @@ std::string inspect_inspect_method(Function& inspect_method,
   lg::print(" iim: {}\n", inspect_method.name());
   TypeInspectorResult result;
   ASSERT(type_name == inspect_method.guessed_name.type_name);
+  if (inspect_method.name() == "(method 3 process-tree)") {
+    printf("HACK: skipping method\n");
+    return fmt::format(";; {} TODO: skipped!\n", type_name);
+  }
   TypeFlags flags;
   flags.flag = 0;
   result.found_flags = dts.lookup_flags(type_name, &flags.flag);

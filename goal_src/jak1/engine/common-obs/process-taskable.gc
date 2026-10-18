@@ -48,9 +48,9 @@
                        0.0
                        (font-color default)
                        (font-flags shadow kerning))))
-        (let ((v1-4 a1-2)) (set! (-> v1-4 width) (the float (- 512 (-> this x-position)))))
-        (let ((v1-5 a1-2)) (set! (-> v1-5 height) (the float 40)))
-        (let ((v1-6 a1-2)) (set! (-> v1-6 scale) 0.9))
+        (set-width! a1-2 (- 512 (-> this x-position)))
+        (set-height! a1-2 40)
+        (set-scale! a1-2 0.9)
         (set! (-> a1-2 flags) (font-flags shadow kerning middle-vert large))
         (print-game-text (-> this message) a1-2 #f 128 22)))
     ;; og:preserve-this PAL patch here
@@ -96,12 +96,12 @@
        (set! (-> this decision) 'no))))
   (-> this decision))
 
-(defmethod relocate ((this process-taskable) (arg0 int))
-  (the-as process-taskable ((method-of-type process-drawable relocate) this arg0)))
+(defmethod relocate ((this process-taskable) (offset int))
+  (the-as process-taskable ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod process-taskable-method-46 ((this process-taskable))
   (when (nonzero? (-> this sound-flava))
-    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (the-as vector (-> this root root-prim prim-core)))))
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root root-prim prim-core world-sphere))))
       (set! (-> s5-1 y) (* 4.0 (-> s5-1 y)))
       (cond
         ;; og:preserve-this s5-1 can be nan on the first frame after something spawns
@@ -111,7 +111,7 @@
            (set-setting! 'sound-flava #f 20.0 (-> this sound-flava))))
         ((-> this have-flava) (remove-setting! 'sound-flava) (set! (-> this have-flava) #f)))))
   (when (-> this music)
-    (let ((s5-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (the-as vector (-> this root root-prim prim-core)))))
+    (let ((s5-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root root-prim prim-core world-sphere))))
       (set! (-> s5-3 y) (* 4.0 (-> s5-3 y)))
       (cond
         ((< (vector-length s5-3) 102400.0)
@@ -460,7 +460,7 @@
 (defmethod process-taskable-method-50 ((this process-taskable))
   (if *target*
     (or (not *target*) (< 245760.0 (vector-vector-distance (-> this root trans) (-> *target* control trans))))
-    (< 60397978000.0 (vector-vector-distance-squared (the-as vector (-> this root root-prim prim-core)) (camera-pos)))))
+    (< 60397978000.0 (vector-vector-distance-squared (-> this root root-prim prim-core world-sphere) (camera-pos)))))
 
 (defstate hidden-other (process-taskable)
   :virtual #t
@@ -567,7 +567,7 @@
          (if (>= (- (-> *display* game-frame-counter) (-> self last-talk)) (seconds 10)) (set! (-> self will-talk) #t)))
         ((begin
            (process-taskable-method-46 self)
-           (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+           (and (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                           (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
                 (< (-> (target-pos 0) y) (+ 8192.0 (-> self root root-prim prim-core world-sphere y)))
                 ;; og:preserve-this
@@ -591,9 +591,9 @@
               (hide-hud)
               (when (and (hud-hidden?) (can-grab-display? self))
                 (let ((gp-1 (new 'stack 'font-context *font-default-matrix* 32 140 0.0 (font-color default) (font-flags shadow kerning))))
-                  (let ((v1-57 gp-1)) (set! (-> v1-57 width) (the float 440)))
-                  (let ((v1-58 gp-1)) (set! (-> v1-58 height) (the float 60)))
-                  (let ((v1-59 gp-1)) (set! (-> v1-59 scale) 0.9))
+                  (set-width! gp-1 440)
+                  (set-height! gp-1 60)
+                  (set-scale! gp-1 0.9)
                   (set! (-> gp-1 flags) (font-flags shadow kerning middle-vert large))
                   (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) gp-1 #f 128 22))
                 (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
@@ -780,7 +780,7 @@
                 (set! (-> self old-mat-z quad) (-> gp-0 quad)))
               (when #t
                 (set! (-> *camera-other-trans* quad) (-> s5-0 quad))
-                (vector-normalize-copy! (the-as vector (-> *camera-other-matrix* vector)) (the-as vector (-> s4-0 vector)) -1.0)
+                (vector-normalize-copy! (-> *camera-other-matrix* vector 0) (-> s4-0 vector 0) -1.0)
                 (set! (-> *camera-other-matrix* vector 0 w) 0.0)
                 (vector-normalize-copy! (-> *camera-other-matrix* vector 1) (-> s4-0 vector 1) 1.0)
                 (set! (-> *camera-other-matrix* vector 1 w) 0.0)

@@ -1,0 +1,9 @@
+("CANTBOX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-2593.go"
+  "tpage-2668.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "cantbox.o"
+ ))

@@ -21,17 +21,15 @@
 #
 # SPDX-License-Identifier: curl
 #
-""" A telnet server which negotiates"""
+"""A telnet server which negotiates."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
 import logging
 import os
 import socket
 import sys
-import time
 
 from util import ClosingFileHandler
 
@@ -40,10 +38,10 @@ if sys.version_info.major >= 3:
 else:
     import SocketServer as socketserver
 
+
 log = logging.getLogger(__name__)
 HOST = "localhost"
 IDENT = "NTEL"
-
 
 # The strings that indicate the test framework is checking our aliveness
 VERIFIED_REQ = "verifiedserver"
@@ -51,15 +49,12 @@ VERIFIED_RSP = "WE ROOLZ: {pid}"
 
 
 def telnetserver(options):
-    """
-    Starts up a TCP server with a telnet handler and serves DICT requests
-    forever.
-    """
+    """Start up a TCP server with a telnet handler and serve DICT requests forever."""
     if options.pidfile:
         pid = os.getpid()
         # see tests/server/util.c function write_pidfile
         if os.name == "nt":
-            pid += 65536
+            pid += 4194304
         with open(options.pidfile, "w") as f:
             f.write(str(pid))
 
@@ -75,13 +70,10 @@ def telnetserver(options):
 
 
 class NegotiatingTelnetHandler(socketserver.BaseRequestHandler):
-    """Handler class for Telnet connections.
+    """Handler class for Telnet connections."""
 
-    """
     def handle(self):
-        """
-        Negotiates options before reading data.
-        """
+        """Negotiates options before reading data."""
         neg = Negotiator(self.request)
 
         try:
@@ -92,7 +84,7 @@ class NegotiatingTelnetHandler(socketserver.BaseRequestHandler):
             neg.send_wont("NAWS")
 
             # Get the data passed through the negotiator
-            data = neg.recv(4*1024)
+            data = neg.recv(4 * 1024)
             log.debug("Incoming data: %r", data)
 
             if VERIFIED_REQ.encode('utf-8') in data:
@@ -100,7 +92,7 @@ class NegotiatingTelnetHandler(socketserver.BaseRequestHandler):
                 pid = os.getpid()
                 # see tests/server/util.c function write_pidfile
                 if os.name == "nt":
-                    pid += 65536
+                    pid += 4194304
                 response = VERIFIED_RSP.format(pid=pid)
                 response_data = response.encode('utf-8')
             else:
@@ -114,14 +106,14 @@ class NegotiatingTelnetHandler(socketserver.BaseRequestHandler):
             # put some effort into making a clean socket shutdown
             # that does not give the client ECONNRESET
             self.request.settimeout(0.1)
-            self.request.recv(4*1024)
+            self.request.recv(4 * 1024)
             self.request.shutdown(socket.SHUT_RDWR)
 
         except IOError:
             log.exception("IOError hit during request")
 
 
-class Negotiator(object):
+class Negotiator:
     NO_NEG = 0
     START_NEG = 1
     WILL = 2
@@ -135,14 +127,14 @@ class Negotiator(object):
 
     def recv(self, bytes):
         """
-        Read bytes from TCP, handling negotiation sequences
+        Read bytes from TCP, handling negotiation sequences.
 
         :param bytes: Number of bytes to read
         :return: a buffer of bytes
         """
         buffer = bytearray()
 
-        # If we keep receiving negotiation sequences, we won't fill the buffer.
+        # If we keep receiving negotiation sequences, we will not fill the buffer.
         # Keep looping while we can, and until we have something to give back
         # to the caller.
         while len(buffer) == 0:
@@ -175,7 +167,7 @@ class Negotiator(object):
             log.debug("Starting negotiation (IAC)")
             self.state = self.START_NEG
         else:
-            # Just append the incoming byte to the buffer
+            # Append the incoming byte to the buffer
             buffer.append(byte_int)
 
     def start_neg(self, byte_int):
@@ -197,8 +189,8 @@ class Negotiator(object):
             log.debug("Client can do")
             self.state = self.DO
         elif byte_int == NegTokens.DONT:
-            # Client is indicating they can't do an option
-            log.debug("Client can't do")
+            # Client is indicating they cannot do an option
+            log.debug("Client cannot do")
             self.state = self.DONT
         else:
             # Received an unexpected byte. Stop negotiations
@@ -250,14 +242,14 @@ class Negotiator(object):
         self.send_iac([NegTokens.WONT, NegOptions.to_val(option_str)])
 
 
-class NegBase(object):
+class NegBase:
     @classmethod
     def to_val(cls, name):
         return getattr(cls, name)
 
     @classmethod
     def from_val(cls, val):
-        for k in cls.__dict__.keys():
+        for k in cls.__dict__:
             if getattr(cls, k) == val:
                 return k
 
@@ -303,9 +295,9 @@ def get_options():
     parser.add_argument("--verbose", action="store", type=int, default=0,
                         help="verbose output")
     parser.add_argument("--pidfile", action="store",
-                        help="file name for the PID")
+                        help="filename for the PID")
     parser.add_argument("--logfile", action="store",
-                        help="file name for the log")
+                        help="filename for the log")
     parser.add_argument("--srcdir", action="store", help="test directory")
     parser.add_argument("--id", action="store", help="server ID")
     parser.add_argument("--ipv4", action="store_true", default=0,
@@ -315,9 +307,7 @@ def get_options():
 
 
 def setup_logging(options):
-    """
-    Set up logging from the command line options
-    """
+    """Set up logging from the command line options."""
     root_logger = logging.getLogger()
     add_stdout = False
 
@@ -332,7 +322,7 @@ def setup_logging(options):
         handler.setLevel(logging.DEBUG)
         root_logger.addHandler(handler)
     else:
-        # The logfile wasn't specified. Add a stdout logger.
+        # The logfile was not specified. Add a stdout logger.
         add_stdout = True
 
     if options.verbose:
@@ -349,15 +339,12 @@ def setup_logging(options):
         root_logger.addHandler(stdout_handler)
 
 
-class ScriptRC(object):
-    """Enum for script return codes"""
+class ScriptRC:
+    """Enum for script return codes."""
+
     SUCCESS = 0
     FAILURE = 1
     EXCEPTION = 2
-
-
-class ScriptException(Exception):
-    pass
 
 
 if __name__ == '__main__':
@@ -370,8 +357,8 @@ if __name__ == '__main__':
     # Run main script.
     try:
         rc = telnetserver(options)
-    except Exception as e:
-        log.exception(e)
+    except Exception:
+        log.exception('Error in telnet server')
         rc = ScriptRC.EXCEPTION
 
     if options.pidfile and os.path.isfile(options.pidfile):

@@ -2,13 +2,8 @@
 
 #include "background_common.h"
 
-#ifdef __aarch64__
-#include "third-party/sse2neon/sse2neon.h"
-#else
-#include <immintrin.h>
-#endif
-
 #include "common/util/os.h"
+#include "common/util/simd_util.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
@@ -329,9 +324,6 @@ void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
 void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
                         const tfrag3::PackedTimeOfDay& packed_colors,
                         math::Vector<u8, 4>* out) {
-#ifdef __aarch64__
-  interp_time_of_day_slow(itimes, packed_colors, out);
-#else
   math::Vector<u16, 4> weights[8];
   for (int component = 0; component < 8; component++) {
     int quad_idx = component / 2;
@@ -483,7 +475,6 @@ void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
       _mm_storel_epi64((__m128i*)(&out[color_quad * 4 + 2]), result);
     }
   }
-#endif
 }
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {

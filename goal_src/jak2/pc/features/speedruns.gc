@@ -5,6 +5,8 @@
 
 (define-extern task-close! (function string symbol))
 
+(define-extern *pc-dead-pool* dead-pool)
+
 (define *speedrun-info* (new 'static 'speedrun-info))
 (set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
 (set! (-> *speedrun-info* dump-custom-category) (new 'static 'speedrun-custom-category))
@@ -65,10 +67,10 @@
   (none))
 
 (defmethod start-run! ((this speedrun-info))
-  ;; randomize game id so the autosplitter knows to restart
-  (reset! *autosplit-info-jak2*)
   ;; turn on speedrun verification display
-  (set! (-> this display-run-info?) #t)
+  (true! (-> this display-run-info?))
+  ;; reset has-started? flag so we can flip it back to #t when jak touches ground/out of blackout
+  (false! (-> *speedrun-info* has-started?))
   (send-event (ppointer->process *speedrun-manager*) 'start-run)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
@@ -78,6 +80,40 @@
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
+    (((speedrun-category act-2))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; unlock Dark Bomb
+      (task-close! "city-oracle-level0-training")
+      ;; finish Protect Site in Dead Town
+      (task-close! "ruins-enemy-resolution")
+      ;; start player in ruins back at start
+      (start 'play (get-continue-by-name *game-info* "ruins-start"))
+      (set-master-mode 'game)
+      )
+    (((speedrun-category act-3))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; unlock Dark Bomb
+      (task-close! "city-oracle-level0-training")
+      ;; finish Defeat Baron in Mar's Tomb
+      (task-close! "tomb-boss-resolution")
+      ;; start player in tomb after Baron fight
+      (start 'play (get-continue-by-name *game-info* "tombboss-start"))
+      (set-master-mode 'game)
+      )
+    (((speedrun-category open-orbs-endgame))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; start Break Barrier at Nest
+      (task-close! "nest-get-to-gun-introduction")
+      ;; start player at Nest
+      (start 'play (get-continue-by-name *game-info* "nest-start"))
+      (set-master-mode 'game)
+      )
     (((speedrun-category all-cheats-allowed))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category custom))
@@ -89,7 +125,7 @@
         (if (string= *temp-string* "")
           (initialize! *game-info* 'game (the-as game-save #f) "game-start")
           (initialize! *game-info* 'game (the-as game-save #f) *temp-string*))
-        (until (and *target* (= (-> *target* next-state name) 'target-stance))
+        (until (and *target* (!= (-> *target* next-state name) 'target-continue))
           (suspend))
         (when (nonzero? (-> *speedrun-info* active-custom-category completed-task))
           (task-resolution-close! (-> *speedrun-info* active-custom-category completed-task)))))))
@@ -106,8 +142,10 @@
   ;;   probably like the game to automatically set the appropriate ones for you
   ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
   (case (-> this category)
-    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode))
-      ;; disable any active cheats
+    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode)
+      (speedrun-category act-2) (speedrun-category act-3)
+      (speedrun-category open-orbs-endgame))
+      ;; disable any active PC cheats
       (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
     (((speedrun-category custom))
       (set! (-> *game-info* secrets) (-> *speedrun-info* active-custom-category secrets))
@@ -265,9 +303,19 @@
           (new 'static 'popup-menu-flag :label "Hero mode"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+          (new 'static 'popup-menu-flag :label "Act 2"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category act-2)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category act-2))))
+          (new 'static 'popup-menu-flag :label "Act 3"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category act-3)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category act-3))))
+          (new 'static 'popup-menu-flag :label "All Open Orbs (Endgame)"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category open-orbs-endgame)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category open-orbs-endgame))))
           (new 'static 'popup-menu-flag :label "All cheats allowed"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
-            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))
+          ))
       (new 'static 'popup-menu-dynamic-submenu :label "Custom category select"
         :get-length (lambda () (pc-sr-mode-get-custom-category-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-custom-category-name index str-dest))
@@ -393,17 +441,36 @@
   (go-virtual idle)
   (none))
 
+(defun mark-speedrun-started ()
+  (true! (-> *speedrun-info* has-started?))
+  (none))
+
 (defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
   (when (and (-> *pc-settings* speedrunner-mode?)
              (not *speedrun-manager*))
-    (process-spawn speedrun-manager :init speedrun-manager-init #f :to *entity-pool*))
+    (process-spawn speedrun-manager :init speedrun-manager-init #f :from *pc-dead-pool* :to *pc-pool*))
   (when (and (not (-> *pc-settings* speedrunner-mode?))
              *speedrun-manager*)
     (deactivate (-> *speedrun-manager* 0)))
   ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
+    ;; Check if run/autosplitter should be started (out of blackout and player has control of jak)
+    (when (and (not (-> *speedrun-info* has-started?))
+               *target*
+               ;; not in blackout
+               (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+               (!= (-> *setting-control* user-current bg-a-force) 1.0)
+               ;; target has landed on ground/water, or we're about to enter target-hit-ground state
+               (or (logtest? (-> *target* control status) (collide-status on-ground on-surface on-water))
+                   (= (-> *target* next-state name) 'target-hit-ground)))
+      (mark-speedrun-started)
+      ;; spawn a process that resets autosplitter after suspending for 1 frame
+      (process-spawn-function process
+        (lambda ()
+          (suspend)
+          (reset! *autosplit-info-jak2*))))
     ;; Update auto-splitter struct
     (update! *autosplit-info-jak2*)
     ;; see if we should stop drawing the run info (when you escape the fortress!)

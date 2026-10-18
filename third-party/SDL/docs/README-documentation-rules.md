@@ -34,6 +34,12 @@ things, you might confuse it. This is to the benefit of documentation, though,
 where we would rather you not do surprising things.
 
 
+## UTF-8 only!
+
+All text must be UTF-8 encoded. The wiki will refuse to update files that are
+malformed.
+
+
 ## We _sort of_ write in Doxygen format.
 
 To document a symbol, we use something that looks like Doxygen (and Javadoc)
@@ -156,6 +162,23 @@ wikiheaders will wordwrap header comments so they fit in 80 columns, so if you
 don't leave a blank line between paragraphs, they will smush into a single
 block of text when wordwrapping.
 
+## Lists must be the start of a new paragraph.
+
+If you write this:
+
+```
+Here is some text without a blank line
+before an unordered list!
+- item a
+- item b
+- item c
+```
+
+...then wikiheaders will word wrap this as a single paragraph, mangling the list.
+
+Put a blank line before the list, and everything will format and wrap correctly.
+
+This is a limitation of wikiheaders. Don't get bit by it!
 
 ## Don't worry about word wrapping.
 
@@ -251,6 +274,23 @@ comment. So don't mention the type a second time in the documentation if
 possible. It looks cluttered and repetitive to do so.
 
 
+## Keep `\param` and `\returns` sections short.
+
+These strings end up in a table that we don't want to be bulky.
+Try to keep these to one sentence/phrase where possible. If you need more
+detail--even extremely common details, like "you need to free the returned
+pointer"--put that information in the general Remarks section, where you
+can be as verbose as you like.
+
+(One exception for SDL: the return value almost always notes that on error,
+you should call SDL_GetError() to get more information. The documentation
+is so saturated with this that it's just the standard now.)
+
+Convention at the moment is that pointer params that are permitted to
+be NULL, which is somewhat uncommon, end with terse "May be NULL." sentence
+at the end, and pointers that must be non-NULL (most of them) say nothing.
+This is fine.
+
 ## Code examples go in the wiki.
 
 We don't want the headers cluttered up with code examples. These live on the
@@ -304,6 +344,21 @@ to the headers:
 - "Version"
 - "See Also"
 
+## Unrecognized sections are removed from the headers!
+
+If you add Doxygen with a `##` (`###`, etc) section header, it'll
+migrate to the wiki and be _removed_ from the headers. Generally
+the correct thing to do is _never use section headers in the Doxygen_.
+
+## wikiheaders will reorder standard sections.
+
+The standard sections are always kept in a consistent order by
+wikiheaders, both in the headers and the wiki. If they're placed in
+a non-standard order, wikiheaders will reorder them.
+
+For sections that aren't standard, wikiheaders will place them at
+the end of the wiki page, in the order they were seen when it loaded
+the page for processing.
 
 ## It's okay to repeat yourself.
 
@@ -318,7 +373,7 @@ through, header users can search for the function name.
 
 You might be reading this document on the wiki! Any `README-*.md` files in
 the docs directory are bridged to the wiki, so `docs/README-linux.md` lands
-at https://wiki.libsdl.org/SDL3/README/linux ...these are just copied directly
+at https://wiki.libsdl.org/SDL3/README-linux ...these are just copied directly
 without any further processing by wikiheaders, and changes go in both
 directions.
 
@@ -408,3 +463,19 @@ Beyond stripping the initial ` * ` portion off each line, these comments are
 treated as pure Markdown. They don't support any Doxygen tags like `\sa` or
 `\since`.
 
+## Enum/struct versioning
+
+If you have an enum or struct, it'll list its `\since` field as the first SDL
+release it was available in. However, we might later add new values to an enum
+or fields to a struct. These lines, arriving in a newer version, should have a
+note about that, like this one on SDL_SCALEMODE_PIXELART:
+
+```c
+typedef enum SDL_ScaleMode
+{
+    SDL_SCALEMODE_INVALID = -1,
+    SDL_SCALEMODE_NEAREST,  /**< nearest pixel sampling */
+    SDL_SCALEMODE_LINEAR,   /**< linear filtering */
+    SDL_SCALEMODE_PIXELART  /**< nearest pixel sampling with improved scaling for pixel art (since SDL 3.3.0) */
+} SDL_ScaleMode;
+```

@@ -186,13 +186,14 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     for (auto& parm : lambda.params) {
       arg_types.push_back(parm.type);
     }
-    auto arg_regs = get_arg_registers(m_ts, arg_types);
+    auto arg_regs = get_arg_registers(m_ts, arg_types, m_instr_set);
 
     for (u32 i = 0; i < lambda.params.size(); i++) {
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
       auto ireg_arg = new_func_env->make_ireg(
-          lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+          lambda.params.at(i).type,
+          arg_regs.at(i).is_gpr(m_instr_set) ? RegClass::GPR_64 : RegClass::INT_128);
       ireg_arg->mark_as_settable();
       constr.ireg = ireg_arg->ireg();
       constr.desired_register = arg_regs.at(i);
@@ -206,7 +207,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       self_var->mark_as_settable();
       IRegConstraint constr;
       constr.contrain_everywhere = true;
-      constr.desired_register = emitter::gRegInfo.get_process_reg();
+      constr.desired_register = emitter::reg_info(m_instr_set).get_process_reg();
       constr.ireg = self_var->ireg();
       self_var->set_rlet_constraint(constr.desired_register);
       new_func_env->constrain(constr);
@@ -230,7 +231,8 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
 
     for (u32 i = 0; i < lambda.params.size(); i++) {
       auto ireg = new_func_env->make_ireg(
-          lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+          lambda.params.at(i).type,
+          arg_regs.at(i).is_gpr(m_instr_set) ? RegClass::GPR_64 : RegClass::INT_128);
       ireg->mark_as_settable();
       if (!new_func_env->params.insert({m_goos.intern_ptr(lambda.params.at(i).name), ireg})
                .second) {
@@ -264,10 +266,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       // got a result, so to_gpr it and return it.
 
       RegVal* final_result;
-      emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
+      emitter::Register ret_hw_reg = emitter::reg_info(m_instr_set).get_gpr_ret_reg();
       if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
-        ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
-        final_result = result->to_xmm128(form, new_func_env.get());
+        ret_hw_reg = emitter::reg_info(m_instr_set).get_simd_ret_reg();
+        final_result = result->to_simd128(form, new_func_env.get());
         return_reg->change_class(RegClass::INT_128);
       } else {
         final_result = result->to_gpr(form, new_func_env.get());
@@ -606,9 +608,9 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     return_ts = function->type().last_arg();
   }
 
-  auto cc = get_function_calling_convention(function->type(), m_ts);
+  auto cc = get_function_calling_convention(function->type(), m_ts, m_instr_set);
   RegClass ret_reg_class = RegClass::GPR_64;
-  if (cc.return_reg && cc.return_reg->is_xmm()) {
+  if (cc.return_reg && cc.return_reg->is_128bit_simd(m_instr_set)) {
     ret_reg_class = RegClass::INT_128;
   }
 
@@ -641,8 +643,8 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   for (int i = 0; i < (int)args.size(); i++) {
     const auto& arg = args.at(i);
     auto reg = cc.arg_regs.at(i);
-    arg_outs.push_back(
-        env->make_ireg(arg->type(), reg.is_xmm() ? RegClass::INT_128 : RegClass::GPR_64));
+    arg_outs.push_back(env->make_ireg(
+        arg->type(), reg.is_128bit_simd(m_instr_set) ? RegClass::INT_128 : RegClass::GPR_64));
     arg_outs.back()->mark_as_settable();
     env->emit_ir<IR_RegSet>(form, arg_outs.back(), arg);
   }

@@ -21,35 +21,32 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "testutil.h"
-#include "timediff.h"
-#include "warnless.h"
-#include "memdebug.h"
-
-int test(char *URL)
+static CURLcode test_lib1903(const char *URL)
 {
-  CURL *ch = NULL;
-  curl_global_init(CURL_GLOBAL_ALL);
+  CURLcode result = CURLE_OK;
+  CURL *curl = NULL;
+  global_init(CURL_GLOBAL_ALL);
 
-  ch = curl_easy_init();
-  if(!ch)
-    goto cleanup;
+  easy_init(curl);
 
-  curl_easy_setopt(ch, CURLOPT_URL, URL);
-  curl_easy_setopt(ch, CURLOPT_COOKIEFILE, libtest_arg2);
-  curl_easy_perform(ch);
+  easy_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_COOKIEFILE, libtest_arg2);
+  result = curl_easy_perform(curl);
+  if(result)
+    goto test_cleanup;
 
-  curl_easy_reset(ch);
+  curl_easy_reset(curl);
 
-  curl_easy_setopt(ch, CURLOPT_URL, URL);
-  curl_easy_setopt(ch, CURLOPT_COOKIEFILE, libtest_arg2);
-  curl_easy_perform(ch);
+  easy_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_COOKIEFILE, libtest_arg2);
+  easy_setopt(curl, CURLOPT_COOKIEJAR, libtest_arg3);
+  result = curl_easy_perform(curl);
 
-cleanup:
-  curl_easy_cleanup(ch);
+test_cleanup:
+  curl_easy_cleanup(curl);
   curl_global_cleanup();
 
-  return 0;
+  return result;
 }

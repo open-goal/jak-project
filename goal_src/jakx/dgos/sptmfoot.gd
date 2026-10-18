@@ -1,0 +1,11 @@
+("SPTMFOOT.DGO"
+ ("raceline-weapon.o"
+  "wvehicle-weapons-chicken-drone.o"
+  "football.o"
+  "football2.o"
+  "tpage-2820.go"
+  "tpage-2821.go"
+  "fuel-cell-ag.go"
+  "fuel-cell-shield-ag.go"
+  "sptmfoot.o"
+ ))

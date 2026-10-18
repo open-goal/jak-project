@@ -126,14 +126,7 @@ struct CollideMesh {
   }
 };
 
-struct BuildActorParams {
-  bool gen_collide_mesh = false;
-  s8 texture_bucket = -1;
-  s32 texture_level = -1;
-  s32 joint_channel = -1;
-  math::Vector4f trans_offset = {0.f, 0.f, 0.f, 1.f};
-  std::vector<float> lod_dist{};
-};
+struct BuildActorParams3 : BuildActorParams {};
 
 struct ArtJointGeo : ArtElement3 {
   std::vector<Joint> data;
@@ -149,7 +142,7 @@ struct ArtJointGeo : ArtElement3 {
   explicit ArtJointGeo(const std::string& name,
                        std::vector<CollideMesh> cmeshes,
                        std::vector<Joint>& joints,
-                       const BuildActorParams& params) {
+                       const BuildActorParams3& params) {
     this->name = name + "-lod0";
     master_art_group_name = name;
     master_art_group_index = 0;
@@ -214,5 +207,5 @@ struct ArtGroup : Art {
 
 bool run_build_actor(const std::string& input_model,
                      const std::string& output_file,
-                     const BuildActorParams& params);
+                     const BuildActorParams3& params);
 }  // namespace jak3

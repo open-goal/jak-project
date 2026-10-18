@@ -187,146 +187,134 @@
   )
 
 (defmethod vehicle-method-129 ((this vehicle))
-  (let ((f0-0 (-> this player-dist2))
-        (f1-0 102400.0)
-        )
-    (when (< f0-0 (* f1-0 f1-0))
-      (let ((s5-0 (new 'stack-no-clear 'mystery-vehicle-type0)))
-        (set! (-> s5-0 floats 4) (+ 8192.0 (-> this root root-prim local-sphere w)))
-        (if (logtest? (vehicle-flag ai-driving) (-> this v-flags))
-            (set! (-> s5-0 floats 4) (* 1.5 (-> s5-0 floats 4)))
-            )
-        (vector-copy! (-> s5-0 mat 0 uvec) (target-pos 0))
-        (+! (-> s5-0 mat 0 uvec y) 8192.0)
-        (matrix-copy! (-> s5-0 mat 1) (-> this node-list data 0 bone transform))
-        (vector-copy! (-> s5-0 mat 0 fvec) (-> s5-0 mat 1 trans))
-        (set! (-> s5-0 floats 2) (- (-> s5-0 mat 0 uvec y) (-> s5-0 mat 0 fvec y)))
-        (let ((f0-9 (vector-vector-xz-distance-squared (-> s5-0 mat 0 uvec) (-> s5-0 mat 0 fvec)))
-              (f1-7 (-> s5-0 floats 4))
+  (when (< (-> this player-dist2) (square 102400.0))
+    (let ((s5-0 (new 'stack-no-clear 'mystery-vehicle-type0)))
+      (set! (-> s5-0 floats 4) (+ 8192.0 (-> this root root-prim local-sphere w)))
+      (if (logtest? (vehicle-flag ai-driving) (-> this v-flags))
+          (set! (-> s5-0 floats 4) (* 1.5 (-> s5-0 floats 4)))
+          )
+      (vector-copy! (-> s5-0 mat 0 uvec) (target-pos 0))
+      (+! (-> s5-0 mat 0 uvec y) 8192.0)
+      (matrix-copy! (-> s5-0 mat 1) (-> this node-list data 0 bone transform))
+      (vector-copy! (-> s5-0 mat 0 fvec) (-> s5-0 mat 1 trans))
+      (set! (-> s5-0 floats 2) (- (-> s5-0 mat 0 uvec y) (-> s5-0 mat 0 fvec y)))
+      (when (and (< (vector-vector-xz-distance-squared (-> s5-0 mat 0 uvec) (-> s5-0 mat 0 fvec)) (square (-> s5-0 floats 4)))
+                 (< -81920.0 (-> s5-0 floats 2))
+                 (and (< (-> s5-0 floats 2) 20480.0) *target* (check-player-get-on this *target*))
+                 )
+        (let ((s2-0 #f)
+              (s4-1 #f)
+              (s3-0 #f)
               )
-          (when (and (< f0-9 (* f1-7 f1-7))
-                     (< -81920.0 (-> s5-0 floats 2))
-                     (and (< (-> s5-0 floats 2) 20480.0) *target* (check-player-get-on this *target*))
-                     )
-            (let ((s2-0 #f)
-                  (s4-1 #f)
-                  (s3-0 #f)
-                  )
-              (let ((a2-2 (get-best-seat this (-> s5-0 mat 0 uvec) (vehicle-seat-flag vsf0) 0)))
-                (when (!= a2-2 -1)
-                  (vehicle-method-66 this (-> s5-0 mat 0 fvec) a2-2)
-                  (vector+float*! (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 fvec) (-> s5-0 mat 1 uvec) 4096.0)
-                  )
-                )
-              (set! (-> s5-0 floats 1) (vector-vector-distance-squared (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec)))
-              (let ((f0-14 (-> s5-0 floats 1))
-                    (f1-12 81920.0)
+          (let ((a2-2 (get-best-seat this (-> s5-0 mat 0 uvec) (vehicle-seat-flag vsf0) 0)))
+            (when (!= a2-2 -1)
+              (vehicle-method-66 this (-> s5-0 mat 0 fvec) a2-2)
+              (vector+float*! (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 fvec) (-> s5-0 mat 1 uvec) 4096.0)
+              )
+            )
+          (set! (-> s5-0 floats 1) (vector-vector-distance-squared (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec)))
+          (when (< (-> s5-0 floats 1) (square 81920.0))
+            (vector-copy! (-> s5-0 cquery start-pos) (-> s5-0 mat 0 uvec))
+            (vector-! (-> s5-0 cquery move-dist) (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec))
+            (let ((v1-38 (-> s5-0 cquery)))
+              (set! (-> v1-38 radius) 4096.0)
+              (set! (-> v1-38 collide-with)
+                    (collide-spec
+                      backgnd
+                      crate
+                      civilian
+                      enemy
+                      obstacle
+                      hit-by-player-list
+                      hit-by-others-list
+                      player-list
+                      collectable
+                      blocking-plane
+                      tobot
+                      pusher
+                      vehicle-mesh
+                      obstacle-for-jak
+                      shield
+                      )
                     )
-                (when (< f0-14 (* f1-12 f1-12))
-                  (vector-copy! (-> s5-0 cquery start-pos) (-> s5-0 mat 0 uvec))
-                  (vector-! (-> s5-0 cquery move-dist) (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec))
-                  (let ((v1-38 (-> s5-0 cquery)))
-                    (set! (-> v1-38 radius) 4096.0)
-                    (set! (-> v1-38 collide-with)
-                          (collide-spec
-                            backgnd
-                            crate
-                            civilian
-                            enemy
-                            obstacle
-                            hit-by-player-list
-                            hit-by-others-list
-                            player-list
-                            collectable
-                            blocking-plane
-                            tobot
-                            pusher
-                            vehicle-mesh
-                            obstacle-for-jak
-                            shield
-                            )
-                          )
-                    (set! (-> v1-38 ignore-process0) this)
-                    (set! (-> v1-38 ignore-process1) #f)
-                    (set! (-> v1-38 ignore-pat)
-                          (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
-                          )
-                    (set! (-> v1-38 action-mask) (collide-action solid))
+              (set! (-> v1-38 ignore-process0) this)
+              (set! (-> v1-38 ignore-process1) #f)
+              (set! (-> v1-38 ignore-pat)
+                    (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
                     )
-                  (set! s2-0 (< (fill-and-probe-using-line-sphere *collide-cache* (-> s5-0 cquery)) 0.0))
-                  0
-                  )
-                )
-              (when s2-0
-                (when (and (or (< -14336.0 (-> s5-0 floats 2)) (logtest? (-> this v-flags) (vehicle-flag player-edge-grabbing)))
-                           (not (logtest? (vehicle-flag no-hijack gun-dark-2-zero-g) (-> this v-flags)))
-                           )
-                  (set! s4-1 #t)
-                  (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 (sqrtf (-> s5-0 floats 1)))))
-                  )
-                (when (and (not s4-1)
-                           (and (< (-> s5-0 floats 2) -8192.0) (not (logtest? (-> *target* focus-status) (focus-status edge-grab))))
-                           )
-                  (matrix-4x4-inverse! (-> s5-0 mat 2) (-> s5-0 mat 1))
-                  (vector-matrix*! (-> s5-0 mat 0 rvec) (-> s5-0 mat 0 uvec) (-> s5-0 mat 2))
-                  (set! (-> s5-0 floats 0) 81920.0)
-                  (dotimes (s2-1 (-> this info rider grab-rail-count))
-                    (let ((s1-0 (-> this info rider grab-rail-array s2-1)))
-                      (vector-! (-> s5-0 mat 0 trans) (-> s5-0 mat 0 rvec) (-> s1-0 local-pos 0))
-                      (when #t
-                        (let ((f30-0 (vector-segment-distance-point!
-                                       (-> s5-0 mat 0 rvec)
-                                       (-> s1-0 local-pos 0)
-                                       (-> s1-0 local-pos 1)
-                                       (-> s5-0 mat 0 trans)
-                                       )
-                                     )
-                              )
-                          (when (< f30-0 (-> s5-0 floats 0))
-                            (set! (-> s5-0 floats 0) f30-0)
-                            (set! (-> s5-0 vec 0 quad) (-> s5-0 mat 0 trans quad))
-                            (vector-! (-> s5-0 vec 1) (-> s1-0 local-pos 1) (-> s1-0 local-pos 0))
-                            (vector-normalize! (-> s5-0 vec 1) 1.0)
-                            (set! s3-0 #t)
-                            (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 f30-0)))
-                            )
+              (set! (-> v1-38 action-mask) (collide-action solid))
+              )
+            (set! s2-0 (< (fill-and-probe-using-line-sphere *collide-cache* (-> s5-0 cquery)) 0.0))
+            0
+            )
+          (when s2-0
+            (when (and (or (< -14336.0 (-> s5-0 floats 2)) (logtest? (-> this v-flags) (vehicle-flag player-edge-grabbing)))
+                       (not (logtest? (vehicle-flag no-hijack gun-dark-2-zero-g) (-> this v-flags)))
+                       )
+              (set! s4-1 #t)
+              (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 (sqrtf (-> s5-0 floats 1)))))
+              )
+            (when (and (not s4-1)
+                       (and (< (-> s5-0 floats 2) -8192.0) (not (logtest? (-> *target* focus-status) (focus-status edge-grab))))
+                       )
+              (matrix-4x4-inverse! (-> s5-0 mat 2) (-> s5-0 mat 1))
+              (vector-matrix*! (-> s5-0 mat 0 rvec) (-> s5-0 mat 0 uvec) (-> s5-0 mat 2))
+              (set! (-> s5-0 floats 0) 81920.0)
+              (dotimes (s2-1 (-> this info rider grab-rail-count))
+                (let ((s1-0 (-> this info rider grab-rail-array s2-1)))
+                  (vector-! (-> s5-0 mat 0 trans) (-> s5-0 mat 0 rvec) (-> s1-0 local-pos 0))
+                  (when #t
+                    (let ((f30-0 (vector-segment-distance-point!
+                                   (-> s5-0 mat 0 rvec)
+                                   (-> s1-0 local-pos 0)
+                                   (-> s1-0 local-pos 1)
+                                   (-> s5-0 mat 0 trans)
+                                   )
+                                 )
                           )
+                      (when (< f30-0 (-> s5-0 floats 0))
+                        (set! (-> s5-0 floats 0) f30-0)
+                        (set! (-> s5-0 vec 0 quad) (-> s5-0 mat 0 trans quad))
+                        (vector-! (-> s5-0 vec 1) (-> s1-0 local-pos 1) (-> s1-0 local-pos 0))
+                        (vector-normalize! (-> s5-0 vec 1) 1.0)
+                        (set! s3-0 #t)
+                        (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 f30-0)))
                         )
                       )
-                    0
                     )
                   )
-                (set! s3-0 (or s4-1 s3-0))
-                (when (and s3-0 (and (vehicle-hud-chooser-method-9 *vehicle-hud-chooser* (process->handle this) (-> s5-0 floats 3))
-                                     (can-display-query? this "vehicle" (/ 1.0 (-> s5-0 floats 3)))
-                                     )
-                           )
-                  (cond
-                    ((vehicle-method-128 this)
-                     (vehicle-method-144 this)
-                     (when (cpad-pressed? 0 triangle)
-                       (cond
-                         (s4-1
-                           (when (send-event *target* 'change-mode 'pilot this 0 #f)
-                             (logior! (-> this v-flags) (vehicle-flag player-driving))
-                             (logclear! (-> this v-flags) (vehicle-flag ai-driving))
-                             (vehicle-method-80 this)
-                             )
-                           )
-                         (else
-                           (set! (-> s5-0 proc 0) (process->handle this))
-                           (mem-copy! (the-as pointer *pilot-edge-grab-info*) (the-as pointer (-> s5-0 vec)) 40)
-                           (if (send-event *target* 'pilot-edge-grab *pilot-edge-grab-info*)
-                               (format 0 "vehicle::check-player-get-on: (send-event *target* 'pilot-edge-grab self)~%")
-                               )
-                           )
+                0
+                )
+              )
+            (set! s3-0 (or s4-1 s3-0))
+            (when (and s3-0 (and (vehicle-hud-chooser-method-9 *vehicle-hud-chooser* (process->handle this) (-> s5-0 floats 3))
+                                 (can-display-query? this "vehicle" (/ 1.0 (-> s5-0 floats 3)))
+                                 )
+                       )
+              (cond
+                ((vehicle-method-128 this)
+                 (vehicle-method-144 this)
+                 (when (cpad-pressed? 0 triangle)
+                   (cond
+                     (s4-1
+                       (when (send-event *target* 'change-mode 'pilot this 0 #f)
+                         (logior! (-> this v-flags) (vehicle-flag player-driving))
+                         (logclear! (-> this v-flags) (vehicle-flag ai-driving))
+                         (vehicle-method-80 this)
                          )
                        )
+                     (else
+                       (set! (-> s5-0 proc 0) (process->handle this))
+                       (mem-copy! (the-as pointer *pilot-edge-grab-info*) (the-as pointer (-> s5-0 vec)) 40)
+                       (if (send-event *target* 'pilot-edge-grab *pilot-edge-grab-info*)
+                           (format 0 "vehicle::check-player-get-on: (send-event *target* 'pilot-edge-grab self)~%")
+                           )
+                       )
                      )
-                    (else
-                      (vehicle-method-145 this)
-                      )
-                    )
+                   )
+                 )
+                (else
+                  (vehicle-method-145 this)
                   )
                 )
               )
@@ -1118,16 +1106,9 @@
 
 (defmethod vehicle-method-103 ((this vehicle))
   (when (time-elapsed? (-> this disturbed-time) (seconds 2))
-    (let* ((f0-0 (-> this camera-dist2))
-           (f1-0 0.000024414063)
-           (f0-1 (* f0-0 (* f1-0 f1-0)))
-           )
+    (let ((f0-1 (* (-> this camera-dist2) (square 0.000024414063))))
       (when (and (< (vector-length-squared (-> this rbody ang-velocity)) f0-1)
-                 (let ((f1-4 (vector-length-squared (-> this rbody lin-velocity)))
-                       (f2-0 614.4)
-                       )
-                   (< f1-4 (* f0-1 (* f2-0 f2-0)))
-                   )
+                 (< (vector-length-squared (-> this rbody lin-velocity)) (* f0-1 (square 614.4)))
                  )
         (logclear! (-> this v-flags) (vehicle-flag disturbed))
         (vehicle-method-142 this)

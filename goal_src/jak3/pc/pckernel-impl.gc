@@ -73,6 +73,9 @@
   (icelandic 19)
   (polish 20)
   (lithuanian 21)
+  (czech 22)
+  (croatian 23)
+  (galician 24)
 
   (custom 999) ;; temp
   )
@@ -108,6 +111,10 @@
    (controller-swap-r1-r2?    symbol)
    (pacman-dpad?              symbol)
    (speedrunner-mode-custom-bind uint32)
+   (speedrunner-mode-hm-secrets uint64)
+   (speedrunner-mode-act2-secrets uint64)
+   (speedrunner-mode-act3-secrets uint64)
+   (speedrunner-mode-postgame-secrets uint64)
 
    (memcard-subtitles? symbol)
 
@@ -139,6 +146,7 @@
    (focus-status uint64)
    (current-vehicle int32)
    (task string) ;; currenly active game-task used for mission specific images
+   (active-gun int32)
    )
   )
 
@@ -171,14 +179,32 @@
   (false! (-> obj hires-clouds?))
   (set! (-> obj speedrunner-mode-custom-bind) 0)
 
+  (cond
+    ((and (= *default-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-language english)))
+      (set! (-> obj text-language) (pc-language uk-english))
+      (set! (-> obj subtitle-language) (pc-language uk-english))
+      )
+    ;; ((= *default-territory* GAME_TERRITORY_SCEI)
+    ;;   (set! (-> obj text-language) (pc-language japanese))
+    ;;   (set! (-> obj subtitle-language) (pc-language japanese))
+    ;;   )
+    ((= *default-territory* GAME_TERRITORY_SCEK)
+      (set! (-> obj text-language) (pc-language korean))
+      (set! (-> obj subtitle-language) (pc-language korean))
+      )
+    (else
+      ))
+
   (set! (-> obj memcard-volume-sfx) 0.5)
   (set! (-> obj memcard-volume-music) 0.4)
   (set! (-> obj memcard-volume-dialog) 0.75)
   (set! (-> obj memcard-vibration?) #t)
   (set! (-> obj memcard-subtitles?) #f)
   (set! (-> obj hinttitles?) #t)
+  (set! (-> obj subtitle-speaker?) 'auto)
   0)
 
+(define-extern reset-speedrunner-mode-secrets-all! (function pc-settings-jak3 none))
 (defmethod reset-extra ((obj pc-settings-jak3) (call-handlers symbol))
   "Set the default goodies settings"
 
@@ -194,6 +220,8 @@
   (dotimes (i 6)
     (set! (-> obj flava-unlocked i) #f))
 
+  (reset-speedrunner-mode-secrets-all! obj)
+
   ;(set! (-> obj stats) *statistics*)
   0)
 
@@ -204,6 +232,7 @@
 
   (when (or (= device 'all) (= device 'controller))
     (set! (-> obj controller-led-status?) #t)
+    (set! (-> obj controller-swap-r1-r2?) #f)
     )
   0)
 
@@ -355,5 +384,3 @@
     (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
     )
   )
-
-

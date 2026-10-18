@@ -26,7 +26,7 @@ struct TfragOutput {
   std::vector<tfrag3::StripDraw> normal_strip_draws;
   std::vector<tfrag3::StripDraw> trans_strip_draws;
   std::vector<tfrag3::PreloadedVertex> tfrag_vertices;
-  std::vector<math::Vector<u8, 4>> color_palette;
+  std::vector<math::Vector<u8, 32>> color_palette;
 };
 
 struct CollideOutput {
@@ -38,7 +38,7 @@ struct TieOutput {
   std::vector<tfrag3::StripDraw> envmap_draws;
   std::vector<tfrag3::PackedTieVertices::Vertex> vertices;
   std::vector<u16> color_indices;
-  std::vector<math::Vector<u8, 4>> color_palette;
+  std::vector<math::Vector<u8, 32>> color_palette;
 };
 
 struct Output {

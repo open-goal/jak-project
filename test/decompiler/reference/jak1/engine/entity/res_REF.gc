@@ -736,9 +736,8 @@
 
 ;; definition for method 18 of type res-lump
 (defmethod add-32bit-data! ((this res-lump) (arg0 res-tag) (arg1 object))
-  (local-vars (sv-16 object))
-  (set! sv-16 arg1)
-  (let* ((v1-0 arg0)
+  (let* ((sv-16 arg1)
+         (v1-0 arg0)
          (a1-4 (copy-and-set-field v1-0 inlined? 1))
          )
     (add-data! this a1-4 (& sv-16))
@@ -748,20 +747,19 @@
 ;; definition for method 21 of type res-lump
 ;; INFO: Used lq/sq
 (defmethod get-curve-data! ((this res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
-  (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s5-0 #f))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((a0-2 ((method-of-object this get-property-data)
-                 this
-                 arg1
-                 'exact
-                 arg3
-                 (the-as pointer #f)
-                 (& sv-16)
-                 *res-static-buf*
+    (let* ((sv-16 (new 'static 'res-tag))
+           (a0-2 ((method-of-object this get-property-data)
+                  this
+                  arg1
+                  'exact
+                  arg3
+                  (the-as pointer #f)
+                  (& sv-16)
+                  *res-static-buf*
+                  )
                  )
-                )
-          )
+           )
       (when a0-2
         (set! (-> arg0 cverts) (the-as (inline-array vector) a0-2))
         (set! (-> arg0 num-cverts) (the-as int (-> sv-16 elt-count)))
@@ -774,18 +772,18 @@
             )
           (set! (-> arg0 num-cverts) 256)
           )
-        (set! sv-32 (new 'static 'res-tag))
-        (let ((a0-6 ((method-of-object this get-property-data)
-                     this
-                     arg2
-                     'exact
-                     arg3
-                     (the-as pointer #f)
-                     (& sv-32)
-                     *res-static-buf*
+        (let* ((sv-32 (new 'static 'res-tag))
+               (a0-6 ((method-of-object this get-property-data)
+                      this
+                      arg2
+                      'exact
+                      arg3
+                      (the-as pointer #f)
+                      (& sv-32)
+                      *res-static-buf*
+                      )
                      )
-                    )
-              )
+               )
           (when a0-6
             (set! (-> arg0 knots) (the-as (pointer float) a0-6))
             (set! (-> arg0 num-knots) (the-as int (-> sv-32 elt-count)))
@@ -803,7 +801,6 @@
 ;; INFO: Return type mismatch int vs res-lump.
 ;; ERROR: Failed load: (set! v1-72 (l.wu (+ a0-58 -4))) at op 206
 (defmethod mem-usage ((this res-lump) (block memory-usage-block) (flags int))
-  (local-vars (sv-16 int))
   (let ((mem-use-id 48)
         (mem-use-name "res")
         )
@@ -864,12 +861,13 @@
                  (+! (-> block data mem-use-id used) v1-63)
                  (+! (-> block data mem-use-id total) (logand -16 (+ v1-63 15)))
                  )
-               (set! sv-16 0)
-               (while (< sv-16 (-> (the-as array tag-data) length))
-                 (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
-                   ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags)
+               (let ((sv-16 0))
+                 (while (< sv-16 (-> (the-as array tag-data) length))
+                   (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
+                     ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags)
+                     )
+                   (+! sv-16 1)
                    )
-                 (set! sv-16 (+ sv-16 1))
                  )
                )
               (else

@@ -1,0 +1,10 @@
+("TORVL.DGO"
+ ("tiger-chassis-ag.o"
+  "tiger-door-d-ag.go"
+  "tiger-f-fender-c-ag.go"
+  "tiger-hood-a-ag.go"
+  "tiger-r-fender-b-ag.go"
+  "tiger-roof-d-ag.go"
+  "wheel-h-ag.go"
+  "torvl.o"
+ ))

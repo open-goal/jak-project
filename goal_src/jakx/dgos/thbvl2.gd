@@ -1,0 +1,10 @@
+("THBVL2.DGO"
+ ("leopard-chassis-ag.o"
+  "leopard-door-e-ag.go"
+  "leopard-f-fender-e-ag.go"
+  "leopard-hood-c-ag.go"
+  "leopard-r-fender-a-ag.go"
+  "leopard-roof-e-ag.go"
+  "wheel-e-ag.go"
+  "thbvl2.o"
+ ))

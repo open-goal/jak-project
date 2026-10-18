@@ -1,0 +1,13 @@
+("PKX.DGO"
+ ("common-part.o"
+  "common-obs.o"
+  "peak-part.o"
+  "peak-obs.o"
+  "tpage-2732.go"
+  "tpage-3119.go"
+  "tpage-2733.go"
+  "tpage-3154.go"
+  "snow-icebreak-c-ag.go"
+  "peak-double-flag-ag.go"
+  "peakx-vis.o"
+ ))

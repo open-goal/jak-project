@@ -2,6 +2,8 @@
 #pragma once
 #include "common/common_types.h"
 
+#include "game/sound/989snd/plugin.h"
+
 constexpr int SND_CORE_0 = 1;
 constexpr int SND_CORE_1 = 2;
 constexpr int SD_REV_MODE_OFF = 0;
@@ -86,3 +88,5 @@ s32 snd_GetSoundUserData(snd::BankHandle block_handle,
                          char* sound_name,
                          SFXUserData* dst);
 void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val);
+s8 snd_GetSoundGroup(s32 sound_handle);
+void snd_RegisterPluginHandler(snd::PluginHandler handler);

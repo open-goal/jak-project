@@ -47,13 +47,29 @@ encounter limitations or behavior that is different from other windowing systems
 
 ### Warping the mouse cursor to or from a point outside the window doesn't work
 
-- The cursor can be warped only within the window with mouse focus, provided that the `zwp_pointer_confinement_v1`
-  protocol is supported by the compositor.
+- Warping the cursor on Wayland requires that either the `wp_pointer_warp_v1` or `zwp_pointer_confinement_v1` protocol
+  is supported by the compositor. Compositors typically restrict pointer warps to be within the window that currently
+  has mouse focus.
+
+### Minimize/Restored window events are not sent, and the ```SDL_WINDOW_MINIMIZED``` flag is not set.
+
+- Wayland windows do not currently report the minimized state, aside from when it is activated programmatically via
+  ```SDL_MinimizeWindow()```. Minimizing a window from the window controls or a desktop shortcut will not send a
+  minimized event or flag the window as being minimized.
 
 ### The application icon can't be set via ```SDL_SetWindowIcon()```
 
 - Wayland requires compositor support for the `xdg-toplevel-icon-v1` protocol to set window icons programmatically.
   Otherwise, the launcher icon from the associated desktop entry file, aka a `.desktop` file, will typically be used.
+  Please see the [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/) for
+  more information on the format of this file. Note that if your application manually sets the application ID via the
+  `SDL_APP_ID` hint string, the desktop entry file name should match the application ID. For example, if your
+  application ID is set to `org.my_org.sdl_app`, the desktop entry file should be named `org.my_org.sdl_app.desktop`.
+
+### The application progress bar can't be set via ```SDL_SetWindowProgressState()``` or ```SDL_SetWindowProgressValue()```
+
+- Only some Desktop Environemnts support the underlying API. Known compatible DEs: Unity, KDE
+- The underlying API requires a desktop entry file, aka a `.desktop` file.
   Please see the [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/) for
   more information on the format of this file. Note that if your application manually sets the application ID via the
   `SDL_APP_ID` hint string, the desktop entry file name should match the application ID. For example, if your

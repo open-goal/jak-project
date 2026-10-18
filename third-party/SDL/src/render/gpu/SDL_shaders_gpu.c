@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,6 +33,15 @@ typedef struct GPU_ShaderModuleSource
     SDL_GPUShaderFormat format;
 } GPU_ShaderModuleSource;
 
+#if defined(SDL_GPU_PRIVATE)
+#define IF_PRIVATE(...)     __VA_ARGS__
+#define HAVE_PRIVATE_SHADERS 1
+#include "SDL_render_private_shaders.h"
+#else
+#define IF_PRIVATE(...)
+#define HAVE_PRIVATE_SHADERS 0
+#endif
+
 #if defined(SDL_GPU_VULKAN) && SDL_GPU_VULKAN
 #define IF_VULKAN(...)     __VA_ARGS__
 #define HAVE_SPIRV_SHADERS 1
@@ -45,7 +54,7 @@ typedef struct GPU_ShaderModuleSource
 #ifdef SDL_GPU_D3D12
 #define IF_D3D12(...)       __VA_ARGS__
 #define HAVE_DXIL60_SHADERS 1
-#include "shaders/dxil60.h"
+#include "shaders/dxil.h"
 #else
 #define IF_D3D12(...)
 #define HAVE_DXIL60_SHADERS 0
@@ -54,7 +63,7 @@ typedef struct GPU_ShaderModuleSource
 #ifdef SDL_GPU_METAL
 #define IF_METAL(...)      __VA_ARGS__
 #define HAVE_METAL_SHADERS 1
-#include "shaders/metal.h"
+#include "shaders/msl.h"
 #else
 #define IF_METAL(...)
 #define HAVE_METAL_SHADERS 0
@@ -62,12 +71,16 @@ typedef struct GPU_ShaderModuleSource
 
 typedef struct GPU_ShaderSources
 {
+    IF_PRIVATE(GPU_ShaderModuleSource private;)
     IF_VULKAN(GPU_ShaderModuleSource spirv;)
     IF_D3D12(GPU_ShaderModuleSource dxil60;)
     IF_METAL(GPU_ShaderModuleSource msl;)
     unsigned int num_samplers;
     unsigned int num_uniform_buffers;
 } GPU_ShaderSources;
+
+#define SHADER_PRIVATE(code) \
+    IF_PRIVATE(.private = { code, sizeof(code), SDL_GPU_SHADERFORMAT_PRIVATE }, )
 
 #define SHADER_SPIRV(code) \
     IF_VULKAN(.spirv = { code, sizeof(code), SDL_GPU_SHADERFORMAT_SPIRV }, )
@@ -83,47 +96,61 @@ static const GPU_ShaderSources vert_shader_sources[NUM_VERT_SHADERS] = {
     [VERT_SHADER_LINEPOINT] = {
         .num_samplers = 0,
         .num_uniform_buffers = 1,
+        SHADER_PRIVATE(linepoint_vert_private)
         SHADER_SPIRV(linepoint_vert_spv)
-        SHADER_DXIL60(linepoint_vert_sm60_dxil)
-        SHADER_METAL(linepoint_vert_metal)
+        SHADER_DXIL60(linepoint_vert_dxil)
+        SHADER_METAL(linepoint_vert_msl)
     },
     [VERT_SHADER_TRI_COLOR] = {
         .num_samplers = 0,
         .num_uniform_buffers = 1,
+        SHADER_PRIVATE(tri_color_vert_private)
         SHADER_SPIRV(tri_color_vert_spv)
-        SHADER_DXIL60(tri_color_vert_sm60_dxil)
-        SHADER_METAL(tri_color_vert_metal)
+        SHADER_DXIL60(tri_color_vert_dxil)
+        SHADER_METAL(tri_color_vert_msl)
     },
     [VERT_SHADER_TRI_TEXTURE] = {
         .num_samplers = 0,
         .num_uniform_buffers = 1,
+        SHADER_PRIVATE(tri_texture_vert_private)
         SHADER_SPIRV(tri_texture_vert_spv)
-        SHADER_DXIL60(tri_texture_vert_sm60_dxil)
-        SHADER_METAL(tri_texture_vert_metal)
+        SHADER_DXIL60(tri_texture_vert_dxil)
+        SHADER_METAL(tri_texture_vert_msl)
     },
 };
 
 static const GPU_ShaderSources frag_shader_sources[NUM_FRAG_SHADERS] = {
     [FRAG_SHADER_COLOR] = {
         .num_samplers = 0,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
+        SHADER_PRIVATE(color_frag_private)
         SHADER_SPIRV(color_frag_spv)
-        SHADER_DXIL60(color_frag_sm60_dxil)
-        SHADER_METAL(color_frag_metal)
+        SHADER_DXIL60(color_frag_dxil)
+        SHADER_METAL(color_frag_msl)
     },
     [FRAG_SHADER_TEXTURE_RGB] = {
         .num_samplers = 1,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
+        SHADER_PRIVATE(texture_rgb_frag_private)
         SHADER_SPIRV(texture_rgb_frag_spv)
-        SHADER_DXIL60(texture_rgb_frag_sm60_dxil)
-        SHADER_METAL(texture_rgb_frag_metal)
+        SHADER_DXIL60(texture_rgb_frag_dxil)
+        SHADER_METAL(texture_rgb_frag_msl)
     },
     [FRAG_SHADER_TEXTURE_RGBA] = {
         .num_samplers = 1,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
+        SHADER_PRIVATE(texture_rgba_frag_private)
         SHADER_SPIRV(texture_rgba_frag_spv)
-        SHADER_DXIL60(texture_rgba_frag_sm60_dxil)
-        SHADER_METAL(texture_rgba_frag_metal)
+        SHADER_DXIL60(texture_rgba_frag_dxil)
+        SHADER_METAL(texture_rgba_frag_msl)
+    },
+    [FRAG_SHADER_TEXTURE_ADVANCED] = {
+        .num_samplers = 3,
+        .num_uniform_buffers = 1,
+        SHADER_PRIVATE(texture_advanced_frag_private)
+        SHADER_SPIRV(texture_advanced_frag_spv)
+        SHADER_DXIL60(texture_advanced_frag_dxil)
+        SHADER_METAL(texture_advanced_frag_msl)
     },
 };
 // clang-format on
@@ -136,6 +163,10 @@ static SDL_GPUShader *CompileShader(const GPU_ShaderSources *sources, SDL_GPUDev
     if (formats == SDL_GPU_SHADERFORMAT_INVALID) {
         // SDL_GetGPUShaderFormats already set the error
         return NULL;
+#if HAVE_PRIVATE_SHADERS
+    } else if (formats & SDL_GPU_SHADERFORMAT_PRIVATE) {
+        sms = &sources->private;
+#endif // HAVE_PRIVATE_SHADERS
 #if HAVE_SPIRV_SHADERS
     } else if (formats & SDL_GPU_SHADERFORMAT_SPIRV) {
         sms = &sources->spirv;
@@ -182,6 +213,9 @@ bool GPU_InitShaders(GPU_Shaders *shaders, SDL_GPUDevice *device)
     }
 
     for (int i = 0; i < SDL_arraysize(frag_shader_sources); ++i) {
+        if (i == FRAG_SHADER_TEXTURE_CUSTOM) {
+            continue;
+        }
         shaders->frag_shaders[i] = CompileShader(
             &frag_shader_sources[i], device, SDL_GPU_SHADERSTAGE_FRAGMENT);
         if (shaders->frag_shaders[i] == NULL) {
@@ -201,6 +235,9 @@ void GPU_ReleaseShaders(GPU_Shaders *shaders, SDL_GPUDevice *device)
     }
 
     for (int i = 0; i < SDL_arraysize(shaders->frag_shaders); ++i) {
+        if (i == FRAG_SHADER_TEXTURE_CUSTOM) {
+            continue;
+        }
         SDL_ReleaseGPUShader(device, shaders->frag_shaders[i]);
         shaders->frag_shaders[i] = NULL;
     }
@@ -224,9 +261,25 @@ SDL_GPUShader *GPU_GetFragmentShader(GPU_Shaders *shaders, GPU_FragmentShaderID 
 
 void GPU_FillSupportedShaderFormats(SDL_PropertiesID props)
 {
-    SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, HAVE_SPIRV_SHADERS);
-    SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, HAVE_DXIL60_SHADERS);
-    SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, HAVE_METAL_SHADERS);
+    bool custom_shaders = false;
+    if (SDL_GetBooleanProperty(props, SDL_PROP_RENDERER_CREATE_GPU_SHADERS_SPIRV_BOOLEAN, false)) {
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, HAVE_SPIRV_SHADERS);
+        custom_shaders = true;
+    }
+    if (SDL_GetBooleanProperty(props, SDL_PROP_RENDERER_CREATE_GPU_SHADERS_DXIL_BOOLEAN, false)) {
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, HAVE_DXIL60_SHADERS);
+        custom_shaders = true;
+    }
+    if (SDL_GetBooleanProperty(props, SDL_PROP_RENDERER_CREATE_GPU_SHADERS_MSL_BOOLEAN, false)) {
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, HAVE_METAL_SHADERS);
+        custom_shaders = true;
+    }
+    if (!custom_shaders) {
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_PRIVATE_BOOLEAN, HAVE_PRIVATE_SHADERS);
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, HAVE_SPIRV_SHADERS);
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, HAVE_DXIL60_SHADERS);
+        SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, HAVE_METAL_SHADERS);
+    }
 }
 
 #endif // SDL_VIDEO_RENDER_GPU

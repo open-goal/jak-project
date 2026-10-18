@@ -7,12 +7,12 @@ import android.view.*;
 import android.view.inputmethod.BaseInputConnection;
 import android.widget.EditText;
 
-public class SDLInputConnection extends BaseInputConnection
+class SDLInputConnection extends BaseInputConnection
 {
     protected EditText mEditText;
     protected String mCommittedText = "";
 
-    public SDLInputConnection(View targetView, boolean fullEditor) {
+    SDLInputConnection(View targetView, boolean fullEditor) {
         super(targetView, fullEditor);
         mEditText = new EditText(SDL.getContext());
     }
@@ -65,17 +65,15 @@ public class SDLInputConnection extends BaseInputConnection
 
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
-        if (Build.VERSION.SDK_INT <= 29 /* Android 10.0 (Q) */) {
-            // Workaround to capture backspace key. Ref: http://stackoverflow.com/questions>/14560344/android-backspace-in-webview-baseinputconnection
-            // and https://bugzilla.libsdl.org/show_bug.cgi?id=2265
-            if (beforeLength > 0 && afterLength == 0) {
-                // backspace(s)
-                while (beforeLength-- > 0) {
-                    nativeGenerateScancodeForUnichar('\b');
-                }
-                return true;
-           }
-        }
+        // Workaround to capture backspace key. Ref: http://stackoverflow.com/questions>/14560344/android-backspace-in-webview-baseinputconnection
+        // and https://bugzilla.libsdl.org/show_bug.cgi?id=2265
+        if (beforeLength > 0 && afterLength == 0) {
+            // backspace(s)
+            while (beforeLength-- > 0) {
+                nativeGenerateScancodeForUnichar('\b');
+            }
+            return true;
+       }
 
         if (!super.deleteSurroundingText(beforeLength, afterLength)) {
             return false;

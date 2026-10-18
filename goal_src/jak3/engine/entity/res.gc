@@ -175,8 +175,8 @@ This is updated from the entity system used in Crash 2, which had most of these 
     (set! (-> v0-0 allocated-length) arg0)
     (set! (-> v0-0 data-size) arg1)
     (set! (-> v0-0 length) 0)
-    (set! (-> v0-0 data-base) (&-> (-> v0-0 tag) arg0))
-    (set! (-> v0-0 data-top) (&-> (-> v0-0 tag) arg0))
+    (set! (-> v0-0 data-base) (&-> v0-0 tag arg0))
+    (set! (-> v0-0 data-top) (&-> v0-0 tag arg0))
     v0-0
     )
   )
@@ -277,7 +277,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
         (goto cfg-60)
         )
       (let ((a3-14 t0-1)
-            (t0-4 (&-> (-> this tag) t0-1))
+            (t0-4 (&-> this tag t0-1))
             )
         (while (not (or (>= a3-14 (-> this length)) (< (the-as int a2-1) (the-as int (-> t0-4 0 name)))))
           (cond
@@ -848,9 +848,8 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 (defmethod add-32bit-data! ((this res-lump) (arg0 res-tag) (arg1 object))
   "Add a single 32-bit value using [[add-data!]]."
-  (local-vars (sv-16 object))
-  (set! sv-16 arg1)
-  (let* ((v1-0 arg0)
+  (let* ((sv-16 arg1)
+         (v1-0 arg0)
          (a1-4 (copy-and-set-field v1-0 inlined? 1))
          )
     (add-data! this a1-4 (& sv-16))
@@ -860,20 +859,19 @@ This is updated from the entity system used in Crash 2, which had most of these 
 (defmethod get-curve-data! ((this res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
   "Read curve data and write it to curve-target. Return #t if both
    control points and knots data was succesfully read, #f otherwise."
-  (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s5-0 #f))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((a0-2 ((method-of-object this get-property-data)
-                 this
-                 arg1
-                 'exact
-                 arg3
-                 (the-as pointer #f)
-                 (& sv-16)
-                 *res-static-buf*
+    (let* ((sv-16 (new 'static 'res-tag))
+           (a0-2 ((method-of-object this get-property-data)
+                  this
+                  arg1
+                  'exact
+                  arg3
+                  (the-as pointer #f)
+                  (& sv-16)
+                  *res-static-buf*
+                  )
                  )
-                )
-          )
+           )
       (when a0-2
         (set! (-> arg0 cverts) (the-as (inline-array vector) a0-2))
         (set! (-> arg0 num-cverts) (the-as int (-> sv-16 elt-count)))
@@ -886,18 +884,18 @@ This is updated from the entity system used in Crash 2, which had most of these 
             )
           (set! (-> arg0 num-cverts) 256)
           )
-        (set! sv-32 (new 'static 'res-tag))
-        (let ((a0-6 ((method-of-object this get-property-data)
-                     this
-                     arg2
-                     'exact
-                     arg3
-                     (the-as pointer #f)
-                     (& sv-32)
-                     *res-static-buf*
+        (let* ((sv-32 (new 'static 'res-tag))
+               (a0-6 ((method-of-object this get-property-data)
+                      this
+                      arg2
+                      'exact
+                      arg3
+                      (the-as pointer #f)
+                      (& sv-32)
+                      *res-static-buf*
+                      )
                      )
-                    )
-              )
+               )
           (when a0-6
             (set! (-> arg0 knots) (the-as (pointer float) a0-6))
             (set! (-> arg0 num-knots) (the-as int (-> sv-32 elt-count)))
@@ -912,7 +910,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 ;; WARN: Return type mismatch int vs res-lump.
 (defmethod mem-usage ((this res-lump) (usage memory-usage-block) (flags int))
-  (local-vars (sv-16 int))
   (let ((s3-0 49)
         (s2-0 "res")
         )
@@ -972,12 +969,13 @@ This is updated from the entity system used in Crash 2, which had most of these 
                    (+! (-> usage data s3-0 used) v1-68)
                    (+! (-> usage data s3-0 total) (logand -16 (+ v1-68 15)))
                    )
-                 (set! sv-16 0)
-                 (while (< sv-16 (-> (the-as array s0-0) length))
-                   (let ((a0-63 (-> (the-as (array object) s0-0) sv-16)))
-                     ((method-of-type (rtype-of a0-63) mem-usage) a0-63 usage flags)
+                 (let ((sv-16 0))
+                   (while (< sv-16 (-> (the-as array s0-0) length))
+                     (let ((a0-63 (-> (the-as (array object) s0-0) sv-16)))
+                       ((method-of-type (rtype-of a0-63) mem-usage) a0-63 usage flags)
+                       )
+                     (+! sv-16 1)
                      )
-                   (set! sv-16 (+ sv-16 1))
                    )
                  )
                 (else

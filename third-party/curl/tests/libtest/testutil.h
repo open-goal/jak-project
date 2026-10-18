@@ -23,27 +23,22 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curl_setup.h"
 
-struct timeval tutil_tvnow(void);
+/* build request URL */
+char *tutil_suburl(const char *base, int i);
 
-/*
- * Make sure that the first argument (t1) is the more recent time and t2 is
- * the older time, as otherwise you get a weird negative time-diff back...
- *
- * Returns: the time difference in number of milliseconds.
- */
-long tutil_tvdiff(struct timeval t1, struct timeval t2);
-
-/*
- * Same as tutil_tvdiff but with full usec resolution.
- *
- * Returns: the time difference in seconds with subsecond resolution.
- */
-double tutil_tvdiff_secs(struct timeval t1, struct timeval t2);
-
-#ifdef WIN32
-HMODULE win32_load_system_library(const TCHAR *filename);
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>  /* for getrlimit() */
 #endif
 
-#endif  /* HEADER_CURL_LIBTEST_TESTUTIL_H */
+#if defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT)
+void tutil_rlim2str(char *buf, size_t len, rlim_t val);
+#endif
+
+/*
+ * Handy CURLOPT_WRITEFUNCTION for tests that do not need to keep received
+ * data.
+ */
+size_t tutil_throwaway_cb(char *data, size_t n, size_t l, void *userp);
+
+#endif /* HEADER_CURL_LIBTEST_TESTUTIL_H */

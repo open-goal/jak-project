@@ -62,12 +62,13 @@ This gives us more freedom to write code how we want.
           (set! (-> *setting-control* user-default dialog-volume) val)))
     (new 'static 'menu-generic-carousel-option
         :name (text-id progress-sound-format)
-        :get-max-size-fn (lambda () 3)
+        :get-max-size-fn (lambda () 2) ; 3
         :get-item-label-fn (lambda ((index int))
           (case index
             ((0) (lookup-text! *common-text* (text-id progress-sound-mono) #f))
             ((1) (lookup-text! *common-text* (text-id progress-sound-stereo) #f))
-            ((2) (lookup-text! *common-text* (text-id progress-sound-surround) #f))))
+            ; ((2) (lookup-text! *common-text* (text-id progress-sound-surround) #f))
+            ))
         :get-item-index-fn (lambda () (-> *setting-control* user-default stereo-mode))
         :on-confirm (lambda ((index int) (the-progress progress)) (set! (-> *setting-control* user-default stereo-mode) index)))))
 
@@ -199,48 +200,51 @@ This gives us more freedom to write code how we want.
     )
   )
 
+(define *camera-options-pc*
+  (progress-new-generic-scrolling-page (text-id progress-camera-options)
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-camera-options-first-horz)
+      :truthy-text (text-id progress-normal)
+      :falsey-text (text-id progress-inverted)
+      :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* first-camera-h-inverted?) val)
+        (pc-settings-save)))
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-camera-options-first-vert)
+      :truthy-text (text-id progress-normal)
+      :falsey-text (text-id progress-inverted)
+      :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* first-camera-v-inverted?) val)
+        (pc-settings-save)))
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-camera-options-third-horz)
+      :truthy-text (text-id progress-normal)
+      :falsey-text (text-id progress-inverted)
+      :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* third-camera-h-inverted?) val)
+        (pc-settings-save)))
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-camera-options-third-vert)
+      :truthy-text (text-id progress-normal)
+      :falsey-text (text-id progress-inverted)
+      :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* third-camera-v-inverted?) val)
+        (pc-settings-save)))
+    (new 'static 'menu-generic-confirm-option
+      :name (text-id progress-restore-defaults)
+      :on-confirm (lambda ((val symbol))
+        (reset-camera *pc-settings* #t)
+        (pc-settings-save))))
+  )
+
 ;; TODO - this is a gross misuse of macros, instead if we want to hide a very small amount of options in one menu versus another
 ;; it's a clear indication of a missing feature (add a lambda that determines visibility, or just the use disabled one)
 (defmacro game-options-pc-input-options ()
   `(progress-new-generic-link-to-scrolling-page (text-id progress-menu-input-options)
-    ; (progress-new-generic-link-to-scrolling-page (text-id progress-camera-options)
-    ;   (new 'static 'menu-generic-boolean-option
-    ;     :name (text-id progress-camera-options-first-horz)
-    ;     :truthy-text (text-id progress-normal)
-    ;     :falsey-text (text-id progress-inverted)
-    ;     :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
-    ;     :on-confirm (lambda ((val symbol))
-    ;       (set! (-> *pc-settings* first-camera-h-inverted?) val)
-    ;       (pc-settings-save)))
-    ;   (new 'static 'menu-generic-boolean-option
-    ;     :name (text-id progress-camera-options-first-vert)
-    ;     :truthy-text (text-id progress-normal)
-    ;     :falsey-text (text-id progress-inverted)
-    ;     :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
-    ;     :on-confirm (lambda ((val symbol))
-    ;       (set! (-> *pc-settings* first-camera-v-inverted?) val)
-    ;       (pc-settings-save)))
-    ;   (new 'static 'menu-generic-boolean-option
-    ;     :name (text-id progress-camera-options-third-horz)
-    ;     :truthy-text (text-id progress-normal)
-    ;     :falsey-text (text-id progress-inverted)
-    ;     :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
-    ;     :on-confirm (lambda ((val symbol))
-    ;       (set! (-> *pc-settings* third-camera-h-inverted?) val)
-    ;       (pc-settings-save)))
-    ;   (new 'static 'menu-generic-boolean-option
-    ;     :name (text-id progress-camera-options-third-vert)
-    ;     :truthy-text (text-id progress-normal)
-    ;     :falsey-text (text-id progress-inverted)
-    ;     :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
-    ;     :on-confirm (lambda ((val symbol))
-    ;       (set! (-> *pc-settings* third-camera-v-inverted?) val)
-    ;       (pc-settings-save)))
-    ;   (new 'static 'menu-generic-confirm-option
-    ;     :name (text-id progress-restore-defaults)
-    ;     :on-confirm (lambda ((val symbol))
-    ;       (reset-camera *pc-settings* #t)
-    ;       (pc-settings-save))))
     (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
       (new 'static 'menu-generic-carousel-option
         :name (text-id progress-controller-options-select-controller)
@@ -269,6 +273,17 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* stick-deadzone))
         :on-confirm (lambda ((val float))
           (set! (-> *pc-settings* stick-deadzone) val)
+          (pc-settings-save)))
+      (new 'static 'menu-generic-slider-option
+        :name (text-id progress-controller-options-analog-sensitivity)
+        :min-value 50.0
+        :max-value 200.0
+        :step 1.0
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* stick-sensitivity))
+        :on-confirm (lambda ((val float))
+          (pc-set-axis-scale! (/ val 100.0))
+          (set! (-> *pc-settings* stick-sensitivity) val)
           (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-controller-options-ignore-if-unfocused)
@@ -473,7 +488,6 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-swedish)
                   (text-id language-name-danish)
                   (text-id language-name-norwegian)
-                  (text-id language-name-dutch)
                   (text-id language-name-br-portuguese)
                   (text-id language-name-hungarian)
                   (text-id language-name-catalan)
@@ -509,7 +523,9 @@ This gives us more freedom to write code how we want.
                   )
       :get-item-index-fn (lambda () (-> *setting-control* user-default audio-language))
       :on-confirm (lambda ((index int) (the-progress progress))
-          (set! (-> *setting-control* user-default audio-language) (the-as language-enum index)))))
+          (set! (-> *setting-control* user-default audio-language) (the-as language-enum index))
+          (set! (-> *setting-control* user-current audio-language) (the-as language-enum index))
+          (pc-settings-save))))
 
 (defmacro game-options-pc-text-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -528,19 +544,18 @@ This gives us more freedom to write code how we want.
                   (text-id progress-language-dutch)
                   (text-id progress-language-english-uk)
                   (text-id language-name-finnish)
-                  ; (text-id language-name-swedish)
-                  ; (text-id language-name-danish)
-                  ; (text-id language-name-norwegian)
-                  ; (text-id language-name-dutch)
-                  ; (text-id language-name-br-portuguese)
-                  ; (text-id language-name-hungarian)
-                  ; (text-id language-name-catalan)
-                  ; (text-id language-name-icelandic)
-                  ; (text-id language-name-polish)
-                  ; (text-id language-name-lithuanian)
-                  ; (text-id language-name-czech)
-                  ; (text-id language-name-croatian)
-                  ; (text-id language-name-galician)
+                  (text-id language-name-swedish)
+                  (text-id language-name-danish)
+                  (text-id language-name-norwegian)
+                  (text-id language-name-br-portuguese)
+                  (text-id language-name-hungarian)
+                  (text-id language-name-catalan)
+                  (text-id language-name-icelandic)
+                  (text-id language-name-polish)
+                  (text-id language-name-lithuanian)
+                  (text-id language-name-czech)
+                  (text-id language-name-croatian)
+                  (text-id language-name-galician)
                   )
       :get-item-index-fn (lambda () (-> *pc-settings* text-language))
       :on-confirm (lambda ((index int) (the-progress progress))
@@ -548,6 +563,25 @@ This gives us more freedom to write code how we want.
           (set! (-> *pc-settings* text-language) (the-as pc-language index))
           ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
           (load-level-text-files (the-as int (-> *pc-settings* text-language)))
+          (pc-settings-save))))
+
+(defmacro game-options-pc-subtitle-speaker ()
+  `(new 'static 'menu-generic-carousel-option
+      :name (text-id progress-subtitle-speaker)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id progress-subtitle-speaker-on)
+                  (text-id progress-subtitle-speaker-off)
+                  (text-id progress-subtitle-speaker-auto))
+      :get-item-index-fn (lambda ()
+        (case (-> *pc-settings* subtitle-speaker?)
+          ((#t) 0)
+          ((#f) 1)
+          (('auto) 2)))
+      :on-confirm (lambda ((index int) (the-progress progress))
+        (case index
+          ((0) (set! (-> *pc-settings* subtitle-speaker?) #t))
+          ((1) (set! (-> *pc-settings* subtitle-speaker?) #f))
+          ((2) (set! (-> *pc-settings* subtitle-speaker?) 'auto)))
           (pc-settings-save))))
 
 (defmacro misc-options-pc-discord-rpc ()
@@ -598,6 +632,7 @@ This gives us more freedom to write code how we want.
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
+    (game-options-pc-subtitle-speaker)
     (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
       (misc-options-pc-discord-rpc)
       (misc-options-pc-speedrunner-mode)
@@ -612,6 +647,7 @@ This gives us more freedom to write code how we want.
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
+    (game-options-pc-subtitle-speaker)
     ;; TODO - is there a reason we only display the territory setting on the title screen?
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-territory)
@@ -724,7 +760,7 @@ This gives us more freedom to write code how we want.
         (pc-settings-save)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-frame-rate)
-      :should-disable? (lambda () (or (not *debug-segment*) (-> *pc-settings* speedrunner-mode?)))
+      :should-disable? (lambda () (-> *pc-settings* speedrunner-mode?))
       :get-item-index-fn (lambda ()
         ;; TODO - use an array
         (case (-> *pc-settings* target-fps)

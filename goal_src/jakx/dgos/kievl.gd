@@ -1,0 +1,10 @@
+("KIEVL.DGO"
+ ("bobcat-chassis-ag.o"
+  "bobcat-door-d-ag.go"
+  "bobcat-f-fender-b-ag.go"
+  "bobcat-hood-c-ag.go"
+  "bobcat-r-fender-c-ag.go"
+  "bobcat-roof-d-ag.go"
+  "wheel-a-ag.go"
+  "kievl.o"
+ ))

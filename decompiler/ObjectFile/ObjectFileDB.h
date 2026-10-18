@@ -82,12 +82,14 @@ struct LetRewriteStats {
   int call_parent_state_handler = 0;
   int suspend_for = 0;
   int font_method = 0;
+  int light_trail_tracker_spawn = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
            vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set +
-           launch_particles + call_parent_state_handler + suspend_for + font_method;
+           launch_particles + call_parent_state_handler + suspend_for + font_method +
+           light_trail_tracker_spawn;
   }
 
   std::string print() const {
@@ -117,6 +119,7 @@ struct LetRewriteStats {
     out += fmt::format("  call_parent_state_handler: {}\n", call_parent_state_handler);
     out += fmt::format("  suspend_for: {}\n", suspend_for);
     out += fmt::format("  font_method: {}\n", font_method);
+    out += fmt::format("  light_trail_tracker_spawn: {}\n", light_trail_tracker_spawn);
     return out;
   }
 
@@ -143,6 +146,7 @@ struct LetRewriteStats {
     result.launch_particles = launch_particles + other.launch_particles;
     result.call_parent_state_handler = call_parent_state_handler + other.call_parent_state_handler;
     result.suspend_for = suspend_for + other.suspend_for;
+    result.light_trail_tracker_spawn = light_trail_tracker_spawn + other.light_trail_tracker_spawn;
     return result;
   }
 
@@ -168,6 +172,7 @@ struct LetRewriteStats {
     launch_particles += other.launch_particles;
     call_parent_state_handler += other.call_parent_state_handler;
     suspend_for += other.suspend_for;
+    light_trail_tracker_spawn += other.light_trail_tracker_spawn;
     return *this;
   }
 };
@@ -196,7 +201,8 @@ class ObjectFileDB {
   void write_disassembly(const fs::path& output_dir,
                          bool disassemble_data,
                          bool disassemble_code,
-                         bool print_hex);
+                         bool print_hex,
+                         bool dump_function_metadata);
 
   void process_object_file_data(
       ObjectFileData& data,

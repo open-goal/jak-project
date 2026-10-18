@@ -1,0 +1,95 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: obj-list.gc
+;; name in dgo: obj-list
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+;; definition of type list-link
+(deftype list-link (structure)
+  ((prev  list-link)
+   (next  list-link)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type list-link
+(defmethod inspect ((this list-link))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'list-link)
+  (format #t "~1Tprev: #<list-link @ #x~X>~%" (-> this prev))
+  (format #t "~1Tnext: #<list-link @ #x~X>~%" (-> this next))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type linked-list
+(deftype linked-list (structure)
+  ((head  list-link)
+   (tail  list-link)
+   )
+  (:methods
+    (clear! (_type_) none)
+    (linked-list-method-10 (_type_ list-link) none)
+    (linked-list-method-11 (_type_ list-link) none)
+    )
+  )
+
+;; definition for method 3 of type linked-list
+(defmethod inspect ((this linked-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'linked-list)
+  (format #t "~1Thead: #<list-link @ #x~X>~%" (-> this head))
+  (format #t "~1Ttail: #<list-link @ #x~X>~%" (-> this tail))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type linked-list
+;; WARN: Return type mismatch int vs none.
+(defmethod clear! ((this linked-list))
+  (set! (-> this head) #f)
+  (set! (-> this tail) #f)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type linked-list
+;; WARN: Return type mismatch int vs none.
+(defmethod linked-list-method-10 ((this linked-list) (arg0 list-link))
+  (set! (-> arg0 next) #f)
+  (set! (-> arg0 prev) (-> this tail))
+  (if (-> this tail)
+      (set! (-> this tail next) arg0)
+      (set! (-> this head) arg0)
+      )
+  (set! (-> this tail) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type linked-list
+;; WARN: Return type mismatch int vs none.
+(defmethod linked-list-method-11 ((this linked-list) (arg0 list-link))
+  (if (-> arg0 prev)
+      (set! (-> arg0 prev next) (-> arg0 next))
+      (set! (-> this head) (-> arg0 next))
+      )
+  (if (-> arg0 next)
+      (set! (-> arg0 next prev) (-> arg0 prev))
+      (set! (-> this tail) (-> arg0 prev))
+      )
+  0
+  (none)
+  )
+
+;; definition for function fixup-relocated-link
+;; ERROR: failed type prop at 7: add failed: list-link int

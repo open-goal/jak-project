@@ -127,6 +127,7 @@ struct VagStreamData {
   int volume2;
   int maybe_volume_3;
   int group;
+  int pan;
 };
 
 extern ISO_VAGCommand g_aVagCmds[6];

@@ -53,6 +53,7 @@
    (min-walk-anim-speed    float)
    (speed-boost-impulse    meters)))
 
+
 (define *YAKOW-bank*
   (new 'static
        'yakow-bank
@@ -112,6 +113,7 @@
    yakow-run-away
    (yakow-walk-to vector)))
 
+
 (defskelgroup *yakow-sg*
   yakow
   yakow-lod0-jg
@@ -140,35 +142,34 @@
 yakow-default-event-handler
 
 (defbehavior yakow-task-complete? yakow ((arg0 symbol))
-  (local-vars (sv-16 symbol) (sv-20 (pointer process-tree)))
   (let ((gp-0 (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))))
     (if arg0
       (process-entity-status! self (entity-perm-status complete) #t)
       (process-entity-status! self (entity-perm-status complete) #f))
     (when (or (-> self link prev) (-> self link next))
-      (set! sv-16 (the-as symbol #f))
-      (set! sv-20 (-> self child))
-      (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
-      (cond
-        (sv-16
-         (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
-         (close-specific-task! (-> self entity extra perm task) (task-status need-introduction))
-         (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-         (if gp-0 (yakow-cam))
-         ;; og:preserve-this PAL patch here
-         (process-spawn-function process
-           (lambda :behavior process ()
-             (while (or (-> *setting-control* current ambient) (-> *setting-control* current movie) (-> *setting-control* current hint))
-               (suspend))
-             (level-hint-spawn (text-id village1-yakow-resolution) "sksp018a" (the-as entity #f) *entity-pool* (game-task none)))
-           :to
-           self))
-        (else (open-specific-task! (-> self entity extra perm task) (task-status need-reminder))))
-      sv-16)))
+      (let ((sv-16 (the-as symbol #f)))
+        (let ((sv-20 (-> self child))))
+        (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+        (cond
+          (sv-16
+           (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
+           (close-specific-task! (-> self entity extra perm task) (task-status need-introduction))
+           (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+           (if gp-0 (yakow-cam))
+           ;; og:preserve-this PAL patch here
+           (process-spawn-function process
+             (lambda :behavior process ()
+               (while (or (-> *setting-control* current ambient) (-> *setting-control* current movie) (-> *setting-control* current hint))
+                 (suspend))
+               (level-hint-spawn (text-id village1-yakow-resolution) "sksp018a" (the-as entity #f) *entity-pool* (game-task none)))
+             :to
+             self))
+          (else (open-specific-task! (-> self entity extra perm task) (task-status need-reminder))))
+        sv-16))))
 
 (defbehavior yakow-common-post yakow ()
   (update-direction-from-time-of-day (-> self draw shadow-ctrl))
-  (if *target* (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) #f self))
+  (if *target* (look-at-enemy! (-> *target* neck) (-> self root root-prim prim-core world-sphere) #f self))
   (ja-post)
   (none))
 
@@ -521,7 +522,7 @@ yakow-default-event-handler
   (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control -4096.0 4096.0 614400.0 (the-as float 24) 245760.0))
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this water) (new 'process 'water-control this 6 0.0 8192.0 2048.0))
-  (set! (-> this water flags) (water-flags wt01))
+  (set! (-> this water flag) (water-flag active))
   (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
   (set! (-> this water ripple-size) 12288.0)
   (set! (-> this home-base quad) (-> this root trans quad))

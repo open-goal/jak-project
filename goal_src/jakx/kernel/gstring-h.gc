@@ -1,0 +1,59 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: gstring-h.gc
+;; name in dgo: gstring-h
+;; dgos: KERNEL
+
+(define-extern *string-tmp-str* string)
+(define-extern *temp-string* string)
+(define-extern *stdcon0* string)
+(define-extern *stdcon1* string)
+(define-extern *stdcon* string)
+(define-extern *debug-draw-pauseable* symbol)
+(define-extern string= (function string string symbol))
+
+;; DECOMP BEGINS
+
+(defun strlen ((arg0 pointer))
+  (let ((v1-0 arg0)
+        (v0-0 0)
+        )
+    (while (nonzero? (-> (the-as (pointer int8) v1-0)))
+      (+! v0-0 1)
+      (&+! v1-0 1)
+      )
+    v0-0
+    )
+  )
+
+(defun strncmp ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (let ((v1-0 arg0)
+        (a0-1 arg1)
+        )
+    (while (nonzero? arg2)
+      (if (!= (-> (the-as (pointer int8) v1-0)) (-> (the-as (pointer int8) a0-1)))
+          (return #f)
+          )
+      (if (zero? (-> (the-as (pointer int8) v1-0)))
+          (return #t)
+          )
+      (set! arg2 (+ arg2 -1))
+      (&+! v1-0 1)
+      (&+! a0-1 1)
+      )
+    )
+  #t
+  )
+
+(defun strstr ((arg0 pointer) (arg1 pointer))
+  (let ((s4-0 (strlen arg1)))
+    (while (nonzero? (-> (the-as (pointer int8) arg0)))
+      (if (strncmp arg0 arg1 s4-0)
+          (return arg0)
+          )
+      (&+! arg0 1)
+      )
+    )
+  (the-as pointer #f)
+  )

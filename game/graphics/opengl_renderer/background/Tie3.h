@@ -150,7 +150,6 @@ class Tie3 : public BucketRenderer {
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 
   bool m_has_level = false;
-  bool m_use_fast_time_of_day = true;
   bool m_debug_all_visible = false;
   bool m_hide_wind = false;
   bool m_draw_envmap_second_draw = true;

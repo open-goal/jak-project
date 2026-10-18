@@ -973,7 +973,6 @@
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this fac-switch) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1019,8 +1018,9 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fac-switch" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-26 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-26 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-26 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
@@ -1881,18 +1881,17 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-fields! ((this factory-conveyor))
-  (local-vars (sv-16 res-tag))
   (set! (-> this speed) 22528.0)
   (set! (-> this pull-y-threshold) 10240.0)
   (set! (-> this speed-mult-array) (the-as (pointer float) #f))
   (set! (-> this speed-mult-array-len) 0)
-  (let ((a0-1 (-> this entity)))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-3 (res-lump-data a0-1 'scale-factor pointer :tag-ptr (& sv-16))))
-      (when v1-3
-        (set! (-> this speed-mult-array) (the-as (pointer float) v1-3))
-        (set! (-> this speed-mult-array-len) (the-as int (-> sv-16 elt-count)))
-        )
+  (let* ((a0-1 (-> this entity))
+         (sv-16 (new 'static 'res-tag))
+         (v1-3 (res-lump-data a0-1 'scale-factor (pointer float) :tag-ptr (& sv-16)))
+         )
+    (when v1-3
+      (set! (-> this speed-mult-array) v1-3)
+      (set! (-> this speed-mult-array-len) (the-as int (-> sv-16 elt-count)))
       )
     )
   (set! (-> this belt-radius) (* 4096.0 (the-as float ((method-of-type res-lump get-property-struct)
@@ -2102,3 +2101,7 @@
       (go perish-immediately)
       )
   )
+
+
+
+

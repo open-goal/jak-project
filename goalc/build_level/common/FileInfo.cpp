@@ -1,8 +1,24 @@
 #include "FileInfo.h"
 
+#include <chrono>
+
 #include "common/versions/versions.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
+
+#include "fmt/chrono.h"
+
+std::string get_current_time_and_date() {
+  auto const now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+  std::time_t const t = std::chrono::system_clock::to_time_t(now);
+  std::tm tm{};
+#if defined(_WIN32)
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  return fmt::format("{:%a %b %d %H:%M:%S %Y}", tm);
+}
 
 size_t FileInfo::add_to_object_file(DataObjectGenerator& gen) const {
   gen.align_to_basic();
@@ -13,8 +29,8 @@ size_t FileInfo::add_to_object_file(DataObjectGenerator& gen) const {
   gen.add_word(major_version);
   gen.add_word(minor_version);
   gen.add_ref_to_string_in_pool(maya_file_name);
-  gen.add_ref_to_string_in_pool(tool_debug);
-  gen.add_ref_to_string_in_pool(tool_debug);
+  gen.add_ref_to_string_in_pool(tool_debug + " " + get_current_time_and_date() + "\n");
+  gen.add_ref_to_string_in_pool(mdb_file_name);
 
   return offset;
 }

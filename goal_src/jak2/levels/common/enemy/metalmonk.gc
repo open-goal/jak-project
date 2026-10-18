@@ -362,9 +362,9 @@
 
 (defmethod common-post ((this metalmonk))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -376,7 +376,7 @@
 
 (defmethod general-event-handler ((this metalmonk) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked 'hit-flinch)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -403,11 +403,7 @@
                             )
                        )
                   (zero? (rnd-int-count this 3))
-                  (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
-                        (f1-0 32768.0)
-                        )
-                    (>= f0-0 (* f1-0 f1-0))
-                    )
+                  (>= (vector-vector-distance-squared (-> this root trans) (target-pos 0)) (square 32768.0))
                   )
              (kill-prefer-falling this)
              )
@@ -434,13 +430,9 @@
   )
 
 (defmethod enemy-method-104 ((this metalmonk) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
-  (let* ((s3-0 arg0)
-         (a0-2 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         (s3-1 (new 'stack-no-clear 'vector))
-         )
+  (let ((a0-2 (the-as process (as-type arg0 process-focusable)))
+        (s3-1 (new 'stack-no-clear 'vector))
+        )
     (let ((s1-0 (new 'stack-no-clear 'vector)))
       (vector-! s3-1 (get-trans (the-as process-focusable a0-2) 0) (-> this root trans))
       (set! (-> s3-1 y) 0.0)
@@ -790,11 +782,9 @@
     (let ((a0-1 (handle->process (-> self focus handle))))
       (if (and a0-1
                (and (time-elapsed? (-> self state-time) (seconds 0.05))
-                    (let ((f0-0 (vector-vector-xz-distance-squared (get-trans (the-as process-focusable a0-1) 0) (-> self root trans)))
-                          (f1-0 14336.0)
-                          )
-                      (< f0-0 (* f1-0 f1-0))
-                      )
+                    (< (vector-vector-xz-distance-squared (get-trans (the-as process-focusable a0-1) 0) (-> self root trans))
+                       (square 14336.0)
+                       )
                     )
                )
           (react-to-focus self)
@@ -1150,11 +1140,11 @@
   #f
   )
 
-(defmethod relocate ((this metalmonk) (arg0 int))
+(defmethod relocate ((this metalmonk) (offset int))
   (if (nonzero? (-> this intro-path))
-      (&+! (-> this intro-path) arg0)
+      (&+! (-> this intro-path) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod init-enemy! ((this metalmonk))

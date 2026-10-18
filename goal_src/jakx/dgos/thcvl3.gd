@@ -1,0 +1,10 @@
+("THCVL3.DGO"
+ ("cheetah-chassis-ag.o"
+  "cheetah-door-d-ag.go"
+  "cheetah-f-fender-b-ag.go"
+  "cheetah-hood-d-ag.go"
+  "cheetah-r-fender-c-ag.go"
+  "cheetah-roof-d-ag.go"
+  "wheel-n-ag.go"
+  "thcvl3.o"
+ ))

@@ -190,16 +190,16 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-actor-group! ((this task-manager-forest-machine))
-  (local-vars (sv-16 res-tag))
   (let ((a0-2 (entity-by-name "neo-spawner-manager-1")))
     (when a0-2
       (set! (-> this manager-entity) a0-2)
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v0-2 (res-lump-data a0-2 'actor-groups pointer :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v0-2 (res-lump-data a0-2 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and v0-2 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-           (set! (-> this actor-group) (the-as (pointer actor-group) v0-2))
+           (set! (-> this actor-group) v0-2)
            )
           (else
             (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
@@ -309,7 +309,6 @@
 (defstate active (task-manager-forest-machine-resolution)
   :virtual #t
   :code (behavior ()
-    (local-vars (sv-16 res-tag))
     (set-setting! 'pilot #f 0.0 0)
     (while *scene-player*
       (suspend)
@@ -339,11 +338,12 @@
       )
     (suspend-for (seconds 1)
       )
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-33 (res-lump-data (-> self manager-entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-33 (res-lump-data (-> self manager-entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+           )
       (cond
         ((and v1-33 (nonzero? (-> sv-16 elt-count)))
-         (set! (-> self actor-group) (the-as (pointer actor-group) v1-33))
+         (set! (-> self actor-group) v1-33)
          (set! (-> self actor-group-count) (the-as int (-> sv-16 elt-count)))
          )
         (else
@@ -1555,3 +1555,7 @@
 (defpart 2309
   :init-specs ((:fade-a -2.56))
   )
+
+
+
+

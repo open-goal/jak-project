@@ -45,8 +45,6 @@ struct TextureId {};
 
 struct VisInfo {};
 
-struct EntityCamera {};
-
 struct BspNode {};
 
 struct Box8s {};

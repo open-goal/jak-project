@@ -8,9 +8,8 @@
 ;; DECOMP BEGINS
 
 (defbehavior cam-helper-temp camera-combiner ((arg0 (pointer camera-slave)) (arg1 (pointer camera-slave)) (arg2 float))
-  (local-vars (sv-144 cam-rotation-tracker))
-  (set! sv-144 (-> arg0 0 tracking))
-  (let ((s1-0 (-> arg0 0 trans))
+  (let ((sv-144 (-> arg0 0 tracking))
+        (s1-0 (-> arg0 0 trans))
         (gp-0 (-> arg1 0 tracking))
         (s0-0 (-> arg1 0 trans))
         )
@@ -400,30 +399,22 @@
   )
 
 (defbehavior cam-combiner-init camera-combiner ()
+  (local-vars (v1-6 matrix))
   (stack-size-set! (-> self main-thread) 512)
   (vector-reset! (-> self trans))
   (matrix-identity! (-> self inv-camera-rot))
-  (cond
-    (*math-camera*
-      (set! (-> self fov) (-> *math-camera* fov))
-      (set! (-> self trans quad) (-> *math-camera* trans quad))
-      (let* ((v1-6 (-> self inv-camera-rot))
-             (a3-0 (-> *math-camera* inv-camera-rot))
-             (a0-6 (-> a3-0 rvec quad))
-             (a1-1 (-> a3-0 uvec quad))
-             (a2-0 (-> a3-0 fvec quad))
-             (a3-1 (-> a3-0 trans quad))
-             )
-        (set! (-> v1-6 rvec quad) a0-6)
-        (set! (-> v1-6 uvec quad) a1-1)
-        (set! (-> v1-6 fvec quad) a2-0)
-        (set! (-> v1-6 trans quad) a3-1)
+  (set! v1-6 (cond
+               (*math-camera*
+                 (set! (-> self fov) (-> *math-camera* fov))
+                 (vector-copy! (-> self trans) (-> *math-camera* trans))
+                 (matrix-copy! (-> self inv-camera-rot) (-> *math-camera* inv-camera-rot))
+                 )
+               (else
+                 (set! (-> self fov) 11650.845)
+                 v1-6
+                 )
+               )
         )
-      )
-    (else
-      (set! (-> self fov) 11650.845)
-      )
-    )
   (set! (-> self interp-val) 1.0)
   (set! (-> self interp-step) 0.125)
   (set! (-> self tracking-status) (the-as uint 0))

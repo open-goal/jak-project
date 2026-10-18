@@ -1,0 +1,10 @@
+("RAYVL.DGO"
+ ("wheel-i-ag.o"
+  "wolf-chassis-ag.go"
+  "wolf-door-d-ag.go"
+  "wolf-f-bumper-a-ag.go"
+  "wolf-hood-c-ag.go"
+  "wolf-r-bumper-a-ag.go"
+  "wolf-roof-d-ag.go"
+  "rayvl.o"
+ ))

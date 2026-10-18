@@ -1,11 +1,15 @@
 #include "libscf.h"
 
+#include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 #ifdef _WIN32
 // clang-format off
 #include <Windows.h>
 #include <WinNls.h>
+#elif __linux__
+#include <clocale>
 // clang-format on
 #endif
 
@@ -42,6 +46,40 @@ int sceScfGetLanguage() {
     }
   } else if (curLangMain == LANG_DUTCH) {
     return SCE_DUTCH_LANGUAGE;
+  } else if (curLangMain == LANG_KOREAN) {
+    return SCE_KOREAN_LANGUAGE;
+  }
+#elif __linux__
+  const char* lang = std::getenv("LANG");
+  if (!lang)
+    return SCE_ENGLISH_LANGUAGE;
+
+  if (!std::strncmp(lang, "ja", 2)) {
+    return SCE_JAPANESE_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "en", 2)) {
+    return SCE_ENGLISH_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "fr", 2)) {
+    return SCE_FRENCH_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "es", 2)) {
+    return SCE_SPANISH_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "de", 2)) {
+    return SCE_GERMAN_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "it", 2)) {
+    return SCE_ITALIAN_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "pt", 2)) {
+    return SCE_PORTUGUESE_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "nl", 2)) {
+    return SCE_DUTCH_LANGUAGE;
+  }
+  if (!std::strncmp(lang, "ko", 2)) {
+    return SCE_KOREAN_LANGUAGE;
   }
 #endif
   return SCE_ENGLISH_LANGUAGE;

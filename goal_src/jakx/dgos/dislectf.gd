@@ -1,0 +1,10 @@
+("DISLECTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-2757.go"
+  "tpage-2758.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "dislectf.o"
+ ))

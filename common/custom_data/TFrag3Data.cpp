@@ -3,14 +3,9 @@
 #include <algorithm>
 #include <functional>
 
-#ifndef __aarch64__
-#include "xmmintrin.h"
-#else
-#include "third-party/sse2neon/sse2neon.h"
-#endif
-
 #include "common/log/log.h"
 #include "common/util/Assert.h"
+#include "common/util/simd_util.h"
 
 namespace tfrag3 {
 

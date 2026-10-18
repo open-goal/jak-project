@@ -2172,16 +2172,17 @@
   (set! *maker-num-alive* (+ *maker-num-alive* 1))
   (set! *maker-num-visible* (+ *maker-num-visible* 1))
   (if (-> self draw shadow)
-      (set! (-> self draw shadow-ctrl) (new
-                                         'process
-                                         'shadow-control
-                                         -81920.0
-                                         163840.0
-                                         573440.0
-                                         (the-as vector #f)
-                                         (shadow-flags shdf00 shdf04)
-                                         4096000.0
-                                         )
+      (set! (-> self draw shadow-ctrl)
+            (new
+              'process
+              'shadow-control
+              -81920.0
+              163840.0
+              573440.0
+              (the-as vector #f)
+              (shadow-flags shdf00 shdf04)
+              4096000.0
+              )
             )
       (set! (-> self draw shadow-ctrl) *enemy-dummy-shadow-control*)
       )
@@ -2232,7 +2233,7 @@
   (set! (-> self prim-targeted) -1)
   (set! (-> self damage-idx) 0)
   (dotimes (s4-2 5)
-    (set! (-> self damage-info s4-2 part) (create-launch-control (-> *part-group-id-table* 543) self))
+    (set! (-> self damage-info s4-2 part) (create-launch-control group-maker-damage-sparks self))
     ;; og:preserve-this
     (vector-reset! (-> self damage-info s4-2 pos))
     (set! (-> self damage-info s4-2 jnt) (the-as uint (-> *maker-damage-joint-array* s4-2)))
@@ -2269,31 +2270,18 @@
   (set! (-> self draw lod-set lod 0 dist) 14336000.0)
   (logclear! (-> self mask) (process-mask actor-pause))
   (logior! (-> self mask) (process-mask no-kill))
-  (let ((gp-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-    (set! (-> gp-1 tracked-obj) (process->handle self))
-    (set! (-> gp-1 appearance) *maker-entry-trail*)
-    (set! (-> gp-1 max-num-crumbs) (the int (* 0.5 (the float (-> gp-1 appearance max-age)))))
-    (set! (-> gp-1 track-immediately?) #t)
-    (let* ((v1-104
-             (estimate-light-trail-mem-usage
-               (the-as uint (-> gp-1 max-num-crumbs))
-               (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
-               )
-             )
-           (s5-1 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-104 8192) 1))
-           )
-      (set! (-> self trail-handle)
-            (ppointer->handle (when s5-1
-                                (let ((t9-22 (method-of-type process activate)))
-                                  (t9-22 s5-1 self "light-trail" (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process s5-1 light-trail-tracker-init-by-other gp-1)
-                                (-> s5-1 ppointer)
-                                )
-                              )
-            )
-      )
-    )
+  (set! (-> self trail-handle)
+        (ppointer->handle (light-trail-tracker-spawn
+                            light-trail-tracker-projectile
+                            :to self
+                            :param-list ((tracked-obj (process->handle self))
+                             (appearance *maker-entry-trail*)
+                             (max-num-crumbs (the int (* 0.5 (the float (-> *maker-entry-trail* max-age)))))
+                             (track-immediately? #t)
+                             )
+                            )
+                          )
+        )
   (go-virtual flying)
   )
 
@@ -2342,18 +2330,25 @@
        )
      )
     (('event-over)
-     ;; og:preserve-this handle->process nonsense
-     (let ((makers (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker))))
-           (flyer-shots (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 dm-flyer-shot))))
-           (grenades (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker-grenade))))
-           )
-       (and
-         (not (process->handle makers))
-         (not (process->handle flyer-shots))
-         (not (process->handle grenades))
-         (-> this completed)
-         )
-       )
+     (and (not (handle->process
+                 (process->handle (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker))))
+                 )
+               )
+          (not (handle->process
+                 (process->handle
+                   (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 dm-flyer-shot)))
+                   )
+                 )
+               )
+          (and (not (handle->process
+                      (process->handle
+                        (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker-grenade)))
+                        )
+                      )
+                    )
+               (-> this completed)
+               )
+          )
      )
     (('fail)
      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
@@ -2396,10 +2391,8 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       0.0
       (set-vector! s5-0 6585594.5 263189.94 -1938929.1 1.0)
-      (let ((f0-5 (vector-vector-distance-squared s5-0 (target-pos 0)))
-            (f1-0 409600.0)
-            )
-        (if (and (< (* f1-0 f1-0) f0-5) (!= (-> this info index) 1))
+      (let ((f0-5 (vector-vector-distance-squared s5-0 (target-pos 0))))
+        (if (and (< (square 409600.0) f0-5) (!= (-> this info index) 1))
             (send-event this 'fail)
             )
         )

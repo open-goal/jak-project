@@ -325,7 +325,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -371,8 +370,9 @@
     )
   (set! (-> this offset-index) 0)
   (set! (-> this key-index) 0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-33 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-33))
@@ -964,14 +964,6 @@
   :virtual #t
   :event tomb-plat-simon-handler
   :enter (behavior ()
-    (local-vars
-      (sv-96 target)
-      (sv-128 vector)
-      (sv-136 int)
-      (sv-144 int)
-      (sv-160 int)
-      (sv-176 (function vector vector float))
-      )
     (set-time! (-> self state-time))
     (set! (-> self plat-idx) 0)
     (dotimes (gp-0 (-> self plat-count))
@@ -979,62 +971,46 @@
           (send-event (handle->process (-> self plat gp-0)) 'die-unmaskable)
           )
       )
-    (set! sv-96 (the-as target (as-type *target* process-focusable)))
-    (dotimes (gp-2 (-> self plat-count))
-      (set! sv-128 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (the float gp-2) 'exact))
-      (set! sv-136 -1)
-      (dotimes (v1-20 (+ (-> self plat-seq-count) -1))
-        (if (= gp-2 (-> self plat-seq v1-20))
-            (set! sv-136 (the-as int (-> self plat-seq (+ v1-20 1))))
+    (let ((sv-96 (the-as target (as-type *target* process-focusable))))
+      (dotimes (gp-2 (-> self plat-count))
+        (let ((sv-128 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (the float gp-2) 'exact))
+              (sv-136 -1)
+              )
+          (dotimes (v1-20 (+ (-> self plat-seq-count) -1))
+            (if (= gp-2 (-> self plat-seq v1-20))
+                (set! sv-136 (the-as int (-> self plat-seq (+ v1-20 1))))
+                )
             )
-        )
-      (let ((v1-26 (the int (* 0.000061035156 (+ 40960000.0 (-> sv-128 x)))))
-            (a0-21 (the int (* 0.000061035156 (+ 40960000.0 (-> sv-128 z)))))
-            )
-        (set! sv-144 (logand (logior (logand v1-26 1) (* a0-21 2)) 3))
-        )
-      (let* ((s5-0 (get-process *default-dead-pool* tomb-simon-block #x4000))
-             (s4-0 (when s5-0
-                     (let ((t9-4 (method-of-type tomb-simon-block activate)))
-                       (t9-4
-                         (the-as tomb-simon-block s5-0)
-                         self
-                         (symbol->string (-> tomb-simon-block symbol))
-                         (the-as pointer #x70004000)
+          (let* ((v1-26 (the int (* 0.000061035156 (+ 40960000.0 (-> sv-128 x)))))
+                 (a0-21 (the int (* 0.000061035156 (+ 40960000.0 (-> sv-128 z)))))
+                 (sv-144 (logand (logior (logand v1-26 1) (* a0-21 2)) 3))
+                 (s5-0 (get-process *default-dead-pool* tomb-simon-block #x4000))
+                 (s4-0 (when s5-0
+                         (let ((t9-4 (method-of-type tomb-simon-block activate)))
+                           (t9-4
+                             (the-as tomb-simon-block s5-0)
+                             self
+                             (symbol->string (-> tomb-simon-block symbol))
+                             (the-as pointer #x70004000)
+                             )
+                           )
+                         (run-now-in-process
+                           s5-0
+                           tomb-simon-block-init-by-other
+                           sv-128
+                           gp-2
+                           sv-136
+                           (the int (* 0.00012207031 (vector-vector-xz-distance (get-trans sv-96 0) sv-128)))
+                           sv-144
+                           )
+                         (-> s5-0 ppointer)
                          )
                        )
-                     (let ((s4-1 run-function-in-process)
-                           (s3-0 s5-0)
-                           (s2-0 tomb-simon-block-init-by-other)
-                           (s1-0 sv-128)
-                           (s0-0 gp-2)
-                           )
-                       (set! sv-160 sv-136)
-                       (let ((f30-0 0.00012207031))
-                         (set! sv-176 vector-vector-xz-distance)
-                         (let* ((a0-26 (get-trans sv-96 0))
-                                (a1-9 sv-128)
-                                (t1-0 (the int (* f30-0 (sv-176 a0-26 a1-9))))
-                                (t2-0 sv-144)
-                                )
-                           ((the-as (function object object object object object object object none) s4-1)
-                            s3-0
-                            s2-0
-                            s1-0
-                            s0-0
-                            sv-160
-                            t1-0
-                            t2-0
-                            )
-                           )
-                         )
-                       )
-                     (-> s5-0 ppointer)
-                     )
-                   )
-             )
-        (send-event (ppointer->process s4-0) 'reparent)
-        (set! (-> self plat gp-2) (ppointer->handle s4-0))
+                 )
+            (send-event (ppointer->process s4-0) 'reparent)
+            (set! (-> self plat gp-2) (ppointer->handle s4-0))
+            )
+          )
         )
       )
     )
@@ -1127,13 +1103,13 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (change-parent this *pusher-pool*)
   (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-2 (res-lump-data (-> this entity) 'plat-seq pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-2 (res-lump-data (-> this entity) 'plat-seq pointer :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-2 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this plat-seq-count) (the-as int (-> sv-16 elt-count)))
@@ -2155,7 +2131,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (with-pp
     (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
       (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
@@ -2201,8 +2176,9 @@
     (set! (-> this fact)
           (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
           )
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-26 (res-lump-data (-> this entity) 'vibe-pattern pointer :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-26 (res-lump-data (-> this entity) 'vibe-pattern pointer :tag-ptr (& sv-16)))
+           )
       (cond
         ((and v1-26 (nonzero? (-> sv-16 elt-count)))
          (set! (-> this pat-tbl) (the-as (pointer int32) v1-26))
@@ -2215,8 +2191,9 @@
           )
         )
       )
-    (set! sv-32 (new 'static 'res-tag))
-    (let ((v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32))))
+    (let* ((sv-32 (new 'static 'res-tag))
+           (v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32)))
+           )
       (cond
         ((and v1-33 (nonzero? (-> sv-32 elt-count)))
          (set! (-> this actor-group) (the-as (pointer actor-group) v1-33))

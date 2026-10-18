@@ -35,14 +35,15 @@ const std::map<std::string, std::string> level_names = {
 
 // for remapping sub-level names to the matching one in level_names
 std::map<std::string, std::string> level_name_remap = {
-    {"introcst", "intro"}, {"templex", "temple"}, {"combx", "comb"},      {"volcanox", "volcano"},
-    {"railx", "rail"},     {"railb2", "rail"},    {"rubblea2", "rubble"}, {"wasstada", "wasstad"},
+    {"introcst", "intro"}, {"templex", "temple"},   {"combm", "comb"},       {"combn", "comb"},
+    {"combx", "comb"},     {"volcanox", "volcano"}, {"volcanoa", "volcano"}, {"railx", "rail"},
+    {"railb2", "rail"},    {"rubblea2", "rubble"},  {"wasstada", "wasstad"}, {"lfacrm2", "factory"},
 };
 
 const std::map<std::string, std::pair<char, char>> level_remap_hack = {
     {"forest", {'a', 'b'}}, {"factory", {'a', 'd'}}, {"stadium", {'a', 'b'}},
     {"hang", {'a', 'b'}},   {"wascity", {'a', 'b'}}, {"nst", {'a', 'b'}},
-    {"mhcity", {'a', 'b'}}, {"sew", {'a', 'o'}},     {"comb", {'a', 'n'}},
+    {"mhcity", {'a', 'b'}}, {"sew", {'a', 'o'}},     {"comb", {'a', 'e'}},
     {"rail", {'a', 'e'}},   {"desert", {'a', 'h'}},  {"temple", {'a', 'd'}},
     {"ctygen", {'a', 'c'}}, {"ctyind", {'a', 'b'}},  {"ctyslum", {'a', 'c'}},
     {"mine", {'a', 'e'}},   {"rubble", {'a', 'c'}},  {"precur", {'a', 'd'}},
@@ -53,7 +54,7 @@ void remap_hack() {
     auto base_name = name.first;
     auto suffix_start = name.second.first;
     auto suffix_end = name.second.second;
-    for (int i = 0; i < suffix_end - suffix_start; i++) {
+    for (int i = 0; i <= suffix_end - suffix_start; i++) {
       auto suffix = static_cast<char>(suffix_start + i);
       std::string level(base_name);
       level.push_back(suffix);

@@ -15,6 +15,7 @@
 #include "common/versions/versions.h"
 
 #include "goalc/debugger/DebugInfo.h"
+#include "goalc/emitter/InstructionSet.h"
 
 struct FunctionDebugInfo;
 class TypeSystem;
@@ -64,6 +65,7 @@ struct ObjectGeneratorStats {
 class ObjectGenerator {
  public:
   ObjectGenerator(GameVersion version);
+  ObjectGenerator(GameVersion version, InstructionSet instr_set);
   ObjectFileData generate_data_v3(const TypeSystem* ts);
   FunctionRecord add_function_to_seg(int seg,
                                      FunctionDebugInfo* debug,
@@ -99,9 +101,12 @@ class ObjectGenerator {
 
   GameVersion version() const { return m_version; }
 
+  InstructionSet instr_set() const { return m_instruction_set; }
+
  private:
   void handle_temp_static_type_links(int seg);
   void handle_temp_jump_links(int seg);
+  void patch_arm64_branch(int seg, int patch_location, int delta, ARM64::RelocKind kind);
   void handle_temp_instr_sym_links(int seg);
   void handle_temp_static_sym_links(int seg);
   void handle_temp_rip_data_links(int seg);
@@ -209,6 +214,7 @@ class ObjectGenerator {
   template <typename T>
   using seg_map = std::array<std::map<std::string, std::vector<T>>, N_SEG>;
   GameVersion m_version;
+  InstructionSet m_instruction_set;
 
   // final data
   seg_vector<u8> m_data_by_seg;
@@ -231,6 +237,7 @@ class ObjectGenerator {
   // final link stuff
   seg_map<int> m_type_ptr_links_by_seg;
   seg_map<int> m_sym_links_by_seg;
+  seg_map<int> m_sym_mov32_links_by_seg;  // ARM64 only
   seg_vector<RipLink> m_rip_links_by_seg;
   seg_vector<PointerLink> m_pointer_links_by_seg;
 

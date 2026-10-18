@@ -1,0 +1,9 @@
+("ATOLLART.DGO"
+ ("net-artifact.o"
+  "tpage-2759.go"
+  "pre-artifact-a-ag.go"
+  "pre-artifact-d-ag.go"
+  "pre-artifact-b-ag.go"
+  "pre-artifact-c-ag.go"
+  "atollart.o"
+ ))

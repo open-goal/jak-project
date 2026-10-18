@@ -60,13 +60,21 @@ void set_discord_rpc(int state) {
   gDiscordRpcEnabled = state;
 }
 
+// get base level name from sublevel ("wascitya" -> "wascity")
+std::string get_base_level_name(const std::map<std::string, std::string>& level_name_remap,
+                                const char* level_name) {
+  // ignore sublevels
+  auto it = level_name_remap.find(level_name);
+  const auto base_name = it == level_name_remap.end() ? level_name : it->second;
+  return base_name;
+}
+
 // get full level name from symbol name ("village1" -> "Sandover Village")
 const char* get_full_level_name(const std::map<std::string, std::string>& level_names,
                                 const std::map<std::string, std::string>& level_name_remap,
                                 const char* level_name) {
   // ignore sublevels
-  auto it = level_name_remap.find(level_name);
-  auto actual_level_name = it == level_name_remap.end() ? level_name : it->second;
+  auto actual_level_name = get_base_level_name(level_name_remap, level_name);
 
   const auto& nice_name = level_names.find(actual_level_name);
   if (nice_name != level_names.end()) {

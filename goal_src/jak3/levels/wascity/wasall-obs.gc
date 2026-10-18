@@ -348,6 +348,11 @@
 (defstate attacking-0 (tentacle)
   :virtual #t
   :event tentacle-attack-handler
+  ;; og:preserve-this make sure tentacle-loop sound isn't orphaned and looping forever
+  :exit (behavior ()
+    (when (and (!= (-> self next-state name) 'attacking-1) (!= (-> self next-state name) 'kill-player))
+      (sound-stop (-> self sound-id-loop)))
+    )
   :trans (behavior ()
     (set! (-> self sound-id-attack)
           (add-process *gui-control* self (gui-channel background) (gui-action queue) "tentacle" -99.0 0)
@@ -452,6 +457,8 @@
     (if *target*
         (send-event *target* 'end-mode 'bot)
         )
+    ;; og:preserve-this make sure tentacle-loop sound isn't orphaned and looping forever
+    (sound-stop (-> self sound-id-loop))
     )
   :code (behavior ()
     (ja-channel-push! 1 0)

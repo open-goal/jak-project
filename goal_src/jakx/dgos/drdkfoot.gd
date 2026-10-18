@@ -1,0 +1,11 @@
+("DRDKFOOT.DGO"
+ ("raceline-weapon.o"
+  "wvehicle-weapons-chicken-drone.o"
+  "football.o"
+  "football2.o"
+  "tpage-3807.go"
+  "tpage-3808.go"
+  "fuel-cell-ag.go"
+  "fuel-cell-shield-ag.go"
+  "drdkfoot.o"
+ ))

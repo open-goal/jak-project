@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -679,7 +679,7 @@ void SetupVulkanRenderProperties(VulkanVideoContext *context, SDL_PropertiesID p
     SDL_SetNumberProperty(props, SDL_PROP_RENDERER_CREATE_VULKAN_GRAPHICS_QUEUE_FAMILY_INDEX_NUMBER, context->graphicsQueueFamilyIndex);
 }
 
-#if LIBAVUTIL_VERSION_MAJOR >= 59
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 34, 100)
 static void AddQueueFamily(AVVulkanDeviceContext *ctx, int idx, int num, VkQueueFlagBits flags)
 {
     AVVulkanDeviceQueueFamily *entry = &ctx->qf[ctx->nb_qf++];
@@ -687,7 +687,7 @@ static void AddQueueFamily(AVVulkanDeviceContext *ctx, int idx, int num, VkQueue
     entry->num = num;
     entry->flags = flags;
 }
-#endif /* LIBAVUTIL_VERSION_MAJOR */
+#endif /* LIBAVUTIL_VERSION_INT */
 
 void SetupVulkanDeviceContextData(VulkanVideoContext *context, AVVulkanDeviceContext *ctx)
 {
@@ -700,7 +700,7 @@ void SetupVulkanDeviceContextData(VulkanVideoContext *context, AVVulkanDeviceCon
     ctx->nb_enabled_inst_extensions = context->instanceExtensionsCount;
     ctx->enabled_dev_extensions = context->deviceExtensions;
     ctx->nb_enabled_dev_extensions = context->deviceExtensionsCount;
-#if LIBAVUTIL_VERSION_MAJOR >= 59
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 34, 100)
     AddQueueFamily(ctx, context->graphicsQueueFamilyIndex, context->graphicsQueueCount, VK_QUEUE_GRAPHICS_BIT);
     AddQueueFamily(ctx, context->transferQueueFamilyIndex, context->transferQueueCount, VK_QUEUE_TRANSFER_BIT);
     AddQueueFamily(ctx, context->computeQueueFamilyIndex, context->computeQueueCount, VK_QUEUE_COMPUTE_BIT);
@@ -716,7 +716,7 @@ void SetupVulkanDeviceContextData(VulkanVideoContext *context, AVVulkanDeviceCon
     ctx->nb_encode_queues = 0;
     ctx->queue_family_decode_index = context->decodeQueueFamilyIndex;
     ctx->nb_decode_queues = context->decodeQueueCount;
-#endif /* LIBAVUTIL_VERSION_MAJOR */
+#endif /* LIBAVUTIL_VERSION_INT */
 }
 
 static int CreateCommandBuffers(VulkanVideoContext *context, SDL_Renderer *renderer)
@@ -938,12 +938,8 @@ void DestroyVulkanVideoContext(VulkanVideoContext *context)
         if (context->device) {
             context->vkDeviceWaitIdle(context->device);
         }
-        if (context->instanceExtensions) {
-            SDL_free(context->instanceExtensions);
-        }
-        if (context->deviceExtensions) {
-            SDL_free(context->deviceExtensions);
-        }
+        SDL_free(context->instanceExtensions);
+        SDL_free(context->deviceExtensions);
         if (context->waitSemaphores) {
             for (uint32_t i = 0; i < context->waitSemaphoreCount; ++i) {
                 context->vkDestroySemaphore(context->device, context->waitSemaphores[i], NULL);
@@ -1015,4 +1011,4 @@ void DestroyVulkanVideoContext(VulkanVideoContext *context)
 {
 }
 
-#endif // FFMPEG_VULKAN_SUPPORT
+#endif /* FFMPEG_VULKAN_SUPPORT */

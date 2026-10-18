@@ -1,12 +1,294 @@
 #pragma once
 
-#ifndef JAK_INSTRUCTION_H
-#define JAK_INSTRUCTION_H
+#include <cstring>
+#include <span>
+#include <variant>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
 namespace emitter {
+
+/*!
+ * A high-level description of a opcode.  It can emit itself.
+ */
+template <typename InstructionType>
+struct InstructionImpl {
+  /*!
+   * Emit into a buffer and return how many bytes written (can be zero)
+   */
+  u8 emit(u8* buffer) const { return static_cast<const InstructionType*>(this)->emit(buffer); }
+
+  // TODO - the below might only be relevant for X86, in which case
+  // they can eventually leave this parent type
+  // and at that point, things can likely be simplified
+  //
+  // For now, just trying to make things compile / work
+  u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
+
+  int get_imm_size() const { return static_cast<const InstructionType*>(this)->get_imm_size(); }
+
+  int get_disp_size() const { return static_cast<const InstructionType*>(this)->get_disp_size(); }
+
+  int offset_of_imm() const { return static_cast<const InstructionType*>(this)->offset_of_imm(); }
+
+  int offset_of_disp() const { return static_cast<const InstructionType*>(this)->offset_of_disp(); }
+};
+
+namespace ARM64 {
+struct Field {
+  u32 bits;
+  constexpr explicit Field(u32 v) : bits(v) {}
+};
+
+constexpr u32 Base(u32 value, u32 width) {
+  return value << (32 - width);
+}
+
+// TODO - consider passing in the instruction name to make debugging easier when an assertion is
+// hit
+
+constexpr u64 pow2(u64 n) {
+  return 1ull << n;
+}
+
+constexpr s64 pow2s(u64 n) {
+  return 1ull << n;
+}
+
+constexpr Field Hw(u32 x) {
+  ASSERT(x >= 0 && x <= (4 - 1));
+  return Field{x << 21};
+}
+
+constexpr Field Sh(u32 x) {
+  ASSERT(x >= 0 && x <= (2 - 1));
+  return Field{(x & 1) << 22};
+}
+
+// shift field for shifted register instructions, bits 22 through 23
+constexpr Field Shift(u32 x) {
+  ASSERT(x >= 0 && x <= (4 - 1));
+  return Field{(x & 0b11) << 22};
+}
+
+constexpr Field Rd(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 0};
+}
+
+constexpr Field Rt(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 0};
+}
+
+constexpr Field Rn(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 5};
+}
+
+constexpr Field Rm(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 16};
+}
+
+// second register for load and store pairs, bits 10 through 14
+constexpr Field Rt2(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 10};
+}
+
+// accumulate register for multiply-add instructions, bits 10 through 14
+constexpr Field Ra(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
+  return Field{(x & 31) << 10};
+}
+
+// element size and index selector of the SIMD copy family, bits 16-20
+constexpr Field Imm5(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(5) - 1));
+  return Field{(x & 0b11111) << 16};
+}
+
+constexpr Field Imm4(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(4) - 1));
+  return Field{(x & 0b111111) << 11};
+}
+
+constexpr Field Imm6(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(6) - 1));
+  return Field{(x & 0b111111) << 10};
+}
+
+constexpr Field Imm9s(s32 x) {
+  ASSERT(x >= (pow2s(9 - 1) * -1) && x <= (pow2s(9 - 1) - 1));
+  return Field{(static_cast<u32>(x) & 0b111111111) << 12};
+}
+
+constexpr Field Imm12(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(12) - 1));
+  return Field{(static_cast<u32>(x) & 0b111111111111) << 10};
+}
+
+// MOVZ/MOVK immediate field, bits 5 through 20.
+constexpr Field Imm16(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(16) - 1));
+  return Field{static_cast<u32>((x & (pow2(16) - 1)) << 5)};
+}
+
+constexpr Field Imm26(u32 x) {
+  ASSERT(x >= 0 && x <= (67108864 - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b11111111111111111111111111) << 0};
+}
+
+constexpr Field Imm19(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(19) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b1111111111111111111) << 5};
+}
+
+constexpr Field Immlo(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(2) - 1));
+  return Field{(static_cast<u32>(x) & 0b11) << 29};
+}
+
+constexpr Field Immhi(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(19) - 1));
+  return Field{(static_cast<u32>(x) & 0b1111111111111111111) << 5};
+}
+
+constexpr Field Imms(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(6) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 10};
+}
+
+constexpr Field Immr(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(6) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
+}
+
+constexpr Field Immh(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(4) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 19};
+}
+
+constexpr Field Immb(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(3) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
+}
+
+constexpr Field Cond(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(4) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b1111) << 0};
+}
+
+//! Linker relocation in an ARM64 instruction word.
+enum class RelocKind : u8 {
+  NONE = 0,
+  BRANCH26,  //! B uses a signed imm26 word offset from the branch instruction.
+  BRANCH19,  //! B.cond uses a signed imm19 word offset from the branch instruction.
+  MOV32,     //! MOVZ/MOVK stores a u32 in two consecutive words.
+};
+}  // namespace ARM64
+
+struct InstructionARM64 : InstructionImpl<InstructionARM64> {
+  // The ARM instruction stream is a sequence of word-aligned words.
+  // Each ARM instruction is a single 32-bit word in that stream.
+  //
+  // Some x86 instructions are not possible to represent in ARM in a single instruction
+  // however, in order to not have to overhaul things at the IR level,
+  // it feels preferably to instead allow an instruction to emit multiple instructions if needed
+  //
+  // To do so, the instruction can optionally include multiple encodings
+  // all of which are emitted at once.
+  static constexpr int max_instrs = 64;
+
+  u32 encodings[max_instrs]{};
+  u8 count = 0;
+
+  // relocation kind and instruction word for linker patching
+  ARM64::RelocKind reloc_kind = ARM64::RelocKind::NONE;
+  u8 reloc_word = 0;
+
+  InstructionARM64() = delete;
+
+  // --- single instruction ---
+  template <typename... Fs>
+  constexpr InstructionARM64(uint32_t base, Fs... fields) {
+    static_assert((std::is_same_v<Fs, emitter::ARM64::Field> && ...));
+    encodings[0] = (base | ... | fields.bits);
+    count = 1;
+  }
+
+  // --- multi instruction (variadic) ---
+  template <typename... Instrs>
+  constexpr InstructionARM64(const Instrs&... instrs)
+    requires(std::is_same_v<Instrs, InstructionARM64> && ...)
+  {
+    u8 idx = 0;
+    auto append = [&](const InstructionARM64& i) {
+      ASSERT_MSG(idx + i.count <= max_instrs, "Too many instructions in a multi-ARM64-instruction");
+      if (i.reloc_kind != ARM64::RelocKind::NONE) {
+        reloc_kind = i.reloc_kind;
+        reloc_word = u8(idx + i.reloc_word);
+      }
+      for (uint8_t j = 0; j < i.count; ++j) {
+        encodings[idx++] = i.encodings[j];
+      }
+    };
+    (append(instrs), ...);
+    count = idx;
+  }
+
+  InstructionARM64(std::span<const InstructionARM64> instrs) {
+    u8 idx = 0;
+    for (const auto& i : instrs) {
+      ASSERT_MSG(idx + i.count <= max_instrs, "Too many instructions in a multi-ARM64-instruction");
+      if (i.reloc_kind != ARM64::RelocKind::NONE) {
+        reloc_kind = i.reloc_kind;
+        reloc_word = u8(idx + i.reloc_word);
+      }
+      for (uint8_t j = 0; j < i.count; ++j) {
+        encodings[idx++] = i.encodings[j];
+      }
+    }
+    count = idx;
+  }
+
+  //! Return a copy with one word marked for linker relocation.
+  InstructionARM64 with_reloc(ARM64::RelocKind kind, u8 word = 0) const {
+    InstructionARM64 result = *this;
+    ASSERT(word < result.count);
+    result.reloc_kind = kind;
+    result.reloc_word = word;
+    return result;
+  }
+
+  uint32_t emit(uint8_t* buffer) const {
+    if (count == 1 && encodings[0] == 0) {
+      return 0;
+    }
+    memcpy(buffer, encodings, count * 4);
+    return count * 4;
+  }
+
+  uint8_t length() const {
+    if (count == 1 && encodings[0] == 0) {
+      return 0;
+    }
+    return count * 4;
+  }
+
+  // TODO ARM - all placeholders, no idea if this is even relevant, if not, get rid of it all
+  // ARM64 relocations use reloc_kind and reloc_word instead.
+  int get_imm_size() const { return 0; }
+
+  int offset_of_imm() const { return 0; }
+
+  int offset_of_disp() const { return 0; }
+
+  int get_disp_size() const { return 0; }
+};
+
 /*!
  * The ModRM byte
  */
@@ -133,13 +415,7 @@ struct VEX2 {
       : R(r), reg_id(_reg_id), prefix(_prefix), L(l) {}
 };
 
-/*!
- * A high-level description of an x86-64 opcode.  It can emit itself.
- */
-struct Instruction {
-  Instruction(uint8_t opcode) : op(opcode) {}
-  uint8_t op;
-
+struct InstructionX86 : InstructionImpl<InstructionX86> {
   enum Flags {
     kOp2Set = (1 << 0),
     kOp3Set = (1 << 1),
@@ -151,23 +427,27 @@ struct Instruction {
     kSetImm = (1 << 7),
   };
 
+  InstructionX86(u8 opcode) : op(opcode) {}
+
+  u8 op;
+
   u8 m_flags = 0;
 
-  uint8_t op2;
+  u8 op2;
 
-  uint8_t op3;
+  u8 op3;
 
   u8 n_vex = 0;
-  uint8_t vex[3] = {0, 0, 0};
+  u8 vex[3] = {0, 0, 0};
 
   // the rex byte
-  uint8_t m_rex = 0;
+  u8 m_rex = 0;
 
   // the modrm byte
-  uint8_t m_modrm = 0;
+  u8 m_modrm = 0;
 
   // the sib byte
-  uint8_t m_sib = 0;
+  u8 m_sib = 0;
 
   // the displacement
   Imm disp;
@@ -924,10 +1204,7 @@ struct Instruction {
     return offset;
   }
 
-  /*!
-   * Emit into a buffer and return how many bytes written (can be zero)
-   */
-  uint8_t emit(uint8_t* buffer) const {
+  uint32_t emit(uint8_t* buffer) const {
     if (m_flags & kIsNull)
       return 0;
     uint8_t count = 0;
@@ -1015,6 +1292,41 @@ struct Instruction {
     return count;
   }
 };
-}  // namespace emitter
 
-#endif  // JAK_INSTRUCTION_H
+class Instruction {
+ public:
+  using Variant = std::variant<InstructionX86, InstructionARM64>;
+
+  Variant instr;
+
+  Instruction() = delete;
+
+  template <typename T>
+  Instruction(T v) : instr(std::move(v)) {}
+
+  u32 emit(u8* buffer) const {
+    return std::visit([&](auto const& i) { return i.emit(buffer); }, instr);
+  }
+
+  u8 length() const {
+    return std::visit([](auto const& i) { return i.length(); }, instr);
+  }
+
+  int get_imm_size() const {
+    return std::visit([](auto const& i) { return i.get_imm_size(); }, instr);
+  }
+
+  int get_disp_size() const {
+    return std::visit([](auto const& i) { return i.get_disp_size(); }, instr);
+  }
+
+  int offset_of_imm() const {
+    return std::visit([](auto const& i) { return i.offset_of_imm(); }, instr);
+  }
+
+  int offset_of_disp() const {
+    return std::visit([](auto const& i) { return i.offset_of_disp(); }, instr);
+  }
+};
+
+}  // namespace emitter

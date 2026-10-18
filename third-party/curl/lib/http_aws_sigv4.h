@@ -11,7 +11,7 @@
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -25,7 +25,10 @@
  ***************************************************************************/
 #include "curl_setup.h"
 
+#include "curlx/dynbuf.h"
+#include "urldata.h"
+
 /* this is for creating aws_sigv4 header output */
-CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy);
+CURLcode Curl_output_aws_sigv4(struct Curl_easy *data);
 
 #endif /* HEADER_CURL_HTTP_AWS_SIGV4_H */

@@ -101,6 +101,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
     });
     GameSubtitleDB db;
     if (kind == "subtitle") {
+      db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
     } else {
       db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
     }

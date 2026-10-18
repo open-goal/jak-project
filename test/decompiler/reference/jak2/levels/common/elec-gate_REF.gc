@@ -182,17 +182,16 @@
 ;; definition for function elec-gate-post
 ;; INFO: Used lq/sq
 (defbehavior elec-gate-post elec-gate ()
-  (local-vars (curr-bolt elec-gate-bolt) (curr-point int))
   (let ((num-points (-> self params ring-spec num-points)))
     (dotimes (bolt-idx 5)
-      (set! curr-bolt (-> self l-bolt bolt-idx))
-      (let ((s4-0
-              (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
-              )
-            (s3-0
-              (get-point-at-percent-along-path! (-> self path-r) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
-              )
-            )
+      (let* ((curr-bolt (-> self l-bolt bolt-idx))
+             (s4-0
+               (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
+               )
+             (s3-0
+               (get-point-at-percent-along-path! (-> self path-r) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
+               )
+             )
         (let ((a0-2 (-> curr-bolt bolt))
               (v1-10 s4-0)
               )
@@ -211,13 +210,14 @@
           (set! (-> s0-0 y) 0.0)
           (set! (-> s0-0 z) (-> curr-bolt ring-radius))
           (set! (-> s0-0 w) 0.0)
-          (let ((f30-0 (* 65536.0 (/ 1.0 (the float (+ num-points -1))))))
-            (set! curr-point 0)
+          (let ((f30-0 (* 65536.0 (/ 1.0 (the float (+ num-points -1)))))
+                (curr-point 0)
+                )
             (while (< curr-point num-points)
               (set-point! s2-0 curr-point (vector+! (new 'stack-no-clear 'vector) s4-0 s0-0))
               (set-point! s1-0 curr-point (vector+! (new 'stack-no-clear 'vector) s3-0 s0-0))
               (vector-rotate-y! s0-0 s0-0 f30-0)
-              (set! curr-point (+ curr-point 1))
+              (+! curr-point 1)
               )
             )
           )
@@ -398,19 +398,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars
-      (sv-176
-        (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker)
-        )
-      (sv-192 lightning-spec)
-      (sv-208 int)
-      (sv-224 symbol)
-      (sv-240 symbol)
-      (sv-256 lightning-spec)
-      (sv-272 int)
-      (sv-288 symbol)
-      (sv-304 symbol)
-      )
     (let ((proc-focus (the-as target (as-type *target* process-focusable))))
       (when proc-focus
         (let ((focus-trans (get-trans proc-focus 0)))
@@ -452,73 +439,27 @@
                        (get-point-at-percent-along-path! (-> self path-r) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp)
                        )
                      )
-                (let ((s2-0 (get-process *default-dead-pool* lightning-tracker #x4000)))
-                  (when s2-0
-                    (let ((t9-7 (method-of-type lightning-tracker activate)))
-                      (t9-7
-                        (the-as lightning-tracker s2-0)
-                        *entity-pool*
-                        (symbol->string (-> lightning-tracker symbol))
-                        (the-as pointer #x70004000)
-                        )
-                      )
-                    (let ((s1-0 run-function-in-process)
-                          (s0-0 s2-0)
-                          )
-                      (set! sv-176 lightning-tracker-init)
-                      (set! sv-192 (-> self params bolt-spec))
-                      (set! sv-208 15)
-                      (set! sv-224 (the-as symbol #f))
-                      (set! sv-240 (the-as symbol #f))
-                      (let ((t3-0 (get-trans proc-focus 3)))
-                        ((the-as (function object object object object object object object object none) s1-0)
-                         s0-0
-                         sv-176
-                         sv-192
-                         sv-208
-                         sv-224
-                         sv-240
-                         s3-2
-                         t3-0
-                         )
-                        )
-                      )
-                    (-> s2-0 ppointer)
-                    )
+                (process-spawn
+                  lightning-tracker
+                  :init lightning-tracker-init
+                  (-> self params bolt-spec)
+                  15
+                  (the-as symbol #f)
+                  (the-as symbol #f)
+                  s3-2
+                  (get-trans proc-focus 3)
+                  :to *entity-pool*
                   )
-                (let ((s3-3 (get-process *default-dead-pool* lightning-tracker #x4000)))
-                  (when s3-3
-                    (let ((t9-11 (method-of-type lightning-tracker activate)))
-                      (t9-11
-                        (the-as lightning-tracker s3-3)
-                        *entity-pool*
-                        (symbol->string (-> lightning-tracker symbol))
-                        (the-as pointer #x70004000)
-                        )
-                      )
-                    (let ((s2-1 run-function-in-process)
-                          (s1-1 s3-3)
-                          (s0-1 lightning-tracker-init)
-                          )
-                      (set! sv-256 (-> self params bolt-spec))
-                      (set! sv-272 15)
-                      (set! sv-288 (the-as symbol #f))
-                      (set! sv-304 (the-as symbol #f))
-                      (let ((t3-1 (get-trans proc-focus 3)))
-                        ((the-as (function object object object object object object object object none) s2-1)
-                         s1-1
-                         s0-1
-                         sv-256
-                         sv-272
-                         sv-288
-                         sv-304
-                         s4-2
-                         t3-1
-                         )
-                        )
-                      )
-                    (-> s3-3 ppointer)
-                    )
+                (process-spawn
+                  lightning-tracker
+                  :init lightning-tracker-init
+                  (-> self params bolt-spec)
+                  15
+                  (the-as symbol #f)
+                  (the-as symbol #f)
+                  s4-2
+                  (get-trans proc-focus 3)
+                  :to *entity-pool*
                   )
                 )
               )

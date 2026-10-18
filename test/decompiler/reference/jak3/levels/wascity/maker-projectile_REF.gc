@@ -790,41 +790,39 @@
         (set! (-> s5-0 ignore-proc) (process->handle #f))
         (explosion-spawn s5-0 (the-as process-drawable *default-pool*))
         )
-      (let ((f0-6 81920.0))
-        (cond
-          ((< (* f0-6 f0-6) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
-           (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
-           (vector-copy! (-> gp-0 trans) (-> self root trans))
-           (if (logtest? (-> group-maker-grenade-explosion flags) (sp-group-flag sp13))
-               (part-tracker-spawn
-                 part-tracker-subsampler
-                 :to *entity-pool*
-                 :group group-maker-grenade-explosion
-                 :mat-joint gp-0
-                 )
-               (part-tracker-spawn part-tracker :to *entity-pool* :group group-maker-grenade-explosion :mat-joint gp-0)
+      (cond
+        ((< (square 81920.0) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
+         (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
+         (vector-copy! (-> gp-0 trans) (-> self root trans))
+         (if (logtest? (-> group-maker-grenade-explosion flags) (sp-group-flag sp13))
+             (part-tracker-spawn
+               part-tracker-subsampler
+               :to *entity-pool*
+               :group group-maker-grenade-explosion
+               :mat-joint gp-0
                )
-           (sound-play "ball-explode")
-           )
-          (else
-            (quaternion->matrix gp-0 (-> *target* control quat))
-            (vector-copy! (-> gp-0 trans) (-> *target* control trans))
-            (if (logtest? (-> group-maker-grenade-explosion-bottom flags) (sp-group-flag sp13))
-                (part-tracker-spawn
-                  part-tracker-subsampler
-                  :to *entity-pool*
-                  :group group-maker-grenade-explosion-bottom
-                  :mat-joint gp-0
-                  )
-                (part-tracker-spawn
-                  part-tracker
-                  :to *entity-pool*
-                  :group group-maker-grenade-explosion-bottom
-                  :mat-joint gp-0
-                  )
+             (part-tracker-spawn part-tracker :to *entity-pool* :group group-maker-grenade-explosion :mat-joint gp-0)
+             )
+         (sound-play "ball-explode")
+         )
+        (else
+          (quaternion->matrix gp-0 (-> *target* control quat))
+          (vector-copy! (-> gp-0 trans) (-> *target* control trans))
+          (if (logtest? (-> group-maker-grenade-explosion-bottom flags) (sp-group-flag sp13))
+              (part-tracker-spawn
+                part-tracker-subsampler
+                :to *entity-pool*
+                :group group-maker-grenade-explosion-bottom
+                :mat-joint gp-0
                 )
-            (sound-play "ball-hit-turret")
-            )
+              (part-tracker-spawn
+                part-tracker
+                :to *entity-pool*
+                :group group-maker-grenade-explosion-bottom
+                :mat-joint gp-0
+                )
+              )
+          (sound-play "ball-hit-turret")
           )
         )
       )
@@ -937,26 +935,14 @@
   (set! (-> this max-speed) 450560.0)
   (set! (-> this timeout) (seconds 12))
   (set! (-> this gravity) 40960.0)
-  (let ((s5-2 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-    (set! (-> s5-2 tracked-obj) (process->handle this))
-    (set! (-> s5-2 appearance) *maker-grenade-trail*)
-    (set! (-> s5-2 max-num-crumbs) (the int (* 0.5 (the float (-> s5-2 appearance max-age)))))
-    (set! (-> s5-2 track-immediately?) #t)
-    (let* ((v1-32 (estimate-light-trail-mem-usage
-                    (the-as uint (-> s5-2 max-num-crumbs))
-                    (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
-                    )
-                  )
-           (s4-1 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-32 8192) 1))
-           )
-      (when s4-1
-        (let ((t9-11 (method-of-type process activate)))
-          (t9-11 s4-1 this "light-trail" (the-as pointer #x70004000))
-          )
-        (run-now-in-process s4-1 light-trail-tracker-init-by-other s5-2)
-        (-> s4-1 ppointer)
-        )
-      )
+  (light-trail-tracker-spawn
+    light-trail-tracker-projectile
+    :to this
+    :param-list ((tracked-obj (process->handle this))
+     (appearance *maker-grenade-trail*)
+     (max-num-crumbs (the int (* 0.5 (the float (-> *maker-grenade-trail* max-age)))))
+     (track-immediately? #t)
+     )
     )
   (set-vector! (-> this root scale) 16.0 16.0 16.0 1.0)
   (set! (-> this minimap) #f)

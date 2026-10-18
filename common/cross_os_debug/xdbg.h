@@ -107,6 +107,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out);
 bool set_regs_now(const ThreadID& tid, const Regs& in);
 bool break_now(const ThreadID& tid);
 bool cont_now(const ThreadID& tid);
+bool single_step_now(const ThreadID& tid);
 bool open_memory(const ThreadID& tid, MemoryHandle* out);
 bool close_memory(const ThreadID& tid, MemoryHandle* handle);
 bool read_goal_memory(u8* dest_buffer,

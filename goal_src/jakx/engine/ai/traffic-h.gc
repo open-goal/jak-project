@@ -1,0 +1,419 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: traffic-h.gc
+;; name in dgo: traffic-h
+;; dgos: ENGINE, GAME
+
+(declare-type vehicle-manager process)
+
+;; +++driver-type
+(defenum driver-type
+  :type uint8
+  (d-jak 0)
+  (d-ashelin 1)
+  (d-razer 2)
+  (d-klever 3)
+  (d-kiera 4)
+  (d-thug-a 5)
+  (d-thug-b 6)
+  (d-thug-c 7)
+  (d-taryn 8)
+  (d-torn 9)
+  (d-sig 10)
+  (d-ur-86 11)
+  (d-kaeden 12)
+  (d-rayn 13)
+  (d-ratchet 14)
+  (d-jaka 15)
+  (d-jakb 16)
+  (d-jakc 17)
+  (d-daxter 18)
+  (d-gtblitz 19)
+  (d-pecker 20)
+  (d-ximon 21)
+  (d-osmo 22)
+  (none 23)
+)
+;; ---driver-type
+
+
+;; +++traffic-vehicle-type
+(defenum traffic-vehicle-type
+  :type uint8
+  (v-mongoose 0)
+  (v-falcon 1)
+  (v-wombat 2)
+  (v-possum 3)
+  (v-bobcat 4)
+  (v-cougar 5)
+  (v-wolf 6)
+  (v-bear 7)
+  (v-leopard 8)
+  (v-panther 9)
+  (v-tiger 10)
+  (v-cheetah 11)
+  (v-gila 12)
+  (v-snake 13)
+  (v-daxtermobile 14)
+  (v-drone 15)
+  (v-dart 16)
+  (test-bike 17)
+  (test-car 18)
+  (none 19)
+  (any 20)
+)
+;; ---traffic-vehicle-type
+
+(declare-type driver-jak driver)
+(declare-type driver-ashelin driver)
+(declare-type driver-razer driver)
+(declare-type driver-klever driver)
+(declare-type driver-kiera driver)
+(declare-type driver-thug-a driver)
+(declare-type driver-thug-b driver)
+(declare-type driver-thug-c driver)
+(declare-type driver-taryn driver)
+(declare-type driver-torn driver)
+(declare-type driver-sig driver)
+(declare-type driver-ur-86 driver)
+(declare-type driver-kaeden driver)
+(declare-type driver-rayn driver)
+(declare-type driver-ratchet driver)
+(declare-type driver-jaka driver)
+(declare-type driver-jakb driver)
+(declare-type driver-jakc driver)
+(declare-type driver-daxter driver)
+(declare-type driver-gtblitz driver)
+(declare-type driver-pecker driver)
+(declare-type driver-ximon driver)
+(declare-type driver-osmo driver)
+
+;; DECOMP BEGINS
+
+(define *vehicle-manager* (the-as vehicle-manager #f))
+
+(defun-debug vehicle-type->string ((arg0 traffic-vehicle-type))
+  (case arg0
+    (((traffic-vehicle-type v-mongoose))
+     "v-mongoose"
+     )
+    (((traffic-vehicle-type v-wombat))
+     "v-wombat"
+     )
+    (((traffic-vehicle-type v-snake))
+     "v-snake"
+     )
+    (((traffic-vehicle-type v-bobcat))
+     "v-bobcat"
+     )
+    (((traffic-vehicle-type v-panther))
+     "v-panther"
+     )
+    (((traffic-vehicle-type v-dart))
+     "v-dart"
+     )
+    (((traffic-vehicle-type v-daxtermobile))
+     "v-daxtermobile"
+     )
+    (((traffic-vehicle-type v-cheetah))
+     "v-cheetah"
+     )
+    (((traffic-vehicle-type test-bike))
+     "test-bike"
+     )
+    (((traffic-vehicle-type v-bear))
+     "v-bear"
+     )
+    (((traffic-vehicle-type v-falcon))
+     "v-falcon"
+     )
+    (((traffic-vehicle-type v-gila))
+     "v-gila"
+     )
+    (((traffic-vehicle-type any))
+     "any"
+     )
+    (((traffic-vehicle-type v-drone))
+     "v-drone"
+     )
+    (((traffic-vehicle-type v-possum))
+     "v-possum"
+     )
+    (((traffic-vehicle-type test-car))
+     "test-car"
+     )
+    (((traffic-vehicle-type v-leopard))
+     "v-leopard"
+     )
+    (((traffic-vehicle-type none))
+     "none"
+     )
+    (((traffic-vehicle-type v-wolf))
+     "v-wolf"
+     )
+    (((traffic-vehicle-type v-tiger))
+     "v-tiger"
+     )
+    (((traffic-vehicle-type v-cougar))
+     "v-cougar"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(defun-debug driver-type->string ((arg0 driver-type))
+  (case arg0
+    (((driver-type d-taryn))
+     "d-taryn"
+     )
+    (((driver-type d-ratchet))
+     "d-ratchet"
+     )
+    (((driver-type d-klever))
+     "d-klever"
+     )
+    (((driver-type d-jakb))
+     "d-jakb"
+     )
+    (((driver-type d-pecker))
+     "d-pecker"
+     )
+    (((driver-type d-razer))
+     "d-razer"
+     )
+    (((driver-type d-thug-b))
+     "d-thug-b"
+     )
+    (((driver-type d-sig))
+     "d-sig"
+     )
+    (((driver-type d-daxter))
+     "d-daxter"
+     )
+    (((driver-type d-torn))
+     "d-torn"
+     )
+    (((driver-type d-kiera))
+     "d-kiera"
+     )
+    (((driver-type d-osmo))
+     "d-osmo"
+     )
+    (((driver-type d-thug-c))
+     "d-thug-c"
+     )
+    (((driver-type d-kaeden))
+     "d-kaeden"
+     )
+    (((driver-type d-ashelin))
+     "d-ashelin"
+     )
+    (((driver-type d-ur-86))
+     "d-ur-86"
+     )
+    (((driver-type d-jak))
+     "d-jak"
+     )
+    (((driver-type none))
+     "none"
+     )
+    (((driver-type d-jaka))
+     "d-jaka"
+     )
+    (((driver-type d-jakc))
+     "d-jakc"
+     )
+    (((driver-type d-rayn))
+     "d-rayn"
+     )
+    (((driver-type d-thug-a))
+     "d-thug-a"
+     )
+    (((driver-type d-ximon))
+     "d-ximon"
+     )
+    (((driver-type d-gtblitz))
+     "d-gtblitz"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(defun type-from-driver-type ((arg0 driver-type))
+  (case arg0
+    (((driver-type d-jak))
+     driver-jak
+     )
+    (((driver-type d-ashelin))
+     driver-ashelin
+     )
+    (((driver-type d-razer))
+     driver-razer
+     )
+    (((driver-type d-klever))
+     driver-klever
+     )
+    (((driver-type d-kiera))
+     driver-kiera
+     )
+    (((driver-type d-thug-a))
+     driver-thug-a
+     )
+    (((driver-type d-thug-b))
+     driver-thug-b
+     )
+    (((driver-type d-thug-c))
+     driver-thug-c
+     )
+    (((driver-type d-taryn))
+     driver-taryn
+     )
+    (((driver-type d-torn))
+     driver-torn
+     )
+    (((driver-type d-sig))
+     driver-sig
+     )
+    (((driver-type d-ur-86))
+     driver-ur-86
+     )
+    (((driver-type d-kaeden))
+     driver-kaeden
+     )
+    (((driver-type d-rayn))
+     driver-rayn
+     )
+    (((driver-type d-ratchet))
+     driver-ratchet
+     )
+    (((driver-type d-jaka))
+     driver-jaka
+     )
+    (((driver-type d-jakb))
+     driver-jakb
+     )
+    (((driver-type d-jakc))
+     driver-jakc
+     )
+    (((driver-type d-daxter))
+     driver-daxter
+     )
+    (((driver-type d-gtblitz))
+     driver-gtblitz
+     )
+    (((driver-type d-pecker))
+     driver-pecker
+     )
+    (((driver-type d-ximon))
+     driver-ximon
+     )
+    (((driver-type d-osmo))
+     driver-osmo
+     )
+    (else
+      (the-as type #f)
+      )
+    )
+  )
+
+(defun level-from-driver-type ((arg0 driver-type))
+  (case arg0
+    (((driver-type d-jak))
+     'jaklev
+     )
+    (((driver-type d-ashelin))
+     'ashlev
+     )
+    (((driver-type d-razer))
+     'razlev
+     )
+    (((driver-type d-klever))
+     'klelev
+     )
+    (((driver-type d-kiera))
+     'kielev
+     )
+    (((driver-type d-thug-a))
+     'thalev
+     )
+    (((driver-type d-thug-b))
+     'thblev
+     )
+    (((driver-type d-thug-c))
+     'thclev
+     )
+    (((driver-type d-taryn))
+     'tarlev
+     )
+    (((driver-type d-torn))
+     'torlev
+     )
+    (((driver-type d-sig))
+     'siglev
+     )
+    (((driver-type d-ur-86))
+     'ur8lev
+     )
+    (((driver-type d-kaeden))
+     'kaelev
+     )
+    (((driver-type d-rayn))
+     'raylev
+     )
+    (((driver-type d-ratchet))
+     'ratlev
+     )
+    (((driver-type d-jaka))
+     'jkalev
+     )
+    (((driver-type d-jakb))
+     'jkblev
+     )
+    (((driver-type d-jakc))
+     'jkclev
+     )
+    (((driver-type d-daxter))
+     'daxlev
+     )
+    (((driver-type d-gtblitz))
+     'gtblev
+     )
+    (((driver-type d-pecker))
+     'peclev
+     )
+    (((driver-type d-ximon))
+     'ximlev
+     )
+    (((driver-type d-osmo))
+     'osmlev
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+(deftype vehicle-spawn-params (structure)
+  ((behavior         uint64)
+   (nav-mesh         basic)
+   (position         vector      :inline)
+   (rotation         quaternion  :inline)
+   (velocity         vector      :inline)
+   (handle           uint64)
+   (handle-parent    uint64)
+   (user-data        uint32)
+   (entity           basic)
+   (flags            uint32)
+   (player-id        int8)
+   (level-slot       int8)
+   (driver-type      driver-type)
+   (driver-slot      int8)
+   (impact-callback  basic)
+   (proc             basic)
+   )
+  )

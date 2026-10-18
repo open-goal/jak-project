@@ -1,0 +1,13 @@
+("KRASS.DGO"
+ ("tpage-2024.o"
+  "tpage-1658.go"
+  "tpage-3877.go"
+  "tpage-2039.go"
+  "tpage-1846.go"
+  "kras-pump-break-ag.go"
+  "construction-barricade-ag.go"
+  "eco-light-ag.go"
+  "construction-cone-ag.go"
+  "kras-pump-debris-ag.go"
+  "krass.o"
+ ))

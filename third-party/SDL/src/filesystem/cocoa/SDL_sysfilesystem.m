@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,7 +47,7 @@ char *SDL_SYS_GetBasePath(void)
         } else if (SDL_strcasecmp(baseType, "parent") == 0) {
             base = [[[bundle bundlePath] stringByDeletingLastPathComponent] fileSystemRepresentation];
         } else {
-            // this returns the exedir for non-bundled  and the resourceDir for bundled apps
+            // this returns the exedir for non-bundled and the resourceDir for bundled apps
             base = [[bundle resourcePath] fileSystemRepresentation];
         }
 
@@ -63,19 +63,33 @@ char *SDL_SYS_GetBasePath(void)
     }
 }
 
+char *SDL_SYS_GetExeName(void)
+{
+    @autoreleasepool {
+        NSBundle *bundle = [NSBundle mainBundle];
+        const char *name = [[[bundle infoDictionary] objectForKey:@"CFBundleIdentifier"] UTF8String];
+        if (!name) {
+            name = [[[bundle infoDictionary] objectForKey:@"CFBundleDisplayName"] UTF8String];
+            if (!name) {
+                name = [[[bundle infoDictionary] objectForKey:@"CFBundleName"] UTF8String];
+                if (!name) {
+                    name = [[[bundle infoDictionary] objectForKey:@"CFBundleExecutable"] UTF8String];
+                    if (!name) {
+                        name = [[[NSProcessInfo processInfo] processName] UTF8String];  // oh well.
+                    }
+                }
+            }
+        }
+
+        return name ? SDL_strdup(name) : NULL;
+    }
+}
+
 char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
     @autoreleasepool {
         char *result = NULL;
         NSArray *array;
-
-        if (!app) {
-            SDL_InvalidParamError("app");
-            return NULL;
-        }
-        if (!org) {
-            org = "";
-        }
 
 #ifndef SDL_PLATFORM_TVOS
         array = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
@@ -106,13 +120,12 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
                 const size_t len = SDL_strlen(base) + SDL_strlen(org) + SDL_strlen(app) + 4;
                 result = (char *)SDL_malloc(len);
                 if (result != NULL) {
-                    char *ptr;
                     if (*org) {
                         SDL_snprintf(result, len, "%s/%s/%s/", base, org, app);
                     } else {
                         SDL_snprintf(result, len, "%s/%s/", base, app);
                     }
-                    for (ptr = result + 1; *ptr; ptr++) {
+                    for (char *ptr = result + 1; *ptr; ptr++) {
                         if (*ptr == '/') {
                             *ptr = '\0';
                             mkdir(result, 0700);
@@ -136,7 +149,7 @@ char *SDL_SYS_GetUserFolder(SDL_Folder folder)
         return NULL;
 #else
         char *result = NULL;
-        const char* base;
+        const char *base;
         NSArray *array;
         NSSearchPathDirectory dir;
         NSString *str;

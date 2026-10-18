@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -207,6 +207,9 @@
 #ifndef SDL_CAMERA_DISABLED
 #define SDL_CAMERA_DRIVER_ANDROID 1
 #endif /* SDL_CAMERA_DISABLED */
+
+/* Enable tray subsystem */
+#define SDL_TRAY_DUMMY 1
 
 /* Enable nl_langinfo and high-res file times on version 26 and higher. */
 #if __ANDROID_API__ >= 26

@@ -12,6 +12,7 @@
 #include "goalc/build_level/common/Tie.h"
 #include "goalc/build_level/jak3/Entity.h"
 #include "goalc/build_level/jak3/FileInfo.h"
+#include "goalc/build_level/jak3/Region.h"
 
 namespace jak3 {
 struct VisibilityString {
@@ -21,8 +22,6 @@ struct VisibilityString {
 struct DrawableTreeActor {};
 
 struct DrawableTreeInstanceShrub {};
-
-struct DrawableTreeRegionPrim {};
 
 struct DrawableTreeArray {
   std::vector<DrawableTreeTfrag> tfrags;
@@ -48,12 +47,6 @@ struct RaceMesh {};
 struct LightHash {};
 
 struct EntityNavMesh {};
-
-struct ActorGroup {};
-
-struct RegionTree {};
-
-struct RegionArray {};
 
 struct CityLevelInfo {};
 
@@ -141,7 +134,8 @@ struct LevelFile {
   //  (actor-groups           (array actor-group)              :offset-assert 184)
   std::vector<ActorGroup> actor_groups;
   //  (region-trees           (array drawable-tree-region-prim) :offset-assert 188)
-  std::vector<RegionTree> region_trees;
+  std::map<int, Region> regions;
+  std::vector<DrawableTreeRegionPrim> region_trees;
   //  (region-array           region-array                     :offset-assert 192)
   RegionArray region_array;
   //  (collide-hash           collide-hash                     :offset-assert 196)
@@ -156,7 +150,7 @@ struct LevelFile {
   //  (vis-spheres-length     uint32                           :offset        248)
 
   //  (region-tree            drawable-tree-region-prim        :offset        252)
-  RegionTree region_tree;
+  DrawableTreeRegionPrim region_tree;
   //  (tfrag-masks            texture-masks-array              :offset-assert 256)
   //  (tfrag-closest          (pointer float)                  :offset-assert 260)
   //  (tfrag-mask-count       uint32                           :offset        260)
@@ -176,6 +170,6 @@ struct LevelFile {
   //  (bsp-scale              vector :inline                   :offset-assert 288)
   //  (bsp-offset             vector :inline                   :offset-assert 304)
 
-  std::vector<u8> save_object_file() const;
+  std::vector<u8> save_object_file();
 };
 }  // namespace jak3

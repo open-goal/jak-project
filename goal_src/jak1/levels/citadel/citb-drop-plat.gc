@@ -123,8 +123,7 @@
         (set! (-> gp-0 quad) (-> self root trans quad))
         (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
         (loop
-          (let ((f0-6 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
-            (set! (-> self interp) (* f0-6 f0-6)))
+          (set! (-> self interp) (square (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
           (set! (-> self root trans y)
                 (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (* 204800.0 (-> self interp))))
           (when (and (not s5-0) (< (-> self interp) 0.05))
@@ -204,9 +203,7 @@
         (s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 x) (* 65536.0 (rand-vu)))
-    (let ((f30-1 14563.556)
-          (f0-2 (rand-vu-float-range -1.0 1.0)))
-      (set! (-> s3-0 y) (* f30-1 (* f0-2 f0-2))))
+    (set! (-> s3-0 y) (* 14563.556 (square (rand-vu-float-range -1.0 1.0))))
     (vector-sincos! s5-0 s4-0 s3-0)
     (set! (-> this spin-axis x) (* (-> s4-0 y) (-> s4-0 x)))
     (set! (-> this spin-axis y) (-> s5-0 y))
@@ -259,7 +256,7 @@
   (the-as citb-drop-plat ((method-of-type process-drawable relocate) this offset)))
 
 (defbehavior citb-drop-plat-spawn-children citb-drop-plat ()
-  (local-vars (s0-0 int) (sv-48 process) (sv-64 int))
+  (local-vars (s0-0 int))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     6
     0
@@ -276,19 +273,19 @@
             (vector+*! gp-0 gp-0 (-> self z-dir) (* (-> self z-spacing) (the float s5-0)))
             (if (-> self child-color-array) (set! s0-0 (-> self child-color-array s1-0)) (set! s0-0 (rand-vu-int-range 0 5)))
             (when (nonzero? s0-0)
-              (set! sv-64 (the int (* 150.0 (rand-vu))))
-              (set! sv-48 (get-process *default-dead-pool* drop-plat #x4000))
-              (set! (-> self child-array data s1-0)
-                    (ppointer->handle (when sv-48
-                                        (let ((t9-6 (method-of-type drop-plat activate)))
-                                          (t9-6 (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000)))
-                                        (let ((t9-7 run-function-in-process)
-                                              (a0-8 sv-48)
-                                              (a1-5 drop-plat-init-by-other)
-                                              (a2-4 gp-0)
-                                              (t0-0 (-> self duration)))
-                                          ((the-as (function process function vector int int int none) t9-7) a0-8 a1-5 a2-4 sv-64 (the-as int t0-0) s0-0))
-                                        (-> sv-48 ppointer)))))))
+              (let ((sv-64 (the int (* 150.0 (rand-vu))))
+                    (sv-48 (get-process *default-dead-pool* drop-plat #x4000)))
+                (set! (-> self child-array data s1-0)
+                      (ppointer->handle (when sv-48
+                                          ((method-of-type drop-plat activate) (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000))
+                                          ((the-as (function process function vector int int int none) run-function-in-process)
+                                           sv-48
+                                           drop-plat-init-by-other
+                                           gp-0
+                                           sv-64
+                                           (the-as int (-> self duration))
+                                           s0-0)
+                                          (-> sv-48 ppointer))))))))
         (suspend-for (seconds 0.12))
         (+! s5-0 s4-0))))
   (set-time! (-> self drop-time))

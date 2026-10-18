@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,14 +26,16 @@
 // System dependent filesystem routines
 
 #include "../SDL_sysfilesystem.h"
-
-#include <unistd.h>
+#include "../../core/android/SDL_android.h"
 
 char *SDL_SYS_GetBasePath(void)
 {
-    // The current working directory is / on Android
-    SDL_Unsupported();
-    return NULL;
+    return SDL_strdup("./");
+}
+
+char *SDL_SYS_GetExeName(void)
+{
+    return SDL_GetAndroidPackageName();
 }
 
 char *SDL_SYS_GetPrefPath(const char *org, const char *app)

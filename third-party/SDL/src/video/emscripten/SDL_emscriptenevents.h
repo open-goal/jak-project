@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,6 +24,8 @@
 
 #include "SDL_emscriptenvideo.h"
 
+extern void Emscripten_RegisterGlobalEventHandlers(SDL_VideoDevice *device);
+extern void Emscripten_UnregisterGlobalEventHandlers(SDL_VideoDevice *device);
 extern void Emscripten_RegisterEventHandlers(SDL_WindowData *data);
 extern void Emscripten_UnregisterEventHandlers(SDL_WindowData *data);
 extern EM_BOOL Emscripten_HandleCanvasResize(int eventType, const void *reserved, void *userData);

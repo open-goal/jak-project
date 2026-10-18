@@ -54,7 +54,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
 
   // we need to create a return value register, as a "return-from" statement inside the block may
   // set it. for now it has a type of none, but we will set it after compiling the block.
-  // TODO - determine if GOAL blocks _always_ return gprs, or if it's possible to return xmms.
+  // TODO - determine if GOAL blocks _always_ return GPRs, or if they can return SIMD registers.
   block_env->return_value = env->make_gpr(m_ts.make_typespec("none"));
 
   // create label to the end of the block (we don't yet know where it is...)
@@ -71,7 +71,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
 
   // if no return-from's were used, we can ignore the return_value register, and basically turn this
   // into a begin. this allows a block which returns a floating point value to return the value in
-  // an xmm register, which is likely to eliminate a gpr->xmm move.
+  // a SIMD register, which is likely to eliminate a GPR-to-SIMD move.
   // TODO - does this happen in GOAL?
   if (block_env->return_types.empty()) {
     return result;
@@ -90,8 +90,8 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
     auto ir_move_rv =
         std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(form, fe));
 
-    // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
-    // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
+    // note - one drawback of doing this single pass is that a block always evaluates to a GPR.
+    // so we may have an unneeded SIMD -> GPR move that could have been SIMD -> SIMD that could have
     // been eliminated.
     env->emit(form, std::move(ir_move_rv));
   }

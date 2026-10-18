@@ -30,97 +30,137 @@
 #
 # In the git clone root, invoke 'scripts/delta [release tag]'
 
-$start = $ARGV[0];
+use strict;
+use warnings;
+
+use POSIX;
+use IPC::Open3;
+use Time::Piece;
+
+sub cmd {
+    my @out;
+    my $as_string = shift if($_[0] eq '$');  # return as string (vs. list of lines)
+    my $hideerr = shift if($_[0] eq '2>');  # 2>/dev/null
+    my $pid = open3(my $in, my $out, $hideerr ? '>/dev/null' : '>&STDERR', @_);
+    close $in;
+    push @out, <$out>;
+    waitpid($pid, 0);
+    return $as_string ? join('', @out) : @out;
+}
+
+my $start = $ARGV[0] || '';
 
 if($start eq "-h") {
     print "Usage: summary [tag]\n";
     exit;
 }
 elsif($start eq "") {
-    $start = `git tag --sort=taggerdate | grep "^curl-" | tail -1`;
+    my @tags = cmd('git', 'tag', '--sort=taggerdate', '--no-column', '--list', 'curl-*');
+    $start = $tags[-1];  # latest tag
     chomp $start;
 }
 
-$commits = `git log --oneline $start.. | wc -l`;
-$committers = `git shortlog -s $start.. | wc -l`;
-$bcommitters = `git shortlog -s $start | wc -l`;
+my $commits = cmd('$', 'git', 'rev-list', '--count', "$start..");
+my $committers = cmd('git', 'shortlog', '-s', "$start..");
+my $bcommitters = cmd('git', 'shortlog', '-s', $start);
 
-$acommits = `git log --oneline | wc -l`;
-$acommitters = `git shortlog -s | wc -l`;
+my $acommits = cmd('$', 'git', 'rev-list', '--count', 'HEAD');
+my $acommitters = cmd('git', 'shortlog', '-s', 'HEAD');
 
 # delta from now compared to before
-$ncommitters = $acommitters - $bcommitters;
+my $ncommitters = $acommitters - $bcommitters;
 
 # number of contributors right now
-$acontribs = `./scripts/contrithanks.sh | grep -c '^[^ ]'`;
+my $acontribs = cmd('./scripts/contrithanks.sh', 'stdout');
 # number when the tag was set
-$bcontribs = `git show $start:docs/THANKS | grep -c '^[^ ]'`;
+my $bcontribs = cmd('$', 'git', 'grep', '-h', '-c', '^[^ ]', "$start:docs/THANKS");
 # delta
-$contribs = $acontribs - $bcontribs;
+my $contribs = $acontribs - $bcontribs;
 
 # number of setops:
 sub setopts {
-    my ($f)=@_;
-    open(H, "$f");
-    my $opts;
-    while(<H>) {
-        if(/^  CURLOPT(|DEPRECATED)\(/ && ($_ !~ /OBSOLETE/))  {
-            $opts++;
+    my $mode = shift;
+    my $opts = 0;
+    if(open(H, $mode, @_)) {
+        while(<H>) {
+            if(/^  CURLOPT(|DEPRECATED)\(/ && ($_ !~ /OBSOLETE/)) {
+                $opts++;
+            }
         }
+        close(H);
     }
-    close(H);
+    else {
+        die join(' ', @_) . ": $!\n";
+    }
     return $opts;
 }
-$asetopts = setopts("<include/curl/curl.h");
-$bsetopts = setopts("git show $start:include/curl/curl.h|");
-$nsetopts = $asetopts - $bsetopts;
+my $asetopts = setopts('<', 'include/curl/curl.h');
+my $bsetopts = setopts('-|', 'git', 'show', "$start:include/curl/curl.h");
+my $nsetopts = $asetopts - $bsetopts;
 
 # Number of command line options:
-$aoptions=`grep -c '{"....--' src/tool_listhelp.c`;
-$boptions=`git show $start:src/tool_listhelp.c 2>/dev/null | grep -c '{"....--'`;
-$noptions=$aoptions - $boptions;
+my $aoptions = cmd('$', '2>', 'git', 'grep', '-h', '-c', '{ *"....--', 'src/tool_listhelp.c');
+my $boptions = cmd('$', '2>', 'git', 'grep', '-h', '-c', '{ *"....--', "$start:src/tool_listhelp.c");
+my $noptions = $aoptions - $boptions;
 
 # current local branch
-$branch=`git rev-parse --abbrev-ref HEAD 2>/dev/null`;
+my $branch = cmd('$', '2>', 'git', 'rev-parse', '--abbrev-ref', 'HEAD');
 chomp $branch;
 # Number of files in git
-$afiles=`git ls-files | wc -l`;
-$deletes=`git diff-tree --diff-filter=A -r --summary origin/$branch $start 2>/dev/null | wc -l`;
-$creates=`git diff-tree --diff-filter=D -r --summary origin/$branch $start 2>/dev/null| wc -l`;
+my $afiles = cmd('git', 'ls-files');
+my $deletes = cmd('2>', 'git', 'diff-tree', '--diff-filter=A', '-r', '--summary', "origin/$branch", $start);
+my $creates = cmd('2>', 'git', 'diff-tree', '--diff-filter=D', '-r', '--summary', "origin/$branch", $start);
 
 # Time since that tag
-$tagged=`git for-each-ref --format="%(refname:short) | %(taggerdate:unix)" refs/tags/* | grep ^$start | cut "-d|" -f2`; # unix timestamp
-$taggednice=`git for-each-ref --format="%(refname:short) | %(creatordate)" refs/tags/* | grep ^$start | cut '-d|' -f2`; # human readable time
+sub tagstamp {
+    my $col = shift;
+    foreach my $line (@_) {
+        if(index($line, "$start ") == 0) {
+            my @cols = split(/\|/, $line);
+            return $cols[$col - 1];
+        }
+    }
+}
+my @tagged = cmd('git', 'for-each-ref', '--format=%(refname:short) | %(taggerdate:unix) | %(creatordate)', 'refs/tags/*');
+my $tagged = tagstamp(2, @tagged); # Unix timestamp
+my $taggednice = tagstamp(3, @tagged); # human readable time
 chomp $taggednice;
-$now=`date +%s`;
-$elapsed=$now - $tagged; # number of seconds since tag
-$total=$now - `date -d 19980320 +%s`;
+my $now = POSIX::strftime("%s", localtime());
+my $elapsed = $now - $tagged; # number of seconds since tag
+my $total = $now - Time::Piece->strptime('19980320', '%Y%m%d')->epoch;
+my $totalhttpget = $now - Time::Piece->strptime('19961111', '%Y%m%d')->epoch;
 
 # Number of public functions in libcurl
-$apublic=`git grep ^CURL_EXTERN -- include/curl | wc -l`;
-$bpublic=`git grep ^CURL_EXTERN $start -- include/curl | wc -l`;
-$public = $apublic - $bpublic;
+my $apublic = cmd('git', 'grep', '^CURL_EXTERN', '--', 'include/curl');
+my $bpublic = cmd('git', 'grep', '^CURL_EXTERN', $start, '--', 'include/curl');
+my $public = $apublic - $bpublic;
 
 # diffstat
-$diffstat=`git diff --stat $start.. | tail -1`;
+my ($fileschanged, $insertions, $deletions);
+my @diffstat = cmd('2>', 'git', 'diff', '--stat', "$start..");
+my $diffstat = $diffstat[-1];
 if($diffstat =~ /^ *(\d+) files changed, (\d+) insertions\(\+\), (\d+)/) {
-    ($fileschanged, $insertions, $deletions)=($1, $2, $3);
+    ($fileschanged, $insertions, $deletions) = ($1, $2, $3);
 }
 
 # Changes/bug-fixes currently logged
+my $numchanges = 0;
+my $numbugfixes = 0;
+my $numcontributors = 0;
 open(F, "<RELEASE-NOTES");
+my $mode = 0;
 while(<F>) {
     if($_ =~ /following changes:/) {
-        $mode=1;
+        $mode = 1;
     }
     elsif($_ =~ /following bugfixes:/) {
-        $mode=2;
+        $mode = 2;
     }
     elsif($_ =~ /known bugs:/) {
-        $mode=3;
+        $mode = 3;
     }
     elsif($_ =~ /like these:/) {
-        $mode=4;
+        $mode = 4;
     }
     if($_ =~ /^ o /) {
         if($mode == 1) {
@@ -140,9 +180,9 @@ close(F);
 # Produce the summary
 
 print "== Since $start $taggednice ==\n";
-printf "Elapsed time:                   %.1f days (total %d)\n",
-    $elapsed / 3600 / 24,
-    $total / 3600 / 24;
+my $days = $elapsed / 3600 / 24;
+printf "Elapsed time:                   %.1f days (total %d / %d)\n",
+    $days, $total / 3600 / 24, $totalhttpget / 3600 / 24;
 printf "Commits:                        %d (total %d)\n",
     $commits, $acommits;
 printf "Commit authors:                 %d, %d new (total %d)\n",
@@ -156,13 +196,14 @@ printf "New curl_easy_setopt() options: %d (total %d)\n",
 printf "New command line options:       %d (total %d)\n",
     $noptions, $aoptions;
 printf "Changes logged:                 %d\n", $numchanges;
-printf "Bugfixes logged:                %d\n", $numbugfixes;
+printf "Bugfixes logged:                %d (%.2f per day)\n",
+    $numbugfixes, $days ? $numbugfixes / $days : $numbugfixes;
 printf "Added files:                    %d (total %d)\n",
     $creates, $afiles;
 printf "Deleted files:                  %d (delta: %d)\n", $deletes,
     $creates - $deletes;
 print "Diffstat:$diffstat" if(!$fileschanged);
-printf "Files changed:                  %d (%.2f%%)\n", $fileschanged, $fileschanged*100/$afiles;
+printf "Files changed:                  %d (%.2f%%)\n", $fileschanged, $fileschanged * 100 / $afiles;
 printf "Lines inserted:                 %d\n", $insertions;
 printf "Lines deleted:                  %d (delta: %d)\n", $deletions,
     $insertions - $deletions;

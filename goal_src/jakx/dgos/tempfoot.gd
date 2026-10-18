@@ -1,0 +1,11 @@
+("TEMPFOOT.DGO"
+ ("raceline-weapon.o"
+  "wvehicle-weapons-chicken-drone.o"
+  "football.o"
+  "football2.o"
+  "tpage-2822.go"
+  "tpage-2823.go"
+  "fuel-cell-ag.go"
+  "fuel-cell-shield-ag.go"
+  "tempfoot.o"
+ ))

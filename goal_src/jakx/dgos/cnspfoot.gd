@@ -1,0 +1,11 @@
+("CNSPFOOT.DGO"
+ ("raceline-weapon.o"
+  "wvehicle-weapons-chicken-drone.o"
+  "football.o"
+  "football2.o"
+  "tpage-2824.go"
+  "tpage-2825.go"
+  "fuel-cell-ag.go"
+  "fuel-cell-shield-ag.go"
+  "cnspfoot.o"
+ ))

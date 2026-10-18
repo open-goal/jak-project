@@ -25,20 +25,25 @@
 
 # pass files as argument(s)
 
-my $docroot="https://curl.se/libcurl/c";
+use strict;
+use warnings;
 
-for $f (@ARGV) {
+use File::Copy;
+
+my $docroot = "https://curl.se/libcurl/c";
+
+for my $f (@ARGV) {
     open(NEW, ">$f.new");
     open(F, "<$f");
     while(<F>) {
         my $l = $_;
         if($l =~ /\/* $docroot/) {
-            # just ignore preciously added refs
+            # ignore previously added refs
         }
         elsif($l =~ /^( *).*curl_easy_setopt\([^,]*, *([^ ,]*) *,/) {
-            my ($prefix, $anc) = ($1, $2);
-            $anc =~ s/_//g;
-            print NEW "$prefix/* $docroot/curl_easy_setopt.html#$anc */\n";
+            my ($prefix, $anchor) = ($1, $2);
+            $anchor =~ s/_//g;
+            print NEW "$prefix/* $docroot/curl_easy_setopt.html#$anchor */\n";
             print NEW $l;
         }
         elsif($l =~ /^( *).*(curl_([^\(]*))\(/) {
@@ -53,6 +58,6 @@ for $f (@ARGV) {
     close(F);
     close(NEW);
 
-    system("mv $f $f.org");
-    system("mv $f.new $f");
+    move($f, "$f.org");
+    move("$f.new", $f);
 }

@@ -21,25 +21,21 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
-#include "memdebug.h"
-
-static char data[]="this is what we post to the silly web server\n";
-
-struct WriteThis {
-  char *readptr;
+struct t1517_WriteThis {
+  const char *readptr;
   size_t sizeleft;
 };
 
-static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *userp)
+static size_t t1517_read_cb(char *ptr, size_t size, size_t nmemb, void *userp)
 {
-  struct WriteThis *pooh = (struct WriteThis *)userp;
+  struct t1517_WriteThis *pooh = (struct t1517_WriteThis *)userp;
   size_t tocopy = size * nmemb;
 
-  /* Wait one second before return POST data          *
-   * so libcurl will wait before sending request body */
-  wait_ms(1000);
+  /* Wait one second before return POST data
+     so libcurl waits before sending request body */
+  curlx_wait_ms(1000);
 
   if(tocopy < 1 || !pooh->sizeleft)
     return 0;
@@ -47,71 +43,65 @@ static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *userp)
   if(pooh->sizeleft < tocopy)
     tocopy = pooh->sizeleft;
 
-  memcpy(ptr, pooh->readptr, tocopy);/* copy requested data */
-  pooh->readptr += tocopy;           /* advance pointer */
-  pooh->sizeleft -= tocopy;          /* less data left */
+  memcpy(ptr, pooh->readptr, tocopy); /* copy requested data */
+  pooh->readptr += tocopy;            /* advance pointer */
+  pooh->sizeleft -= tocopy;           /* less data left */
   return tocopy;
 }
 
-int test(char *URL)
+static CURLcode test_lib1517(const char *URL)
 {
+  static const char testdata[] =
+    "this is what we post to the silly web server\n";
+
   CURL *curl;
-  CURLcode res = CURLE_OK;
+  CURLcode result = CURLE_OK;
 
-  struct WriteThis pooh;
+  struct t1517_WriteThis pooh;
 
-  if(!strcmp(URL, "check")) {
-#if (defined(WIN32) || defined(__CYGWIN__))
-    printf("Windows TCP does not deliver response data but reports "
-           "CONNABORTED\n");
-    return 1; /* skip since test will fail on Windows without workaround */
-#else
-    return 0; /* sure, run this! */
-#endif
-  }
-
-  pooh.readptr = data;
-  pooh.sizeleft = strlen(data);
+  pooh.readptr = testdata;
+  pooh.sizeleft = sizeof(testdata) - 1;
 
   if(curl_global_init(CURL_GLOBAL_ALL)) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
 
   /* First set the URL that is about to receive our POST. */
-  test_setopt(curl, CURLOPT_URL, URL);
+  easy_setopt(curl, CURLOPT_URL, URL);
 
   /* Now specify we want to POST data */
-  test_setopt(curl, CURLOPT_POST, 1L);
+  easy_setopt(curl, CURLOPT_POST, 1L);
 
   /* Set the expected POST size */
-  test_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)pooh.sizeleft);
+  easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)pooh.sizeleft);
 
   /* we want to use our own read function */
-  test_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+  easy_setopt(curl, CURLOPT_READFUNCTION, t1517_read_cb);
 
   /* pointer to pass to our read function */
-  test_setopt(curl, CURLOPT_READDATA, &pooh);
+  easy_setopt(curl, CURLOPT_READDATA, &pooh);
 
   /* get verbose debug output please */
-  test_setopt(curl, CURLOPT_VERBOSE, 1L);
+  easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   /* include headers in the output */
-  test_setopt(curl, CURLOPT_HEADER, 1L);
+  easy_setopt(curl, CURLOPT_HEADER, 1L);
 
+#if 0
   /* detect HTTP error codes >= 400 */
-  /* test_setopt(curl, CURLOPT_FAILONERROR, 1L); */
+  easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+#endif
 
-
-  /* Perform the request, res will get the return code */
-  res = curl_easy_perform(curl);
+  /* Perform the request, result gets the return code */
+  result = curl_easy_perform(curl);
 
 test_cleanup:
 
@@ -119,5 +109,5 @@ test_cleanup:
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
-  return res;
+  return result;
 }

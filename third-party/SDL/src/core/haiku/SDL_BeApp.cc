@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -56,7 +56,7 @@ const char *SDL_signature = "application/x-SDL-executable";
 // Create a descendant of BApplication
 class SDL_BApp : public BApplication {
 public:
-    SDL_BApp(const char* signature) :
+    SDL_BApp(const char *signature) :
         BApplication(signature) {
     }
 
@@ -65,7 +65,7 @@ public:
     }
 
 
-    virtual void RefsReceived(BMessage* message) {
+    virtual void RefsReceived(BMessage *message) {
         entry_ref entryRef;
         for (int32 i = 0; message->FindRef("refs", i, &entryRef) == B_OK; i++) {
             BPath referencePath = BPath(&entryRef);

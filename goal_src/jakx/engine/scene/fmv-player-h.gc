@@ -1,0 +1,2024 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: fmv-player-h.gc
+;; name in dgo: fmv-player-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(deftype m2v-caption (structure)
+  ((text-id  text-id)
+   (start    int32)
+   (end      int32)
+   )
+  )
+
+
+(deftype m2v-info (structure)
+  ((name                 basic)
+   (sound                basic)
+   (commentary-sound     basic)
+   (captions             basic)
+   (commentary-captions  (array m2v-caption))
+   (id                   uint32)
+   (idx                  int8)
+   (driver               uint8)
+   (driver2              uint8)
+   (flags                uint8)
+   )
+  )
+
+
+(deftype fmv-player (process)
+  ((texture-base-page     uint32)
+   (texture-width         uint32)
+   (gui-id                uint32)
+   (subtitle-change-time  uint64)
+   (start-time            uint64)
+   (fmv-mode              uint8)
+   )
+  (:methods
+    (fmv-player-method-15 () none)
+    (fmv-player-method-16 () none)
+    (fmv-player-method-17 () none)
+    (fmv-player-method-18 () none)
+    (fmv-player-method-19 () none)
+    )
+  )
+
+
+(define *fmv-player* (the-as fmv-player #f))
+
+(deftype fmv-display-params (structure)
+  ((display-mode        int32)
+   (texture-base-page   uint32)
+   (texture-width       uint32)
+   (frame-base-pointer  uint32)
+   (display-width       uint32)
+   (display-height      uint32)
+   (display-dx          int32)
+   (display-dy          int32)
+   (contrast            float)
+   (brightness          float)
+   (fast-z-clear        int32)
+   (frame-buffer-mask   uint32)
+   )
+  )
+
+
+(deftype fmv-player-params (structure)
+  ((display-mode       fmv-display-params  :inline)
+   (file-init          basic)
+   (file-read          basic)
+   (get-time           basic)
+   (video-type         int32)
+   (zoom-mode          int32)
+   (upper-field-first  int32)
+   (buffer-mode        int32)
+   (work-mem           uint32)
+   (work-mem-size      uint32)
+   )
+  (:methods
+    (fmv-player-params-method-9 () none)
+    )
+  )
+
+
+(define *m2v-info* (new 'static 'boxed-array :type m2v-info
+                     (new 'static 'm2v-info
+                       :name "intro"
+                       :sound "intro-full"
+                       :commentary-sound "intro"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2961) :start #x3a3 :end #x3fe)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2962) :start #x3ff :end #x456)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2963) :start #x457 :end #x4c3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2964) :start #x4c4 :end #x521)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2965) :start #x533 :end #x585)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2966) :start #x586 :end #x5cf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2967) :start #x5d1 :end #x5ff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2968) :start #x600 :end #x638)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2969) :start #x639 :end #x686)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2970) :start #x69f :end #x6d0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2971) :start #x6e0 :end #x6fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2972) :start #x6ff :end #x75d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2973) :start #x75f :end #x7a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2974) :start #x7b4 :end #x7d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2975) :start #x7db :end #x80a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2976) :start #x80b :end #x851)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2977) :start #x852 :end #x88d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2978) :start #x88e :end #x8b3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2979) :start #x8b5 :end #x91f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2980) :start #x920 :end #x975)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2981) :start #x976 :end #x9a4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2982) :start #x9a5 :end #x9e3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2983) :start #xc6f :end #xcf1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2984) :start #xd23 :end #xd74)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2985) :start #xd75 :end #xdbb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2986) :start #xdc6 :end #xe19)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2987) :start #xe1a :end #xe7c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2988) :start #xe89 :end #xec7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2989) :start #xec8 :end #xefe)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2990) :start #x13f3 :end #x1429)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2991) :start #x142a :end #x1466)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2992) :start #x1467 :end #x14ae)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2993) :start #x14b3 :end #x14c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2994) :start #x14c4 :end #x14fa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2995) :start #x14fb :end #x154a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2996) :start #x1558 :end #x1591)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2997) :start #x15a3 :end #x1605)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2998) :start #x1608 :end #x161f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2999) :start #x16ca :end #x1707)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3000) :start #x17de :end #x1802)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3001) :start #x1806 :end #x186a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3002) :start #x188d :end #x18a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3003) :start #x18cc :end #x192c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3004) :start #x19bc :end #x19df)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3005) :start #x19e0 :end #x1a0f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3006) :start #x1a10 :end #x1a45)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3007) :start #x1a49 :end #x1a97)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3008) :start #x1a9e :end #x1aca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3009) :start #x1ae4 :end #x1b01)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4692) :start #x67 :end #xe0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4693) :start #xe1 :end #x118)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4694) :start #x119 :end #x1a5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4695) :start #x1a6 :end #x21f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4696) :start #x220 :end #x26b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4697) :start #x26c :end #x2df)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4698) :start #x2e0 :end #x350)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4699) :start #x351 :end #x3c1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4700) :start #x3d9 :end #x425)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4701) :start #x426 :end #x4a2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4702) :start #x4a3 :end #x50b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4703) :start #x50c :end #x55b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4704) :start #x55c :end #x5bc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4705) :start #x5bd :end #x605)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4706) :start #x606 :end #x674)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4707) :start #x675 :end #x6a9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4708) :start #x6aa :end #x6db)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4709) :start #x6dc :end #x75e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4710) :start #x75f :end #x7ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4711) :start #x7ba :end #x813)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4712) :start #x814 :end #x873)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4713) :start #x874 :end #x8cb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4714) :start #x8cc :end #x8fc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4715) :start #x8fd :end #x928)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4716) :start #x929 :end #x96f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4717) :start #x970 :end #x9bc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4718) :start #x9bd :end #x9f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4719) :start #x9f3 :end #xa28)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4720) :start #xa4d :end #xab2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4721) :start #xab3 :end #xb07)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4722) :start #xb08 :end #xb3e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4723) :start #xb3f :end #xbd1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4724) :start #xbd2 :end #xc46)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4725) :start #xc47 :end #xc8b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4726) :start #xc8c :end #xcd8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4727) :start #xd2c :end #xd80)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4728) :start #xd81 :end #xe26)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4729) :start #xe27 :end #xe7c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4730) :start #xe7d :end #xf13)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4731) :start #xf5a :end #xfba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4732) :start #xfbb :end #x1048)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4733) :start #x1049 :end #x10ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4734) :start #x10cb :end #x10e8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4736) :start #x10e9 :end #x115b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4735) :start #x115c :end #x11a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4737) :start #x11a8 :end #x120c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4738) :start #x120d :end #x127a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4739) :start #x127b :end #x12ce)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4740) :start #x12cf :end #x1352)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4741) :start #x1353 :end #x13b9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4742) :start #x13ba :end #x13fe)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4743) :start #x13ff :end #x1487)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4744) :start #x1488 :end #x1503)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4745) :start #x1504 :end #x159d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4746) :start #x159e :end #x161e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4747) :start #x161f :end #x1694)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4748) :start #x1695 :end #x16f3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4749) :start #x16f4 :end #x1774)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4750) :start #x1775 :end #x17ad)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4751) :start #x17ae :end #x180d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4752) :start #x180e :end #x1874)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4753) :start #x1875 :end #x18e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4754) :start #x1907 :end #x1963)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4755) :start #x1964 :end #x19d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4756) :start #x19d3 :end #x1a30)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4757) :start #x1a31 :end #x1a80)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4758) :start #x1a81 :end #x1aef)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4759) :start #x1af0 :end #x1b56)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4760) :start #x1b57 :end #x1b93)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4761) :start #x1b94 :end #x1bf2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4762) :start #x1bf3 :end #x1c34)
+                         )
+                       :id #xd6e
+                       :idx 1
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x8
+                       )
+                     (new 'static 'm2v-info
+                       :name "introb"
+                       :sound "intro-boardroom"
+                       :commentary-sound "introb"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2833) :start 35 :end #x6a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2834) :start #x6b :end #x93)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2835) :start #x9d :end #xc6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2836) :start #xce :end #xf6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2837) :start #xf7 :end #x15b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2838) :start #x15c :end #x1bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2839) :start #x1c3 :end #x1f1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2840) :start #x1f2 :end #x242)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2886) :start #x243 :end #x273)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2842) :start #x275 :end #x2c9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2843) :start #x2ca :end #x322)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2844) :start #x323 :end #x371)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2845) :start #x372 :end #x409)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2846) :start #x424 :end #x4b0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2847) :start #x514 :end #x56d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2848) :start #x590 :end #x5ea)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2849) :start #x5eb :end #x682)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2850) :start #x683 :end #x6fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2851) :start #x6fc :end #x763)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2852) :start #x764 :end #x7dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2853) :start #x7dd :end #x85f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2854) :start #x860 :end #x8c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2855) :start #x8c6 :end #x93b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2856) :start #x942 :end #x94b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2857) :start #x94c :end #x955)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2858) :start #x956 :end #x960)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2859) :start #x968 :end #x9a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2860) :start #x9a7 :end #xa1c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2861) :start #xa1d :end #xa97)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2862) :start #xa98 :end #xae9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2863) :start #xaea :end #xb3e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2864) :start #xb3f :end #xb53)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2865) :start #xb58 :end #xbe1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2866) :start #xbe2 :end #xc3e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2867) :start #xc3f :end #xcac)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2868) :start #xcad :end #xd08)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2869) :start #xd09 :end #xd6d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2870) :start #xd86 :end #xdb7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2871) :start #xdbe :end #xe21)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2872) :start #xe22 :end #xe5d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2873) :start #xe63 :end #xe9b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2874) :start #xe9e :end #xecf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2875) :start #xed9 :end #xf00)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2876) :start #xf10 :end #xf73)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2877) :start #xf60 :end #xfbf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2878) :start #xfc0 :end #xff7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2879) :start #xff8 :end #x103e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2880) :start #x1055 :end #x10c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2881) :start #x10d1 :end #x10ed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2882) :start #x10ee :end #x1148)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2883) :start #x1153 :end #x1194)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2884) :start #x1195 :end #x11fa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2885) :start #x11fb :end #x125a)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4763) :start 2 :end 29)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4764) :start 30 :end #x80)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4765) :start #x81 :end #xfa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4766) :start #xfb :end #x155)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4767) :start #x156 :end #x1c9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4768) :start #x1ca :end #x204)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4769) :start #x205 :end #x25d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4770) :start #x25e :end #x2a4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4771) :start #x2a5 :end #x2d5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4772) :start #x2d6 :end #x311)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4773) :start #x312 :end #x3a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4774) :start #x3c9 :end #x41d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4775) :start #x41e :end #x459)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4776) :start #x45a :end #x4bf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4777) :start #x4c0 :end #x502)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4778) :start #x503 :end #x57a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4779) :start #x57b :end #x5f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4780) :start #x5f7 :end #x627)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4781) :start #x63d :end #x6c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4782) :start #x6c8 :end #x703)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4783) :start #x704 :end #x766)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4784) :start #x767 :end #x7c4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4785) :start #x7c5 :end #x83f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4786) :start #x840 :end #x8b1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4787) :start #x8b2 :end #x922)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4788) :start #x949 :end #x9cc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4789) :start #x9cd :end #xa26)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4791) :start #xa27 :end #xa76)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4792) :start #xa77 :end #xaf7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4790) :start #xaf8 :end #xb7d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4793) :start #xb7e :end #xbe7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4794) :start #xbe8 :end #xc29)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4795) :start #xc2a :end #xc63)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4796) :start #xc64 :end #xcc5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4797) :start #xcc6 :end #xd2a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4798) :start #xd2b :end #xd97)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4799) :start #xd98 :end #xe16)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4800) :start #xe17 :end #xe71)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4801) :start #xe72 :end #xed3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4802) :start #xed4 :end #xf41)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4803) :start #xf42 :end #xfa4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4804) :start #xfa5 :end #xfd2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4805) :start #xfd3 :end #x104f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4806) :start #x1050 :end #x1084)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4807) :start #x1085 :end #x10e3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4808) :start #x10e4 :end #x1156)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4809) :start #x1157 :end #x11a9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4810) :start #x11aa :end #x11f3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4811) :start #x11f4 :end #x1254)
+                         )
+                       :id #xd6f
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "firaintr"
+                       :sound "002-first-race-intro"
+                       :commentary-sound "firaintr"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2278) :start 23 :end 99)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2279) :start 100 :end #xba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2280) :start #xbb :end #x119)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2281) :start #x11a :end #x16e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2282) :start #x16f :end #x1b7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2283) :start #x1b8 :end #x23a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2284) :start #x23b :end #x293)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2285) :start #x294 :end #x2e4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2286) :start #x2e5 :end #x36d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2287) :start #x36e :end #x3b1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2288) :start #x3b2 :end #x421)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2289) :start #x433 :end #x451)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2290) :start #x454 :end #x4a5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2291) :start #x4a6 :end #x524)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2292) :start #x525 :end #x579)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2293) :start #x57a :end #x5af)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2294) :start #x5b1 :end #x5d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2295) :start #x5d7 :end #x61c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2296) :start #x61d :end #x653)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2297) :start #x65a :end #x6a8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2298) :start #x6a9 :end #x6d6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2299) :start #x6d8 :end #x706)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2300) :start #x707 :end #x758)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2301) :start #x764 :end #x7d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2302) :start #x7d8 :end #x811)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2303) :start #x812 :end #x844)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2304) :start #x845 :end #x879)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2305) :start #x87a :end #x8e4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2306) :start #x8e5 :end #x968)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2307) :start #x969 :end #x9d6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2308) :start #x9d7 :end #xa02)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2309) :start #xa03 :end #xa75)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2310) :start #xa76 :end #xaff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2311) :start #xb00 :end #xb48)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2312) :start #xb5e :end #xb77)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4660) :start 1 :end 40)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4661) :start 45 :end #x6a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4662) :start #x6b :end #x100)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4663) :start #x101 :end #x163)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4664) :start #x164 :end #x1ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4665) :start #x1bb :end #x1e4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4666) :start #x1e5 :end #x226)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4667) :start #x227 :end #x256)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4668) :start #x257 :end #x299)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4669) :start #x29a :end #x315)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4670) :start #x316 :end #x360)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4671) :start #x361 :end #x3db)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4672) :start #x3dc :end #x43e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4673) :start #x43f :end #x47b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4674) :start #x47c :end #x4d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4675) :start #x4d5 :end #x548)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4676) :start #x549 :end #x5c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4677) :start #x5c6 :end #x611)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4678) :start #x612 :end #x670)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4679) :start #x671 :end #x6b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4680) :start #x6b5 :end #x739)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4681) :start #x73a :end #x764)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4682) :start #x765 :end #x7ed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4683) :start #x7ee :end #x824)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4684) :start #x825 :end #x866)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4685) :start #x867 :end #x8b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4686) :start #x8b5 :end #x960)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4687) :start #x961 :end #x9dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4688) :start #x9dd :end #xa3c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4689) :start #xa3d :end #xaa0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4690) :start #xaa1 :end #xb2c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4691) :start #xb42 :end #xb66)
+                         )
+                       :id #xd70
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "firares"
+                       :sound "2-first-race-res"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2190) :start 40 :end #x9b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2189) :start #x9c :end #xce)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2188) :start #xcf :end #x163)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2187) :start #x164 :end #x1d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2186) :start #x1d8 :end #x1e0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2208) :start #x1e8 :end #x238)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2209) :start #x23c :end #x25f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2210) :start #x261 :end #x2d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2211) :start #x2d5 :end #x2f8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2212) :start #x2fb :end #x353)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2213) :start #x354 :end #x3c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2214) :start #x3cb :end #x437)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2215) :start #x438 :end #x473)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2216) :start #x474 :end #x4c3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2217) :start #x4c4 :end #x4f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2218) :start #x4f3 :end #x540)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2219) :start #x541 :end #x56b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2220) :start #x56c :end #x5d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2221) :start #x5d4 :end #x627)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd71
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "daporeal"
+                       :sound "3-daxter-poison-real"
+                       :commentary-sound "daporeal"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2179) :start 17 :end #x8a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2178) :start #x8b :end #xd6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2177) :start #xdb :end #x102)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2176) :start #x103 :end #x13d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2175) :start #x13e :end #x180)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2174) :start #x181 :end #x1aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2173) :start #x1ad :end #x1dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2171) :start #x1dd :end #x216)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2172) :start #x21f :end #x29f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2170) :start #x2ac :end #x2e1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2169) :start #x2e9 :end #x337)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2168) :start #x338 :end #x359)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2167) :start #x35e :end #x380)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2166) :start #x387 :end #x3eb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2165) :start #x3ec :end #x431)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2164) :start #x43a :end #x4a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2163) :start #x4a7 :end #x4c9)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4370) :start 1 :end 40)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4371) :start 45 :end #x72)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4372) :start #x73 :end #xb5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4373) :start #xb6 :end #x111)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4374) :start #x112 :end #x171)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4375) :start #x172 :end #x1ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4376) :start #x1cb :end #x220)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4377) :start #x221 :end #x2dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4378) :start #x2dd :end #x34f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4379) :start #x350 :end #x37c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4380) :start #x37d :end #x3cf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4381) :start #x3d0 :end #x41e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4382) :start #x41f :end #x45a)
+                         )
+                       :id #xd72
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "jafaraze"
+                       :sound "10-jak-faces-razer"
+                       :commentary-sound "jafaraze"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2149) :start 62 :end #x7b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2147) :start #x7c :end #xc9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2146) :start #xce :end #x179)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2144) :start #x184 :end #x1a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2145) :start #x1a8 :end #x1c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2143) :start #x1c2 :end #x1e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2142) :start #x1e5 :end #x245)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2140) :start #x249 :end #x2dd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2141) :start #x2de :end #x329)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2139) :start #x32a :end #x374)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2137) :start #x37d :end #x3a2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2138) :start #x3c8 :end #x404)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2136) :start #x40d :end #x428)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2135) :start #x430 :end #x47f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2267) :start #x480 :end #x4f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2133) :start #x4f3 :end #x554)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2132) :start #x555 :end #x5a8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2131) :start #x5ae :end #x5d9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2130) :start #x5df :end #x676)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2129) :start #x677 :end #x6c6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2128) :start #x6c9 :end #x757)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4434) :start 51 :end 85)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4435) :start 86 :end #x10b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4436) :start #x10c :end #x18a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4438) :start #x18b :end #x1dd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4437) :start #x1de :end #x225)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4439) :start #x226 :end #x286)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4440) :start #x287 :end #x304)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4441) :start #x305 :end #x37e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4442) :start #x37f :end #x422)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4443) :start #x423 :end #x479)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4444) :start #x48d :end #x525)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4445) :start #x526 :end #x568)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4446) :start #x569 :end #x64d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4447) :start #x64e :end #x69c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4448) :start #x69d :end #x72a)
+                         )
+                       :id #xd74
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "blderace"
+                       :sound "9-blitz-deathdrome"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2162) :start 55 :end #x99)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2161) :start #xa8 :end #x117)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2160) :start #x118 :end #x185)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2159) :start #x186 :end #x202)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2158) :start #x203 :end #x246)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2157) :start #x247 :end #x2c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2156) :start #x2ca :end #x301)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2148) :start #x302 :end #x33a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2150) :start #x341 :end #x37e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2151) :start #x38b :end #x3e5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2152) :start #x3e6 :end #x434)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2153) :start #x435 :end #x4cf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2154) :start #x4d0 :end #x533)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2155) :start #x534 :end #x5bc)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd73
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "peckshow"
+                       :sound "12-pecker-added-to-show"
+                       :commentary-sound "peckshow"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2229) :start 20 :end 100)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2230) :start #x65 :end #xed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2231) :start #xee :end #x124)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2232) :start #x125 :end #x189)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2233) :start #x18a :end #x22a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2234) :start #x22b :end #x274)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2235) :start #x280 :end #x2e5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2236) :start #x2e6 :end #x354)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2237) :start #x358 :end #x3fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2238) :start #x402 :end #x437)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2239) :start #x438 :end #x48b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2240) :start #x48f :end #x4f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2241) :start #x4f5 :end #x555)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2242) :start #x556 :end #x5cf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2243) :start #x5d0 :end #x616)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2244) :start #x617 :end #x663)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2245) :start #x664 :end #x6c6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2246) :start #x6c7 :end #x762)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2247) :start #x76b :end #x799)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2248) :start #x79a :end #x810)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2249) :start #x816 :end #x848)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2250) :start #x855 :end #x87c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2251) :start #x87d :end #x89f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2252) :start #x8a0 :end #x8bd)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4313) :start 12 :end 59)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4314) :start 60 :end #xcc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4315) :start #xeb :end #x181)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4316) :start #x182 :end #x1c6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4317) :start #x1d7 :end #x242)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4318) :start #x243 :end #x2c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4319) :start #x2ed :end #x30f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4320) :start #x310 :end #x363)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4321) :start #x364 :end #x399)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4322) :start #x39a :end #x3f7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4323) :start #x3f8 :end #x490)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4324) :start #x491 :end #x4ec)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4325) :start #x4ed :end #x57d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4326) :start #x597 :end #x5bf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4327) :start #x5c0 :end #x62f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4328) :start #x630 :end #x6c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4329) :start #x6c1 :end #x74d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4330) :start #x74e :end #x7a0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4331) :start #x7a1 :end #x7de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4332) :start #x82a :end #x88a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4333) :start #x88b :end #x8bd)
+                         )
+                       :id #xd75
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "meetur86"
+                       :sound "025-meet-ur86"
+                       :commentary-sound "meetur86"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2352) :start 27 :end 84)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2353) :start 85 :end #xb1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2354) :start #xb2 :end #x101)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2355) :start #x102 :end #x16a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2356) :start #x16e :end #x1b5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2357) :start #x1b6 :end #x205)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2358) :start #x206 :end #x25b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2359) :start #x260 :end #x2ae)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2360) :start #x2b7 :end #x33f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2361) :start #x346 :end #x371)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2362) :start #x37d :end #x3ad)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2363) :start #x3b8 :end #x430)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2364) :start #x438 :end #x46e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2365) :start #x46f :end #x4de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2366) :start #x4df :end #x519)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2367) :start #x52f :end #x5a9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2368) :start #x5b1 :end #x616)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2369) :start #x617 :end #x63f)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4416) :start 1 :end 22)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4417) :start 25 :end 84)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4418) :start 85 :end #x74)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4419) :start #x75 :end #xe8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4420) :start #xe9 :end #x175)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4421) :start #x176 :end #x1e8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4422) :start #x1e9 :end #x24e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4423) :start #x24f :end #x29e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4911) :start #x29f :end #x336)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4425) :start #x337 :end #x396)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4426) :start #x397 :end #x405)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4427) :start #x406 :end #x48e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4428) :start #x48f :end #x4d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4429) :start #x4d8 :end #x58a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4430) :start #x58b :end #x5ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4431) :start #x5bb :end #x5dd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4432) :start #x5de :end #x658)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4433) :start #x659 :end #x6be)
+                         )
+                       :id #xd77
+                       :driver #xb
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "bleagadg"
+                       :sound "4-blitz-earn-gadgets"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2207) :start 47 :end #x7f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2206) :start #x80 :end #xf1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2205) :start #xf2 :end #x16c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2204) :start #x16d :end #x1bd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2203) :start #x1c4 :end #x1e5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2202) :start #x1e6 :end #x20e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2201) :start #x210 :end #x27e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2200) :start #x27f :end #x2be)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2199) :start #x2bf :end #x313)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2198) :start #x314 :end #x36d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2197) :start #x374 :end #x38a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2195) :start #x38d :end #x3b7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2196) :start #x3b9 :end #x425)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2194) :start #x426 :end #x4a0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2193) :start #x4a1 :end #x4d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2192) :start #x4d5 :end #x540)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2191) :start #x541 :end #x57b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd76
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "sireturn"
+                       :sound "81-sig-returns"
+                       :commentary-sound "sireturn"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2117) :start 20 :end 78)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2116) :start 79 :end #xb0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2115) :start #xb1 :end #x103)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2113) :start #x104 :end #x187)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2114) :start #x188 :end #x1e6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2112) :start #x1fc :end #x24f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2111) :start #x258 :end #x27d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2109) :start #x283 :end #x2bc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2110) :start #x2c0 :end #x2d9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2108) :start #x2e1 :end #x320)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2107) :start #x321 :end #x368)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2105) :start #x369 :end #x37e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2106) :start #x37f :end #x3c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2104) :start #x3cb :end #x417)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2103) :start #x424 :end #x453)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2102) :start #x454 :end #x4a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2101) :start #x4a4 :end #x4ff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2100) :start #x506 :end #x571)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2099) :start #x575 :end #x5da)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2098) :start #x5e7 :end #x603)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2097) :start #x606 :end #x649)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2096) :start #x64a :end #x694)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2095) :start #x695 :end #x6fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2094) :start #x6fc :end #x775)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2093) :start #x77c :end #x7bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2092) :start #x7bc :end #x7f8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2091) :start #x806 :end #x848)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2090) :start #x849 :end #x881)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2089) :start #x882 :end #x8de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2088) :start #x8df :end #x929)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2087) :start #x92a :end #x99c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2086) :start #x989 :end #x9c8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2085) :start #x9d0 :end #x9f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2083) :start #x9fe :end #xa23)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2084) :start #xa24 :end #xa7b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4554) :start 1 :end 16)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4555) :start 17 :end 89)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4556) :start 90 :end #xc6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4557) :start #xc7 :end #xf1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4558) :start #xf2 :end #x13a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4559) :start #x13b :end #x194)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4560) :start #x195 :end #x1fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4561) :start #x1fe :end #x249)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4562) :start #x24a :end #x2a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4563) :start #x2a4 :end #x323)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4564) :start #x324 :end #x371)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4565) :start #x372 :end #x3d9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4566) :start #x40d :end #x475)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4567) :start #x476 :end #x4bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4568) :start #x4bc :end #x513)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4569) :start #x514 :end #x56e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4570) :start #x56f :end #x5b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4571) :start #x5b5 :end #x60e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4572) :start #x60f :end #x63c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4573) :start #x656 :end #x696)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4574) :start #x697 :end #x6dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4575) :start #x6dd :end #x72b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4576) :start #x72c :end #x76b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4577) :start #x795 :end #x7df)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4578) :start #x7e0 :end #x7fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4579) :start #x7fc :end #x82f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4580) :start #x830 :end #x847)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4581) :start #x848 :end #x8cb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4582) :start #x8cc :end #x90f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4583) :start #x910 :end #x9c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4584) :start #x9c6 :end #x9f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4585) :start #x9f5 :end #xa2b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4586) :start #xa2c :end #xa68)
+                         )
+                       :id #xd78
+                       :driver #xa
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "urborain"
+                       :sound "32-ur86-boss-race-intro"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3051) :start 5 :end 71)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3052) :start 72 :end #x9d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3054) :start #xa7 :end #x100)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3055) :start #x101 :end #x14f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3056) :start #x150 :end #x1a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3057) :start #x1a8 :end #x201)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3058) :start #x202 :end #x273)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3059) :start #x274 :end #x2d0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3060) :start #x2d3 :end #x32e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3061) :start #x333 :end #x387)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3062) :start #x3a2 :end #x3ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3063) :start #x3c1 :end #x3e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3064) :start #x3e8 :end #x410)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3065) :start #x411 :end #x458)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3573) :start #x45b :end #x482)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd79
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "urborare"
+                       :sound "32-ur86-boss-race-res"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3067) :start 3 :end 71)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3068) :start 72 :end #x74)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3069) :start #x75 :end #xc1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3070) :start #xc8 :end #x11f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3071) :start #x120 :end #x17f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3072) :start #x180 :end #x1bf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3073) :start #x1c6 :end #x1fa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3075) :start #x1fb :end #x24a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3076) :start #x24b :end #x28d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3077) :start #x28e :end #x295)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3078) :start #x296 :end #x2c1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3079) :start #x2c2 :end #x2d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3080) :start #x2d2 :end #x2dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3081) :start #x2dd :end #x2e8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3082) :start #x2e9 :end #x2f0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3083) :start #x2f1 :end #x32d)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd7a
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "jahanoch"
+                       :sound "21-jak-has-no-chance"
+                       :commentary-sound "jahanoch"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2770) :start 18 :end 65)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2771) :start 66 :end #x9e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2772) :start #x9f :end #x11f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2773) :start #x120 :end #x188)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2774) :start #x18f :end #x1f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2775) :start #x1ff :end #x261)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2776) :start #x262 :end #x2e6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2777) :start #x2e8 :end #x32c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2778) :start #x333 :end #x348)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2779) :start #x34d :end #x37a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2780) :start #x37c :end #x3ea)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2781) :start #x3eb :end #x438)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2782) :start #x439 :end #x476)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2783) :start #x477 :end #x4d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2784) :start #x4d7 :end #x54b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4399) :start 2 :end 35)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4400) :start 36 :end #x6f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4401) :start #x70 :end #xce)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4402) :start #xcf :end #x136)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4403) :start #x137 :end #x190)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4404) :start #x191 :end #x1d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4405) :start #x1d8 :end #x21a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4406) :start #x21b :end #x275)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4407) :start #x276 :end #x2ad)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4408) :start #x2ae :end #x2fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4409) :start #x2fe :end #x347)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4410) :start #x348 :end #x3a8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4411) :start #x3a9 :end #x408)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4412) :start #x42b :end #x477)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4413) :start #x48b :end #x4e1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4414) :start #x4e2 :end #x518)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4415) :start #x519 :end #x54d)
+                         )
+                       :id #xd7b
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "kewatora"
+                       :sound "006-keira-wants-to-race"
+                       :commentary-sound "kewatora"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2434) :start 34 :end #x9c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2435) :start #xa2 :end #xec)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2436) :start #xed :end #x15d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2437) :start #x160 :end #x18d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2438) :start #x18e :end #x1f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2439) :start #x1fc :end #x24f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2440) :start #x250 :end #x2b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2441) :start #x2b5 :end #x2d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2442) :start #x2d5 :end #x33f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2443) :start #x342 :end #x3a1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2444) :start #x3a2 :end #x410)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2445) :start #x418 :end #x473)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2446) :start #x47d :end #x4e5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2447) :start #x4fc :end #x52a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2448) :start #x535 :end #x575)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2449) :start #x582 :end #x5ce)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2450) :start #x5d4 :end #x5ec)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2451) :start #x5f1 :end #x642)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2452) :start #x643 :end #x6a4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2453) :start #x6a5 :end #x70d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2454) :start #x70e :end #x731)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2455) :start #x732 :end #x77c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2456) :start #x77d :end #x7ea)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2457) :start #x7ef :end #x7fc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2458) :start #x806 :end #x834)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2459) :start #x83b :end #x877)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2460) :start #x87b :end #x89b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2461) :start #x89f :end #x8c3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2462) :start #x8d2 :end #x8fe)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2463) :start #x8ff :end #x951)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2464) :start #x952 :end #x97c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2465) :start #x97d :end #x9d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2466) :start #x9de :end #xa4b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4587) :start 1 :end 30)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4588) :start 32 :end 94)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4589) :start 95 :end #xe9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4590) :start #xea :end #x12e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4591) :start #x12f :end #x15e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4592) :start #x15f :end #x197)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4593) :start #x198 :end #x1e6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4594) :start #x1e7 :end #x25c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4595) :start #x25d :end #x29c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4596) :start #x29d :end #x2d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4597) :start #x2d5 :end #x32b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4598) :start #x32c :end #x392)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4599) :start #x393 :end #x3ee)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4600) :start #x3ef :end #x43e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4601) :start #x43f :end #x47e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4602) :start #x47f :end #x4d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4603) :start #x4d3 :end #x537)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4604) :start #x538 :end #x586)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4605) :start #x587 :end #x5bc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4606) :start #x5bd :end #x631)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4607) :start #x632 :end #x680)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4608) :start #x681 :end #x6ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4609) :start #x6cb :end #x735)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4610) :start #x736 :end #x79e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4611) :start #x79f :end #x7d8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4612) :start #x7d9 :end #x839)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4613) :start #x83a :end #x8a9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4614) :start #x8aa :end #x901)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4615) :start #x902 :end #x965)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4616) :start #x966 :end #x9a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4617) :start #x9a8 :end #x9d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4618) :start #x9d2 :end #xa3d)
+                         )
+                       :id #xd7c
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "klshup"
+                       :sound "38-kleiver-shows-up"
+                       :commentary-sound "klshup"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3084) :start 16 :end 87)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3085) :start 88 :end #x8e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3086) :start #x93 :end #xdf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3087) :start #xe6 :end #x13d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3088) :start #x13e :end #x1a8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3089) :start #x1a9 :end #x1e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3090) :start #x1e3 :end #x212)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3091) :start #x218 :end #x22f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3092) :start #x233 :end #x272)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3093) :start #x273 :end #x2a4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3094) :start #x2a6 :end #x2c9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3095) :start #x2ca :end #x318)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3096) :start #x319 :end #x380)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3097) :start #x383 :end #x3d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3098) :start #x3d2 :end #x3f9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3099) :start #x402 :end #x433)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3100) :start #x434 :end #x474)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3101) :start #x475 :end #x4b4)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4449) :start 27 :end #x7c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4450) :start #x7d :end #xe1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4451) :start #xe2 :end #x13b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4452) :start #x13c :end #x199)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4453) :start #x19a :end #x1e0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4454) :start #x1ee :end #x27d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4455) :start #x27e :end #x2da)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4456) :start #x2db :end #x32f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4457) :start #x330 :end #x35f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4458) :start #x360 :end #x3a1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4459) :start #x3a2 :end #x40d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4460) :start #x40e :end #x46d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4461) :start #x46e :end #x4ba)
+                         )
+                       :id #xd7d
+                       :driver #x3
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "klbubash"
+                       :sound "62-kleiver-bush-bash"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2127) :start 43 :end #x7a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2126) :start #x7b :end #xd9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2266) :start #xe1 :end #x141)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2124) :start #x142 :end #x178)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2123) :start #x17c :end #x1ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2122) :start #x1cb :end #x238)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2121) :start #x239 :end #x257)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2120) :start #x25b :end #x2ac)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2119) :start #x2c8 :end #x2f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2118) :start #x2f3 :end #x324)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd7e
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "blspbig"
+                       :sound "18-blitz-sport-big"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2756) :start 18 :end 71)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2757) :start 72 :end #x82)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2758) :start #x83 :end #xd3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2759) :start #xd4 :end #x10e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2760) :start #x110 :end #x158)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2761) :start #x159 :end #x19d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2762) :start #x19e :end #x218)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2763) :start #x219 :end #x269)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2764) :start #x27d :end #x2c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2765) :start #x2ca :end #x2f8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2766) :start #x302 :end #x346)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2767) :start #x34a :end #x36d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2768) :start #x371 :end #x38c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2769) :start #x394 :end #x3f8)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd7f
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "jaraonsh"
+                       :sound "33-jak-razer-on-show"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2938) :start 13 :end #xa8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2939) :start #xa9 :end #xc3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2940) :start #xc4 :end #x100)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2941) :start #x101 :end #x13a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2942) :start #x13b :end #x1cd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2943) :start #x1ce :end #x236)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2944) :start #x237 :end #x2bd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2945) :start #x2c1 :end #x32a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2946) :start #x32b :end #x35f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2947) :start #x360 :end #x3ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2948) :start #x3cb :end #x3f8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2949) :start #x3fc :end #x445)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2950) :start #x446 :end #x4a1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2951) :start #x4a2 :end #x4d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2952) :start #x4d2 :end #x4dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2953) :start #x50c :end #x559)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2954) :start #x563 :end #x5cc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2955) :start #x5d0 :end #x60a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2956) :start #x60b :end #x640)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2957) :start #x645 :end #x66c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2958) :start #x66d :end #x6c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2959) :start #x6c3 :end #x726)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd80
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "jubainha"
+                       :sound "005-jungle-back-in-haven"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2908) :start 15 :end #x6e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2909) :start #x6f :end #xc6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2910) :start #xc7 :end #x130)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2911) :start #x131 :end #x175)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2912) :start #x176 :end #x1c1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2913) :start #x1c2 :end #x1f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2914) :start #x1f6 :end #x269)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2915) :start #x26a :end #x2c3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2916) :start #x2c4 :end #x32f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2917) :start #x34b :end #x392)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2918) :start #x39d :end #x3c0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2919) :start #x3c3 :end #x3f0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2920) :start #x3fd :end #x411)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2921) :start #x421 :end #x468)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2922) :start #x469 :end #x4c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2923) :start #x4ca :end #x532)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2924) :start #x538 :end #x55b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2925) :start #x560 :end #x5a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2926) :start #x5b2 :end #x5ee)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2927) :start #x5ef :end #x602)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2928) :start #x603 :end #x62b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2929) :start #x635 :end #x655)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2930) :start #x656 :end #x682)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2931) :start #x683 :end #x6d6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2932) :start #x6e4 :end #x71b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd81
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "dawajob"
+                       :sound "52-daxter-wax-job"
+                       :commentary-sound "dawajob"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2820) :start 68 :end #x86)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2821) :start #x87 :end #xf5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2822) :start #x101 :end #x14e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2823) :start #x166 :end #x1aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2824) :start #x1c0 :end #x211)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2825) :start #x212 :end #x26b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2826) :start #x26c :end #x2c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2827) :start #x2c8 :end #x307)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2828) :start #x30c :end #x338)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2829) :start #x340 :end #x38b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2830) :start #x38c :end #x40a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2831) :start #x40b :end #x445)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2832) :start #x446 :end #x493)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4383) :start 1 :end 22)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4384) :start 23 :end 87)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4385) :start 88 :end #x8f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4386) :start #x90 :end #xd1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4387) :start #xd2 :end #xfb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4388) :start #xfc :end #x14b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4389) :start #x14c :end #x19c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4390) :start #x19d :end #x1d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4391) :start #x1d8 :end #x21d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4392) :start #x21e :end #x242)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4393) :start #x267 :end #x295)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4394) :start #x296 :end #x2db)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4395) :start #x2dc :end #x31c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4396) :start #x31d :end #x3af)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4397) :start #x3b0 :end #x434)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4398) :start #x435 :end #x46d)
+                         )
+                       :id #xd82
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "klborain"
+                       :sound "80-klever-boss-race-intro"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3162) :start 12 :end #x65)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3163) :start #x66 :end #xe1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3164) :start #xe2 :end #x155)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3165) :start #x15a :end #x1be)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3166) :start #x1bf :end #x1f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3167) :start #x1f7 :end #x239)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3168) :start #x23a :end #x26e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3169) :start #x276 :end #x2b2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3170) :start #x2b3 :end #x2de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3171) :start #x2e5 :end #x313)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3172) :start #x314 :end #x363)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3173) :start #x364 :end #x3c6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3174) :start #x3cd :end #x3f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3175) :start #x3f6 :end #x436)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3176) :start #x437 :end #x45d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3177) :start #x45e :end #x4b9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3178) :start #x4bd :end #x4ee)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3179) :start #x4ef :end #x525)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3180) :start #x526 :end #x586)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3181) :start #x587 :end #x5e1)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd83
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "klborace"
+                       :sound "80-klever-boss-race-res"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2314) :start 15 :end #x68)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2315) :start #x69 :end #xb1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2316) :start #xb2 :end #xed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2317) :start #xee :end #x11e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2318) :start #x11f :end #x133)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2319) :start #x139 :end #x19a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2320) :start #x19c :end #x1fa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2321) :start #x1ff :end #x223)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2322) :start #x224 :end #x27d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2323) :start #x27e :end #x2de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2324) :start #x2df :end #x30d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2325) :start #x30e :end #x34b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2326) :start #x34c :end #x370)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2327) :start #x371 :end #x3b7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2328) :start #x3be :end #x406)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2329) :start #x407 :end #x461)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2330) :start #x46f :end #x4d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2331) :start #x4db :end #x516)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2332) :start #x517 :end #x596)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2333) :start #x5a6 :end #x63a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2334) :start #x5dd :end #x682)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2335) :start #x683 :end #x6b5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2336) :start #x6b6 :end #x743)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2337) :start #x749 :end #x76d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2338) :start #x774 :end #x7a5)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd84
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "blfadied"
+                       :sound "47-blitzs-father-died"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2785) :start 11 :end 47)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2786) :start 48 :end #x80)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2787) :start #x84 :end #x118)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2788) :start #x12f :end #x17f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2789) :start #x180 :end #x1d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2790) :start #x1d4 :end #x21e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2791) :start #x21f :end #x259)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2792) :start #x261 :end #x290)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2793) :start #x299 :end #x2d9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2794) :start #x2e3 :end #x322)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2795) :start #x323 :end #x386)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2796) :start #x387 :end #x3c3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2797) :start #x3c6 :end #x3ff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2798) :start #x400 :end #x451)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd85
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "krdiary"
+                       :sound "84-krews-diary"
+                       :commentary-sound "krdiary"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3116) :start 61 :end #x91)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3117) :start #x92 :end #xd5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3118) :start #xd6 :end #xfb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3119) :start #xfc :end #x126)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3120) :start #x12e :end #x141)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3121) :start #x16d :end #x1a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3122) :start #x1a4 :end #x1e1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3123) :start #x1e2 :end #x222)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3124) :start #x223 :end #x278)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3125) :start #x279 :end #x2cb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3126) :start #x2cc :end #x311)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3127) :start #x312 :end #x377)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3128) :start #x378 :end #x3d6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3129) :start #x3d7 :end #x434)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3130) :start #x448 :end #x493)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3131) :start #x49c :end #x4f7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3132) :start #x4ff :end #x54e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3133) :start #x54f :end #x5ad)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3134) :start #x5b1 :end #x5fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3135) :start #x5fc :end #x648)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3136) :start #x657 :end #x675)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3137) :start #x686 :end #x6aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3138) :start #x6ba :end #x6e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3139) :start #x6e3 :end #x719)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3140) :start #x71b :end #x758)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3141) :start #x75d :end #x77d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3142) :start #x77e :end #x7b9)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4494) :start 15 :end 40)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4495) :start 41 :end #x9f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4496) :start #xa0 :end #x118)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4497) :start #x119 :end #x15f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4498) :start #x160 :end #x1c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4499) :start #x1c8 :end #x218)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4516) :start #x219 :end #x286)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4501) :start #x287 :end #x2f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4502) :start #x2f5 :end #x340)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4503) :start #x341 :end #x39c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4504) :start #x39d :end #x405)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4505) :start #x406 :end #x44a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4506) :start #x44b :end #x48e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4507) :start #x48f :end #x4c9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4508) :start #x4ca :end #x51d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4510) :start #x51e :end #x561)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4509) :start #x562 :end #x5d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4511) :start #x5d5 :end #x66d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4512) :start #x66e :end #x69f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4513) :start #x6a0 :end #x6d5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4514) :start #x702 :end #x71d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4515) :start #x71e :end #x751)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4517) :start #x752 :end #x7b2)
+                         )
+                       :id #xd86
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "jacoraze"
+                       :sound "104-jak-confronts-razer"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3803) :start 20 :end #x8d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3804) :start #x8e :end #xb4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3805) :start #xb5 :end #xf5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3806) :start #xfa :end #x158)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3807) :start #x15a :end #x182)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3808) :start #x183 :end #x1ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3809) :start #x1bc :end #x1e5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3810) :start #x1e6 :end #x221)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3811) :start #x222 :end #x267)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3812) :start #x268 :end #x292)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3813) :start #x293 :end #x2c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3814) :start #x2c6 :end #x301)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3815) :start #x302 :end #x343)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3816) :start #x347 :end #x3a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3817) :start #x3a4 :end #x3fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3818) :start #x3fc :end #x466)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd87
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "cawetrmi"
+                       :sound "100-can-we-trust-mizo"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3590) :start 33 :end 98)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3591) :start 99 :end #xaf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3592) :start #xb0 :end #x107)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3593) :start #x10e :end #x123)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3594) :start #x124 :end #x169)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3595) :start #x171 :end #x1a9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3596) :start #x1aa :end #x1f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3597) :start #x1f7 :end #x22f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3598) :start #x23a :end #x295)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3599) :start #x296 :end #x2b7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3600) :start #x2b8 :end #x30b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3601) :start #x30c :end #x33e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3602) :start #x33f :end #x387)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3603) :start #x38f :end #x3e1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3604) :start #x3e2 :end #x40b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3605) :start #x40d :end #x42b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3606) :start #x42c :end #x45e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3607) :start #x45f :end #x484)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3608) :start #x485 :end #x4b8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3609) :start #x4b9 :end #x4e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3610) :start #x4ea :end #x515)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3611) :start #x516 :end #x545)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd88
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "pehainfo"
+                       :sound "114-pecker-has-info"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3490) :start 30 :end 77)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3491) :start 82 :end #x9e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3492) :start #x9f :end #xe7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3494) :start #xe8 :end #x148)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3495) :start #x14b :end #x177)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3496) :start #x17b :end #x1d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3497) :start #x1d4 :end #x232)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3498) :start #x233 :end #x265)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3499) :start #x266 :end #x2a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3500) :start #x2af :end #x309)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3501) :start #x313 :end #x33d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3502) :start #x33e :end #x367)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3503) :start #x368 :end #x39a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3504) :start #x39f :end #x3f9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3505) :start #x3fa :end #x436)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd89
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "ragenast"
+                       :sound "125-razer-gets-nasty"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3506) :start 22 :end 67)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3507) :start 73 :end 92)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3508) :start 96 :end #x71)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3509) :start #x76 :end #x82)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3510) :start #x88 :end #xab)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3511) :start #xb3 :end #xc3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3512) :start #xca :end #xff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3513) :start #x107 :end #x12b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3514) :start #x12c :end #x17b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3515) :start #x18e :end #x1d3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3516) :start #x1d4 :end #x228)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3517) :start #x229 :end #x265)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3518) :start #x26a :end #x298)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3519) :start #x2a0 :end #x2f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3520) :start #x2f5 :end #x337)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3521) :start #x338 :end #x36d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3522) :start #x36e :end #x3bc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3523) :start #x3bd :end #x41a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3524) :start #x41b :end #x44c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3525) :start #x44d :end #x47f)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd8a
+                       :driver #x2
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "jaberazo"
+                       :sound "130-jak-beats-razer-res"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3144) :start 22 :end #x7e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3145) :start #x82 :end #x95)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3146) :start #x9c :end #xd2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3147) :start #xd3 :end #x126)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3790) :start #x127 :end #x16b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3149) :start #x16e :end #x19b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3150) :start #x19c :end #x1c1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3151) :start #x1c4 :end #x20b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3152) :start #x20c :end #x242)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3153) :start #x243 :end #x28c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3154) :start #x28d :end #x2f0)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd8b
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "miofdeal"
+                       :sound "130-mizo-offers-deal-intro"
+                       :commentary-sound "miofdeal"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2799) :start 23 :end 78)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2800) :start 86 :end #x92)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2801) :start #x9b :end #xd9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2802) :start #xda :end #x12a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2803) :start #x13a :end #x186)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2804) :start #x187 :end #x1e4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2805) :start #x1e5 :end #x285)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2806) :start #x28f :end #x2e8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2807) :start #x2fc :end #x32d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2808) :start #x32e :end #x399)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2809) :start #x39a :end #x3e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2810) :start #x3e8 :end #x47b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2811) :start #x47c :end #x4cc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2812) :start #x4e8 :end #x535)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2813) :start #x547 :end #x565)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2814) :start #x566 :end #x5d0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2815) :start #x5d1 :end #x609)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2816) :start #x60a :end #x657)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2817) :start #x658 :end #x6a7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2818) :start #x6a8 :end #x6f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2819) :start #x72b :end #x76d)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4348) :start 10 :end 30)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4349) :start 50 :end #x7a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4350) :start #x96 :end #xf7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4351) :start #xf8 :end #x169)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4352) :start #x16a :end #x1b6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4353) :start #x1b7 :end #x200)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4354) :start #x201 :end #x263)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4355) :start #x264 :end #x29a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4356) :start #x2d0 :end #x2ff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4357) :start #x300 :end #x355)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4358) :start #x356 :end #x393)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4359) :start #x394 :end #x3f7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4360) :start #x3f8 :end #x448)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4361) :start #x449 :end #x4de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4362) :start #x4df :end #x53d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4363) :start #x53e :end #x59c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4364) :start #x59d :end #x5d7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4365) :start #x5d8 :end #x62f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4366) :start #x630 :end #x6b1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4367) :start #x6b2 :end #x6dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4368) :start #x6dd :end #x6f7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4369) :start #x6f8 :end #x74d)
+                         )
+                       :id #xd8c
+                       :driver #xd
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "blfakill"
+                       :sound "139-blitz-father-killed"
+                       :commentary-sound "blfakill"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3554) :start 75 :end #x77)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3555) :start #x7c :end #xc4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3556) :start #xc5 :end #xea)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3557) :start #xeb :end #x140)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3558) :start #x143 :end #x17c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3559) :start #x17e :end #x195)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3560) :start #x196 :end #x1fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3561) :start #x202 :end #x23b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3562) :start #x23c :end #x259)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3563) :start #x25a :end #x290)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3564) :start #x299 :end #x2ca)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3565) :start #x2cb :end #x2f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3566) :start #x2f5 :end #x358)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3567) :start #x359 :end #x3aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3568) :start #x3b4 :end #x3f0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3569) :start #x3f6 :end #x414)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3570) :start #x415 :end #x454)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3571) :start #x455 :end #x496)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4518) :start 1 :end 23)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4519) :start 25 :end 93)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4520) :start 94 :end #x9b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4521) :start #x9c :end #xd3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4522) :start #xd4 :end #x12f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4523) :start #x130 :end #x15f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4524) :start #x160 :end #x1bf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4525) :start #x1c0 :end #x223)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4526) :start #x224 :end #x266)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4527) :start #x267 :end #x279)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4528) :start #x27a :end #x29b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4529) :start #x29c :end #x2da)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4530) :start #x2db :end #x348)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4531) :start #x349 :end #x385)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4532) :start #x386 :end #x3d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4533) :start #x3d5 :end #x401)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4534) :start #x402 :end #x445)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4535) :start #x446 :end #x496)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4536) :start #x497 :end #x4ca)
+                         )
+                       :id #xd8d
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "jakikrew"
+                       :sound "157-jak-killed-krew"
+                       :commentary-sound "jakikrew"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3215) :start 76 :end #x7c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3216) :start #x7d :end #xb6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3217) :start #xc5 :end #x12c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3218) :start #x132 :end #x167)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3219) :start #x16f :end #x1a8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3220) :start #x1a9 :end #x1ed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3221) :start #x1ee :end #x228)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3222) :start #x229 :end #x280)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3223) :start #x280 :end #x290)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3224) :start #x297 :end #x2f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3225) :start #x2f5 :end #x334)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3226) :start #x337 :end #x384)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3227) :start #x386 :end #x3e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3228) :start #x3eb :end #x436)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3229) :start #x43f :end #x486)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3230) :start #x488 :end #x4d5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3231) :start #x4d6 :end #x52a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3232) :start #x532 :end #x54c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3233) :start #x54d :end #x5af)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3234) :start #x5b5 :end #x5cd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3235) :start #x5d2 :end #x604)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3236) :start #x605 :end #x631)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3237) :start #x634 :end #x663)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3238) :start #x664 :end #x69b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3239) :start #x69c :end #x6c6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3240) :start #x6db :end #x71a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3241) :start #x71b :end #x737)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3242) :start #x738 :end #x769)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3243) :start #x76a :end #x7a3)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4462) :start 1 :end 52)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4463) :start 54 :end 95)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4464) :start 96 :end #xd7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4465) :start #xd8 :end #x16f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4466) :start #x170 :end #x1ac)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4467) :start #x1ad :end #x23c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4468) :start #x23d :end #x2de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4469) :start #x2df :end #x378)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4470) :start #x379 :end #x3c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4471) :start #x405 :end #x4c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4472) :start #x4c6 :end #x50c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4474) :start #x555 :end #x596)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4475) :start #x5d8 :end #x615)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4476) :start #x616 :end #x65c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4477) :start #x680 :end #x6ec)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4478) :start #x6ed :end #x77a)
+                         )
+                       :id #xd8e
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "blbaall"
+                       :sound "164-blitz-bares-all"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3526) :start 30 :end 86)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3527) :start 98 :end #x8d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3528) :start #x8e :end #x9e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3529) :start #xa5 :end #xe2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3530) :start #xf4 :end #x115)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3531) :start #x116 :end #x168)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3532) :start #x169 :end #x1d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3533) :start #x1d2 :end #x228)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3534) :start #x229 :end #x258)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3535) :start #x259 :end #x26c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3536) :start #x28e :end #x2b7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3537) :start #x2b8 :end #x2fc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3547) :start #x309 :end #x331)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3548) :start #x332 :end #x38c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3549) :start #x38d :end #x3e3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3550) :start #x3e4 :end #x42d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3551) :start #x42e :end #x474)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #xd8f
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "fiborain"
+                       :sound "165-final-boss-race-intro"
+                       :commentary-sound "fiborain"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3184) :start 17 :end #x88)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3185) :start #x94 :end #xee)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3186) :start #xef :end #x143)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3187) :start #x144 :end #x169)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3188) :start #x175 :end #x1a2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3189) :start #x1a3 :end #x1e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3190) :start #x1e8 :end #x234)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3191) :start #x235 :end #x288)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3192) :start #x289 :end #x2f7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3193) :start #x30a :end #x343)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3194) :start #x344 :end #x371)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3195) :start #x372 :end #x3d4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3196) :start #x3d5 :end #x3e7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3197) :start #x3e9 :end #x42b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3198) :start #x42c :end #x45c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3199) :start #x470 :end #x490)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3200) :start #x49b :end #x4aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3201) :start #x4b2 :end #x4de)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3202) :start #x4df :end #x511)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3203) :start #x51a :end #x540)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3204) :start #x543 :end #x55d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3205) :start #x567 :end #x59b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3206) :start #x5a0 :end #x5b6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3207) :start #x5be :end #x5cc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3208) :start #x5d2 :end #x610)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3209) :start #x611 :end #x658)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3210) :start #x65e :end #x696)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3211) :start #x6a0 :end #x6bf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3212) :start #x6c4 :end #x6db)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3213) :start #x6e2 :end #x711)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3214) :start #x714 :end #x749)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4537) :start 92 :end #xd4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4538) :start #xd5 :end #x129)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4539) :start #x12a :end #x194)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4540) :start #x195 :end #x1e4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4541) :start #x1e5 :end #x21b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4542) :start #x231 :end #x27e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4543) :start #x27f :end #x2d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4544) :start #x2d3 :end #x36d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4545) :start #x36e :end #x3b9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4546) :start #x3ba :end #x449)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4547) :start #x44a :end #x4c7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4548) :start #x4c8 :end #x528)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4549) :start #x55d :end #x5c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4550) :start #x5ff :end #x644)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4551) :start #x645 :end #x66c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4552) :start #x66d :end #x6a0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4553) :start #x6a1 :end #x6f1)
+                         )
+                       :id #xd90
+                       :driver #x4
+                       :driver2 #x13
+                       )
+                     (new 'static 'm2v-info
+                       :name "outroa"
+                       :sound "166-outro-a"
+                       :commentary-sound "outroa"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3652) :start 13 :end 92)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3653) :start 93 :end #x9d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3654) :start #x9e :end #xf9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3655) :start #xfa :end #x11c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3656) :start #x11d :end #x1a3)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3657) :start #x1af :end #x1cc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3658) :start #x1da :end #x211)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3659) :start #x218 :end #x241)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3660) :start #x249 :end #x292)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3661) :start #x293 :end #x2b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3662) :start #x2b5 :end #x306)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3663) :start #x30c :end #x348)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3664) :start #x352 :end #x38e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3665) :start #x38f :end #x3bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3666) :start #x3bc :end #x3eb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3667) :start #x3ec :end #x44a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3668) :start #x455 :end #x494)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3669) :start #x49b :end #x4aa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3670) :start #x4ac :end #x4c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3671) :start #x4c3 :end #x4fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3672) :start #x4fc :end #x542)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3673) :start #x543 :end #x58b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3674) :start #x592 :end #x5f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3675) :start #x5f7 :end #x5ff)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3676) :start #x608 :end #x64b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3677) :start #x64c :end #x6a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3678) :start #x6b0 :end #x706)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3679) :start #x73a :end #x755)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4479) :start 31 :end 65)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4480) :start 66 :end #xaa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4481) :start #xab :end #x150)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4482) :start #x151 :end #x200)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4483) :start #x201 :end #x26b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4484) :start #x26c :end #x2bd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4485) :start #x2be :end #x32c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4486) :start #x32d :end #x3ec)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4487) :start #x3ed :end #x463)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4488) :start #x464 :end #x4e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4489) :start #x501 :end #x57e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4490) :start #x57f :end #x619)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4491) :start #x61a :end #x6c8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4492) :start #x6c9 :end #x718)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4493) :start #x719 :end #x783)
+                         )
+                       :id #xd91
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x2
+                       )
+                     (new 'static 'm2v-info
+                       :name "outrob"
+                       :sound "166-outro-b"
+                       :commentary-sound "outrob"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3680) :start #x1d0 :end #x1fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3681) :start #x202 :end #x224)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3682) :start #x225 :end #x28e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3683) :start #x290 :end #x2da)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3684) :start #x2db :end #x2f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3685) :start #x2f7 :end #x343)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3686) :start #x344 :end #x3bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3687) :start #x3bc :end #x417)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3688) :start #x43e :end #x49f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3689) :start #x4bc :end #x4e5)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4334) :start 1 :end 26)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4335) :start 27 :end #x69)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4336) :start #x6a :end #xb7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4337) :start #xb8 :end #x11e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4338) :start #x11f :end #x1ab)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4339) :start #x1ac :end #x202)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4340) :start #x219 :end #x271)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4341) :start #x272 :end #x2cd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4342) :start #x2ce :end #x336)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4343) :start #x337 :end #x3a5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4344) :start #x3a6 :end #x433)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4345) :start #x434 :end #x498)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4346) :start #x499 :end #x4f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4347) :start #x4f3 :end #x561)
+                         )
+                       :id #x132d
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "outroc"
+                       :sound "166-outro-c"
+                       :commentary-sound "outroc"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3690) :start 48 :end #x7f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3691) :start #x80 :end #xed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3692) :start #xf4 :end #x133)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3693) :start #x138 :end #x160)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3694) :start #x166 :end #x18e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3695) :start #x197 :end #x1a5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3696) :start #x1ae :end #x1e9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3697) :start #x1f8 :end #x232)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3698) :start #x233 :end #x25c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3699) :start #x25d :end #x28f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3700) :start #x290 :end #x2d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3701) :start #x2d3 :end #x2fd)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3702) :start #x2fe :end #x32d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3703) :start #x334 :end #x346)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3704) :start #x36d :end #x391)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3705) :start #x3c0 :end #x3f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3706) :start #x3f5 :end #x43b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3707) :start #x45d :end #x4b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3708) :start #x4b5 :end #x4f5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3709) :start #x4f6 :end #x541)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3710) :start #x542 :end #x574)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3711) :start #x575 :end #x5e2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3712) :start #x5e3 :end #x61b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3713) :start #x61c :end #x676)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3714) :start #x677 :end #x6d2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3715) :start #x6d3 :end #x71c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3716) :start #x737 :end #x752)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3717) :start #x768 :end #x77d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3718) :start #x77e :end #x7b4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3719) :start #x7b5 :end #x80b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3720) :start #x80c :end #x83e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3721) :start #x840 :end #x883)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3722) :start #x884 :end #x8ae)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3723) :start #x8af :end #x8f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3724) :start #x8f3 :end #x94a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3725) :start #x961 :end #x982)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3726) :start #x989 :end #x9d1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3727) :start #x9d8 :end #x9f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3728) :start #x9f5 :end #xa5d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3729) :start #xa61 :end #xaaa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3730) :start #xaab :end #xb05)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3731) :start #xb0f :end #xb4c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3732) :start #xb57 :end #xb67)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3733) :start #xb7b :end #xbc5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-3734) :start #xc01 :end #xc74)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4280) :start 1 :end 27)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4281) :start 28 :end #xc6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4282) :start #xc7 :end #x17e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4283) :start #x17f :end #x201)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4284) :start #x214 :end #x26b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4285) :start #x26c :end #x2b1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4286) :start #x2b2 :end #x307)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4287) :start #x308 :end #x34f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4288) :start #x350 :end #x39c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4289) :start #x39d :end #x404)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4290) :start #x405 :end #x459)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4291) :start #x45a :end #x4bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4292) :start #x4bc :end #x52b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4293) :start #x52c :end #x5a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4294) :start #x5a7 :end #x5e0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4295) :start #x5e1 :end #x63a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4296) :start #x63b :end #x667)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4297) :start #x668 :end #x6ba)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4298) :start #x6bb :end #x6f6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4299) :start #x6f7 :end #x784)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4300) :start #x785 :end #x7fe)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4301) :start #x7ff :end #x8c2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4302) :start #x8c3 :end #x900)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4303) :start #x901 :end #x928)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4304) :start #x929 :end #x940)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4305) :start #x941 :end #x990)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4306) :start #x991 :end #xa07)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4307) :start #xa09 :end #xa9b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4914) :start #xac2 :end #xb33)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4309) :start #xb34 :end #xb7c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4310) :start #xb7d :end #xbf7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4311) :start #xbf8 :end #xc62)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4312) :start #xc63 :end #xc7e)
+                         )
+                       :id #x132e
+                       :driver #x17
+                       :driver2 #x17
+                       )
+                     (new 'static 'm2v-info
+                       :name "introb2"
+                       :sound "intro-boardroom"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2833) :start 35 :end #x6a)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2834) :start #x6b :end #x93)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2835) :start #x9d :end #xc6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2836) :start #xce :end #xf6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2837) :start #xf7 :end #x15b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2838) :start #x15c :end #x1bb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2839) :start #x1c3 :end #x1f1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2840) :start #x1f2 :end #x242)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2886) :start #x243 :end #x273)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2842) :start #x275 :end #x2c9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2843) :start #x2ca :end #x322)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2844) :start #x323 :end #x371)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2845) :start #x372 :end #x409)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2846) :start #x424 :end #x4b0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2847) :start #x514 :end #x56d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2848) :start #x590 :end #x5ea)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2849) :start #x5eb :end #x682)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2850) :start #x683 :end #x6fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2851) :start #x6fc :end #x763)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2852) :start #x764 :end #x7dc)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2853) :start #x7dd :end #x85f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2854) :start #x860 :end #x8c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2855) :start #x8c6 :end #x93b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2856) :start #x942 :end #x94b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2857) :start #x94c :end #x955)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2858) :start #x956 :end #x960)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2859) :start #x968 :end #x9a6)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2860) :start #x9a7 :end #xa1c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2861) :start #xa1d :end #xa97)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2862) :start #xa98 :end #xae9)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2863) :start #xaea :end #xb3e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2864) :start #xb3f :end #xb53)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2865) :start #xb58 :end #xbe1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2866) :start #xbe2 :end #xc3e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2867) :start #xc3f :end #xcac)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2868) :start #xcad :end #xd08)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2869) :start #xd09 :end #xd6d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2870) :start #xd86 :end #xdb7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2871) :start #xdbe :end #xe21)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2872) :start #xe22 :end #xe5d)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2873) :start #xe63 :end #xe9b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2874) :start #xe9e :end #xecf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2875) :start #xed9 :end #xf00)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2876) :start #xf10 :end #xf73)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2877) :start #xf60 :end #xfbf)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2878) :start #xfc0 :end #xff7)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2879) :start #xff8 :end #x103e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2880) :start #x1055 :end #x10c5)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2881) :start #x10d1 :end #x10ed)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2882) :start #x10ee :end #x1148)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2883) :start #x1153 :end #x1194)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2884) :start #x1195 :end #x11fa)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-2885) :start #x11fb :end #x125a)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #xb
+                       )
+                     (new 'static 'm2v-info
+                       :name "bloopers"
+                       :sound "bloopers-reel"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4848) :start 10 :end 97)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4849) :start #x7f :end #x115)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4850) :start #x181 :end #x22e)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4851) :start #x22f :end #x2fb)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4852) :start #x2fc :end #x43c)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4853) :start #x43d :end #x50f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4854) :start #x51e :end #x5f2)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4855) :start #x62e :end #x6ee)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4856) :start #x6f8 :end #x771)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4857) :start #x772 :end #x8c8)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4858) :start #x8f9 :end #x9f6)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #xf
+                       )
+                     (new 'static 'm2v-info
+                       :name "makingin"
+                       :sound "making-intro"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4859) :start 15 :end #x291)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4860) :start #x2b0 :end #x540)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4861) :start #x55f :end #x7f4)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4862) :start #x7f5 :end #xaf0)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4863) :start #xb00 :end #xe3f)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4864) :start #xe4f :end #x119b)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #xf
+                       )
+                     (new 'static 'm2v-info
+                       :name "hotcoffe"
+                       :sound "hot-coffee"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4865) :start 21 :end 80)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4866) :start 81 :end #x6b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4867) :start #x6c :end #x7b)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4868) :start #x7c :end #xb1)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4869) :start #xb2 :end #x103)
+                         (new 'static 'm2v-caption :text-id (text-id text-id-4870) :start #x130 :end #x148)
+                         )
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #x10b5
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x9
+                       )
+                     (new 'static 'm2v-info
+                       :name "thx"
+                       :sound "thx-intro"
+                       :commentary-sound "#f"
+                       :captions (new 'static 'boxed-array :type m2v-caption)
+                       :commentary-captions (new 'static 'boxed-array :type m2v-caption)
+                       :id #x554
+                       :driver #x17
+                       :driver2 #x17
+                       :flags #x3
+                       )
+                     )
+        )

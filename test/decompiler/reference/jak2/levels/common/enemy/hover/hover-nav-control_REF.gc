@@ -832,7 +832,6 @@
 ;; definition for method 26 of type nav-network
 ;; INFO: Used lq/sq
 (defmethod nav-network-method-26 ((this nav-network) (arg0 vector) (arg1 process) (arg2 vector) (arg3 vector) (arg4 float))
-  (local-vars (sv-48 vector) (sv-64 sphere))
   (vector-reset! arg0)
   (let ((s1-0 (process->handle arg1))
         (s2-0 0)
@@ -841,17 +840,16 @@
       (while v1-3
         (let ((s0-0 (-> v1-3 next)))
           (when (!= (-> (the-as hover-nav-sphere v1-3) handle) s1-0)
-            (set! sv-64 (-> (the-as hover-nav-sphere v1-3) sphere))
-            (set! sv-48 (new 'stack-no-clear 'vector))
-            (vector-segment-distance-point! sv-64 arg2 arg3 sv-48)
-            (when (>= (+ arg4 (-> sv-64 r)) (vector-vector-distance sv-64 sv-48))
-              (let* ((v1-8 (new 'stack-no-clear 'vector))
-                     (a0-6 arg2)
-                     (v1-9 (vector-! v1-8 (the-as vector sv-64) a0-6))
-                     )
-                (vector+! arg0 arg0 v1-9)
+            (let ((sv-64 (-> (the-as hover-nav-sphere v1-3) sphere))
+                  (sv-48 (new 'stack-no-clear 'vector))
+                  )
+              (vector-segment-distance-point! sv-64 arg2 arg3 sv-48)
+              (when (>= (+ arg4 (-> sv-64 r)) (vector-vector-distance sv-64 sv-48))
+                (let ((v1-9 (vector-! (new 'stack-no-clear 'vector) (the-as vector sv-64) arg2)))
+                  (vector+! arg0 arg0 v1-9)
+                  )
+                (+! s2-0 1)
                 )
-              (+! s2-0 1)
               )
             )
           (set! v1-3 s0-0)
@@ -1088,67 +1086,62 @@
 ;; WARN: Stack slot offset 32 signed mismatch
 ;; WARN: Return type mismatch int vs none.
 (defmethod hover-nav-control-method-28 ((this hover-nav-control) (arg0 vector) (arg1 vector))
-  (local-vars (v0-15 symbol) (sv-32 int) (sv-48 (function hover-nav-control vector vector int)))
-  (let ((s4-0 (-> this nav network))
-        (s5-0 (-> this path-info))
-        (s1-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 arg1) 1.0))
-        )
-    (set! sv-32 (hover-nav-control-method-27 this arg1 s1-0))
+  (local-vars (v0-15 symbol))
+  (let* ((s4-0 (-> this nav network))
+         (s5-0 (-> this path-info))
+         (s1-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 arg1) 1.0))
+         (sv-32 (hover-nav-control-method-27 this arg1 s1-0))
+         )
     (set! v0-15
           (cond
             (sv-32
               (when (or (!= sv-32 (-> this curr-dest-pt)) (not (-> this path-info segment-list)))
-                (let ((s0-0 this))
-                  (set! sv-48 (method-of-object s0-0 hover-nav-control-method-27))
-                  (let* ((a2-2 (vector-negate! s1-0 s1-0))
-                         (s2-1 (sv-48 s0-0 arg0 a2-2))
-                         )
-                    (when s2-1
-                      (cond
-                        ((= s2-1 sv-32)
-                         (if *debug-hover*
-                             (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 sv-32 pos) (meters 1) *color-dark-blue*)
-                             )
-                         (nav-network-method-22 (-> this nav) s5-0 (-> s4-0 sv-32 pos) arg1 -1 -1)
-                         (nav-network-method-22
-                           (-> this nav)
-                           s5-0
-                           (-> (hover-nav-control-method-17 this) world-sphere)
-                           (-> s4-0 s2-1 pos)
-                           -1
-                           -1
+                (let ((s2-1 (hover-nav-control-method-27 this arg0 (vector-negate! s1-0 s1-0))))
+                  (when s2-1
+                    (cond
+                      ((= s2-1 sv-32)
+                       (if *debug-hover*
+                           (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 sv-32 pos) (meters 1) *color-dark-blue*)
                            )
+                       (nav-network-method-22 (-> this nav) s5-0 (-> s4-0 sv-32 pos) arg1 -1 -1)
+                       (nav-network-method-22
+                         (-> this nav)
+                         s5-0
+                         (-> (hover-nav-control-method-17 this) world-sphere)
+                         (-> s4-0 s2-1 pos)
+                         -1
+                         -1
                          )
-                        (else
-                          (when *debug-hover*
-                            (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 s2-1 pos) (meters 1) *color-green*)
-                            (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 sv-32 pos) (meters 1) *color-cyan*)
-                            )
-                          (let* ((a0-14 (-> this nav))
-                                 (t9-10 (method-of-object a0-14 nav-network-method-22))
-                                 (a1-11 s5-0)
-                                 (a2-8 (-> s4-0 sv-32 pos))
-                                 (a3-5 arg1)
-                                 (t0-5 -1)
-                                 )
-                            (t9-10 a0-14 a1-11 a2-8 a3-5 t0-5 -1)
-                            (nav-network-method-24 (-> this nav) s5-0 s2-1 sv-32 t0-5)
-                            )
-                          (nav-network-method-22
-                            (-> this nav)
-                            s5-0
-                            (-> (hover-nav-control-method-17 this) world-sphere)
-                            (-> s4-0 s2-1 pos)
-                            -1
-                            -1
-                            )
+                       )
+                      (else
+                        (when *debug-hover*
+                          (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 s2-1 pos) (meters 1) *color-green*)
+                          (add-debug-sphere #t (bucket-id debug-no-zbuf1) (-> s4-0 sv-32 pos) (meters 1) *color-cyan*)
+                          )
+                        (let* ((a0-14 (-> this nav))
+                               (t9-10 (method-of-object a0-14 nav-network-method-22))
+                               (a1-11 s5-0)
+                               (a2-8 (-> s4-0 sv-32 pos))
+                               (a3-5 arg1)
+                               (t0-5 -1)
+                               )
+                          (t9-10 a0-14 a1-11 a2-8 a3-5 t0-5 -1)
+                          (nav-network-method-24 (-> this nav) s5-0 s2-1 sv-32 t0-5)
+                          )
+                        (nav-network-method-22
+                          (-> this nav)
+                          s5-0
+                          (-> (hover-nav-control-method-17 this) world-sphere)
+                          (-> s4-0 s2-1 pos)
+                          -1
+                          -1
                           )
                         )
-                      (hover-nav-control-method-29 this (-> this root transv))
-                      (set! (-> s5-0 curr-segment) (-> s5-0 segment-list))
-                      (set! (-> s5-0 curr-u) (/ 16384.0 (-> s5-0 curr-segment dist)))
-                      (set! (-> this curr-dest-pt) sv-32)
                       )
+                    (hover-nav-control-method-29 this (-> this root transv))
+                    (set! (-> s5-0 curr-segment) (-> s5-0 segment-list))
+                    (set! (-> s5-0 curr-u) (/ 16384.0 (-> s5-0 curr-segment dist)))
+                    (set! (-> this curr-dest-pt) sv-32)
                     )
                   )
                 )
@@ -1317,20 +1310,21 @@
 ;; definition for method 15 of type hover-nav-control
 ;; WARN: Return type mismatch vector vs none.
 (defmethod hover-nav-control-method-15 ((this hover-nav-control) (arg0 vector))
-  (local-vars (sv-32 vector) (sv-36 collide-shape-moving))
-  (set! sv-32 (new 'stack-no-clear 'vector))
-  (set! sv-36 (-> this root))
-  (vector-inv-orient-by-quat! sv-32 (-> sv-36 transv) (-> sv-36 quat))
-  (vector-float*! arg0 sv-32 (/ 1.0 (hover-nav-control-method-30 this)))
+  (let ((sv-32 (new 'stack-no-clear 'vector)))
+    (let ((sv-36 (-> this root)))
+      (vector-inv-orient-by-quat! sv-32 (-> sv-36 transv) (-> sv-36 quat))
+      )
+    (vector-float*! arg0 sv-32 (/ 1.0 (hover-nav-control-method-30 this)))
+    )
   (none)
   )
 
 ;; definition for method 16 of type hover-nav-control
 (defmethod hover-nav-control-method-16 ((this hover-nav-control) (arg0 vector))
-  (local-vars (sv-32 vector))
-  (set! sv-32 (new 'stack-no-clear 'vector))
-  (vector-inv-orient-by-quat! sv-32 (-> this transvv) (-> this root quat))
-  (vector-float*! arg0 sv-32 (/ 1.0 (hover-nav-control-method-31 this)))
+  (let ((sv-32 (new 'stack-no-clear 'vector)))
+    (vector-inv-orient-by-quat! sv-32 (-> this transvv) (-> this root quat))
+    (vector-float*! arg0 sv-32 (/ 1.0 (hover-nav-control-method-31 this)))
+    )
   )
 
 ;; definition for method 10 of type hover-nav-control
@@ -1403,7 +1397,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod hover-nav-control-method-11 ((this hover-nav-control) (arg0 vector))
-  (local-vars (sv-288 vector) (sv-304 vector) (sv-320 vector) (sv-336 vector) (sv-352 int))
   (with-pp
     (when *debug-hover*
       (if arg0
@@ -1462,33 +1455,32 @@
                     (the-as vector (+ (the-as uint s1-2) 16))
                     (new 'static 'rgba :r #xff :g #xff :b #xff :a #x40)
                     )
-                  (let ((s0-0 (matrix*! (new 'stack-no-clear 'matrix) *hermite-matrix* (the-as matrix (+ (the-as uint s1-2) 16)))))
-                    (set! sv-288 (new 'stack-no-clear 'vector))
-                    (set! sv-304 (new 'stack-no-clear 'vector))
-                    (set! sv-320 (new 'stack-no-clear 'vector))
-                    (set! sv-336 (new 'stack-no-clear 'vector))
-                    (let ((f30-0 0.0)
-                          (f28-0 0.1)
-                          )
-                      (set! sv-352 0)
-                      (while (< sv-352 10)
-                        (set-vector! sv-288 (* f30-0 f30-0 f30-0) (* f30-0 f30-0) f30-0 1.0)
-                        (set-vector! sv-304 (* f28-0 f28-0 f28-0) (* f28-0 f28-0) f28-0 1.0)
-                        (vector-matrix*! sv-320 sv-288 s0-0)
-                        (vector-matrix*! sv-336 sv-304 s0-0)
-                        (add-debug-line
-                          #t
-                          (bucket-id debug-no-zbuf1)
-                          sv-320
-                          sv-336
-                          (new 'static 'rgba :r #xff :g #xff :b #xff :a #x40)
-                          #f
-                          (the-as rgba -1)
-                          )
-                        (set! f30-0 (+ 0.1 f30-0))
-                        (set! f28-0 (+ 0.1 f28-0))
-                        (set! sv-352 (+ sv-352 1))
+                  (let ((s0-0 (matrix*! (new 'stack-no-clear 'matrix) *hermite-matrix* (the-as matrix (+ (the-as uint s1-2) 16))))
+                        (sv-288 (new 'stack-no-clear 'vector))
+                        (sv-304 (new 'stack-no-clear 'vector))
+                        (sv-320 (new 'stack-no-clear 'vector))
+                        (sv-336 (new 'stack-no-clear 'vector))
+                        (f30-0 0.0)
+                        (f28-0 0.1)
+                        (sv-352 0)
                         )
+                    (while (< sv-352 10)
+                      (set-vector! sv-288 (* (square f30-0) f30-0) (square f30-0) f30-0 1.0)
+                      (set-vector! sv-304 (* (square f28-0) f28-0) (square f28-0) f28-0 1.0)
+                      (vector-matrix*! sv-320 sv-288 s0-0)
+                      (vector-matrix*! sv-336 sv-304 s0-0)
+                      (add-debug-line
+                        #t
+                        (bucket-id debug-no-zbuf1)
+                        sv-320
+                        sv-336
+                        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x40)
+                        #f
+                        (the-as rgba -1)
+                        )
+                      (set! f30-0 (+ 0.1 f30-0))
+                      (set! f28-0 (+ 0.1 f28-0))
+                      (+! sv-352 1)
                       )
                     )
                   (set! s1-2 (-> s1-2 next))
@@ -1502,7 +1494,7 @@
                   (a2-11 (matrix*! (new 'stack-no-clear 'matrix) *hermite-matrix* (-> s2-1 curve-matrix)))
                   (a1-12 (new 'stack-no-clear 'vector))
                   )
-              (set-vector! a1-12 (* f30-1 f30-1 f30-1) (* f30-1 f30-1) f30-1 1.0)
+              (set-vector! a1-12 (* (square f30-1) f30-1) (square f30-1) f30-1 1.0)
               (vector-matrix*! s4-1 a1-12 a2-11)
               )
             (if *debug-hover*
@@ -1681,7 +1673,6 @@
 ;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
 ;; WARN: Return type mismatch int vs none.
 (defmethod hover-nav-control-method-13 ((this hover-nav-control))
-  (local-vars (sv-112 float) (sv-128 float) (sv-144 float) (sv-160 float))
   (let* ((s5-0 (-> this root))
          (s3-0 (hover-nav-control-method-17 this))
          (v1-2 (vector-! (new 'stack-no-clear 'vector) (-> s3-0 world-sphere) (-> s5-0 trans)))
@@ -1690,36 +1681,29 @@
     (when (not (logtest? (-> this flags) (hover-nav-flags honflags-0)))
       (let* ((s2-0 (-> this root transv))
              (f30-0 (vector-length s2-0))
-             (s1-0 lerp-scale)
-             (s0-0 0.0)
-             )
-        (set! sv-112 (hover-nav-control-method-30 this))
-        (set! sv-128 (* 2.0 f30-0))
-        (set! sv-144 (the-as float 0.0))
-        (let* ((t0-0 (hover-nav-control-method-30 this))
-               (f0-4 (s1-0 s0-0 sv-112 sv-128 sv-144 t0-0))
-               (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (-> s3-0 world-sphere) s2-0 (/ f0-4 f30-0)))
-               (s2-1 (nav-network-method-26
-                       (-> this nav)
-                       (new 'stack-no-clear 'vector)
-                       (-> this root process)
-                       (-> s3-0 world-sphere)
-                       t0-2
-                       (-> s3-0 world-sphere w)
-                       )
+             (f0-4 (lerp-scale
+                     0.0
+                     (hover-nav-control-method-30 this)
+                     (* 2.0 f30-0)
+                     (the-as float 0.0)
+                     (hover-nav-control-method-30 this)
                      )
-               )
-          (let ((f0-7 (vector-length s2-1))
-                (s1-1 seek)
-                (s0-1 (-> this nav-collide-impulse-len))
-                )
-            (set! sv-160 f0-7)
-            (let ((a2-2 (* (hover-nav-control-method-31 this) (seconds-per-frame))))
-              (set! (-> this nav-collide-impulse-len) (s1-1 s0-1 sv-160 a2-2))
-              )
-            )
-          (vector-normalize-copy! (-> this nav-collide-impulse) s2-1 (- (-> this nav-collide-impulse-len)))
+                   )
+             (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (-> s3-0 world-sphere) s2-0 (/ f0-4 f30-0)))
+             (s2-1 (nav-network-method-26
+                     (-> this nav)
+                     (new 'stack-no-clear 'vector)
+                     (-> this root process)
+                     (-> s3-0 world-sphere)
+                     t0-2
+                     (-> s3-0 world-sphere w)
+                     )
+                   )
+             )
+        (let ((f0-7 (vector-length s2-1)))
+          (seek! (-> this nav-collide-impulse-len) f0-7 (* (hover-nav-control-method-31 this) (seconds-per-frame)))
           )
+        (vector-normalize-copy! (-> this nav-collide-impulse) s2-1 (- (-> this nav-collide-impulse-len)))
         )
       (if *debug-hover*
           (add-debug-vector

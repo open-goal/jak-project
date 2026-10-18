@@ -66,6 +66,7 @@ struct DiscordInfo {
   u64 focus_status;         // uint64
   s32 current_vehicle;      // int32
   u32 task;                 // string
+  s32 active_gun;           // pickup-type
 };
 
 enum class VehicleType : s32 {
@@ -100,15 +101,116 @@ enum class VehicleType : s32 {
   Max = 30
 };
 
+enum class PickupType : s32 {
+  none = 0,
+  eco_yellow = 1,
+  eco_red = 2,
+  eco_blue = 3,
+  eco_dark = 4,
+  eco_green = 5,
+  eco_pill_green = 6,
+  eco_pill_dark = 7,
+  eco_pill_light = 8,
+  eco_pill_random = 9,
+  money = 10,
+  fuel_cell = 11,
+  buzzer = 12,
+  darkjak = 13,
+  lightjak = 14,
+  ammo_yellow = 15,
+  ammo_red = 16,
+  ammo_blue = 17,
+  ammo_dark = 18,
+  shield = 19,
+  health = 20,
+  trick_point = 21,
+  trick_judge = 22,
+  gem = 23,
+  skill = 24,
+  karma = 25,
+  gun_red_1 = 26,
+  gun_red_2 = 27,
+  gun_red_3 = 28,
+  gun_yellow_1 = 29,
+  gun_yellow_2 = 30,
+  gun_yellow_3 = 31,
+  gun_blue_1 = 32,
+  gun_blue_2 = 33,
+  gun_blue_3 = 34,
+  gun_dark_1 = 35,
+  gun_dark_2 = 36,
+  gun_dark_3 = 37,
+  board = 38,
+  pass_red = 39,
+  pass_green = 40,
+  pass_yellow = 41,
+  pass_blue = 42,
+  ammo_random = 43,
+  health_max = 44,
+  light_eco_crystal = 45,
+  dark_eco_crystal = 46,
+  pass_slumb_genb = 47,
+  ammo_light_random = 48,
+  ammo_dark_light_random = 49,
+  light_random = 50,
+  Max = 51,
+};
+
+const std::map<VehicleType, std::string> vehicle_type_to_string = {
+    {VehicleType::v_turtle, "v-turtle"},
+    {VehicleType::v_snake, "v-snake"},
+    {VehicleType::v_toad, "v-toad"},
+    {VehicleType::v_scorpion, "v-scorpion"},
+    {VehicleType::v_fox, "v-fox"},
+    {VehicleType::v_rhino, "v-rhino"},
+    {VehicleType::v_mirage, "v-mirage"},
+    {VehicleType::v_x_ride, "v-x-ride"},
+    {VehicleType::v_faccar, "v-faccar"},
+    {VehicleType::v_marauder, "v-marauder"},
+    {VehicleType::v_marauder_b, "v-marauder-b"},
+    {VehicleType::h_hellcat, "h-hellcat"},
+    {VehicleType::h_sled, "h-sled"},
+    {VehicleType::h_glider, "h-glider"},
+};
+
 const std::map<VehicleType, std::string> vehicle_remap = {
-    {VehicleType::v_turtle, "Tough Puppy"}, {VehicleType::v_snake, "Sand Shark"},
-    {VehicleType::v_toad, "Dune Hopper"},   {VehicleType::v_scorpion, "Gila Stomper"},
-    {VehicleType::v_fox, "Heat Seeker"},    {VehicleType::v_rhino, "Slam Dozer"},
-    {VehicleType::v_mirage, "Dust Demon"},  {VehicleType::v_x_ride, "Desert Screamer"},
+    {VehicleType::v_turtle, "Tough Puppy"},
+    {VehicleType::v_snake, "Sand Shark"},
+    {VehicleType::v_toad, "Dune Hopper"},
+    {VehicleType::v_scorpion, "Gila Stomper"},
+    {VehicleType::v_fox, "Heat Seeker"},
+    {VehicleType::v_rhino, "Slam Dozer"},
+    {VehicleType::v_mirage, "Dust Demon"},
+    {VehicleType::v_x_ride, "Desert Screamer"},
+    {VehicleType::v_faccar, "Factory Car"},
+    {VehicleType::v_marauder, "Marauder Buggy"},
+    {VehicleType::v_marauder_b, "Marauder Leader Buggy"},
+};
+
+const std::map<PickupType, std::string> pickup_type_to_string = {
+    {PickupType::gun_red_1, "gun-red-1"},       {PickupType::gun_red_2, "gun-red-2"},
+    {PickupType::gun_red_3, "gun-red-3"},       {PickupType::gun_yellow_1, "gun-yellow-1"},
+    {PickupType::gun_yellow_2, "gun-yellow-2"}, {PickupType::gun_yellow_3, "gun-yellow-3"},
+    {PickupType::gun_blue_1, "gun-blue-1"},     {PickupType::gun_blue_2, "gun-blue-2"},
+    {PickupType::gun_blue_3, "gun-blue-3"},     {PickupType::gun_dark_1, "gun-dark-1"},
+    {PickupType::gun_dark_2, "gun-dark-2"},     {PickupType::gun_dark_3, "gun-dark-3"},
+};
+
+const std::map<PickupType, std::string> pickup_remap = {
+    {PickupType::gun_red_1, "Scatter Gun"},      {PickupType::gun_red_2, "Wave Concussor"},
+    {PickupType::gun_red_3, "Plasmite RPG"},     {PickupType::gun_yellow_1, "Blaster Mod"},
+    {PickupType::gun_yellow_2, "Beam Reflexor"}, {PickupType::gun_yellow_3, "Gyro Burster"},
+    {PickupType::gun_blue_1, "Vulcan Fury"},     {PickupType::gun_blue_2, "Arc Wielder"},
+    {PickupType::gun_blue_3, "Needle Lazer"},    {PickupType::gun_dark_1, "Peace Maker"},
+    {PickupType::gun_dark_2, "Mass Inverter"},   {PickupType::gun_dark_3, "Super Nova"},
 };
 
 inline std::string VehicleTypeToString(VehicleType v) {
   return vehicle_remap.find(v) != vehicle_remap.end() ? vehicle_remap.at(v) : "Unknown";
+}
+
+inline std::string PickupTypeToString(PickupType p) {
+  return pickup_remap.find(p) != pickup_remap.end() ? pickup_remap.at(p) : "Unknown";
 }
 
 enum class FocusStatus : u64 {

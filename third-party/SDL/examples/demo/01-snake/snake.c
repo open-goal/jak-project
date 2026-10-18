@@ -18,8 +18,11 @@
 #define SNAKE_GAME_HEIGHT 18U
 #define SNAKE_MATRIX_SIZE (SNAKE_GAME_WIDTH * SNAKE_GAME_HEIGHT)
 
-#define THREE_BITS  0x7U /* ~CHAR_MAX >> (CHAR_BIT - SNAKE_CELL_MAX_BITS) */
+#define SNAKE_CELL_MAX_BITS 3U /* floor(log2(SNAKE_CELL_FOOD)) + 1 */
+#define SNAKE_CELL_SET_BITS  (~(~0u << SNAKE_CELL_MAX_BITS))
 #define SHIFT(x, y) (((x) + ((y) * SNAKE_GAME_WIDTH)) * SNAKE_CELL_MAX_BITS)
+
+static SDL_Joystick *joystick = NULL;
 
 typedef enum
 {
@@ -30,8 +33,6 @@ typedef enum
     SNAKE_CELL_SDOWN = 4U,
     SNAKE_CELL_FOOD = 5U
 } SnakeCell;
-
-#define SNAKE_CELL_MAX_BITS 3U /* floor(log2(SNAKE_CELL_FOOD)) + 1 */
 
 typedef enum
 {
@@ -66,7 +67,7 @@ SnakeCell snake_cell_at(const SnakeContext *ctx, char x, char y)
     const int shift = SHIFT(x, y);
     unsigned short range;
     SDL_memcpy(&range, ctx->cells + (shift / 8), sizeof(range));
-    return (SnakeCell)((range >> (shift % 8)) & THREE_BITS);
+    return (SnakeCell)((range >> (shift % 8)) & SNAKE_CELL_SET_BITS);
 }
 
 static void set_rect_xy_(SDL_FRect *r, short x, short y)
@@ -82,8 +83,8 @@ static void put_cell_at_(SnakeContext *ctx, char x, char y, SnakeCell ct)
     unsigned char *const pos = ctx->cells + (shift / 8);
     unsigned short range;
     SDL_memcpy(&range, pos, sizeof(range));
-    range &= ~(THREE_BITS << adjust); /* clear bits */
-    range |= (ct & THREE_BITS) << adjust;
+    range &= ~(SNAKE_CELL_SET_BITS << adjust); /* clear bits */
+    range |= (ct & SNAKE_CELL_SET_BITS) << adjust;
     SDL_memcpy(pos, &range, sizeof(range));
 }
 
@@ -186,6 +187,8 @@ void snake_step(SnakeContext *ctx)
     case SNAKE_DIR_DOWN:
         ++ctx->head_ypos;
         break;
+    default:
+        break;
     }
     wrap_around_(&ctx->head_xpos, SNAKE_GAME_WIDTH);
     wrap_around_(&ctx->head_ypos, SNAKE_GAME_HEIGHT);
@@ -230,6 +233,26 @@ static SDL_AppResult handle_key_event_(SnakeContext *ctx, SDL_Scancode key_code)
         snake_redir(ctx, SNAKE_DIR_LEFT);
         break;
     case SDL_SCANCODE_DOWN:
+        snake_redir(ctx, SNAKE_DIR_DOWN);
+        break;
+    default:
+        break;
+    }
+    return SDL_APP_CONTINUE;
+}
+
+static SDL_AppResult handle_hat_event_(SnakeContext *ctx, Uint8 hat) {
+    switch (hat) {
+    case SDL_HAT_RIGHT:
+        snake_redir(ctx, SNAKE_DIR_RIGHT);
+        break;
+    case SDL_HAT_UP:
+        snake_redir(ctx, SNAKE_DIR_UP);
+        break;
+    case SDL_HAT_LEFT:
+        snake_redir(ctx, SNAKE_DIR_LEFT);
+        break;
+    case SDL_HAT_DOWN:
         snake_redir(ctx, SNAKE_DIR_DOWN);
         break;
     default:
@@ -305,7 +328,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         }
     }
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK)) {
+        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
@@ -316,9 +340,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     *appstate = as;
 
-    if (!SDL_CreateWindowAndRenderer("examples/demo/snake", SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT, 0, &as->window, &as->renderer)) {
+    if (!SDL_CreateWindowAndRenderer("examples/demo/snake", SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE, &as->window, &as->renderer)) {
         return SDL_APP_FAILURE;
     }
+    SDL_SetRenderLogicalPresentation(as->renderer, SDL_WINDOW_WIDTH, SDL_WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
     snake_initialize(&as->snake_ctx);
 
@@ -333,14 +358,35 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     switch (event->type) {
     case SDL_EVENT_QUIT:
         return SDL_APP_SUCCESS;
+    case SDL_EVENT_JOYSTICK_ADDED:
+        if (joystick == NULL) {
+            joystick = SDL_OpenJoystick(event->jdevice.which);
+            if (!joystick) {
+                SDL_Log("Failed to open joystick ID %u: %s", (unsigned int) event->jdevice.which, SDL_GetError());
+            }
+        }
+        break;
+    case SDL_EVENT_JOYSTICK_REMOVED:
+        if (joystick && (SDL_GetJoystickID(joystick) == event->jdevice.which)) {
+            SDL_CloseJoystick(joystick);
+            joystick = NULL;
+        }
+        break;
+    case SDL_EVENT_JOYSTICK_HAT_MOTION:
+        return handle_hat_event_(ctx, event->jhat.value);
     case SDL_EVENT_KEY_DOWN:
         return handle_key_event_(ctx, event->key.scancode);
+    default:
+        break;
     }
     return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
+    if (joystick) {
+        SDL_CloseJoystick(joystick);
+    }
     if (appstate != NULL) {
         AppState *as = (AppState *)appstate;
         SDL_DestroyRenderer(as->renderer);

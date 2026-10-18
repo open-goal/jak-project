@@ -21,7 +21,6 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
 
 #include "curl_endian.h"
@@ -30,12 +29,12 @@
  * Curl_read16_le()
  *
  * This function converts a 16-bit integer from the little endian format, as
- * used in the incoming package to whatever endian format we're using
+ * used in the incoming package to whatever endian format we are using
  * natively.
  *
  * Parameters:
  *
- * buf      [in]     - A pointer to a 2 byte buffer.
+ * buf      [in]     - A pointer to a 2-byte buffer.
  *
  * Returns the integer.
  */
@@ -49,12 +48,12 @@ unsigned short Curl_read16_le(const unsigned char *buf)
  * Curl_read32_le()
  *
  * This function converts a 32-bit integer from the little endian format, as
- * used in the incoming package to whatever endian format we're using
+ * used in the incoming package to whatever endian format we are using
  * natively.
  *
  * Parameters:
  *
- * buf      [in]     - A pointer to a 4 byte buffer.
+ * buf      [in]     - A pointer to a 4-byte buffer.
  *
  * Returns the integer.
  */
@@ -68,12 +67,12 @@ unsigned int Curl_read32_le(const unsigned char *buf)
  * Curl_read16_be()
  *
  * This function converts a 16-bit integer from the big endian format, as
- * used in the incoming package to whatever endian format we're using
+ * used in the incoming package to whatever endian format we are using
  * natively.
  *
  * Parameters:
  *
- * buf      [in]     - A pointer to a 2 byte buffer.
+ * buf      [in]     - A pointer to a 2-byte buffer.
  *
  * Returns the integer.
  */

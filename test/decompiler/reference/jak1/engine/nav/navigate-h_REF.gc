@@ -403,7 +403,6 @@
 ;; definition for function nav-mesh-connect
 ;; INFO: Used lq/sq
 (defbehavior nav-mesh-connect process ((proc process) (trans trsqv) (nav-cont nav-control))
-  (local-vars (sv-16 type) (sv-32 symbol))
   (let ((ent (-> proc entity)))
     (when (zero? (-> ent nav-mesh))
       (let ((lookup-entity (entity-actor-lookup ent 'nav-mesh-actor 0)))
@@ -417,15 +416,13 @@
         ((nonzero? entity-nav-mesh)
          (when (zero? (-> entity-nav-mesh user-list))
            (set! process-level-heap (-> self entity extra level heap))
-           (let ((s1-0 (method-of-type engine new))
-                 (s0-0 'process-level-heap)
+           (set! (-> entity-nav-mesh user-list) (new
+                                                  'process-level-heap
+                                                  'engine
+                                                  'nav-engine
+                                                  (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))
+                                                  )
                  )
-             (set! sv-16 engine)
-             (set! sv-32 'nav-engine)
-             (let ((a3-1 (res-lump-value ent 'nav-max-users uint128 :default (the-as uint128 32))))
-               (set! (-> entity-nav-mesh user-list) (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1)))
-               )
-             )
            (initialize-mesh! entity-nav-mesh)
            (update-route-table entity-nav-mesh)
            )

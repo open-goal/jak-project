@@ -1,0 +1,9 @@
+("HVJGTBOX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-1859.go"
+  "tpage-2846.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "hvjgtbox.o"
+ ))

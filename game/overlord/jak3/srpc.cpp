@@ -584,6 +584,15 @@ void* RPC_Loader(unsigned int, void* msg, int size) {
         PrintSounds();
       } break;
 
+      case SoundCommand::MIRROR_MODE: {
+        auto* cmd = (Rpc_Loader_Set_Mirror_Mode*)m_ptr;
+        if (cmd->mode == 0) {
+          g_CameraInvert = false;
+        } else {
+          g_CameraInvert = true;
+        }
+      } break;
+
       default:
         ovrld_log(LogCategory::WARN, "[RPC Loader] Unsupported Loader {}",
                   (int)((const Rpc_Player_Base_Cmd*)m_ptr)->command);

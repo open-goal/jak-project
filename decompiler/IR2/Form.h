@@ -1545,6 +1545,7 @@ class StackSpillStoreElement : public FormElement {
   StackSpillStoreElement(SimpleAtom value,
                          int size,
                          int stack_offset,
+                         RegisterAccess access,
                          const std::optional<TypeSpec>& cast_type);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1553,18 +1554,27 @@ class StackSpillStoreElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const std::optional<TypeSpec>& cast_type() const { return m_cast_type; }
+  const RegisterAccess& access() const { return m_access; }
+  int stack_offset() const { return m_stack_offset; }
 
  private:
   SimpleAtom m_value;
   int m_size = -1;
   int m_stack_offset = -1;
+  RegisterAccess m_access;
   std::optional<TypeSpec> m_cast_type;
 };
 
 // the value from a stack load.
 class StackSpillValueElement : public FormElement {
  public:
-  StackSpillValueElement(int size, int stack_offset, bool is_signed);
+  StackSpillValueElement(int size,
+                         int stack_offset,
+                         RegisterAccess access,
+                         bool is_signed,
+                         std::optional<TypeSpec> read_type = std::nullopt);
+  int stack_offset() const { return m_stack_offset; }
+  const RegisterAccess& access() const { return m_access; }
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1579,7 +1589,9 @@ class StackSpillValueElement : public FormElement {
  private:
   int m_size = -1;
   int m_stack_offset = -1;
+  RegisterAccess m_access;
   bool m_is_signed = false;
+  std::optional<TypeSpec> m_read_type;
 };
 
 class MethodOfTypeElement : public FormElement {

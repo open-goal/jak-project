@@ -201,7 +201,7 @@
 
 (defmethod look-at-target! ((this fodder) (arg0 enemy-flag))
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
-@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
+   @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   (let ((parent-method (method-of-type nav-enemy look-at-target!)))
     (parent-method this arg0)
     )
@@ -232,8 +232,8 @@
 
 (defmethod look-at-position! ((this fodder) (position vector))
   "Adjusts the eyes to look at particular position, or the focused target
-@param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
-@return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
+   @param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
+   @return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
   (when (not position)
     (let ((focus-proc (handle->process (-> this focus handle))))
       (if focus-proc
@@ -264,12 +264,7 @@
     (dotimes (group-idx (-> this actor-group-count))
       (let ((group (-> this actor-group group-idx)))
         (dotimes (actor-idx (-> group length))
-          (let* ((actor-proc (-> group data actor-idx actor extra process))
-                 (fodder-proc (if (type? actor-proc fodder)
-                                  (the-as fodder actor-proc)
-                                  )
-                              )
-                 )
+          (let ((fodder-proc (as-type (-> group data actor-idx actor extra process) fodder)))
             (when (and fodder-proc (!= fodder-proc this) (time-elapsed? (-> fodder-proc look-at-other-time) (seconds 0.25)))
               (let* ((dir-to-other-fodder
                        (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root trans) (-> this root trans))
@@ -317,24 +312,16 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod common-post ((this fodder))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((parent-method (method-of-type nav-enemy common-post)))
     (parent-method this)
     )
   (let ((proc (the-as process-drawable #f)))
     (cond
       ((and (not (time-elapsed? (-> this look-at-other-time) (seconds 0.5)))
-            (begin
-              (let ((other-proc (handle->process (-> this look-at-other))))
-                (set! proc (if (type? other-proc process-drawable)
-                               (the-as process-drawable other-proc)
-                               )
-                      )
-                )
-              proc
-              )
+            (begin (set! proc (as-type (handle->process (-> this look-at-other)) process-drawable)) proc)
             )
        (let ((s5-1 (vector<-cspace! (new 'static 'vector) (-> proc node-list data 5))))
          (look-at-position! this s5-1)
@@ -496,7 +483,7 @@
                 (if s4-0
                     (set! v1-59 (- v1-59))
                     )
-                (vector+float*! gp-0 (-> s3-2 vector 2) (the-as vector (-> s3-2 vector)) v1-59)
+                (vector+float*! gp-0 (-> s3-2 vector 2) (-> s3-2 vector 0) v1-59)
                 )
               (vector-normalize! gp-0 16384.0)
               (vector+float*! gp-0 gp-0 (-> s3-2 vector 1) (rand-vu-float-range 5079.04 7168.0))
@@ -609,32 +596,30 @@
       (when a0-2
         (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-2) 0) quad))
         (let ((f30-0 (vector-vector-xz-distance-squared (-> self focus-pos) (-> self root trans))))
-          (let ((f0-0 24576.0))
-            (when (and (< f30-0 (* f0-0 f0-0)) (zero? (-> self slow-timer)))
-              (let ((v1-20 (-> self nav)))
-                (set! (-> v1-20 target-speed) 0.0)
+          (when (and (< f30-0 (square 24576.0)) (zero? (-> self slow-timer)))
+            (let ((v1-20 (-> self nav)))
+              (set! (-> v1-20 target-speed) 0.0)
+              )
+            0
+            (let ((v1-22 (-> self nav)))
+              (set! (-> v1-22 turning-acceleration) 0.0)
+              )
+            0
+            (set-time! (-> self slow-timer))
+            (ja-channel-push! 1 (seconds 0.08))
+            (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)))
+            (ja :num-func num-func-identity :frame-num 0.0)
+            (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+                (logior! (-> self focus-status) (focus-status dangerous))
+                (logclear! (-> self focus-status) (focus-status dangerous))
                 )
-              0
-              (let ((v1-22 (-> self nav)))
-                (set! (-> v1-22 turning-acceleration) 0.0)
-                )
-              0
-              (set-time! (-> self slow-timer))
-              (ja-channel-push! 1 (seconds 0.08))
-              (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)))
-              (ja :num-func num-func-identity :frame-num 0.0)
-              (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
-                  (logior! (-> self focus-status) (focus-status dangerous))
-                  (logclear! (-> self focus-status) (focus-status dangerous))
+            (let* ((v1-40 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-41 (the-as number (logior #x3f800000 v1-40)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-41)) 0.5)
+                  (set! (-> self attack-type) (the-as uint 1))
+                  (set! (-> self attack-type) (the-as uint 2))
                   )
-              (let* ((v1-40 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                     (v1-41 (the-as number (logior #x3f800000 v1-40)))
-                     )
-                (if (< (+ -1.0 (the-as float v1-41)) 0.5)
-                    (set! (-> self attack-type) (the-as uint 1))
-                    (set! (-> self attack-type) (the-as uint 2))
-                    )
-                )
               )
             )
           (when (and (nonzero? (-> self slow-timer))
@@ -740,20 +725,18 @@
               )
             )
           (when (zero? (-> self attack-type))
-            (let ((f0-20 20480.0))
-              (when (and (< f30-0 (* f0-20 f0-20)) (time-elapsed? (-> self look-at-other-time) (seconds 0.125)))
-                (let ((v1-117 (ja-channel-float! (the-as art-joint-anim fodder-snap-ja) 0.0 0.0 0.0)))
-                  (when v1-117
-                    (set! (-> self skel interp-select 0) #xe00010)
-                    (set! (-> self skel interp-select 1) 0)
-                    (set! (-> v1-117 param 0) 1.0)
-                    (set! (-> v1-117 param 1) 1.0)
-                    (set! (-> v1-117 param 2) 1.0)
-                    (set! (-> v1-117 num-func) num-func-interp1-play!)
-                    )
+            (when (and (< f30-0 (square 20480.0)) (time-elapsed? (-> self look-at-other-time) (seconds 0.125)))
+              (let ((v1-117 (ja-channel-float! (the-as art-joint-anim fodder-snap-ja) 0.0 0.0 0.0)))
+                (when v1-117
+                  (set! (-> self skel interp-select 0) #xe00010)
+                  (set! (-> self skel interp-select 1) 0)
+                  (set! (-> v1-117 param 0) 1.0)
+                  (set! (-> v1-117 param 1) 1.0)
+                  (set! (-> v1-117 param 2) 1.0)
+                  (set! (-> v1-117 num-func) num-func-interp1-play!)
                   )
-                (set-time! (-> self look-at-other-time))
                 )
+              (set-time! (-> self look-at-other-time))
               )
             )
           )
@@ -1026,14 +1009,14 @@
   (none)
   )
 
-(defmethod relocate ((this fodder) (arg0 int))
+(defmethod relocate ((this fodder) (offset int))
   (if (nonzero? (-> this left-eye))
-      (&+! (-> this left-eye) arg0)
+      (&+! (-> this left-eye) offset)
       )
   (if (nonzero? (-> this right-eye))
-      (&+! (-> this right-eye) arg0)
+      (&+! (-> this right-eye) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defun fodder-setup-eye-control ((arg0 joint-mod))

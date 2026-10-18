@@ -46,7 +46,7 @@ std::vector<JointsAndWeights> extract_and_flatten_joints_and_weights(
 
 struct ExtractedVertices {
   std::vector<tfrag3::PreloadedVertex> vtx;
-  std::vector<math::Vector<u8, 4>> vtx_colors;
+  std::vector<math::Vector<u8, 32>> vtx_colors;
   std::vector<math::Vector3f> normals;
 };
 
@@ -178,13 +178,13 @@ math::Matrix4f matrix_from_trs(const math::Vector3f& trans,
                                const math::Vector4f& quat,
                                const math::Vector3f& scale);
 
-tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>& color_palette);
+tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 32>>& color_palette);
 
 struct MercExtractData {
   TexturePool tex_pool;
   std::vector<u32> new_indices;
   std::vector<tfrag3::PreloadedVertex> new_vertices;
-  std::vector<math::Vector<u8, 4>> new_colors;
+  std::vector<math::Vector<u8, 32>> new_colors;
   std::vector<math::Vector3f> normals;
   std::vector<JointsAndWeights> joints_and_weights;
   tfrag3::MercModel new_model;

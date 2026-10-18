@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <unordered_set>
 
+#include "AtomicOp.h"
 #include "Form.h"
 
 #include "common/goos/PrettyPrinter.h"
@@ -162,6 +163,10 @@ std::string Env::get_variable_name(const RegisterAccess& access) const {
 }
 
 std::string Env::get_variable_name_name_only(const RegisterAccess& access) const {
+  if (is_stack_slot_access(access)) {
+    return get_spill_slot_var_name(get_stack_slot_offset_from_access(access));
+  }
+
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     return var_info.name();
@@ -172,6 +177,14 @@ std::string Env::get_variable_name_name_only(const RegisterAccess& access) const
 }
 
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
+  if (is_stack_slot_access(access)) {
+    VariableWithCast result;
+    auto original_name = get_spill_slot_var_name(get_stack_slot_offset_from_access(access));
+    auto remapped = m_var_remap.find(original_name);
+    result.name = remapped != m_var_remap.end() ? remapped->second : original_name;
+    return result;
+  }
+
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     // this is a bit of a confusing process.  The first step is to grab the auto-generated name:
@@ -272,6 +285,10 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
 }
 
 std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& access) const {
+  if (is_stack_slot_access(access)) {
+    return {};
+  }
+
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     std::string original_name = var_info.name();
@@ -310,6 +327,22 @@ std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& acce
  * of the variable.
  */
 TypeSpec Env::get_variable_type(const RegisterAccess& access, bool using_user_var_types) const {
+  if (is_stack_slot_access(access)) {
+    auto offset = get_stack_slot_offset_from_access(access);
+    auto it = stack_slot_entries.find(offset);
+    if (it != stack_slot_entries.end()) {
+      auto type_of_var = it->second.typespec;
+      if (using_user_var_types) {
+        auto retype_kv = m_var_retype.find(it->second.name());
+        if (retype_kv != m_var_retype.end()) {
+          type_of_var = retype_kv->second;
+        }
+      }
+      return type_of_var;
+    }
+    return TypeSpec("object");
+  }
+
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     std::string original_name = var_info.name();
@@ -326,6 +359,37 @@ TypeSpec Env::get_variable_type(const RegisterAccess& access, bool using_user_va
   } else {
     throw std::runtime_error("Types are not supported for this kind of register");
   }
+}
+
+TP_Type Env::get_variable_tp_type(const RegisterAccess& access, bool using_user_var_types) const {
+  if (is_stack_slot_access(access)) {
+    auto offset = get_stack_slot_offset_from_access(access);
+    auto it = stack_slot_entries.find(offset);
+    if (it != stack_slot_entries.end()) {
+      auto type_of_var = it->second.tp_type;
+      if (using_user_var_types) {
+        auto retype_kv = m_var_retype.find(it->second.name());
+        if (retype_kv != m_var_retype.end()) {
+          type_of_var = TP_Type::make_from_ts(retype_kv->second);
+        }
+      }
+      return type_of_var;
+    }
+    return TP_Type::make_from_ts(TypeSpec("object"));
+  }
+
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    if (using_user_var_types) {
+      auto retype_kv = m_var_retype.find(var_info.name());
+      if (retype_kv != m_var_retype.end()) {
+        return TP_Type::make_from_ts(retype_kv->second);
+      }
+    }
+    return var_info.type;
+  }
+
+  throw std::runtime_error("TP types are not supported for this kind of register");
 }
 
 /*!
@@ -420,6 +484,9 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
     std::vector<std::pair<RegId, RegisterAccess>> vars;
 
     for (auto& x : var_set) {
+      if (is_stack_slot_access(x)) {
+        continue;
+      }
       if (x.reg().get_kind() == Reg::FPR || x.reg().get_kind() == Reg::GPR) {
         vars.push_back(std::make_pair(get_program_var_id(x), x));
       }
@@ -480,6 +547,16 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
                                                      int nargs_to_ignore) const {
   ASSERT(nargs_to_ignore <= 8);
   auto vars = extract_visible_variables(top_level_form);
+  std::unordered_set<int> visible_stack_slots;
+  if (top_level_form) {
+    RegAccessSet var_set;
+    top_level_form->collect_vars(var_set, true);
+    for (const auto& var : var_set) {
+      if (is_stack_slot_access(var)) {
+        visible_stack_slots.insert(get_stack_slot_offset_from_access(var));
+      }
+    }
+  }
 
   FunctionVariableDefinitions result;
   std::vector<goos::Object> elts;
@@ -514,11 +591,17 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
   // it looks like this is the order the GOAL compiler itself used.
   std::vector<StackSpillEntry> spills;
   for (auto& x : stack_slot_entries) {
+    if (top_level_form && !visible_stack_slots.count(x.first)) {
+      continue;
+    }
     spills.push_back(x.second);
   }
   std::sort(spills.begin(), spills.end(),
             [](const StackSpillEntry& a, const StackSpillEntry& b) { return a.offset < b.offset; });
   for (auto& x : spills) {
+    if (m_vars_defined_in_let.find(x.name()) != m_vars_defined_in_let.end()) {
+      continue;
+    }
     elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));
     count++;
   }
@@ -539,24 +622,183 @@ std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const RegAccessSet& vars
 }
 
 RegId Env::get_program_var_id(const RegisterAccess& var) const {
+  if (is_stack_slot_access(var)) {
+    return RegId(Register(Reg::GPR, Reg::SP), get_stack_slot_var_id_from_access(var));
+  }
   return m_var_names.lookup(var.reg(), var.idx(), var.mode()).reg_id;
 }
 
 const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
   ASSERT(has_local_vars());
+  if (is_stack_slot_access(ra)) {
+    return m_stack_slot_use_def_info.at(get_program_var_id(ra));
+  }
   auto var_id = get_program_var_id(ra);
   return m_var_names.use_def_info.at(var_id);
 }
 
+RegisterAccess Env::get_stack_slot_access_for_op(int op_id, int offset) const {
+  auto it = m_stack_slot_var_by_op.find(op_id);
+  if (it == m_stack_slot_var_by_op.end()) {
+    return make_stack_slot_access(offset);
+  }
+  return make_stack_slot_access(offset, it->second);
+}
+
 void Env::disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
+  if (is_stack_slot_access(access)) {
+    // Stack-slot use/def info is intentionally immutable during expression building.
+    // Unlike registers, the stack-slot analysis models value lifetimes through merged control flow
+    // with synthetic phi-like vars, and mutating counts here would desynchronize later accesses
+    // from that analysis.
+    return;
+  }
   if (has_local_vars()) {
     m_var_names.disable_def(access, warnings);
   }
 }
 
 void Env::disable_use(const RegisterAccess& access) {
+  if (is_stack_slot_access(access)) {
+    // See disable_def above.
+    return;
+  }
   if (has_local_vars()) {
     m_var_names.disable_use(access);
+  }
+}
+
+void Env::rebuild_stack_slot_use_def_info() {
+  m_stack_slot_use_def_info.clear();
+  m_stack_slot_var_by_op.clear();
+
+  if (!func || !func->ir2.atomic_ops) {
+    return;
+  }
+
+  const auto& ops = *func->ir2.atomic_ops;
+  const int block_count = (int)ops.block_id_to_first_atomic_op.size();
+  std::vector<int> op_to_block(ops.ops.size(), -1);
+  for (int block_id = 0; block_id < block_count; block_id++) {
+    for (int op_id = ops.block_id_to_first_atomic_op.at(block_id);
+         op_id < ops.block_id_to_end_atomic_op.at(block_id); op_id++) {
+      op_to_block.at(op_id) = block_id;
+    }
+  }
+
+  std::unordered_set<int> offsets;
+  for (int op_id = 0; op_id < (int)ops.ops.size(); op_id++) {
+    if (auto* store = dynamic_cast<const StackSpillStoreOp*>(ops.ops.at(op_id).get())) {
+      offsets.insert(store->offset());
+    } else if (auto* load = dynamic_cast<const StackSpillLoadOp*>(ops.ops.at(op_id).get())) {
+      offsets.insert(load->offset());
+    }
+  }
+
+  int next_var_id = 1;
+  for (int offset : offsets) {
+    std::vector<bool> reads_before_write(block_count, false);
+    std::vector<bool> writes(block_count, false);
+
+    for (int block_id = 0; block_id < block_count; block_id++) {
+      bool seen_write = false;
+      for (int op_id = ops.block_id_to_first_atomic_op.at(block_id);
+           op_id < ops.block_id_to_end_atomic_op.at(block_id); op_id++) {
+        const auto* op = ops.ops.at(op_id).get();
+        if (auto* load = dynamic_cast<const StackSpillLoadOp*>(op)) {
+          if (load->offset() == offset && !seen_write) {
+            reads_before_write.at(block_id) = true;
+          }
+        } else if (auto* store = dynamic_cast<const StackSpillStoreOp*>(op)) {
+          if (store->offset() == offset) {
+            writes.at(block_id) = true;
+            seen_write = true;
+          }
+        }
+      }
+    }
+
+    std::vector<bool> live_in(block_count, false);
+    std::vector<bool> live_out(block_count, false);
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (int block_id = block_count - 1; block_id >= 0; block_id--) {
+        bool new_live_out = false;
+        for (int succ : {func->basic_blocks.at(block_id).succ_branch,
+                         func->basic_blocks.at(block_id).succ_ft}) {
+          if (succ != -1 && live_in.at(succ)) {
+            new_live_out = true;
+          }
+        }
+
+        bool new_live_in =
+            reads_before_write.at(block_id) || (new_live_out && !writes.at(block_id));
+        if (new_live_in != live_in.at(block_id) || new_live_out != live_out.at(block_id)) {
+          live_in.at(block_id) = new_live_in;
+          live_out.at(block_id) = new_live_out;
+          changed = true;
+        }
+      }
+    }
+
+    std::vector<int> phi_var(block_count, -1);
+    std::vector<std::vector<int>> phi_sources(block_count);
+    for (int block_id = 0; block_id < block_count; block_id++) {
+      if (live_in.at(block_id)) {
+        phi_var.at(block_id) = next_var_id++;
+      }
+    }
+
+    for (int block_id = 0; block_id < block_count; block_id++) {
+      int current_var = live_in.at(block_id) ? phi_var.at(block_id) : -1;
+      for (int op_id = ops.block_id_to_first_atomic_op.at(block_id);
+           op_id < ops.block_id_to_end_atomic_op.at(block_id); op_id++) {
+        const auto* op = ops.ops.at(op_id).get();
+        if (auto* load = dynamic_cast<const StackSpillLoadOp*>(op)) {
+          if (load->offset() != offset) {
+            continue;
+          }
+          ASSERT(current_var != -1);
+          m_stack_slot_var_by_op[op_id] = current_var;
+          auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
+          info.uses.push_back({op_id, block_id, AccessMode::READ, false});
+          info.ssa_vars.insert(current_var);
+        } else if (auto* store = dynamic_cast<const StackSpillStoreOp*>(op)) {
+          if (store->offset() != offset) {
+            continue;
+          }
+          current_var = next_var_id++;
+          m_stack_slot_var_by_op[op_id] = current_var;
+          auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
+          info.defs.push_back({op_id, block_id, AccessMode::WRITE, false});
+          info.ssa_vars.insert(current_var);
+        }
+      }
+
+      if (!live_out.at(block_id)) {
+        continue;
+      }
+
+      ASSERT(current_var != -1);
+      for (int succ :
+           {func->basic_blocks.at(block_id).succ_branch, func->basic_blocks.at(block_id).succ_ft}) {
+        if (succ != -1 && live_in.at(succ)) {
+          phi_sources.at(succ).push_back(current_var);
+        }
+      }
+    }
+
+    for (int block_id = 0; block_id < block_count; block_id++) {
+      if (phi_var.at(block_id) == -1) {
+        continue;
+      }
+      int first_op = ops.block_id_to_first_atomic_op.at(block_id);
+      for (int src_var : phi_sources.at(block_id)) {
+        auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), src_var)];
+        info.uses.push_back({first_op, block_id, AccessMode::READ, false});
+      }
+    }
   }
 }
 

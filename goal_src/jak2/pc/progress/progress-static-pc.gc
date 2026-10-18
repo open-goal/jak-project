@@ -427,7 +427,8 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-korean))
       :get-item-index-fn (lambda () (-> *setting-control* user-default language))
       :on-confirm (lambda ((index int) (the-progress progress))
-          (set! (-> *setting-control* user-default language) (the-as language-enum index)))))
+          (set! (-> *setting-control* user-default language) (the-as language-enum index))
+          (pc-settings-save))))
 
 (defmacro game-options-pc-text-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -461,6 +462,25 @@ This gives us more freedom to write code how we want.
           (set! (-> *pc-settings* text-language) (the-as pc-language index))
           ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
           (load-level-text-files (the-as int (-> *pc-settings* text-language)))
+          (pc-settings-save))))
+
+(defmacro game-options-pc-subtitle-speaker ()
+  `(new 'static 'menu-generic-carousel-option
+      :name (text-id progress-subtitle-speaker)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id progress-subtitle-speaker-on)
+                  (text-id progress-subtitle-speaker-off)
+                  (text-id progress-subtitle-speaker-auto))
+      :get-item-index-fn (lambda ()
+        (case (-> *pc-settings* subtitle-speaker?)
+          ((#t) 0)
+          ((#f) 1)
+          (('auto) 2)))
+      :on-confirm (lambda ((index int) (the-progress progress))
+        (case index
+          ((0) (set! (-> *pc-settings* subtitle-speaker?) #t))
+          ((1) (set! (-> *pc-settings* subtitle-speaker?) #f))
+          ((2) (set! (-> *pc-settings* subtitle-speaker?) 'auto)))
           (pc-settings-save))))
 
 (defmacro misc-options-pc-discord-rpc ()
@@ -501,6 +521,7 @@ This gives us more freedom to write code how we want.
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
+    (game-options-pc-subtitle-speaker)
     (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
       (misc-options-pc-discord-rpc)
       (misc-options-pc-speedrunner-mode)
@@ -514,6 +535,7 @@ This gives us more freedom to write code how we want.
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
+    (game-options-pc-subtitle-speaker)
     ;; TODO - is there a reason we only display the territory setting on the title screen?
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-territory)

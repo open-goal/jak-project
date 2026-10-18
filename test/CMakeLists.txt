@@ -2,6 +2,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/goalc/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/offline/CMakeLists.txt)
 
 add_executable(goalc-test
+        ${CMAKE_CURRENT_LIST_DIR}/emitter_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_reader.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_goos.cpp
@@ -9,15 +10,19 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_kernel_jak1.cpp
         ${CMAKE_CURRENT_LIST_DIR}/all_jak1_symbols.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_type_system.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/test_CodeTester.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/test_emitter.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_x86.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_emitter_avx.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_neon.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_arm64.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_arm64_memory.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_arm64_alu.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_sky_blend.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_goal_trampolines_arm64.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_math.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zstd.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/goalc/test_goal_kernel.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_AtomicOpBuilder.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp
@@ -37,7 +42,7 @@ add_executable(goalc-test
         ${GOALC_TEST_CASES}
         )
 
-target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis libzstd_static tree-sitter)
+target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis capstone libzstd_static tree-sitter)
 
 add_executable(test_image_resize ${CMAKE_CURRENT_LIST_DIR}/common/test_image_resize.cpp)
 target_link_libraries(test_image_resize common)

@@ -1,10 +1,12 @@
 # Set a more convenient ARM flag
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+# match the __aarch64__ source guards
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" OG_PROCESSOR_LOWER)
+if(OG_PROCESSOR_LOWER MATCHES "^(arm64|aarch64)$")
     set(ARM64_ARCH TRUE)
-    message(STATUS "ARM64 architecture detected")
+    message(STATUS "ARM64 architecture detected (${CMAKE_SYSTEM_PROCESSOR})")
 else()
     set(ARM64_ARCH FALSE)
-    message(STATUS "Non-ARM64 architecture detected")
+    message(STATUS "Non-ARM64 architecture detected (${CMAKE_SYSTEM_PROCESSOR})")
 endif()
 
 if(ARM64_ARCH)
@@ -12,8 +14,12 @@ if(ARM64_ARCH)
     set(OG_ASM_FUNCS_FILE kernel/asm_funcs_arm64.s)
     enable_language(ASM)
     set(CMAKE_ASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_SOURCE_FILE_EXTENSIONS} s)
-    # set(CMAKE_ASM_COMPILE_OBJECT "${CMAKE_ASM_COMPILER} -o <OBJECT> <SOURCE>")
-    set_source_files_properties(${OG_ASM_FUNCS_FILE} PROPERTIES COMPILE_FLAGS "-g")
+    # pass -arch only to Apple Clang
+    if(APPLE)
+        set_source_files_properties(${OG_ASM_FUNCS_FILE} PROPERTIES COMPILE_FLAGS "-arch arm64 -g")
+    else()
+        set_source_files_properties(${OG_ASM_FUNCS_FILE} PROPERTIES COMPILE_FLAGS "-g")
+    endif()
 else()
     set(OG_ASM_FUNCS_FILE kernel/asm_funcs_x86_64.asm)
     enable_language(ASM_NASM)
@@ -60,6 +66,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/loader/Loader.cpp
         graphics/opengl_renderer/loader/LoaderStages.cpp
         graphics/opengl_renderer/ocean/CommonOceanRenderer.cpp
+        graphics/opengl_renderer/ocean/OceanEnvmap.cpp
         graphics/opengl_renderer/ocean/OceanMid_PS2.cpp
         graphics/opengl_renderer/ocean/OceanMid.cpp
         graphics/opengl_renderer/ocean/OceanMidAndFar.cpp
@@ -235,12 +242,38 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/ocean.cpp
         mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/jak3_functions/generic_merc.cpp
+        mips2c/jakx_functions/collide_func.cpp
+        mips2c/jakx_functions/debug.cpp
+        mips2c/jakx_functions/font.cpp
+        mips2c/jakx_functions/foreground.cpp
+        mips2c/jakx_functions/generic_effect.cpp
+        mips2c/jakx_functions/joint.cpp
+        mips2c/jakx_functions/lights.cpp
+        mips2c/jakx_functions/sky.cpp
+        mips2c/jakx_functions/texture.cpp
+        mips2c/jakx_functions/particle_curves.cpp
+        mips2c/jakx_functions/cloth.cpp
+        mips2c/jakx_functions/collide_cache.cpp
+        mips2c/jakx_functions/collide_hash.cpp
+        mips2c/jakx_functions/collide_mesh.cpp
+        mips2c/jakx_functions/spatial_hash.cpp
+        mips2c/jakx_functions/sparticle.cpp
+        mips2c/jakx_functions/sparticle_launcher.cpp
+        mips2c/jakx_functions/nav_control.cpp
+        mips2c/jakx_functions/nav_engine.cpp
+        mips2c/jakx_functions/merc_blend_shape.cpp
+        mips2c/jakx_functions/wvehicle_part.cpp
+        mips2c/jakx_functions/ripple.cpp
+        mips2c/jakx_functions/shadow.cpp
+        mips2c/jakx_functions/ocean.cpp
+        mips2c/jakx_functions/generic_merc.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp
         overlord/common/iso_api.cpp
         overlord/common/iso.cpp
         overlord/common/isocommon.cpp
+        overlord/common/989_plugins/plugin_strv.cpp
         overlord/common/overlord.cpp
         overlord/common/sbank.cpp
         overlord/common/soundcommon.cpp
@@ -265,6 +298,7 @@ set(RUNTIME_SOURCE
         overlord/jak2/list.cpp
         overlord/jak2/overlord.cpp
         overlord/jak2/pages.cpp
+        overlord/jak2/989_plugins/plugin_strv.cpp
         overlord/jak2/spustreams.cpp
         overlord/jak2/srpc.cpp
         overlord/jak2/ssound.cpp
@@ -295,6 +329,7 @@ set(RUNTIME_SOURCE
         overlord/jak3/sbank.cpp
         overlord/jak3/soundcommon.cpp
         overlord/jak3/streamlist.cpp
+        overlord/jak3/989_plugins/plugin_strv.cpp
         overlord/jakx/overlord.cpp
         overlord/jakx/pagemanager.cpp
         overlord/jakx/iso_cd.cpp

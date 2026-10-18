@@ -650,7 +650,6 @@
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior target-walk-anim target ((arg0 int))
-  (local-vars (sv-16 float))
   (let ((f24-0 0.0)
         (f26-0 (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -16384.0 (-> self control ctrl-xz-vel))))))
         (f30-0 0.0)
@@ -1002,18 +1001,19 @@
         (let ((f20-0 (fmax -1.0 (fmin 1.0 (* 2.0 (-> self control local-slope-z)))))
               (f22-1 (fmax -1.0 (fmin 1.0 (* 1.6 (-> self control local-slope-x)))))
               )
-          (set! sv-16 (fabs (deg-diff (quaternion-y-angle (-> self control dir-targ)) (y-angle (-> self control)))))
-          (set! f26-0 (seek
-                        f26-0
-                        (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -16384.0 (-> self control ctrl-xz-vel)))))
-                        (* 2.0 (seconds-per-frame))
-                        )
+          (let ((sv-16 (fabs (deg-diff (quaternion-y-angle (-> self control dir-targ)) (y-angle (-> self control))))))
+            (set! f26-0 (seek
+                          f26-0
+                          (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -16384.0 (-> self control ctrl-xz-vel)))))
+                          (* 2.0 (seconds-per-frame))
+                          )
+                  )
+            (if (and (focus-test? self dark) (nonzero? (-> self darkjak)))
+                (set! f26-0
+                      (seek f26-0 (lerp-scale f26-0 (* 0.7 f26-0) sv-16 1820.4445 3640.889) (* 2.0 (seconds-per-frame)))
+                      )
                 )
-          (if (and (focus-test? self dark) (nonzero? (-> self darkjak)))
-              (set! f26-0
-                    (seek f26-0 (lerp-scale f26-0 (* 0.7 f26-0) sv-16 1820.4445 3640.889) (* 2.0 (seconds-per-frame)))
-                    )
-              )
+            )
           (cond
             ((< 0.5 f26-0)
              (let ((v1-206 (-> self skel effect)))

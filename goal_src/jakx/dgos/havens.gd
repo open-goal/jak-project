@@ -1,0 +1,12 @@
+("HAVENS.DGO"
+ ("tpage-1997.o"
+  "tpage-1687.go"
+  "tpage-2241.go"
+  "tpage-1852.go"
+  "construction-barricade-ag.go"
+  "construction-cone-ag.go"
+  "haven-gen-light-debris-ag.go"
+  "haven-gen-light-ag.go"
+  "haven-trashcan-ag.go"
+  "havens.o"
+ ))

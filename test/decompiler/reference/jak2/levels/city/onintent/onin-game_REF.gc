@@ -2228,15 +2228,7 @@
 ;; ERROR: Stack slot load at 112 mismatch: defined as size 4, got size 16
 ;; WARN: Return type mismatch int vs none.
 (defmethod onin-game-method-25 ((this onin-game))
-  (local-vars
-    (v0-18 int)
-    (sv-32 process)
-    (sv-48 (function vector int meters float float none :behavior onin-game-bubble))
-    (sv-64 vector)
-    (sv-80 int)
-    (sv-96 meters)
-    (sv-112 float)
-    )
+  (local-vars (v0-18 int))
   (when (time-elapsed? (-> this game-start-time) (seconds 2))
     (let ((s5-0 (-> this game (-> this wave))))
       (when (time-elapsed? (the-as int (-> this wave-length)) (-> this wave-time))
@@ -2333,37 +2325,15 @@
                       )
                     (set! (-> this last-angle) f0-0)
                     )
-                  (let ((s1-0 (get-process *default-dead-pool* onin-game-bubble #x4000)))
-                    (when s1-0
-                      (let ((t9-31 (method-of-type onin-game-bubble activate)))
-                        (t9-31
-                          (the-as onin-game-bubble s1-0)
-                          this
-                          (symbol->string (-> onin-game-bubble symbol))
-                          (the-as pointer #x70004000)
-                          )
-                        )
-                      (let ((s0-0 run-function-in-process))
-                        (set! sv-32 s1-0)
-                        (set! sv-48 onin-game-bubble-init)
-                        (set! sv-64 s4-14)
-                        (set! sv-80 (rand-vu-int-range 0 3))
-                        (set! sv-96 (-> s5-0 gravity))
-                        (set! sv-112 (-> this last-angle))
-                        (let ((t2-0 (rand-vu-float-range 4096.0 7372.8)))
-                          ((the-as (function object object object object object object object none) s0-0)
-                           sv-32
-                           sv-48
-                           sv-64
-                           sv-80
-                           sv-96
-                           sv-112
-                           t2-0
-                           )
-                          )
-                        )
-                      (-> s1-0 ppointer)
-                      )
+                  (process-spawn
+                    onin-game-bubble
+                    :init onin-game-bubble-init
+                    s4-14
+                    (rand-vu-int-range 0 3)
+                    (-> s5-0 gravity)
+                    (-> this last-angle)
+                    (rand-vu-float-range 4096.0 7372.8)
+                    :to this
                     )
                   )
                 )

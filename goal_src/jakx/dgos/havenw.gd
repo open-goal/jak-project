@@ -1,0 +1,11 @@
+("HAVENW.DGO"
+ ("haven-ocean.o"
+  "haven-effects.o"
+  "haven-part.o"
+  "haven-obs.o"
+  "train-obs.o"
+  "construction-obs.o"
+  "tpage-488.go"
+  "jungle-flaming-arrow-ag.go"
+  "havenw.o"
+ ))
