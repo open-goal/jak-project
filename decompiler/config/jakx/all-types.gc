@@ -843,9 +843,9 @@
   )
 
 (deftype event-message-block (structure)
-  ((to-handle   uint64              :offset-assert 0) ;; handle
+  ((to-handle   handle              :offset-assert 0) ;; handle
    (to          (pointer process)   :offset-assert 0 :overlay-at to-handle) ;; guessed by decompiler
-   (from-handle uint64              :offset-assert 8) ;; handle
+   (from-handle handle              :offset-assert 8) ;; handle
    (from        (pointer process)   :offset-assert 8 :overlay-at from-handle) ;; guessed by decompiler
    (param       uint64            6 :offset-assert 16) ;; guessed by decompiler
    (message     symbol              :offset-assert 64) ;; guessed by decompiler
@@ -8280,7 +8280,7 @@
    (callback-list     pair                :offset-assert 68) ;; guessed by decompiler
    (borrow            level-borrow-info   :offset-assert 72) ;; guessed by decompiler
    (bottom-height     meters              :offset-assert 76)
-   (mood-range        mood-range          :offset-assert 80) ;; guessed by decompiler
+   (mood-range        symbol          :offset-assert 80) ;; guessed by decompiler
    )
   :method-count-assert 11
   :size-assert         #x54
@@ -8395,7 +8395,7 @@
   (:methods
     (level-method-9 () none) ;; 9 ;; (deactivate (_type_) _type_)
     (level-method-10 () none) ;; 10 ;; (unload! (_type_) _type_)
-    (level-method-11 () none) ;; 11 ;; (is-object-visible? (_type_ int) symbol)
+    (is-object-visible? (_type_ int int) symbol)
     (level-method-12 () none) ;; 12 ;; (level-method-12 () none)
     (level-method-13 () none) ;; 13 ;; (bsp-name (_type_) symbol)
     (level-method-14 () none) ;; 14 ;; (compute-memory-usage! (_type_ symbol) memory-usage-block)
@@ -15742,13 +15742,16 @@
 ;; car-tables                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *car-look-mask-array* array)
-;; (define-extern *car-part-info-arrays* array)
-;; (define-extern *car-level-array* car-level-array)
-;; (define-extern *car-default-base-color* array)
-;; (define-extern *car-default-stripe-color* array)
+(define-extern *car-look-mask-array* (array (array uint32)))
+(define-extern *car-part-info-arrays* (array (array car-part-info)))
+(define-extern *car-level-array* car-level-array)
+(define-extern *car-default-base-color* (array car-rgb-color))
+(define-extern *car-default-stripe-color* (array car-rgb-color))
 (define-extern *car-upgrade-info* car-upgrade-info-array)
-;; (define-extern *car-part-type-to-text-table* object)
+;; NOTE: not a mistake, seems like this might have been defined before they changed 
+;; text-id to be a uint32?  Because the values are WAY too big to be uint32s.  Or this isn't 
+;; text-ids at all but...would be weird!  Easy to check by looking at the string values 
+(define-extern *car-part-type-to-text-table* (pointer uint16)) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; capture-h                      ;;
@@ -16859,7 +16862,7 @@
    (allow-progress          symbol              :offset-assert 112) ;; guessed by decompiler
    (allow-in-game-menu      basic               :offset-assert 116)
    (allow-pause             symbol              :offset-assert 120) ;; guessed by decompiler
-   (unknown-usd-9             int32              :offset-assert 124) ;; added
+   (unknown-usd-9             uint32              :offset-assert 124) ;; added
    (unknown-usd-10             int32              :offset-assert 128) ;; added
    (unknown-usd-11             int32              :offset-assert 132) ;; added
    (movie-name              symbol              :offset-assert 136) ;; guessed by decompiler
@@ -17133,17 +17136,17 @@
     (setting-control-method-10 () none) ;; 10 ;; (persist-with-delay (_type_ symbol time-frame symbol symbol float int) none)
     (setting-control-method-11 () none) ;; 11 ;; (set-setting (_type_ process symbol object object object) connection)
     (setting-control-method-12 () none) ;; 12 ;; (remove-setting (_type_ process symbol) none)
-    (setting-control-method-13 () none) ;; 13 ;; (kill-persister (_type_ engine-pers object) none)
+    (setting-control-method-13 (_type_ process symbol object object object) none) ;; 13 ;; (kill-persister (_type_ engine-pers object) none)
     (setting-control-method-14 (_type_ symbol int symbol symbol float int) none) ;; 14 ;; (setting-control-method-14 (_type_ object) connectable)
     (setting-control-method-15 () none) ;; 15 ;; (get-setting (_type_ object) connectable)
-    (setting-control-method-16 () none) ;; 16 ;; (remove-setting-by-arg0 (_type_ object) none)
+    (setting-control-method-16 (_type_ process symbol) none) ;; 16 ;; (remove-setting-by-arg0 (_type_ object) none)
     (setting-control-method-17 () none) ;; 17 ;; (set-setting-by-param (_type_ symbol object object object) connection)
     (setting-control-method-18 () none) ;; 18 ;; (apply-settings (_type_) user-setting-data)
     (setting-control-method-19 () none) ;; 19 ;; (update (_type_) user-setting-data)
     (setting-control-method-20 () none) ;; 20
     (setting-control-method-21 () none) ;; 21
     (setting-control-method-22 () none) ;; 22
-    (setting-control-method-23 () none) ;; 23
+    (setting-control-method-23 (_type_) none) ;; 23
     (setting-control-method-24 () none) ;; 24
     )
   )
@@ -17402,8 +17405,8 @@
   (:methods
     (init-sun-data! (_type_ int float float float) none)
     (init-orbit-settings! (_type_ int float float float float float float) none)
-    (sky-work-method-11 () none) ;; 11 ;; (update-colors-for-time (_type_ float) none)
-    (sky-work-method-12 () none) ;; 12 ;; (update-time-and-speed (_type_ float float) none)
+    (update-colors-for-time (_type_ float) none)
+    (update-time-and-speed (_type_ float float) none)
     (sky-work-method-13 () none) ;; 13 ;; (draw-erase (_type_ dma-buffer vector) none)
     (sky-work-method-14 () none) ;; 14 ;; (draw (_type_) none)
     (sky-work-method-15 () none) ;; 15 ;; (update-camera-matrix (_type_ matrix) none)
@@ -18622,7 +18625,7 @@
   :flag-assert         #x900000000
   )
 
-(define-extern *gsf-buffer* object) ;; gsf-buffer
+(define-extern *gsf-buffer* gsf-buffer) ;; gsf-buffer
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth-art-h                    ;;
@@ -20774,10 +20777,10 @@
     (load-state-method-14 () none) ;; 14 ;; (want-vis-level (_type_ symbol) none)
     (load-state-method-15 () none) ;; 15 ;; (want-force-vis (_type_ symbol symbol) int)
     (load-state-method-16 () none) ;; 16 ;; (want-force-inside (_type_ symbol symbol) none)
-    (load-state-method-17 () none) ;; 17 ;; (execute-commands-up-to (_type_ float) none)
-    (load-state-method-18 () none) ;; 18 ;; (backup-load-state-and-set-cmds (_type_ pair) int)
-    (load-state-method-19 () none) ;; 19 ;; (restore-load-state-and-cleanup (_type_) int)
-    (load-state-method-20 () none) ;; 20 ;; (restore-load-state (_type_) int)
+    (load-state-method-17 () none) ;; 17 ;; 
+    (execute-commands-up-to (_type_ float) none) ;; 18 ;; 
+    (backup-load-state-and-set-cmds (_type_ pair) int) ;; 19 ;; 
+    (restore-load-state-and-cleanup (_type_) int) ;; 20 ;; 
     (load-state-method-21 () none) ;; 21 ;; (add-borrow-levels (_type_) none)
     (load-state-method-22 () none) ;; 22
     (load-state-method-23 () none) ;; 23
@@ -29128,17 +29131,18 @@
   :method-count-assert 60
   :size-assert         #x124
   :flag-assert         #x3c00a00124
+  (:state-methods
+    pov-camera-abort
+    pov-camera-done-playing
+    pov-camera-playing
+    pov-camera-start-playing
+    pov-camera-startup)
   (:methods
-    (pov-camera-method-50 () none) ;; 50
-    (pov-camera-method-51 () none) ;; 51
-    (pov-camera-method-52 () none) ;; 52
-    (pov-camera-method-53 () none) ;; 53
-    (pov-camera-method-54 () none) ;; 54
-    (pov-camera-method-55 () none) ;; 55
-    (pov-camera-method-56 () none) ;; 56
-    (pov-camera-method-57 () none) ;; 57
-    (pov-camera-method-58 () none) ;; 58
-    (pov-camera-method-59 () none) ;; 59
+    (pov-camera-method-55 (_type_) symbol) ;; 55
+    (pov-camera-method-56 (_type_) symbol) ;; 56
+    (pov-camera-method-57 (_type_) none) ;; 57
+    (pov-camera-method-58 (_type_) none) ;; 58
+    (pov-camera-method-59 (_type_) symbol) ;; 59
     )
   )
 
@@ -30282,7 +30286,7 @@
   )
 
 (deftype othercam (process)
-  ((hand              uint64               :offset-assert 144) ;; handle
+  ((hand              handle               :offset-assert 144) ;; handle
    (old-global-mask   process-mask         :offset-assert 152) ;; guessed by decompiler
    (mask-to-clear     process-mask         :offset-assert 156) ;; guessed by decompiler
    (cam-joint-index   int32                :offset-assert 160)
@@ -31337,7 +31341,9 @@
 ;; ---projectile-h:projectile-options
 
 (deftype projectile (process-drawable)
-  ((starting-pos           vector                     :inline :offset-assert 256)
+  ((parent                 (pointer process-drawable)         :override)
+   (root                   collide-shape-moving               :override)
+   (starting-pos           vector                     :inline :offset-assert 256)
    (starting-dir           vector                     :inline :offset-assert 272)
    (target-pos             vector                     :inline :offset-assert 288)
    (base-target-pos        vector                     :inline :offset-assert 304)
@@ -31374,29 +31380,30 @@
   :method-count-assert 72
   :size-assert         #x231
   :flag-assert         #x4801b00231
+  (:state-methods
+    die
+    dissipate
+    impact
+    moving)
   (:methods
-    (projectile-method-50 () none) ;; 50
-    (projectile-method-51 () none) ;; 51
-    (projectile-method-52 () none) ;; 52
-    (projectile-method-53 () none) ;; 53
-    (projectile-method-54 () none) ;; 54
-    (projectile-method-55 () none) ;; 55
-    (projectile-method-56 () none) ;; 56
-    (projectile-method-57 () none) ;; 57
-    (projectile-method-58 () none) ;; 58
-    (projectile-method-59 () none) ;; 59
-    (projectile-method-60 () none) ;; 60
-    (projectile-method-61 () none) ;; 61
-    (projectile-method-62 () none) ;; 62
-    (projectile-method-63 () none) ;; 63
-    (projectile-method-64 () none) ;; 64
-    (projectile-method-65 () none) ;; 65
-    (projectile-method-66 () none) ;; 66
-    (projectile-method-67 () none) ;; 67
-    (projectile-method-68 () none) ;; 68
-    (projectile-method-69 () none) ;; 69
-    (projectile-method-70 () none) ;; 70
-    (projectile-method-71 () none) ;; 71
+    (projectile-method-54 (_type_) none) ;; 54
+    (projectile-method-55 (_type_) none) ;; 55
+    (projectile-method-56 (_type_) none) ;; 56
+    (projectile-method-57 (_type_) none) ;; 57
+    (projectile-method-58 (_type_) none) ;; 58
+    (projectile-method-59 (_type_) none) ;; 59
+    (projectile-method-60 (_type_) none) ;; 60
+    (projectile-method-61 (_type_) none) ;; 61
+    (projectile-method-62 (_type_) none) ;; 62
+    (projectile-method-63 (_type_) none) ;; 63
+    (projectile-method-64 (_type_) none) ;; 64
+    (projectile-method-65 (_type_) none) ;; 65
+    (projectile-method-66 (_type_) none) ;; 66
+    (projectile-method-67 (_type_) none) ;; 67
+    (projectile-method-68 (_type_) none) ;; 68
+    (projectile-method-69 (_type_) none) ;; 69
+    (projectile-method-70 (_type_) none) ;; 70
+    (projectile-method-71 (_type_) none) ;; 71
     )
   )
 
@@ -31431,10 +31438,11 @@
   :method-count-assert 75
   :size-assert         #x254
   :flag-assert         #x4b01d00254
+  (:state-methods
+    sitting)
   (:methods
-    (projectile-bounce-method-72 () none) ;; 72
-    (projectile-bounce-method-73 () none) ;; 73
-    (projectile-bounce-method-74 () none) ;; 74
+    (projectile-bounce-method-73 (_type_) none) ;; 73
+    (projectile-bounce-method-74 (_type_) none) ;; 74
     )
   )
 
@@ -31514,7 +31522,7 @@
 
 (deftype target (process-focusable)
   ((control                 collide-shape-moving                             :offset 188 :score 1) ;; guessed by decompiler
-   (vehicle                 uint64                                                                            :offset-assert 256)
+   (vehicle                 handle                                                                            :offset-assert 256)
    (target-flags            target-flags                                                                      :offset 236) ;; guessed by decompiler
    (game                    game-info                                                                         :offset-assert 264) ;; guessed by decompiler
    (init-time               uint64                                                                            :offset-assert 272) ;; time-frame
@@ -31573,6 +31581,7 @@
     target-intro
     target-title ;; associated process guessed by decompiler, old: (state symbol target)
     target-pilot-start ;; associated process guessed by decompiler, old: (state handle symbol symbol target)
+    target-load-wait
     )
   )
 
@@ -31997,7 +32006,7 @@
     (collide-cache-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
     (fill-and-probe-using-line-sphere (_type_ collide-query) float)
     (collide-cache-method-11 () none) ;; 11 ;; (fill-and-probe-using-spheres (_type_ collide-query) symbol)
-    (collide-cache-method-12 () none) ;; 12 ;; (fill-using-bounding-box (_type_ collide-query) none)
+    (fill-using-bounding-box (_type_ collide-query) none)
     (collide-cache-method-13 (_type_ collide-query) none) ;; 13 ;; (fill-using-line-sphere (_type_ collide-query) none)
     (collide-cache-method-14 () none) ;; 14 ;; (fill-using-spheres (_type_ collide-query) none)
     (collide-cache-method-15 () none) ;; 15 ;; (reset (_type_) none)
@@ -34215,12 +34224,12 @@
   (:methods
     (sparticle-launch-control-method-14 () none) ;; 14 ;; (initialize (_type_ sparticle-launch-group process-drawable) none)
     (sparticle-launch-control-method-15 () none) ;; 15 ;; (is-visible? (_type_ vector) symbol)
-    (sparticle-launch-control-method-16 () none) ;; 16 ;; (spawn (_type_ vector) object)
+    (sparticle-launch-control-method-16 (_type_ vector) none) ;; 16 ;; (spawn (_type_ vector) object)
     (sparticle-launch-control-method-17 () none) ;; 17 ;; (spawn-from-mat (_type_ matrix) none)
     (sparticle-launch-control-method-18 () none) ;; 18 ;; (spawn-from-cspace (_type_ cspace) none)
-    (sparticle-launch-control-method-19 () none) ;; 19 ;; (kill-particles (_type_) none)
+    (sparticle-launch-control-method-19 (_type_) none) ;; 19 ;; (kill-particles (_type_) none)
     (sparticle-launch-control-method-20 () none) ;; 20 ;; (set-local-space-info (_type_ particle-local-space-info) none)
-    (sparticle-launch-control-method-21 () none) ;; 21
+    (sparticle-launch-control-method-21 (_type_) none) ;; 21
     )
   )
 
@@ -34633,9 +34642,13 @@
   :method-count-assert 30
   :size-assert         #x18dc
   :flag-assert         #x1e185018dc
+  (:state-methods
+    hud-hidden
+    hud-in
+    )
   (:methods
-    (hud-method-15 () none) ;; 14 ;; (hidden? (_type_) object) 15 ;; (draw (_type_) none)
-    (hud-method-16 () none) ;; 16 ;; (update-values! (_type_) none)
+    ;; (hud-method-15 () none) ;; 14 ;; (hidden? (_type_) object) 15 ;; (draw (_type_) none)
+    ;; (hud-method-16 () none) ;; 16 ;; (update-values! (_type_) none)
     (hud-method-17 () none) ;; 17 ;; (init-callback (_type_) none)
     (hud-method-18 () none) ;; 18 ;; (event-callback (_type_ process int symbol event-message-block) object)
     (hud-method-19 () none) ;; 19 ;; (hud-method-19 (_type_) none)
@@ -34998,7 +35011,7 @@
    (prev-normal     vector   :inline :offset-assert 48)
    (next-normal     vector   :inline :offset-assert 64)
    (poly            nav-poly         :offset-assert 80)
-   (mesh            basic            :offset-assert 84)
+   (mesh            nav-mesh            :offset-assert 84)
    (gap-poly        nav-poly         :offset-assert 88)
    (edge            int8             :offset-assert 92)
    (ignore          uint8            :offset-assert 93)
@@ -35011,8 +35024,8 @@
   :size-assert         #xa0
   :flag-assert         #xb000000a0
   (:methods
-    (clamp-travel-vector-to-mesh-return-info-method-9 () none) ;; 9
-    (clamp-travel-vector-to-mesh-return-info-method-10 () none) ;; 10
+    (clamp-travel-vector-to-mesh-return-info-method-9 (_type_) none) ;; 9
+    (find-adjacent-bounds-one (_type_ vector nav-poly int int) none) ;; 10
     )
   )
 
@@ -35055,7 +35068,7 @@
    (pad1                   uint8                        2       :offset-assert 74) ;; guessed by decompiler
    (nearest-y-threshold    meters                               :offset-assert 76)
    (water-max-height       meters                               :offset-assert 80)
-   (link-search-node-array uint32                               :offset-assert 84)
+   (link-search-node-array (inline-array nav-mesh-link-search-node)                               :offset-assert 84)
    (pad2                   uint32                       6       :offset-assert 88) ;; guessed by decompiler
    )
   :method-count-assert 47
@@ -35067,22 +35080,22 @@
     (nav-mesh-method-10 (_type_ vector vector nav-poly int) none) ;; 10 ;; (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly)
     (nav-mesh-method-11 () none) ;; 11 ;; (nav-mesh-method-11 (_type_ vector) nav-poly)
     (nav-mesh-method-12 () none) ;; 12 ;; (nav-mesh-method-12 (_type_ vector float nav-poly) symbol)
-    (nav-mesh-method-13 () none) ;; 13 ;; (poly-centroid (_type_ nav-poly vector) vector)
+    (nav-mesh-method-13 (_type_ nav-poly object) vector) ;; 13 ;; (poly-centroid (_type_ nav-poly vector) vector)
     (nav-mesh-method-14 () none) ;; 14 ;; (poly-centroid-local (_type_ nav-poly vector) vector)
     (nav-mesh-method-15 () none) ;; 15 ;; (lookup-poly-on-route-to-target (_type_ nav-poly nav-poly) nav-poly)
     (nav-mesh-method-16 () none) ;; 16 ;; (get-route-portal (_type_ nav-poly nav-poly nav-route-portal) (inline-array nav-vertex))
     (nav-mesh-method-17 () none) ;; 17 ;; (initialize-mesh! (_type_) none)
     (nav-mesh-method-18 () none) ;; 18 ;; (advance-ray-to-nearest-poly-edge-or-dest! (_type_ nav-ray) none)
-    (nav-mesh-method-19 () none) ;; 19 ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters)
+    (nav-mesh-method-19 (_type_ vector) none) ;; 19 ;; (try-move-along-ray (_type_ nav-poly vector vector float) meters)
     (nav-mesh-method-20 () none) ;; 20 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-21 () none) ;; 21 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-22 () none) ;; 22 ;; (set-normals-from-adjacent-bounds (_type_ clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-23 () none) ;; 23 ;; (find-adjacent-bounds-one (_type_ vector nav-poly int int) none)
-    (nav-mesh-method-24 () none) ;; 24 ;; (compute-bounding-box-from-vertices (_type_ vector vector) none)
+    (update-navigation (_type_) none) ;; 24 ;; (compute-bounding-box-from-vertices (_type_ vector vector) none)
     (nav-mesh-method-25 () none) ;; 25 ;; (init-from-entity (_type_ entity-nav-mesh) none)
-    (nav-mesh-method-26 () none) ;; 26 ;; (handle-birth (_type_) none)
+    (nav-mesh-method-26 (_type_ nav-control) none) ;; 26 ;; (handle-birth (_type_) none)
     (nav-mesh-method-27 (_type_ process-drawable symbol) none) ;; 27 ;; (handle-kill (_type_) none) ;; likely add-process-drawable-to-nav-mesh
-    (nav-mesh-method-28 () none) ;; 28 ;; (update-navigation (_type_) none)
+    (nav-mesh-method-28 () none) ;; 28 ;; 
     (nav-mesh-method-29 () none) ;; 29 ;; (new-nav-control (_type_) nav-control)
     (nav-mesh-method-30 () none) ;; 30 ;; (remove-nav-control (_type_ nav-control) none)
     (nav-mesh-method-31 () none) ;; 31 ;; (add-process-drawable-to-nav-mesh (_type_ process-drawable symbol) none)
@@ -35094,11 +35107,11 @@
     (point-in-poly? (_type_ nav-poly vector) symbol) ;; 37 ;; (nav-mesh-method-37 (_type_ vector vector float) float)
     (nav-mesh-method-38 () none) ;; 38 ;; (nav-mesh-method-38 (_type_ nav-poly) none)
     (nav-mesh-method-39 (_type_ nav-poly vector vector) vector)
-    (nav-mesh-method-40 () none) ;; 40 ;; 
-    (nav-mesh-method-41 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector) ;; 41 ;; (nav-mesh-method-41 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector)
+    (nav-mesh-method-40 (_type_ object vector vector vector) none) ;; 40 ;; 
+    (nav-mesh-method-41 (_type_ nav-poly vector vector) none) ;; 41 ;; (nav-mesh-method-41 (_type_ nav-poly vector vector vector (pointer nav-poly)) vector)
     (nav-mesh-method-42 () none) ;; 42 ;; (closest-point-on-boundary (_type_ nav-poly vector vector) vector)
-    (nav-mesh-method-43 () none) ;; 43 ;; (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none)
-    (nav-mesh-method-44 () none) ;; 44 ;; (project-point-into-poly-2d (_type_ nav-poly vector vector) vector)
+    (nav-mesh-method-43 (_type_ nav-find-poly-parms) none) ;; 43 ;; (project-point-onto-plane-of-poly-local (_type_ nav-poly vector vector vector) none)
+    (nav-mesh-method-44 (_type_ vector object float) symbol) ;; 44 ;; (project-point-into-poly-2d (_type_ nav-poly vector vector) vector)
     (nav-mesh-method-45 () none) ;; 45 ;; (nav-mesh-method-45 (_type_ nav-poly) nav-poly)
     (nav-mesh-method-46 () none) ;; 46 ;; (nav-mesh-method-46 (_type_ nav-poly) nav-poly)
     )
@@ -35233,54 +35246,54 @@
   :size-assert         #xb0
   :flag-assert         #x39000000b0
   (:methods
-    (nav-state-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
-    (nav-state-method-10 () none) ;; 10 ;; (nav-state-method-10 (_type_) none)
-    (nav-state-method-11 () none) ;; 11 ;; (plan-over-pat1-polys-using-route (_type_ nav-gap-info) symbol)
-    (nav-state-method-12 () none) ;; 12 ;; (get-velocity (_type_ vector) vector)
-    (nav-state-method-13 () none) ;; 13 ;; (get-travel (_type_ vector) vector)
-    (nav-state-method-14 () none) ;; 14 ;; (get-heading (_type_ vector) vector)
-    (nav-state-method-15 () none) ;; 15 ;; (get-target-pos (_type_ vector) vector)
-    (nav-state-method-16 () none) ;; 16 ;; (get-speed (_type_) meters)
-    (nav-state-method-17 () none) ;; 17 ;; (get-rotation-rate (_type_) float)
-    (nav-state-method-18 () none) ;; 18 ;; (try-projecting-to-current-poly (_type_ vector vector vector) symbol)
-    (nav-state-method-19 () none) ;; 19 ;; (get-current-poly (_type_) nav-poly)
-    (nav-state-method-20 () none) ;; 20 ;; (copy-nav-state! (_type_ (pointer nav-state)) none)
-    (nav-state-method-21 () none) ;; 21 ;; (nav-state-method-21 () none)
-    (nav-state-method-22 () none) ;; 22 ;; (nav-state-method-22 () none)
-    (nav-state-method-23 () none) ;; 23 ;; (nav-state-method-23 () none)
-    (nav-state-method-24 () none) ;; 24 ;; (turn-and-navigate-to-destination (_type_) none)
-    (nav-state-method-25 () none) ;; 25 ;; (navigate-using-route-portals-wrapper (_type_) none)
-    (nav-state-method-26 () none) ;; 26 ;; (navigate-using-best-dir-recompute-avoid-spheres-1-wrapper (_type_) none)
-    (nav-state-method-27 () none) ;; 27 ;; (navigate-within-poly-wrapper (_type_) none)
-    (nav-state-method-28 () none) ;; 28 ;; (compute-travel-speed (_type_) none)
-    (nav-state-method-29 () none) ;; 29 ;; (nav-state-method-29 (_type_) none)
-    (nav-state-method-30 () none) ;; 30 ;; (nav-state-method-30 (_type_) none)
-    (nav-state-method-31 () none) ;; 31 ;; (navigate-using-best-dir-recompute-avoid-spheres-2 (_type_) none)
-    (nav-state-method-32 () none) ;; 32 ;; (update-travel-dir-from-spheres (_type_) none)
-    (nav-state-method-33 () none) ;; 33 ;; (compute-speed-simple (_type_) none)
-    (nav-state-method-34 () none) ;; 34 ;; (navigate-v1! (_type_) none)
-    (nav-state-method-35 () none) ;; 35 ;; (reset-target! (_type_) none)
-    (nav-state-method-36 () none) ;; 36 ;; (add-offset-to-target! (_type_ vector) none)
-    (nav-state-method-37 () none) ;; 37 ;; (navigate-v2! (_type_) none)
-    (nav-state-method-38 () none) ;; 38 ;; (set-current-poly! (_type_ nav-poly) none)
-    (nav-state-method-39 () none) ;; 39 ;; (nav-state-method-39 (_type_) symbol)
-    (nav-state-method-40 () none) ;; 40 ;; (do-navigation-to-destination (_type_ vector) none)
-    (nav-state-method-41 () none) ;; 41 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector) symbol)
-    (nav-state-method-42 () none) ;; 42 ;; (set-target-pos! (_type_ vector) none)
-    (nav-state-method-43 () none) ;; 43 ;; (set-virtual-cur-pos! (_type_ vector) none)
-    (nav-state-method-44 () none) ;; 44 ;; (set-travel! (_type_ vector) none)
-    (nav-state-method-45 () none) ;; 45 ;; (set-velocity! (_type_ vector) none)
-    (nav-state-method-46 () none) ;; 46 ;; (set-heading! (_type_ vector) none)
-    (nav-state-method-47 () none) ;; 47 ;; (set-speed! (_type_ meters) none)
-    (nav-state-method-48 () none) ;; 48 ;; (reset! (_type_ nav-control) none)
-    (nav-state-method-49 () none) ;; 49 ;; (nav-state-method-49 () none)
-    (nav-state-method-50 () none) ;; 50 ;; (navigate-using-best-dir-use-existing-avoid-spheres (_type_ nav-avoid-spheres-params) none)
-    (nav-state-method-51 () none) ;; 51 ;; (nav-state-method-51 (_type_) none)
-    (nav-state-method-52 () none) ;; 52 ;; (navigate-using-route-portals (_type_) none)
-    (nav-state-method-53 () none) ;; 53 ;; (navigate-using-best-dir-recompute-avoid-spheres-1 (_type_) none)
-    (nav-state-method-54 () none) ;; 54 ;; (navigate-within-poly (_type_) none)
-    (nav-state-method-55 () none) ;; 55 ;; (clamp-travel-vector (_type_) none)
-    (nav-state-method-56 () none) ;; 56
+    (nav-state-method-9 (_type_) none) ;; 9 ;; (debug-draw (_type_) none)
+    (nav-state-method-10 (_type_) none)
+    (nav-state-method-11 (_type_) none) ;; 11 ;; (plan-over-pat1-polys-using-route (_type_ nav-gap-info) symbol)
+    (get-velocity (_type_ vector) vector)
+    (get-travel (_type_ vector) vector)
+    (get-heading (_type_ vector) vector)
+    (get-target-pos (_type_ vector) vector)
+    (get-speed (_type_) meters)
+    (get-rotation-rate (_type_) float)
+    (try-projecting-to-current-poly (_type_ vector vector vector) symbol)
+    (get-current-poly (_type_) nav-poly)
+    (copy-nav-state! (_type_ (pointer nav-state)) none)
+    (nav-state-method-21 (_type_) none) ;; 21 ;; (nav-state-method-21 () none)
+    (nav-state-method-22 (_type_) none) ;; 22 ;; (nav-state-method-22 () none)
+    (nav-state-method-23 (_type_) none) ;; 23 ;; (nav-state-method-23 () none)
+    (nav-state-method-24 (_type_) none) ;; 24 ;; (turn-and-navigate-to-destination (_type_) none)
+    (nav-state-method-25 (_type_) none) ;; 25 ;; (navigate-using-route-portals-wrapper (_type_) none)
+    (nav-state-method-26 (_type_) none) ;; 26 ;; (navigate-using-best-dir-recompute-avoid-spheres-1-wrapper (_type_) none)
+    (nav-state-method-27 (_type_) none) ;; 27 ;; (navigate-within-poly-wrapper (_type_) none)
+    (nav-state-method-28 (_type_) none) ;; 28 ;; (compute-travel-speed (_type_) none)
+    (nav-state-method-29 (_type_) none) ;; 29 ;; (nav-state-method-29 (_type_) none)
+    (nav-state-method-30 (_type_) none) ;; 30 ;; (nav-state-method-30 (_type_) none)
+    (nav-state-method-31 (_type_) none) ;; 31 ;; (navigate-using-best-dir-recompute-avoid-spheres-2 (_type_) none)
+    (nav-state-method-32 (_type_) none) ;; 32 ;; (update-travel-dir-from-spheres (_type_) none)
+    (nav-state-method-33 (_type_) none) ;; 33 ;; (compute-speed-simple (_type_) none)
+    (nav-state-method-34 (_type_) none) ;; 34 ;; (navigate-v1! (_type_) none)
+    (nav-state-method-35 (_type_) none) ;; 35 ;; (reset-target! (_type_) none)
+    (add-offset-to-target! (_type_ vector) none)
+    (nav-state-method-37 (_type_) none) ;; 37 ;; (navigate-v2! (_type_) none)
+    (set-current-poly! (_type_ nav-poly) none)
+    (nav-state-method-39 (_type_) none) ;; 39 ;; (nav-state-method-39 (_type_) symbol)
+    (nav-state-method-40 (_type_) none) ;; 40 ;; (do-navigation-to-destination (_type_ vector) none)
+    (nav-state-method-41 (_type_) none) ;; 41 ;; 
+    (clamp-vector-to-mesh-cross-gaps (_type_ vector) symbol) ;; 42 ;; 
+    (set-target-pos! (_type_ vector) none) ;; 43 ;; 
+    (set-virtual-cur-pos! (_type_ vector) none) ;; 44 ;; 
+    (set-travel! (_type_ vector) none) ;; 45 ;; 
+    (set-velocity! (_type_ vector) none) ;; 46 ;; 
+    (set-heading! (_type_ vector) none) ;; 47 ;; 
+    (set-speed! (_type_ meters) none) ;; 48 ;; 
+    (reset! (_type_ nav-control) none) ;; 49 ;; (nav-state-method-49 () none)
+    (nav-state-method-50 (_type_) none) ;; 50 ;; (navigate-using-best-dir-use-existing-avoid-spheres (_type_ nav-avoid-spheres-params) none)
+    (nav-state-method-51 (_type_) none) ;; 51 ;; (nav-state-method-51 (_type_) none)
+    (nav-state-method-52 (_type_) none) ;; 52 ;; (navigate-using-route-portals (_type_) none)
+    (nav-state-method-53 (_type_) none) ;; 53 ;; (navigate-using-best-dir-recompute-avoid-spheres-1 (_type_) none)
+    (nav-state-method-54 (_type_) none) ;; 54 ;; (navigate-within-poly (_type_) none)
+    (nav-state-method-55 (_type_) none) ;; 55 ;; (clamp-travel-vector (_type_) none)
+    (nav-state-method-56 (_type_) none) ;; 56
     )
   )
 
@@ -35314,45 +35327,45 @@
   :size-assert         #x120
   :flag-assert         #x3000000120
   (:methods
-    (nav-control-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
-    (nav-control-method-10 () none) ;; 10 ;; (point-in-bsphere? (_type_ vector) symbol)
-    (nav-control-method-11 () none) ;; 11 ;; (find-poly-containing-point-1 (_type_ vector) nav-poly)
-    (nav-control-method-12 () none) ;; 12 ;; (closest-point-on-mesh (_type_ vector vector nav-poly) nav-poly)
-    (nav-control-method-13 () none) ;; 13 ;; (find-nearest-poly-to-point (_type_ vector) nav-poly)
-    (nav-control-method-14 () none) ;; 14 ;; (project-point-onto-plane-of-poly (_type_ nav-poly vector vector vector) none)
-    (nav-control-method-15 () none) ;; 15 ;; (find-poly-containing-point-2 (_type_ vector) nav-poly)
-    (nav-control-method-16 () none) ;; 16 ;; (is-above-poly-max-height? (_type_ vector float) symbol)
-    (nav-control-method-17 () none) ;; 17 ;; (is-in-mesh? (_type_ vector float) symbol)
-    (nav-control-method-18 () none) ;; 18 ;; (avoid-spheres-1! (_type_ nav-avoid-spheres-params) symbol)
-    (nav-control-method-19 () none) ;; 19 ;; (avoid-spheres-2! (_type_ nav-avoid-spheres-params) symbol)
-    (nav-control-method-20 () none) ;; 20 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
-    (nav-control-method-21 () none) ;; 21 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
-    (nav-control-method-22 () none) ;; 22 ;; (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float)
-    (nav-control-method-23 () none) ;; 23 ;; (set-spheres-from-nav-ids (_type_) none)
-    (nav-control-method-24 () none) ;; 24 ;; (check-sphere-blocked! (_type_ vector int) symbol)
-    (nav-control-method-25 () none) ;; 25 ;; (get-max-rotation-rate (_type_) float)
-    (nav-control-method-26 () none) ;; 26 ;; (get-sphere-mask (_type_) uint)
-    (nav-control-method-27 () none) ;; 27 ;; (get-target-speed (_type_) meters)
-    (nav-control-method-28 () none) ;; 28 ;; (enable-extra-sphere! (_type_) none)
-    (nav-control-method-29 () none) ;; 29 ;; (disable-extra-sphere! (_type_) none)
-    (nav-control-method-30 () none) ;; 30 ;; (copy-extra-nav-sphere! (_type_ sphere) none)
-    (nav-control-method-31 () none) ;; 31 ;; (set-extra-nav-sphere-xyz! (_type_ sphere) none)
-    (nav-control-method-32 () none) ;; 32 ;; (set-extra-nav-sphere-radius! (_type_ float) none)
-    (nav-control-method-33 () none) ;; 33 ;; (set-nearest-y-thres! (_type_ float) none)
-    (nav-control-method-34 () none) ;; 34 ;; (set-nav-cull-radius! (_type_ meters) none)
-    (nav-control-method-35 () none) ;; 35 ;; (set-speed-scale! (_type_ float) none)
-    (nav-control-method-36 () none) ;; 36 ;; (set-target-speed! (_type_ meters) none)
-    (nav-control-method-37 () none) ;; 37 ;; (set-acceleration! (_type_ meters) none)
-    (nav-control-method-38 () none) ;; 38 ;; (set-turning-acceleration! (_type_ meters) none)
-    (nav-control-method-39 () none) ;; 39 ;; (set-max-rotation-rate! (_type_ float) none)
-    (nav-control-method-40 () none) ;; 40 ;; (set-sphere-mask! (_type_ uint) none)
-    (nav-control-method-41 () none) ;; 41 ;; (remove! (_type_) none)
-    (nav-control-method-42 () none) ;; 42 ;; (init! (_type_ collide-shape) none)
-    (nav-control-method-43 () none) ;; 43 ;; (display-marks? (_type_) symbol)
-    (nav-control-method-44 () none) ;; 44 ;; (nav-control-method-44 () none)
-    (nav-control-method-45 () none) ;; 45 ;; (find-first-sphere-intersecting-ray (_type_ vector vector vector) sphere)
-    (nav-control-method-46 () none) ;; 46 ;; (find-sphere-ids-from-sphere-hash (_type_ symbol) none)
-    (nav-control-method-47 () none) ;; 47
+    (debug-draw (_type_) none)
+    (point-in-bsphere? (_type_ vector) symbol)
+    (nav-control-method-11 (_type_ vector) none) ;; 11 ;; (find-poly-containing-point-1 (_type_ vector) nav-poly)
+    (closest-point-on-mesh (_type_ vector vector nav-poly) nav-poly)
+    (find-nearest-poly-to-point (_type_ vector) nav-poly)
+    (nav-control-method-14 (_type_ object vector vector vector) none) ;; 14 ;; (project-point-onto-plane-of-poly (_type_ nav-poly vector vector vector) none)
+    (nav-control-method-15 (_type_) none) ;; 15 ;; (find-poly-containing-point-2 (_type_ vector) nav-poly)
+    (nav-control-method-16 (_type_) none) ;; 16 ;; (is-above-poly-max-height? (_type_ vector float) symbol)
+    (is-in-mesh? (_type_ vector float) symbol) ;; 17 ;; (is-in-mesh? (_type_ vector float) symbol)
+    (avoid-spheres-1! (_type_ nav-avoid-spheres-params) symbol)
+    (avoid-spheres-2! (_type_ nav-avoid-spheres-params) symbol)
+    (nav-control-method-20 (_type_ vector) none) ;; 20 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
+    (nav-control-method-21 (_type_) none) ;; 21 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
+    (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float)
+    (nav-control-method-23 (_type_) none) ;; 23 ;; (set-spheres-from-nav-ids (_type_) none)
+    (check-sphere-blocked? (_type_ vector int) symbol)
+    (get-max-rotation-rate (_type_) float)
+    (get-sphere-mask (_type_) uint)
+    (get-target-speed (_type_) meters)
+    (enable-extra-sphere! (_type_) none)
+    (disable-extra-sphere! (_type_) none)
+    (copy-extra-nav-sphere! (_type_ sphere) none)
+    (set-extra-nav-sphere-xyz! (_type_ sphere) none)
+    (set-extra-nav-sphere-radius! (_type_ float) none)
+    (set-nearest-y-thres! (_type_ float) none)
+    (set-nav-cull-radius! (_type_ meters) none)
+    (set-speed-scale! (_type_ float) none)
+    (set-target-speed! (_type_ meters) none)
+    (set-acceleration! (_type_ meters) none)
+    (set-turning-acceleration! (_type_ meters) none)
+    (set-max-rotation-rate! (_type_ float) none)
+    (set-sphere-mask! (_type_ uint) none)
+    (nav-control-method-41 (_type_) none) ;; 41 ;; (remove! (_type_) none)
+    (nav-control-method-42 (_type_) none) ;; 42 ;; (init! (_type_ collide-shape) none)
+    (init! (_type_ collide-shape) none) ;; 43 ;; (display-marks? (_type_) symbol)
+    (display-marks? (_type_) symbol) ;; 44 ;; (nav-control-method-44 () none)
+    (nav-control-method-45 (_type_) none) ;; 45 ;; (find-first-sphere-intersecting-ray (_type_ vector vector vector) sphere)
+    (nav-control-method-46 (_type_ vector vector check-vector-collision-with-nav-spheres-info) sphere) ;; 46 ;; (find-sphere-ids-from-sphere-hash (_type_ symbol) none)
+    (nav-control-method-47 (_type_ symbol) none) ;; 47
     )
   )
 
@@ -35402,25 +35415,25 @@
   :size-assert         #x58
   :flag-assert         #x1b00000058
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (grid-hash-method-9 () none) ;; 9 ;; (update-grid-for-objects-in-box (_type_ int vector vector) none)
-    (grid-hash-method-10 () none) ;; 10 ;; (clear-bucket-array (_type_) none)
-    (grid-hash-method-11 () none) ;; 11 ;; (setup-search-box (_type_ int vector vector vector) none)
-    (grid-hash-method-12 () none) ;; 12 ;; (search-for-point (_type_ vector) (pointer uint8))
-    (grid-hash-method-13 () none) ;; 13 ;; (search-for-sphere (_type_ vector float) (pointer uint8))
-    (grid-hash-method-14 () none) ;; 14 ;; (draw (_type_ rgba) none)
-    (grid-hash-method-15 () none) ;; 15 ;; (dump-grid-info (_type_) none)
-    (grid-hash-method-16 () none) ;; 16 ;; (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none)
-    (grid-hash-method-17 () none) ;; 17 ;; (box-of-everything (_type_ object grid-hash-box) none)
-    (grid-hash-method-18 () none) ;; 18 ;; (grid-hash-method-18 (_type_ grid-hash-box int) none)
-    (grid-hash-method-19 () none) ;; 19 ;; (grid-hash-method-19 (_type_ grid-hash-box int) none)
-    (grid-hash-method-20 () none) ;; 20 ;; (do-search! (_type_ grid-hash-box (pointer uint8)) none)
-    (grid-hash-method-21 () none) ;; 21 ;; (set-up-box (_type_ grid-hash-box vector vector) none)
-    (grid-hash-method-22 () none) ;; 22 ;; (sphere-to-grid-box (_type_ grid-hash-box sphere) none)
-    (grid-hash-method-23 () none) ;; 23 ;; (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none)
-    (grid-hash-method-24 () none) ;; 24 ;; (update-grid (_type_) none)
-    (grid-hash-method-25 () none) ;; 25
-    (grid-hash-method-26 () none) ;; 26
+    (new (symbol type int) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (grid-hash-method-9 (_type_) none) ;; 9 ;; (update-grid-for-objects-in-box (_type_ int vector vector) none)
+    (grid-hash-method-10 (_type_) none) ;; 10 ;; (clear-bucket-array (_type_) none)
+    (grid-hash-method-11 (_type_) none) ;; 11 ;; (setup-search-box (_type_ int vector vector vector) none)
+    (grid-hash-method-12 (_type_) none) ;; 12 ;; (search-for-point (_type_ vector) (pointer uint8))
+    (grid-hash-method-13 (_type_) none) ;; 13 ;; (search-for-sphere (_type_ vector float) (pointer uint8))
+    (grid-hash-method-14 (_type_) none) ;; 14 ;; (draw (_type_ rgba) none)
+    (grid-hash-method-15 (_type_) none) ;; 15 ;; (dump-grid-info (_type_) none)
+    (grid-hash-method-16 (_type_) none) ;; 16 ;; (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none)
+    (grid-hash-method-17 (_type_) none) ;; 17 ;; (box-of-everything (_type_ object grid-hash-box) none)
+    (grid-hash-method-18 (_type_) none) ;; 18 ;; (grid-hash-method-18 (_type_ grid-hash-box int) none)
+    (grid-hash-method-19 (_type_) none) ;; 19 ;; (grid-hash-method-19 (_type_ grid-hash-box int) none)
+    (grid-hash-method-20 (_type_) none) ;; 20 ;; (do-search! (_type_ grid-hash-box (pointer uint8)) none)
+    (grid-hash-method-21 (_type_ grid-hash-box int) none) ;; 21 ;; (set-up-box (_type_ grid-hash-box vector vector) none)
+    (grid-hash-method-22 (_type_) none) ;; 22 ;; (sphere-to-grid-box (_type_ grid-hash-box sphere) none)
+    (grid-hash-method-23 (_type_) none) ;; 23 ;; (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none)
+    (grid-hash-method-24 (_type_) none) ;; 24 ;; (update-grid (_type_) none)
+    (grid-hash-method-25 (_type_) none) ;; 25
+    (grid-hash-method-26 (_type_) none) ;; 26
     )
   )
 
@@ -35450,15 +35463,15 @@
   :flag-assert         #x2400000068
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
-    (sphere-hash-method-27 () none) ;; 27 ;; (add-a-sphere-with-flag (_type_ vector int) int)
-    (sphere-hash-method-28 () none) ;; 28 ;; (update-from-spheres (_type_) none)
-    (sphere-hash-method-29 () none) ;; 29 ;; (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params) none)
-    (sphere-hash-method-30 () none) ;; 30 ;; (check-sphere-blocked (_type_ vector int int) symbol)
-    (sphere-hash-method-31 () none) ;; 31 ;; (add-sphere-with-mask-and-id (_type_ vector vector float int) symbol)
-    (sphere-hash-method-32 () none) ;; 32 ;; (sphere-hash-method-32 (_type_ sphere int) symbol)
-    (sphere-hash-method-33 () none) ;; 33
-    (sphere-hash-method-34 () none) ;; 34
-    (sphere-hash-method-35 () none) ;; 35
+    (sphere-hash-method-27 (_type_) none) ;; 27 ;; (add-a-sphere-with-flag (_type_ vector int) int)
+    (sphere-hash-method-28 (_type_) none) ;; 28 ;; (update-from-spheres (_type_) none)
+    (sphere-hash-method-29 (_type_ sphere int) none) ;; 29 ;; (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params) none)
+    (sphere-hash-method-30 (_type_) none) ;; 30 ;; (check-sphere-blocked (_type_ vector int int) symbol)
+    (sphere-hash-method-31 (_type_) none) ;; 31 ;; (add-sphere-with-mask-and-id (_type_ vector vector float int) symbol)
+    (sphere-hash-method-32 (_type_ sphere int uint) symbol)
+    (sphere-hash-method-33 (_type_ object object object int) symbol) ;; 33
+    (sphere-hash-method-34 (_type_ object object object vector int int) int) ;; 34
+    (sphere-hash-method-35 (_type_) none) ;; 35
     )
   )
 
@@ -35481,12 +35494,12 @@
   :flag-assert         #x2a00000074
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int int) _type_)
-    (spatial-hash-method-36 () none) ;; 36 ;; (fill-actor-list-for-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
-    (spatial-hash-method-37 () none) ;; 37 ;; (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
-    (spatial-hash-method-38 () none) ;; 38 ;; (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape)) int)
-    (spatial-hash-method-39 () none) ;; 39 ;; (spatial-hash-method-39 (_type_ object hash-object-info) int)
-    (spatial-hash-method-40 () none) ;; 40
-    (spatial-hash-method-41 () none) ;; 41
+    (spatial-hash-method-36 (_type_ vector vector) none) ;; 36 ;; (fill-actor-list-for-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
+    (spatial-hash-method-37 (_type_) none) ;; 37 ;; (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
+    (spatial-hash-method-38 (_type_ collide-prim-core (pointer collide-shape) int) int) ;; 38 ;; (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape)) int)
+    (spatial-hash-method-39 (_type_ vector (pointer collide-shape) int) none) ;; 39 ;; (spatial-hash-method-39 (_type_ object hash-object-info) int)
+    (spatial-hash-method-40 (_type_) none) ;; 40
+    (spatial-hash-method-41 (_type_) none) ;; 41
     )
   )
 
@@ -36687,7 +36700,7 @@
 ;; (define-extern debug-merc-highres-runtime function)
 ;; (define-extern debug-merc-size-runtime function)
 ;; (define-extern debug-merc-fade-runtime function)
-;; (define-extern foreground-check-longest-edge function)
+(define-extern foreground-check-longest-edge (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; foreground                     ;;
@@ -37008,7 +37021,7 @@
 ;; (define-extern *fog-texture-tbp* object)
 ;; (define-extern fog-texture-anim-init function) ;; (function texture-anim int)
 ;; (define-extern fog-texture-anim-init2 function)
-;; (define-extern *fog-texture-work* object) ;; fog-texture-work
+(define-extern *fog-texture-work* fog-texture-work) ;; 
 ;; (define-extern real-fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
 ;; (define-extern fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
 
@@ -37028,7 +37041,7 @@
 
 ;; (define-extern *sky-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
 (define-extern set-fog-height! (function float none)) ;; 
-;; (define-extern set-cloud-minmax! function) ;; (function float float none)
+(define-extern set-cloud-minmax! (function float float none)) ;; 
 ;; (define-extern *default-pris-texture-anim-array* texture-anim-array)
 ;; (define-extern *car-texture-anim-array-work* object)
 ;; (define-extern car-texture-anim-layer-func function)
@@ -37195,7 +37208,7 @@
 
 (define-extern mem-usage-shrub-walk (function draw-node int memory-usage-block int draw-node))
 (define-extern highres-shrub-login (function draw-node none))
-(define-extern highres-prototype-shrub-login function)
+(define-extern highres-prototype-shrub-login (function none))
 (define-extern shrub-vu1-block vu-function)
 (define-extern shrub-num-tris (function shrubbery uint))
 (define-extern shrub-make-perspective-matrix (function matrix matrix matrix))
@@ -37470,7 +37483,6 @@
 ;; tie-near                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tie-near-consts (structure)
   ((extra     qword    :inline :offset-assert 0)
    (gifbufs   qword    :inline :offset-assert 16)
@@ -37481,21 +37493,20 @@
    (hvdfoffs  vector   :inline :offset-assert 96)
    (invhscale vector   :inline :offset-assert 112)
    (guard     vector   :inline :offset-assert 128)
-   (atest     UNKNOWN  2       :offset-assert 144)
-   (atest-tra gs-adcmd :inline :offset-assert 144)
-   (atest-def gs-adcmd :inline :offset-assert 160)
+   (atest     gs-adcmd  2    :inline   :offset-assert 144)
+   (atest-tra gs-adcmd :inline :offset 144)
+   (atest-def gs-adcmd :inline :offset 160)
    )
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
-|#
 
-;; (define-extern tie-near-vu1-block object)
+(define-extern tie-near-vu1-block vu-function)
 ;; (define-extern tie-near-init-consts function)
 ;; (define-extern tie-near-init-engine function)
 ;; (define-extern tie-near-end-buffer function)
-;; (define-extern tie-scissor-make-perspective-matrix function) ;; (function matrix matrix none)
+(define-extern tie-scissor-make-perspective-matrix (function matrix matrix none))
 ;; (define-extern tie-near-int-reg function)
 ;; (define-extern tie-near-float-reg function)
 
@@ -37779,7 +37790,14 @@
 ;; loader                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++loader:spooler-flags
+(defenum spooler-flags
+  :bitfield #t
+  :type uint32
+  (blackout-on-stall)
+  )
+;; ---loader:spooler-flags
+
 (deftype spooler-block (basic)
   ((anim             spool-anim                          :offset-assert 4) ;; guessed by decompiler
    (idle             art-joint-anim                      :offset-assert 8) ;; guessed by decompiler
@@ -37804,7 +37822,6 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
 #|
 (deftype load-dir (basic)
@@ -37861,7 +37878,7 @@
 ;; (define-extern art-group-load-check function) ;; (function string kheap int art-group)
 (define-extern external-art-buffer-init (function external-art-buffer int))
 ;; (define-extern *preload-spool-anims* object) ;; symbol
-;; (define-extern ja-play-spooled-anim function) ;; (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) spooler-flags int :behavior process-drawable)
+(define-extern ja-play-spooled-anim (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) spooler-flags int :behavior process-drawable)) ;; 
 ;; (define-extern ja-play-spooled-no-sync-anim function)
 ;; (define-extern ja-abort-spooled-anim function) ;; (function spool-anim art-joint-anim int int :behavior process-drawable)
 ;; (define-extern *gui-control* object) ;; gui-control
@@ -38085,7 +38102,7 @@
   )
 |#
 
-;; (define-extern update-mood-default function) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-default (function mood-context float int none :behavior time-of-day-proc)) ;; 
 ;; (define-extern update-mood-copy-parent function) ;; (function mood-context object int none)
 ;; (define-extern get-sphere-interp function) ;; (function sphere vector float float float)
 ;; (define-extern update-mood-default-exterior (function mood-context float int none :behavior time-of-day-proc))
@@ -38229,445 +38246,445 @@
 ;; level-info                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *default-mood-range* object)
-;; (define-extern *mood-range-1* object)
-;; (define-extern *mood-range-snow* object)
-;; (define-extern default-level level-load-info) ;; level-load-info
-;; (define-extern intro level-load-info) ;; level-load-info
-;; (define-extern title level-load-info) ;; level-load-info
-;; (define-extern halfpipe level-load-info) ;; level-load-info
-;; (define-extern raceweap level-load-info)
-;; (define-extern junglex level-load-info)
-;; (define-extern jungley level-load-info)
-;; (define-extern junglea level-load-info)
-;; (define-extern jungleb level-load-info)
-;; (define-extern junglec level-load-info)
-;; (define-extern jungled level-load-info)
-;; (define-extern junglee level-load-info)
-;; (define-extern junglef level-load-info)
-;; (define-extern jungleg level-load-info)
-;; (define-extern jungles level-load-info)
-;; (define-extern jungtbox level-load-info)
-;; (define-extern jungtrn level-load-info)
-;; (define-extern junglew level-load-info)
-;; (define-extern havjungs level-load-info)
-;; (define-extern havjungw level-load-info)
-;; (define-extern havjungx level-load-info)
-;; (define-extern havjungy level-load-info)
-;; (define-extern havsews level-load-info)
-;; (define-extern havseww level-load-info)
-;; (define-extern havsewx level-load-info)
-;; (define-extern havsewy level-load-info)
-;; (define-extern hvswtbox level-load-info)
-;; (define-extern hvjgtbox level-load-info)
-;; (define-extern havtours level-load-info)
-;; (define-extern havtourw level-load-info)
-;; (define-extern havttbox level-load-info)
-;; (define-extern havena level-load-info)
-;; (define-extern havenb level-load-info)
-;; (define-extern havenc level-load-info)
-;; (define-extern havend level-load-info)
-;; (define-extern havene level-load-info)
-;; (define-extern havenx level-load-info)
-;; (define-extern haveny level-load-info)
-;; (define-extern havens level-load-info)
-;; (define-extern havntbox level-load-info)
-;; (define-extern havenw level-load-info)
-;; (define-extern sewera level-load-info)
-;; (define-extern sewera2 level-load-info)
-;; (define-extern sewera3 level-load-info)
-;; (define-extern sewerb level-load-info)
-;; (define-extern sewerc level-load-info)
-;; (define-extern sewerd level-load-info)
-;; (define-extern sewere level-load-info)
-;; (define-extern sewerf level-load-info)
-;; (define-extern sewers level-load-info)
-;; (define-extern sewerw level-load-info)
-;; (define-extern sewerx level-load-info)
-;; (define-extern sewtbox level-load-info)
-;; (define-extern kratours level-load-info)
-;; (define-extern kratourw level-load-info)
-;; (define-extern krattbox level-load-info)
-;; (define-extern krasw level-load-info)
-;; (define-extern krass level-load-info)
-;; (define-extern krastbox level-load-info)
-;; (define-extern krastrn level-load-info)
-;; (define-extern krasa level-load-info)
-;; (define-extern krasb level-load-info)
-;; (define-extern krasc level-load-info)
-;; (define-extern krasx level-load-info)
-;; (define-extern krasy level-load-info)
-;; (define-extern krasfoot level-load-info)
-;; (define-extern snowfoot level-load-info)
-;; (define-extern hjngfoot level-load-info)
-;; (define-extern havnfoot level-load-info)
-;; (define-extern jungfoot level-load-info)
-;; (define-extern hvswfoot level-load-info)
-;; (define-extern sparfoot level-load-info)
-;; (define-extern dockfoot level-load-info)
-;; (define-extern dkkrfoot level-load-info)
-;; (define-extern sewfoot level-load-info)
-;; (define-extern canfoot level-load-info)
-;; (define-extern cnspfoot level-load-info)
-;; (define-extern sptmfoot level-load-info)
-;; (define-extern tempfoot level-load-info)
-;; (define-extern icepfoot level-load-info)
-;; (define-extern icefoot level-load-info)
-;; (define-extern icebfoot level-load-info)
-;; (define-extern peakfoot level-load-info)
-;; (define-extern havtfoot level-load-info)
-;; (define-extern dromfoot level-load-info)
-;; (define-extern drdkfoot level-load-info)
-;; (define-extern spatfoot level-load-info)
-;; (define-extern kratfoot level-load-info)
-;; (define-extern icetfoot level-load-info)
-;; (define-extern krastt level-load-info)
-;; (define-extern dockstt level-load-info)
-;; (define-extern dromett level-load-info)
-;; (define-extern dkkrtt level-load-info)
-;; (define-extern drdktt level-load-info)
-;; (define-extern krtrtt level-load-info)
-;; (define-extern junglett level-load-info)
-;; (define-extern havtt level-load-info)
-;; (define-extern sewertt level-load-info)
-;; (define-extern hvjgtt level-load-info)
-;; (define-extern hvswtt level-load-info)
-;; (define-extern hvtrtt level-load-info)
-;; (define-extern spartt level-load-info)
-;; (define-extern canyontt level-load-info)
-;; (define-extern templett level-load-info)
-;; (define-extern cnsptt level-load-info)
-;; (define-extern sptmtt level-load-info)
-;; (define-extern sptrtt level-load-info)
-;; (define-extern snowtt level-load-info)
-;; (define-extern peaktt level-load-info)
-;; (define-extern icett level-load-info)
-;; (define-extern icbgtt level-load-info)
-;; (define-extern icpstt level-load-info)
-;; (define-extern ictrtt level-load-info)
-;; (define-extern canyons level-load-info)
-;; (define-extern canyonw level-load-info)
-;; (define-extern canyona level-load-info)
-;; (define-extern canyonb level-load-info)
-;; (define-extern canyonc level-load-info)
-;; (define-extern canyond level-load-info)
-;; (define-extern canyone level-load-info)
-;; (define-extern canyonx level-load-info)
-;; (define-extern canyony level-load-info)
-;; (define-extern cantbox level-load-info)
-;; (define-extern cansparw level-load-info)
-;; (define-extern canspars level-load-info)
-;; (define-extern cansparx level-load-info)
-;; (define-extern canspary level-load-info)
-;; (define-extern cnsptbox level-load-info)
-;; (define-extern docksw level-load-info)
-;; (define-extern docksx level-load-info)
-;; (define-extern dockss level-load-info)
-;; (define-extern docksa level-load-info)
-;; (define-extern docksb level-load-info)
-;; (define-extern docksc level-load-info)
-;; (define-extern docksd level-load-info)
-;; (define-extern dockse level-load-info)
-;; (define-extern docktbox level-load-info)
-;; (define-extern dockkras level-load-info)
-;; (define-extern dockkraw level-load-info)
-;; (define-extern dockkrax level-load-info)
-;; (define-extern dockkray level-load-info)
-;; (define-extern dkkrtbox level-load-info)
-;; (define-extern dromew level-load-info)
-;; (define-extern dromes level-load-info)
-;; (define-extern dromex level-load-info)
-;; (define-extern dromey level-load-info)
-;; (define-extern dromea level-load-info)
-;; (define-extern dromeb level-load-info)
-;; (define-extern dromec level-load-info)
-;; (define-extern dromed level-load-info)
-;; (define-extern dromee level-load-info)
-;; (define-extern dromef level-load-info)
-;; (define-extern dromtbox level-load-info)
-;; (define-extern dromdocs level-load-info)
-;; (define-extern dromdocw level-load-info)
-;; (define-extern dromdocx level-load-info)
-;; (define-extern dromdocy level-load-info)
-;; (define-extern drdktbox level-load-info)
-;; (define-extern brdroom level-load-info)
-;; (define-extern brdroomf level-load-info)
-;; (define-extern garcst level-load-info)
-;; (define-extern garage level-load-info)
-;; (define-extern garageb level-load-info)
-;; (define-extern snow level-load-info)
-;; (define-extern snowx level-load-info)
-;; (define-extern snows level-load-info)
-;; (define-extern snowtbox level-load-info)
-;; (define-extern icetrn level-load-info)
-;; (define-extern snowtrn2 level-load-info)
-;; (define-extern ben level-load-info)
-;; (define-extern cliffs level-load-info)
-;; (define-extern cliffss level-load-info)
-;; (define-extern cliffart level-load-info)
-;; (define-extern cliftrn level-load-info)
-;; (define-extern clifhunt level-load-info)
-;; (define-extern clifctf level-load-info)
-;; (define-extern cliffsx level-load-info)
-;; (define-extern drone level-load-info)
-;; (define-extern coliseum level-load-info)
-;; (define-extern coliseux level-load-info)
-;; (define-extern coliseus level-load-info)
-;; (define-extern colart level-load-info)
-;; (define-extern coliclct level-load-info)
-;; (define-extern colictf level-load-info)
-;; (define-extern colirev level-load-info)
-;; (define-extern colhunt level-load-info)
-;; (define-extern eight level-load-info)
-;; (define-extern eightb level-load-info)
-;; (define-extern rustyh level-load-info)
-;; (define-extern hiphog level-load-info) ;; level-load-info
-;; (define-extern desarena level-load-info)
-;; (define-extern desarens level-load-info)
-;; (define-extern desart level-load-info)
-;; (define-extern desclct level-load-info)
-;; (define-extern desactf level-load-info)
-;; (define-extern deshunt level-load-info) ;; level-load-info
-;; (define-extern deshunt2 level-load-info)
-;; (define-extern desrev level-load-info)
-;; (define-extern desarenx level-load-info)
-;; (define-extern snobowls level-load-info)
-;; (define-extern snobowl level-load-info)
-;; (define-extern snobowlx level-load-info)
-;; (define-extern sbwlctf level-load-info)
-;; (define-extern snobart level-load-info)
-;; (define-extern kcrosss level-load-info)
-;; (define-extern kcross level-load-info)
-;; (define-extern kcrosctf level-load-info)
-;; (define-extern kcrsplow level-load-info)
-;; (define-extern kcrosart level-load-info)
-;; (define-extern kcrsclct level-load-info)
-;; (define-extern kcrossx level-load-info)
-;; (define-extern spargusa level-load-info)
-;; (define-extern spargusb level-load-info)
-;; (define-extern spargusc level-load-info)
-;; (define-extern spargusd level-load-info)
-;; (define-extern sparguse level-load-info)
-;; (define-extern spargusx level-load-info)
-;; (define-extern spargusy level-load-info)
-;; (define-extern sprgstbx level-load-info)
-;; (define-extern sparguss level-load-info)
-;; (define-extern spargusw level-load-info)
-;; (define-extern icea level-load-info)
-;; (define-extern iceb level-load-info)
-;; (define-extern icec level-load-info)
-;; (define-extern iced level-load-info)
-;; (define-extern icew level-load-info)
-;; (define-extern icex level-load-info)
-;; (define-extern icey level-load-info)
-;; (define-extern ices level-load-info)
-;; (define-extern icetbox level-load-info)
-;; (define-extern icetours level-load-info)
-;; (define-extern icetourw level-load-info)
-;; (define-extern icettbox level-load-info)
-;; (define-extern peak level-load-info)
-;; (define-extern peaks level-load-info)
-;; (define-extern peakw level-load-info)
-;; (define-extern peaka level-load-info)
-;; (define-extern peakb level-load-info)
-;; (define-extern peakc level-load-info)
-;; (define-extern peakd level-load-info)
-;; (define-extern peake level-load-info)
-;; (define-extern peakx level-load-info)
-;; (define-extern peaktbox level-load-info)
-;; (define-extern icepasss level-load-info)
-;; (define-extern icepassw level-load-info)
-;; (define-extern icepassx level-load-info)
-;; (define-extern icepassy level-load-info)
-;; (define-extern iceptbox level-load-info)
-;; (define-extern icebergs level-load-info)
-;; (define-extern icebergw level-load-info)
-;; (define-extern icebergx level-load-info)
-;; (define-extern icebergy level-load-info)
-;; (define-extern icebtbox level-load-info)
-;; (define-extern templew level-load-info)
-;; (define-extern temples level-load-info)
-;; (define-extern templea level-load-info) ;; level-load-info
-;; (define-extern templeb level-load-info) ;; level-load-info
-;; (define-extern templec level-load-info) ;; level-load-info
-;; (define-extern templed level-load-info) ;; level-load-info
-;; (define-extern templee level-load-info) ;; level-load-info
-;; (define-extern templex level-load-info) ;; level-load-info
-;; (define-extern templey level-load-info)
-;; (define-extern temptbox level-load-info)
-;; (define-extern spartems level-load-info)
-;; (define-extern spartemw level-load-info)
-;; (define-extern spartemx level-load-info)
-;; (define-extern spartemy level-load-info)
-;; (define-extern sptmtbox level-load-info)
-;; (define-extern spatourw level-load-info)
-;; (define-extern spatours level-load-info)
-;; (define-extern spattbox level-load-info)
-;; (define-extern desisle level-load-info)
-;; (define-extern desisles level-load-info)
-;; (define-extern desislex level-load-info)
-;; (define-extern disleart level-load-info)
-;; (define-extern desrapt level-load-info)
-;; (define-extern dislectf level-load-info)
-;; (define-extern atoll level-load-info)
-;; (define-extern atollx level-load-info)
-;; (define-extern atolls level-load-info)
-;; (define-extern atollart level-load-info)
-;; (define-extern atoplow level-load-info)
-;; (define-extern atollctf level-load-info)
-;; (define-extern menu2 level-load-info)
-;; (define-extern menumap level-load-info)
-;; (define-extern mongl level-load-info)
-;; (define-extern falcl level-load-info)
-;; (define-extern wombl level-load-info)
-;; (define-extern possl level-load-info)
-;; (define-extern bobcl level-load-info)
-;; (define-extern cougl level-load-info)
-;; (define-extern wolfl level-load-info)
-;; (define-extern bearl level-load-info)
-;; (define-extern leopl level-load-info)
-;; (define-extern pantl level-load-info)
-;; (define-extern tigel level-load-info)
-;; (define-extern cheel level-load-info)
-;; (define-extern gilal level-load-info)
-;; (define-extern snakl level-load-info)
-;; (define-extern daxtl level-load-info)
-;; (define-extern jakvl level-load-info)
-;; (define-extern ashvl level-load-info)
-;; (define-extern ashvl2 level-load-info)
-;; (define-extern ashvl3 level-load-info)
-;; (define-extern razvl level-load-info)
-;; (define-extern klevl level-load-info)
-;; (define-extern klevl2 level-load-info)
-;; (define-extern kievl level-load-info)
-;; (define-extern thavl level-load-info)
-;; (define-extern thavl2 level-load-info)
-;; (define-extern thavl3 level-load-info)
-;; (define-extern thbvl level-load-info)
-;; (define-extern thbvl2 level-load-info)
-;; (define-extern thbvl3 level-load-info)
-;; (define-extern thcvl level-load-info)
-;; (define-extern thcvl2 level-load-info)
-;; (define-extern thcvl3 level-load-info)
-;; (define-extern torvl level-load-info)
-;; (define-extern torvl2 level-load-info)
-;; (define-extern torvl3 level-load-info)
-;; (define-extern sigvl level-load-info)
-;; (define-extern sigvl2 level-load-info)
-;; (define-extern sigvl3 level-load-info)
-;; (define-extern ur8vl level-load-info)
-;; (define-extern ur8vl2 level-load-info)
-;; (define-extern ur8vl3 level-load-info)
-;; (define-extern rayvl level-load-info)
-;; (define-extern rayvl2 level-load-info)
-;; (define-extern gtbvl level-load-info)
-;; (define-extern pecvl level-load-info)
-;; (define-extern ashlev level-load-info)
-;; (define-extern jaklev level-load-info)
-;; (define-extern razlev level-load-info)
-;; (define-extern klelev level-load-info)
-;; (define-extern kielev level-load-info)
-;; (define-extern thalev level-load-info)
-;; (define-extern tarlev level-load-info)
-;; (define-extern thblev level-load-info)
-;; (define-extern thclev level-load-info)
-;; (define-extern torlev level-load-info)
-;; (define-extern siglev level-load-info)
-;; (define-extern ur8lev level-load-info)
-;; (define-extern kaelev level-load-info)
-;; (define-extern raylev level-load-info)
-;; (define-extern ratlev level-load-info)
-;; (define-extern jkalev level-load-info)
-;; (define-extern jkblev level-load-info)
-;; (define-extern jkclev level-load-info)
-;; (define-extern daxlev level-load-info)
-;; (define-extern gtblev level-load-info)
-;; (define-extern peclev level-load-info)
-;; (define-extern ximlev level-load-info)
-;; (define-extern osmlev level-load-info)
-;; (define-extern cliftest level-load-info)
-;; (define-extern fmvlev level-load-info)
-;; (define-extern credits level-load-info)
-;; (define-extern jakcred level-load-info)
-;; (define-extern peccred level-load-info)
-;; (define-extern razcred level-load-info)
-;; (define-extern gtbcred level-load-info)
-;; (define-extern daxcred level-load-info)
-;; (define-extern sigcred level-load-info)
-;; (define-extern thbcred level-load-info)
-;; (define-extern ur8cred level-load-info)
-;; (define-extern keicred level-load-info)
-;; (define-extern torcred level-load-info)
-;; (define-extern klecred level-load-info)
-;; (define-extern thccred level-load-info)
-;; (define-extern ashcred level-load-info)
-;; (define-extern thacred level-load-info)
-;; (define-extern raycred level-load-info)
-;; (define-extern kraswfma level-load-info)
-;; (define-extern krasastg level-load-info)
-;; (define-extern krasafma level-load-info)
-;; (define-extern krasbfma level-load-info)
-;; (define-extern krascfma level-load-info)
-;; (define-extern rustyhfm level-load-info)
-;; (define-extern introcst level-load-info) ;; level-load-info
-;; (define-extern jakndax level-load-info)
-;; (define-extern rynash level-load-info)
-;; (define-extern tsk2a level-load-info)
-;; (define-extern tsk2b level-load-info)
-;; (define-extern tsk2c level-load-info)
-;; (define-extern tsk3a level-load-info)
-;; (define-extern tsk4a level-load-info)
-;; (define-extern tsk5a level-load-info)
-;; (define-extern tsk5b level-load-info)
-;; (define-extern tsk6a level-load-info)
-;; (define-extern tsk12a level-load-info)
-;; (define-extern tsk12b level-load-info)
-;; (define-extern tsk18a level-load-info)
-;; (define-extern tsk21a level-load-info)
-;; (define-extern tsk21b level-load-info)
-;; (define-extern tsk25a level-load-info)
-;; (define-extern tsk32a level-load-info)
-;; (define-extern tsk32b level-load-info)
-;; (define-extern tsk32c level-load-info)
-;; (define-extern tsk33a level-load-info)
-;; (define-extern tsk38a level-load-info)
-;; (define-extern tsk80a level-load-info)
-;; (define-extern tsk80b level-load-info)
-;; (define-extern tsk81a level-load-info)
-;; (define-extern tsk81b level-load-info)
-;; (define-extern tsk100a level-load-info)
-;; (define-extern tsk100b level-load-info)
-;; (define-extern tsk100c level-load-info)
-;; (define-extern tsk114a level-load-info)
-;; (define-extern tsk125a level-load-info)
-;; (define-extern tsk130a level-load-info)
-;; (define-extern tsk130b level-load-info)
-;; (define-extern tsk139a level-load-info)
-;; (define-extern tsk157a level-load-info)
-;; (define-extern tsk165a level-load-info)
-;; (define-extern tsk165ab level-load-info)
-;; (define-extern tsk165b level-load-info)
-;; (define-extern tsk165c level-load-info)
-;; (define-extern tsk166a level-load-info)
-;; (define-extern tsk166b level-load-info)
-;; (define-extern tsk166c level-load-info)
-;; (define-extern tsk166c2 level-load-info)
-;; (define-extern tsk166d level-load-info)
-;; (define-extern tsk166d2 level-load-info)
-;; (define-extern tsk166e level-load-info)
-;; (define-extern tsk166f level-load-info)
-;; (define-extern tsk166g level-load-info)
-;; (define-extern introblv level-load-info)
-;; (define-extern introblp level-load-info)
-;; (define-extern rustycst level-load-info)
-;; (define-extern hipcst level-load-info)
-;; (define-extern andrew level-load-info)
-;; (define-extern testw level-load-info)
-;; (define-extern testa level-load-info)
-;; (define-extern testb level-load-info)
-;; (define-extern testlow level-load-info)
-;; (define-extern henry level-load-info)
-;; (define-extern chartest level-load-info) ;; level-load-info
+(define-extern *default-mood-range* mood-range)
+(define-extern *mood-range-1* mood-range)
+(define-extern *mood-range-snow* mood-range)
+(define-extern default-level level-load-info) ;; level-load-info
+(define-extern intro level-load-info) ;; level-load-info
+(define-extern title level-load-info) ;; level-load-info
+(define-extern halfpipe level-load-info) ;; level-load-info
+(define-extern raceweap level-load-info)
+(define-extern junglex level-load-info)
+(define-extern jungley level-load-info)
+(define-extern junglea level-load-info)
+(define-extern jungleb level-load-info)
+(define-extern junglec level-load-info)
+(define-extern jungled level-load-info)
+(define-extern junglee level-load-info)
+(define-extern junglef level-load-info)
+(define-extern jungleg level-load-info)
+(define-extern jungles level-load-info)
+(define-extern jungtbox level-load-info)
+(define-extern jungtrn level-load-info)
+(define-extern junglew level-load-info)
+(define-extern havjungs level-load-info)
+(define-extern havjungw level-load-info)
+(define-extern havjungx level-load-info)
+(define-extern havjungy level-load-info)
+(define-extern havsews level-load-info)
+(define-extern havseww level-load-info)
+(define-extern havsewx level-load-info)
+(define-extern havsewy level-load-info)
+(define-extern hvswtbox level-load-info)
+(define-extern hvjgtbox level-load-info)
+(define-extern havtours level-load-info)
+(define-extern havtourw level-load-info)
+(define-extern havttbox level-load-info)
+(define-extern havena level-load-info)
+(define-extern havenb level-load-info)
+(define-extern havenc level-load-info)
+(define-extern havend level-load-info)
+(define-extern havene level-load-info)
+(define-extern havenx level-load-info)
+(define-extern haveny level-load-info)
+(define-extern havens level-load-info)
+(define-extern havntbox level-load-info)
+(define-extern havenw level-load-info)
+(define-extern sewera level-load-info)
+(define-extern sewera2 level-load-info)
+(define-extern sewera3 level-load-info)
+(define-extern sewerb level-load-info)
+(define-extern sewerc level-load-info)
+(define-extern sewerd level-load-info)
+(define-extern sewere level-load-info)
+(define-extern sewerf level-load-info)
+(define-extern sewers level-load-info)
+(define-extern sewerw level-load-info)
+(define-extern sewerx level-load-info)
+(define-extern sewtbox level-load-info)
+(define-extern kratours level-load-info)
+(define-extern kratourw level-load-info)
+(define-extern krattbox level-load-info)
+(define-extern krasw level-load-info)
+(define-extern krass level-load-info)
+(define-extern krastbox level-load-info)
+(define-extern krastrn level-load-info)
+(define-extern krasa level-load-info)
+(define-extern krasb level-load-info)
+(define-extern krasc level-load-info)
+(define-extern krasx level-load-info)
+(define-extern krasy level-load-info)
+(define-extern krasfoot level-load-info)
+(define-extern snowfoot level-load-info)
+(define-extern hjngfoot level-load-info)
+(define-extern havnfoot level-load-info)
+(define-extern jungfoot level-load-info)
+(define-extern hvswfoot level-load-info)
+(define-extern sparfoot level-load-info)
+(define-extern dockfoot level-load-info)
+(define-extern dkkrfoot level-load-info)
+(define-extern sewfoot level-load-info)
+(define-extern canfoot level-load-info)
+(define-extern cnspfoot level-load-info)
+(define-extern sptmfoot level-load-info)
+(define-extern tempfoot level-load-info)
+(define-extern icepfoot level-load-info)
+(define-extern icefoot level-load-info)
+(define-extern icebfoot level-load-info)
+(define-extern peakfoot level-load-info)
+(define-extern havtfoot level-load-info)
+(define-extern dromfoot level-load-info)
+(define-extern drdkfoot level-load-info)
+(define-extern spatfoot level-load-info)
+(define-extern kratfoot level-load-info)
+(define-extern icetfoot level-load-info)
+(define-extern krastt level-load-info)
+(define-extern dockstt level-load-info)
+(define-extern dromett level-load-info)
+(define-extern dkkrtt level-load-info)
+(define-extern drdktt level-load-info)
+(define-extern krtrtt level-load-info)
+(define-extern junglett level-load-info)
+(define-extern havtt level-load-info)
+(define-extern sewertt level-load-info)
+(define-extern hvjgtt level-load-info)
+(define-extern hvswtt level-load-info)
+(define-extern hvtrtt level-load-info)
+(define-extern spartt level-load-info)
+(define-extern canyontt level-load-info)
+(define-extern templett level-load-info)
+(define-extern cnsptt level-load-info)
+(define-extern sptmtt level-load-info)
+(define-extern sptrtt level-load-info)
+(define-extern snowtt level-load-info)
+(define-extern peaktt level-load-info)
+(define-extern icett level-load-info)
+(define-extern icbgtt level-load-info)
+(define-extern icpstt level-load-info)
+(define-extern ictrtt level-load-info)
+(define-extern canyons level-load-info)
+(define-extern canyonw level-load-info)
+(define-extern canyona level-load-info)
+(define-extern canyonb level-load-info)
+(define-extern canyonc level-load-info)
+(define-extern canyond level-load-info)
+(define-extern canyone level-load-info)
+(define-extern canyonx level-load-info)
+(define-extern canyony level-load-info)
+(define-extern cantbox level-load-info)
+(define-extern cansparw level-load-info)
+(define-extern canspars level-load-info)
+(define-extern cansparx level-load-info)
+(define-extern canspary level-load-info)
+(define-extern cnsptbox level-load-info)
+(define-extern docksw level-load-info)
+(define-extern docksx level-load-info)
+(define-extern dockss level-load-info)
+(define-extern docksa level-load-info)
+(define-extern docksb level-load-info)
+(define-extern docksc level-load-info)
+(define-extern docksd level-load-info)
+(define-extern dockse level-load-info)
+(define-extern docktbox level-load-info)
+(define-extern dockkras level-load-info)
+(define-extern dockkraw level-load-info)
+(define-extern dockkrax level-load-info)
+(define-extern dockkray level-load-info)
+(define-extern dkkrtbox level-load-info)
+(define-extern dromew level-load-info)
+(define-extern dromes level-load-info)
+(define-extern dromex level-load-info)
+(define-extern dromey level-load-info)
+(define-extern dromea level-load-info)
+(define-extern dromeb level-load-info)
+(define-extern dromec level-load-info)
+(define-extern dromed level-load-info)
+(define-extern dromee level-load-info)
+(define-extern dromef level-load-info)
+(define-extern dromtbox level-load-info)
+(define-extern dromdocs level-load-info)
+(define-extern dromdocw level-load-info)
+(define-extern dromdocx level-load-info)
+(define-extern dromdocy level-load-info)
+(define-extern drdktbox level-load-info)
+(define-extern brdroom level-load-info)
+(define-extern brdroomf level-load-info)
+(define-extern garcst level-load-info)
+(define-extern garage level-load-info)
+(define-extern garageb level-load-info)
+(define-extern snow level-load-info)
+(define-extern snowx level-load-info)
+(define-extern snows level-load-info)
+(define-extern snowtbox level-load-info)
+(define-extern icetrn level-load-info)
+(define-extern snowtrn2 level-load-info)
+(define-extern ben level-load-info)
+(define-extern cliffs level-load-info)
+(define-extern cliffss level-load-info)
+(define-extern cliffart level-load-info)
+(define-extern cliftrn level-load-info)
+(define-extern clifhunt level-load-info)
+(define-extern clifctf level-load-info)
+(define-extern cliffsx level-load-info)
+(define-extern drone level-load-info)
+(define-extern coliseum level-load-info)
+(define-extern coliseux level-load-info)
+(define-extern coliseus level-load-info)
+(define-extern colart level-load-info)
+(define-extern coliclct level-load-info)
+(define-extern colictf level-load-info)
+(define-extern colirev level-load-info)
+(define-extern colhunt level-load-info)
+(define-extern eight level-load-info)
+(define-extern eightb level-load-info)
+(define-extern rustyh level-load-info)
+(define-extern hiphog level-load-info) ;; level-load-info
+(define-extern desarena level-load-info)
+(define-extern desarens level-load-info)
+(define-extern desart level-load-info)
+(define-extern desclct level-load-info)
+(define-extern desactf level-load-info)
+(define-extern deshunt level-load-info) ;; level-load-info
+(define-extern deshunt2 level-load-info)
+(define-extern desrev level-load-info)
+(define-extern desarenx level-load-info)
+(define-extern snobowls level-load-info)
+(define-extern snobowl level-load-info)
+(define-extern snobowlx level-load-info)
+(define-extern sbwlctf level-load-info)
+(define-extern snobart level-load-info)
+(define-extern kcrosss level-load-info)
+(define-extern kcross level-load-info)
+(define-extern kcrosctf level-load-info)
+(define-extern kcrsplow level-load-info)
+(define-extern kcrosart level-load-info)
+(define-extern kcrsclct level-load-info)
+(define-extern kcrossx level-load-info)
+(define-extern spargusa level-load-info)
+(define-extern spargusb level-load-info)
+(define-extern spargusc level-load-info)
+(define-extern spargusd level-load-info)
+(define-extern sparguse level-load-info)
+(define-extern spargusx level-load-info)
+(define-extern spargusy level-load-info)
+(define-extern sprgstbx level-load-info)
+(define-extern sparguss level-load-info)
+(define-extern spargusw level-load-info)
+(define-extern icea level-load-info)
+(define-extern iceb level-load-info)
+(define-extern icec level-load-info)
+(define-extern iced level-load-info)
+(define-extern icew level-load-info)
+(define-extern icex level-load-info)
+(define-extern icey level-load-info)
+(define-extern ices level-load-info)
+(define-extern icetbox level-load-info)
+(define-extern icetours level-load-info)
+(define-extern icetourw level-load-info)
+(define-extern icettbox level-load-info)
+(define-extern peak level-load-info)
+(define-extern peaks level-load-info)
+(define-extern peakw level-load-info)
+(define-extern peaka level-load-info)
+(define-extern peakb level-load-info)
+(define-extern peakc level-load-info)
+(define-extern peakd level-load-info)
+(define-extern peake level-load-info)
+(define-extern peakx level-load-info)
+(define-extern peaktbox level-load-info)
+(define-extern icepasss level-load-info)
+(define-extern icepassw level-load-info)
+(define-extern icepassx level-load-info)
+(define-extern icepassy level-load-info)
+(define-extern iceptbox level-load-info)
+(define-extern icebergs level-load-info)
+(define-extern icebergw level-load-info)
+(define-extern icebergx level-load-info)
+(define-extern icebergy level-load-info)
+(define-extern icebtbox level-load-info)
+(define-extern templew level-load-info)
+(define-extern temples level-load-info)
+(define-extern templea level-load-info) ;; level-load-info
+(define-extern templeb level-load-info) ;; level-load-info
+(define-extern templec level-load-info) ;; level-load-info
+(define-extern templed level-load-info) ;; level-load-info
+(define-extern templee level-load-info) ;; level-load-info
+(define-extern templex level-load-info) ;; level-load-info
+(define-extern templey level-load-info)
+(define-extern temptbox level-load-info)
+(define-extern spartems level-load-info)
+(define-extern spartemw level-load-info)
+(define-extern spartemx level-load-info)
+(define-extern spartemy level-load-info)
+(define-extern sptmtbox level-load-info)
+(define-extern spatourw level-load-info)
+(define-extern spatours level-load-info)
+(define-extern spattbox level-load-info)
+(define-extern desisle level-load-info)
+(define-extern desisles level-load-info)
+(define-extern desislex level-load-info)
+(define-extern disleart level-load-info)
+(define-extern desrapt level-load-info)
+(define-extern dislectf level-load-info)
+(define-extern atoll level-load-info)
+(define-extern atollx level-load-info)
+(define-extern atolls level-load-info)
+(define-extern atollart level-load-info)
+(define-extern atoplow level-load-info)
+(define-extern atollctf level-load-info)
+(define-extern menu2 level-load-info)
+(define-extern menumap level-load-info)
+(define-extern mongl level-load-info)
+(define-extern falcl level-load-info)
+(define-extern wombl level-load-info)
+(define-extern possl level-load-info)
+(define-extern bobcl level-load-info)
+(define-extern cougl level-load-info)
+(define-extern wolfl level-load-info)
+(define-extern bearl level-load-info)
+(define-extern leopl level-load-info)
+(define-extern pantl level-load-info)
+(define-extern tigel level-load-info)
+(define-extern cheel level-load-info)
+(define-extern gilal level-load-info)
+(define-extern snakl level-load-info)
+(define-extern daxtl level-load-info)
+(define-extern jakvl level-load-info)
+(define-extern ashvl level-load-info)
+(define-extern ashvl2 level-load-info)
+(define-extern ashvl3 level-load-info)
+(define-extern razvl level-load-info)
+(define-extern klevl level-load-info)
+(define-extern klevl2 level-load-info)
+(define-extern kievl level-load-info)
+(define-extern thavl level-load-info)
+(define-extern thavl2 level-load-info)
+(define-extern thavl3 level-load-info)
+(define-extern thbvl level-load-info)
+(define-extern thbvl2 level-load-info)
+(define-extern thbvl3 level-load-info)
+(define-extern thcvl level-load-info)
+(define-extern thcvl2 level-load-info)
+(define-extern thcvl3 level-load-info)
+(define-extern torvl level-load-info)
+(define-extern torvl2 level-load-info)
+(define-extern torvl3 level-load-info)
+(define-extern sigvl level-load-info)
+(define-extern sigvl2 level-load-info)
+(define-extern sigvl3 level-load-info)
+(define-extern ur8vl level-load-info)
+(define-extern ur8vl2 level-load-info)
+(define-extern ur8vl3 level-load-info)
+(define-extern rayvl level-load-info)
+(define-extern rayvl2 level-load-info)
+(define-extern gtbvl level-load-info)
+(define-extern pecvl level-load-info)
+(define-extern ashlev level-load-info)
+(define-extern jaklev level-load-info)
+(define-extern razlev level-load-info)
+(define-extern klelev level-load-info)
+(define-extern kielev level-load-info)
+(define-extern thalev level-load-info)
+(define-extern tarlev level-load-info)
+(define-extern thblev level-load-info)
+(define-extern thclev level-load-info)
+(define-extern torlev level-load-info)
+(define-extern siglev level-load-info)
+(define-extern ur8lev level-load-info)
+(define-extern kaelev level-load-info)
+(define-extern raylev level-load-info)
+(define-extern ratlev level-load-info)
+(define-extern jkalev level-load-info)
+(define-extern jkblev level-load-info)
+(define-extern jkclev level-load-info)
+(define-extern daxlev level-load-info)
+(define-extern gtblev level-load-info)
+(define-extern peclev level-load-info)
+(define-extern ximlev level-load-info)
+(define-extern osmlev level-load-info)
+(define-extern cliftest level-load-info)
+(define-extern fmvlev level-load-info)
+(define-extern credits level-load-info)
+(define-extern jakcred level-load-info)
+(define-extern peccred level-load-info)
+(define-extern razcred level-load-info)
+(define-extern gtbcred level-load-info)
+(define-extern daxcred level-load-info)
+(define-extern sigcred level-load-info)
+(define-extern thbcred level-load-info)
+(define-extern ur8cred level-load-info)
+(define-extern keicred level-load-info)
+(define-extern torcred level-load-info)
+(define-extern klecred level-load-info)
+(define-extern thccred level-load-info)
+(define-extern ashcred level-load-info)
+(define-extern thacred level-load-info)
+(define-extern raycred level-load-info)
+(define-extern kraswfma level-load-info)
+(define-extern krasastg level-load-info)
+(define-extern krasafma level-load-info)
+(define-extern krasbfma level-load-info)
+(define-extern krascfma level-load-info)
+(define-extern rustyhfm level-load-info)
+(define-extern introcst level-load-info) ;; level-load-info
+(define-extern jakndax level-load-info)
+(define-extern rynash level-load-info)
+(define-extern tsk2a level-load-info)
+(define-extern tsk2b level-load-info)
+(define-extern tsk2c level-load-info)
+(define-extern tsk3a level-load-info)
+(define-extern tsk4a level-load-info)
+(define-extern tsk5a level-load-info)
+(define-extern tsk5b level-load-info)
+(define-extern tsk6a level-load-info)
+(define-extern tsk12a level-load-info)
+(define-extern tsk12b level-load-info)
+(define-extern tsk18a level-load-info)
+(define-extern tsk21a level-load-info)
+(define-extern tsk21b level-load-info)
+(define-extern tsk25a level-load-info)
+(define-extern tsk32a level-load-info)
+(define-extern tsk32b level-load-info)
+(define-extern tsk32c level-load-info)
+(define-extern tsk33a level-load-info)
+(define-extern tsk38a level-load-info)
+(define-extern tsk80a level-load-info)
+(define-extern tsk80b level-load-info)
+(define-extern tsk81a level-load-info)
+(define-extern tsk81b level-load-info)
+(define-extern tsk100a level-load-info)
+(define-extern tsk100b level-load-info)
+(define-extern tsk100c level-load-info)
+(define-extern tsk114a level-load-info)
+(define-extern tsk125a level-load-info)
+(define-extern tsk130a level-load-info)
+(define-extern tsk130b level-load-info)
+(define-extern tsk139a level-load-info)
+(define-extern tsk157a level-load-info)
+(define-extern tsk165a level-load-info)
+(define-extern tsk165ab level-load-info)
+(define-extern tsk165b level-load-info)
+(define-extern tsk165c level-load-info)
+(define-extern tsk166a level-load-info)
+(define-extern tsk166b level-load-info)
+(define-extern tsk166c level-load-info)
+(define-extern tsk166c2 level-load-info)
+(define-extern tsk166d level-load-info)
+(define-extern tsk166d2 level-load-info)
+(define-extern tsk166e level-load-info)
+(define-extern tsk166f level-load-info)
+(define-extern tsk166g level-load-info)
+(define-extern introblv level-load-info)
+(define-extern introblp level-load-info)
+(define-extern rustycst level-load-info)
+(define-extern hipcst level-load-info)
+(define-extern andrew level-load-info)
+(define-extern testw level-load-info)
+(define-extern testa level-load-info)
+(define-extern testb level-load-info)
+(define-extern testlow level-load-info)
+(define-extern henry level-load-info)
+(define-extern chartest level-load-info) ;; level-load-info
 (define-extern *level-load-list* pair) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38702,6 +38719,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (deftype print-game-text-work (structure)
+;;   (
 ;;    (context          font-context :inline :offset-assert 4)
 ;;    (xpos             float                :offset-assert 188)
 ;;    (ypos             float                :offset-assert 192)
@@ -38723,7 +38741,7 @@
 ;;   :method-count-assert 9
 ;;   :size-assert         #xf4
 ;;   :flag-assert         #x9000000f4
-;;   )
+;; )
 
 ;; game-text-info is already defined!
 
@@ -38900,11 +38918,10 @@
 ;; spatial-hash                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype grid-hash-work (basic)
-  ((result-qwords     UNKNOWN 4        :offset-assert 16)
-   (result-words      uint8   :dynamic :offset-assert 16) ;; guessed by decompiler
-   (result-bits       uint8   :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((result-qwords     uint128 4        :offset-assert 16)
+   (result-words      uint8   32 :offset 16) ;; removed :dynamic
+   (result-bits       uint8   32 :offset 16) ;; removed :dynamic
    (object-id         int32            :offset-assert 80)
    (temp-box-min      vector  :inline  :offset-assert 96)
    (temp-box-max      vector  :inline  :offset-assert 112)
@@ -38919,13 +38936,12 @@
   :size-assert         #x98
   :flag-assert         #x900000098
   )
-|#
 
-;; (define-extern *grid-hash-work* grid-hash-work) ;; grid-hash-work
-;; (define-extern validate-bucket-bits function) ;; (function grid-hash (pointer grid-hash-word) symbol)
-;; (define-extern draw-grid function) ;; (function vector vector (pointer int8) rgba none)
-;; (define-extern draw-sphere-box function) ;; (function sphere rgba none)
-;; (define-extern draw-line-sphere function) ;; (function vector vector float rgba none)
+(define-extern *grid-hash-work* grid-hash-work) ;; grid-hash-work
+(define-extern validate-bucket-bits (function grid-hash (pointer grid-hash-word) symbol))
+(define-extern draw-grid (function vector vector (pointer int8) rgba none))
+(define-extern draw-sphere-box (function sphere rgba none))
+(define-extern draw-line-sphere (function vector vector float rgba none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actor-hash                     ;;
@@ -39499,17 +39515,15 @@
   )
 |#
 
-#|
 (deftype cam-debug-tri (structure)
   ((vertex    vector   3       :offset-assert 0) ;; guessed by decompiler
-   (intersect vector   :inline :offset-assert 48)
+   (intersect vector   :inline :offset 48)
    (color     vector4w         :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
 #|
 (deftype cam-collision-record (structure)
@@ -40245,7 +40259,7 @@
 (define-extern process-grab? (function process symbol symbol :behavior process)) ;; 
 (define-extern process-release? (function process symbol :behavior process)) ;; 
 ;; (define-extern camera-look-at function) ;; (function pair uint process)
-;; (define-extern ja-anim-done? function) ;; (function process symbol)
+(define-extern ja-anim-done? (function process symbol)) ;; 
 ;; (define-extern camera-pov-from function) ;; (function pair uint process)
 ;; (define-extern touch-tracker-init function) ;; (function vector float time-frame none :behavior touch-tracker)
 ;; (define-extern process-drawable-random-point! function) ;; (function process-drawable vector vector)
@@ -41576,7 +41590,7 @@
 
 ;; (define-extern set-letterbox-frames function) ;; (function time-frame none)
 ;; (define-extern letterbox function) ;; (function bucket-id float none)
-;; (define-extern set-blackout-frames function) ;; (function time-frame none)
+(define-extern set-blackout-frames (function time-frame none)) ;; 
 ;; (define-extern blackout function) ;; (function bucket-id none)
 ;; (define-extern add-blackout function) ;; (function time-frame int int int int int)
 (define-extern paused? (function symbol)) ;; 
@@ -41755,7 +41769,7 @@
 (define-extern entity-by-aid (function uint entity)) ;; 
 ;; (define-extern entity-actor-from-level-name function) ;; (function symbol entity-actor)
 ;; (define-extern entity-nav-mesh-by-aid function) ;; (function actor-id entity-nav-mesh)
-;; (define-extern nav-mesh-from-res-tag function) ;; (function entity symbol int nav-mesh)
+(define-extern nav-mesh-from-res-tag (function entity symbol int nav-mesh)) ;; 
 ;; (define-extern entity-by-meters function) ;; (function float float float entity-actor)
 ;; (define-extern process-by-ename function) ;; (function string process)
 ;; (define-extern entity-process-count function) ;; (function symbol int)
@@ -41804,25 +41818,23 @@
 ;; nav-engine                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-engine-spr-buffer (structure)
   ((mem-addr  (pointer nav-mesh)          :offset-assert 0) ;; guessed by decompiler
-   (mem-nav   uint32                      :offset-assert 0)
+   (mem-nav   uint32                      :offset 0)
    (spr-addr  (inline-array nav-control)  :offset-assert 4) ;; guessed by decompiler
-   (spr-nav   uint32                      :offset-assert 4)
+   (spr-nav   uint32                      :offset 4)
    (q-size    uint32                      :offset-assert 8)
    (i-nav     uint8                       :offset-assert 12)
    (done      int8                        :offset-assert 13)
    (nav-count int8                        :offset-assert 14)
    (i-pass    int8                        :offset-assert 15)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype nav-engine (structure)
   ((spr-addr              uint32                    :offset-assert 0)
    (nav-work-addr         uint32                    :offset-assert 4)
@@ -41833,15 +41845,15 @@
    (buf-nav-control-count int8                      :offset-assert 24)
    (max-pass-count        int8                      :offset-assert 25)
    (output-sphere-hash    uint8                     :offset-assert 26)
-   (work-buf-array        nav-engine-spr-buffer   3 :offset-assert 28) ;; guessed by decompiler
-   (spr-work              nav-mesh-work             :offset-assert 4)
+   (work-buf-array        nav-engine-spr-buffer   3 :inline :offset-assert 28) ;; guessed by decompiler
+   (spr-work              nav-mesh-work             :offset 4)
    (mem-work              nav-mesh-work             :offset-assert 76)
-   (spr-mesh              nav-mesh                  :offset-assert 8) ;; guessed by decompiler
+   (spr-mesh              nav-mesh                  :offset 8) ;; guessed by decompiler
    (mem-mesh              nav-mesh                  :offset-assert 80) ;; guessed by decompiler
-   (spr-poly-array        uint32                    :offset-assert 12)
+   (spr-poly-array        uint32                    :offset 12)
    (mem-poly-array        (inline-array nav-poly)   :offset-assert 84) ;; guessed by decompiler
-   (hash-sphere-list      uint32                    :offset-assert 16)
-   (hash-buckets          uint32                    :offset-assert 20)
+   (hash-sphere-list      uint32                    :offset 16)
+   (hash-buckets          uint32                    :offset 20)
    (to-spr-wait           uint32                    :offset-assert 88)
    (from-spr-wait         uint32                    :offset-assert 92)
    )
@@ -41849,27 +41861,26 @@
   :size-assert         #x60
   :flag-assert         #x1600000060
   (:methods
-    (nav-engine-method-9 () none) ;; 9 ;; (inc-spr-addr! (_type_ uint) uint)
-    (nav-engine-method-10 () none) ;; 10 ;; (lay-out-spad-memory (_type_ nav-mesh) none)
-    (nav-engine-method-11 () none) ;; 11 ;; (set-up-mem-work (_type_) none)
-    (nav-engine-method-12 () none) ;; 12 ;; (add-spheres-from-mesh-user-list (_type_ sphere-hash nav-mesh) none)
-    (nav-engine-method-13 () none) ;; 13 ;; (add-all-spheres (_type_) none)
-    (nav-engine-method-14 () none) ;; 14 ;; (do-sphere-lookups (_type_) none)
-    (nav-engine-method-15 () none) ;; 15 ;; (update-nav-controls-pipelined-in-spr (_type_) none)
-    (nav-engine-method-16 () none) ;; 16 ;; (update-nav-controls-in-spr (_type_) none)
-    (nav-engine-method-17 () none) ;; 17 ;; (upload-nav-to-spr (_type_ nav-engine-spr-buffer) none)
-    (nav-engine-method-18 () none) ;; 18 ;; (download-nav-from-spr (_type_ nav-engine-spr-buffer) none)
-    (nav-engine-method-19 () none) ;; 19 ;; (do-callbacks (_type_ nav-engine-spr-buffer) none)
-    (nav-engine-method-20 () none) ;; 20 ;; (reloc-ptrs-to-spad (_type_ nav-engine-spr-buffer) none)
-    (nav-engine-method-21 () none) ;; 21 ;; (reloc-ptrs-to-mem (_type_ nav-engine-spr-buffer) none)
+    (inc-spr-addr! (_type_ uint) uint)
+    (lay-out-spad-memory (_type_ nav-mesh) none)
+    (set-up-mem-work (_type_) none)
+    (add-spheres-from-mesh-user-list (_type_ sphere-hash nav-mesh) none)
+    (add-all-spheres (_type_) none)
+    (do-sphere-lookups (_type_) none)
+    (update-nav-controls-pipelined-in-spr (_type_) none)
+    (update-nav-controls-in-spr (_type_) none)
+    (upload-nav-to-spr (_type_ nav-engine-spr-buffer) none)
+    (download-nav-from-spr (_type_ nav-engine-spr-buffer) none)
+    (do-callbacks (_type_ nav-engine-spr-buffer) none)
+    (reloc-ptrs-to-spad (_type_ nav-engine-spr-buffer) none)
+    (reloc-ptrs-to-mem (_type_ nav-engine-spr-buffer) none)
     )
   )
-|#
 
-;; (define-extern nav-dma-send-to-spr-no-flush function) ;; (function pointer pointer int none)
-;; (define-extern nav-dma-send-from-spr-no-flush function) ;; (function pointer pointer int none)
-;; (define-extern inc-mod3 function) ;; (function int int)
-;; (define-extern nav-state-patch-pointers function) ;; (function nav-state int none)
+(define-extern nav-dma-send-to-spr-no-flush (function pointer pointer int none)) ;; 
+(define-extern nav-dma-send-from-spr-no-flush (function pointer pointer int none)) ;; 
+(define-extern inc-mod3 (function int int)) ;; 
+(define-extern nav-state-patch-pointers (function nav-state int none)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-mesh                       ;;
@@ -41927,21 +41938,20 @@
 ;; (define-extern nav-ray-test function) ;; (function nav-mesh nav-poly vector vector meters)
 ;; (define-extern point-poly-distance-min function) ;; (function nav-mesh-work nav-poly float nav-poly float)
 ;; (define-extern nav-mesh-route-table-bit-index function) ;; (function nav-mesh uint int int)
-;; (define-extern ray-ccw-line-segment-intersection? function) ;; (function vector vector vector vector symbol)
+(define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol)) ;; 
 ;; (define-extern ray-line-segment-intersection? function) ;; (function vector vector vector vector symbol)
 ;; (define-extern plane-height-at-xz-point function) ;; (function plane vector float)
 ;; (define-extern nav-normal-from-3-points function) ;; (function vector vector vector vector none)
-;; (define-extern get-nav-mesh function) ;; (function actor-id nav-mesh)
+(define-extern get-nav-mesh (function actor-id nav-mesh)) ;; 
 (define-extern find-nearest-nav-mesh (function vector float int nav-mesh)) ;; 
 ;; (define-extern point-to-poly-boundary function) ;; (function nav-poly vector vector float)
-;; (define-extern find-first-containing-nav-mesh function)
+(define-extern find-first-containing-nav-mesh (function none))
 ;; (define-extern find-nav-mesh function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-control                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-link-search-info (structure)
   ((open-list   nav-mesh-link-search-node         :offset-assert 0)
    (closed-list nav-mesh-link-search-node         :offset-assert 4)
@@ -41952,24 +41962,22 @@
   :size-assert         #x30
   :flag-assert         #x1100000030
   (:methods
-    (nav-link-search-info-method-9 () none) ;; 9
-    (nav-link-search-info-method-10 () none) ;; 10
-    (nav-link-search-info-method-11 () none) ;; 11
-    (nav-link-search-info-method-12 () none) ;; 12
-    (nav-link-search-info-method-13 () none) ;; 13
-    (nav-link-search-info-method-14 () none) ;; 14
-    (nav-link-search-info-method-15 () none) ;; 15
-    (nav-link-search-info-method-16 () none) ;; 16
+    (nav-link-search-info-method-9 (_type_ object) none) ;; 9
+    (nav-link-search-info-method-10 (_type_) none) ;; 10
+    (nav-link-search-info-method-11 (_type_ object) none) ;; 11
+    (nav-link-search-info-method-12 (_type_ nav-mesh-link-search-node) nav-mesh-link-search-node) ;; 12
+    (nav-link-search-info-method-13 (_type_ object) none) ;; 13
+    (nav-link-search-info-method-14 (_type_) nav-mesh-link-search-node) ;; 14
+    (nav-link-search-info-method-15 (_type_ nav-mesh) none) ;; 15
+    (nav-link-search-info-method-16 (_type_ object) none) ;; 16
     )
   )
-|#
 
-#|
 (deftype nav-control-cfs-work (structure)
   ((in-dir              vector  :inline :offset-assert 0)
    (right-dir           vector  :inline :offset-assert 16)
-   (best-dir            vector  2       :offset-assert 32) ;; guessed by decompiler
-   (temp-dir            vector  2       :offset-assert 64) ;; guessed by decompiler
+   (best-dir            vector  2      :inline :offset-assert 32) ;; guessed by decompiler
+   (temp-dir            vector  2      :inline :offset-assert 64) ;; guessed by decompiler
    (away-dir            vector  :inline :offset-assert 96)
    (best-dir-angle      degrees 2       :offset-assert 112) ;; guessed by decompiler
    (ignore-mask         uint64          :offset-assert 120)
@@ -41990,25 +41998,24 @@
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-|#
 
-;; (define-extern *nav-triangle-test-count* object) ;; int
-;; (define-extern *nav-last-triangle-test-count* object) ;; int
-;; (define-extern debug-nav-validate-current-poly function) ;; (function nav-mesh nav-poly vector symbol)
-;; (define-extern debug-report-nav-stats function) ;; (function none)
-;; (define-extern get-nav-control function) ;; (function process-drawable nav-mesh none)
-;; (define-extern get-pos-from-node function)
-;; (define-extern add-nav-sphere function) ;; (function nav-control sphere int none)
-;; (define-extern add-collide-shape-spheres function) ;; (function nav-control collide-shape sphere none)
-;; (define-extern circle-tangent-directions function) ;; (function vector vector vector vector vector)
-;; (define-extern circle-ray-intersection? function) ;; (function vector vector float vector symbol)
-;; (define-extern find-closest-circle-ray-intersection function) ;; (function vector vector float int (inline-array vector) int int)
-;; (define-extern compute-dir-parm function) ;; (function vector vector vector float)
-;; (define-extern vector-rotate-y-sincos! function) ;; (function vector vector float float float)
-;; (define-extern test-xz-point-on-line-segment? function) ;; (function vector vector vector float symbol)
-;; (define-extern *null-nav-callback-info* object) ;; nav-callback-info
-;; (define-extern *default-nav-callback-info* object) ;; nav-callback-info
-;; (define-extern *physics-nav-callback-info* object) ;; nav-callback-info
+(define-extern *nav-triangle-test-count* int) ;; int
+(define-extern *nav-last-triangle-test-count* int) ;; int
+(define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol))
+(define-extern debug-report-nav-stats (function none))
+(define-extern get-nav-control (function process-drawable nav-mesh none))
+(define-extern get-pos-from-node (function nav-mesh-link-search-node object vector))
+(define-extern add-nav-sphere (function nav-control sphere int none))
+(define-extern add-collide-shape-spheres (function nav-control collide-shape sphere none))
+(define-extern circle-tangent-directions (function vector vector vector vector vector))
+(define-extern circle-ray-intersection? (function vector vector float vector symbol))
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) int int))
+(define-extern compute-dir-parm (function vector vector vector float))
+(define-extern vector-rotate-y-sincos! (function vector vector float float float))
+(define-extern test-xz-point-on-line-segment? (function vector vector vector float symbol))
+(define-extern *null-nav-callback-info* nav-callback-info) ;; nav-callback-info
+(define-extern *default-nav-callback-info* nav-callback-info) ;; nav-callback-info
+(define-extern *physics-nav-callback-info* nav-callback-info) ;; nav-callback-info
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; effect-control                 ;;
@@ -42252,10 +42259,10 @@
 ;; pov-camera                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
-;; (define-extern pov-camera-init-by-other function) ;; (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)
-;; (define-extern othercam-calc function) ;; (function float float)
-;; (define-extern othercam-init-by-other function) ;; (function pov-camera int symbol symbol none :behavior othercam)
+(define-extern pov-camera-play-and-reposition (function art-joint-anim vector float none :behavior pov-camera))
+(define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera))
+(define-extern othercam-calc (function float float))
+(define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; powerups                       ;;
@@ -42269,7 +42276,6 @@
 ;; hud                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-string-record (structure)
   ((str  hud-string         :offset-assert 0)
    (next hud-string-record  :offset-assert 4)
@@ -42278,9 +42284,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype hud-sprite-work (structure)
   ((adgif-tmpl         dma-gif-packet :inline :offset-assert 0)
    (draw-tmpl          dma-gif-packet :inline :offset-assert 32)
@@ -42292,26 +42296,25 @@
    (mask-tmpl          dma-gif-packet :inline :offset-assert 224)
    (line-tmpl          dma-gif-packet :inline :offset-assert 256)
    (scan-tmpl          dma-gif-packet :inline :offset-assert 288)
-   (line-color         uint64                 :offset-assert 320) ;; gs-rgbaq
-   (scan-colors        vector4w       32      :offset-assert 336) ;; guessed by decompiler
+   (line-color         gs-rgbaq                 :offset-assert 320) ;; gs-rgbaq
+   (scan-colors        vector4w       32      :inline :offset-assert 336) ;; guessed by decompiler
    (scanline           uint32                 :offset-assert 848)
    )
   :method-count-assert 9
   :size-assert         #x354
   :flag-assert         #x900000354
   )
-|#
 
-;; (define-extern *hud-string-array* object)
-;; (define-extern *hud-string-used-list* object)
-;; (define-extern *hud-string-free-list* object)
-;; (define-extern *font-hud-context* object)
-;; (define-extern hud-string-init function)
+(define-extern *hud-string-array* pointer)
+(define-extern *hud-string-used-list* (pointer int32))
+(define-extern *hud-string-free-list* pointer)
+(define-extern *font-hud-context* font-context)
+(define-extern hud-string-init (function none))
 ;; (define-extern hud-string-add function)
 ;; (define-extern hud-string-draw-all function)
-;; (define-extern *hud-sprite-work* object) ;; hud-sprite-work
+(define-extern *hud-sprite-work* hud-sprite-work) ;; 
 ;; (define-extern hud-sprite-add function)
-;; (define-extern *debug-hud-disable* object)
+(define-extern *debug-hud-disable* symbol)
 ;; (define-extern hud-create-icon function) ;; (function hud int int (pointer manipy))
 ;; (define-extern hud-post function)
 ;; (define-extern hud-handler function)
@@ -42771,7 +42774,6 @@
   :flag-assert         #x90000002c
   )
 
-#|
 (deftype debris (basic)
   ((root            transformq           :inline :offset-assert 16)
    (node-list       cspace-array                 :offset-assert 64) ;; guessed by decompiler
@@ -42791,9 +42793,7 @@
   :size-assert         #xbc
   :flag-assert         #x9000000bc
   )
-|#
 
-#|
 (deftype debris-box (structure)
   ((start uint32               :offset-assert 0)
    (num   uint32               :offset-assert 4)
@@ -42803,9 +42803,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype debris-group (process)
   ((had-first-hit   basic             :offset-assert 144)
    (dead-debris-num int32             :offset-assert 148)
@@ -42815,28 +42813,21 @@
    (max-probe-width float             :offset-assert 164)
    (state-time      uint64            :offset-assert 168) ;; time-frame
    (num-boxes       uint32            :offset-assert 176)
-   (boxes           debris-box     16 :offset-assert 192) ;; guessed by decompiler
+   (boxes           debris-box     16 :inline :offset-assert 192) ;; guessed by decompiler
    )
   :method-count-assert 18
   :size-assert         #x3c0
   :flag-assert         #x12033003c0
-  (:methods
-    (debris-group-method-9 () none) ;; 9
-    (debris-group-method-10 () none) ;; 10
-    (debris-group-method-11 () none) ;; 11
-    (debris-group-method-12 () none) ;; 12
-    (debris-group-method-13 () none) ;; 13
-    (debris-group-method-14 () none) ;; 14 ;; (idle () _type_ :state)
-    (debris-group-method-16 () none) ;; 16 ;; (update-box! (_type_ int) none)
-    (debris-group-method-17 () none) ;; 17
-    )
   (:state-methods
     idle ;; 15, old: (do-collision (_type_ int) none)
     )
+  (:methods
+    ;; (debris-group-method-14 () none) ;; 14 ;; (idle () _type_ :state)
+    (debris-group-method-16 (_type_ int) none) ;; 16 ;; 
+    (update-box! (_type_ int) none)
+    )
   )
-|#
 
-#|
 (deftype debris-tuning (structure)
   ((explosion                   uint64         :offset-assert 0)
    (duration                    uint64         :offset-assert 8) ;; time-frame
@@ -42848,11 +42839,11 @@
    (max-probe-depth             float          :offset-assert 36)
    (fountain-rand-transv-lo     vector :inline :offset-assert 48)
    (fountain-rand-transv-hi     vector :inline :offset-assert 64)
-   (away-from-focal-pt          vector :inline :offset-assert 48)
-   (away-from-rand-transv-xz-lo float          :offset-assert 64)
-   (away-from-rand-transv-xz-hi float          :offset-assert 68)
-   (away-from-rand-transv-y-lo  float          :offset-assert 72)
-   (away-from-rand-transv-y-hi  float          :offset-assert 76)
+   (away-from-focal-pt          vector :inline :offset 48)
+   (away-from-rand-transv-xz-lo float          :offset 64)
+   (away-from-rand-transv-xz-hi float          :offset 68)
+   (away-from-rand-transv-y-lo  float          :offset 72)
+   (away-from-rand-transv-y-hi  float          :offset 76)
    (hit-xz-reaction             float          :offset-assert 80)
    (hit-y-reaction              float          :offset-assert 84)
    (scale-rand-lo               float          :offset-assert 88)
@@ -42861,11 +42852,12 @@
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
+  (:methods
+    (new (symbol type uint) _type_))
   )
-|#
 
-;; (define-extern debris-group-init-by-other function) ;; (function debris-tuning debris-static-params process-drawable object :behavior debris-group)
-;; (define-extern debris-spawn function) ;; (function process-drawable debris-tuning debris-static-params process-drawable (pointer debris-group))
+(define-extern debris-group-init-by-other (function debris-tuning debris-static-params process-drawable object :behavior debris-group))
+(define-extern debris-spawn (function process-drawable debris-tuning debris-static-params process-drawable (pointer debris-group)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-process-mgr-h              ;;
@@ -50196,7 +50188,6 @@
   )
 |#
 
-#|
 (deftype camera-free-floating-move-info (structure)
   ((rv vector :inline :offset-assert 0)
    (tv vector :inline :offset-assert 16)
@@ -50207,7 +50198,6 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
 ;; (define-extern *CAM_POINT_WATCH-bank* cam-point-watch-bank) ;; cam-point-watch-bank
 ;; (define-extern cam-point-watch state) ;; (state camera-slave)
