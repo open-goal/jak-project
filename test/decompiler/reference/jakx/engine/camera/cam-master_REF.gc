@@ -9,10 +9,7 @@
         )
     (if a2-0
         (set! v1-4
-              (the-as int (incomplete-bitfield-access
-                            (-> (the-as collide-shape (-> (the-as process-drawable a2-0) root)) pat-ignore-mask)
-                            )
-                      )
+              (logand (the-as int (-> (the-as collide-shape (-> (the-as process-drawable a2-0) root)) pat-ignore-mask)) 96)
               )
         )
     (logior (if arg0
@@ -31,7 +28,7 @@
 (defbehavior reset-follow camera-master ((arg0 symbol))
   (let ((a0-2 (handle->process (-> self focus handle))))
     (when a0-2
-      (set! (-> self tpos-old quad) (-> (get-trans a0-2 4) quad))
+      (set! (-> self tpos-old quad) (-> (get-trans (the-as process-focusable a0-2) 4) quad))
       (set! (-> self tpos-curr quad) (-> self tpos-old quad))
       (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
       (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
@@ -314,7 +311,7 @@
             (vector--float*! s5-8 (-> self tpos-curr-adj) (-> self local-down) (-> self settings target-height))
             (let ((s4-6 (new 'stack-no-clear 'vector)))
               0.0
-              (vector-! s4-6 (get-trans gp-0 1) s5-8)
+              (vector-! s4-6 (get-trans (the-as process-focusable gp-0) 1) s5-8)
               (let* ((f0-41 (vector-dot s4-6 (-> self local-down)))
                      (f0-42 (+ -4096.0 f0-41))
                      )
@@ -835,14 +832,14 @@
             (logclear! (-> self master-options) (cam-master-options-u32 HAVE_EASE_TO_POS))
             )
            ((< argc 2)
-            (if (< (the-as float (gpr->fpr (-> block param 0))) (-> self ease-t))
-                (set! (-> self ease-t) (the-as float (gpr->fpr (-> block param 0))))
+            (if (< (the-as float (-> block param 0)) (-> self ease-t))
+                (set! (-> self ease-t) (the-as float (-> block param 0)))
                 )
             (logclear! (-> self master-options) (cam-master-options-u32 HAVE_EASE_TO_POS))
             )
            (else
-             (if (< (the-as float (gpr->fpr (-> block param 0))) (-> self ease-t))
-                 (set! (-> self ease-t) (the-as float (gpr->fpr (-> block param 0))))
+             (if (< (the-as float (-> block param 0)) (-> self ease-t))
+                 (set! (-> self ease-t) (the-as float (-> block param 0)))
                  )
              (set! (-> self ease-to quad) (-> (the-as vector (-> block param 1)) quad))
              (logior! (-> self master-options) (cam-master-options-u32 HAVE_EASE_TO_POS))
@@ -941,7 +938,7 @@
          )
         (('part-water-drip)
          (set! (-> self water-drip-time) (the-as uint (current-time)))
-         (set! (-> self water-drip-mult) (the-as float (gpr->fpr (-> block param 0))))
+         (set! (-> self water-drip-mult) (the-as float (-> block param 0)))
          (set! (-> self water-drip-speed) (the-as float (-> block param 1)))
          )
         (else
@@ -1097,7 +1094,3 @@
       )
   (none)
   )
-
-
-
-
