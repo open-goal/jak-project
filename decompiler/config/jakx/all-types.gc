@@ -20769,7 +20769,7 @@
   :flag-assert         #x1b00001088
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (load-state-method-9 () none) ;; 9 ;; (reset! (_type_) _type_)
+    (reset! (_type_) _type_)
     (load-state-method-10 () none) ;; 10 ;; (update! (_type_) int)
     (load-state-method-11 () none) ;; 11 ;; (want-levels (_type_ (pointer symbol)) int)
     (load-state-method-12 () none) ;; 12 ;; (want-sound-banks (_type_ (pointer symbol)) none)
@@ -28417,8 +28417,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype list-link (structure)
-  ((prev list-link  :offset-assert 0)
-   (next list-link  :offset-assert 4)
+  ((prev list-link  :offset-assert 0) ;; TODO - may be wrong, fixup-relocated-link still is not correct
+   (next list-link  :offset-assert 4) ;; TODO - may be wrong, fixup-relocated-link still is not correct
    )
   :pack-me
   :method-count-assert 9
@@ -33856,6 +33856,16 @@
   :method-count-assert 15
   :size-assert         #xafc
   :flag-assert         #xf0a700afc
+  (:states
+    cam-fixed
+    cam-fixed-read-entity
+    cam-standoff
+    cam-standoff-read-entity
+    cam-spline
+    cam-decel
+    cam-endlessfall
+    cam-free-floating
+    )
   )
 
 (deftype camera-master (process)
@@ -35329,7 +35339,7 @@
   (:methods
     (debug-draw (_type_) none)
     (point-in-bsphere? (_type_ vector) symbol)
-    (nav-control-method-11 (_type_ vector) none) ;; 11 ;; (find-poly-containing-point-1 (_type_ vector) nav-poly)
+    (find-poly-containing-point-1 (_type_ vector) nav-poly)
     (closest-point-on-mesh (_type_ vector vector nav-poly) nav-poly)
     (find-nearest-poly-to-point (_type_ vector) nav-poly)
     (nav-control-method-14 (_type_ object vector vector vector) none) ;; 14 ;; (project-point-onto-plane-of-poly (_type_ nav-poly vector vector vector) none)
@@ -35338,7 +35348,7 @@
     (is-in-mesh? (_type_ vector float) symbol) ;; 17 ;; (is-in-mesh? (_type_ vector float) symbol)
     (avoid-spheres-1! (_type_ nav-avoid-spheres-params) symbol)
     (avoid-spheres-2! (_type_ nav-avoid-spheres-params) symbol)
-    (nav-control-method-20 (_type_ vector) none) ;; 20 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
+    (nav-control-method-20 (_type_ vector nav-poly vector int symbol symbol) none) ;; 20 ;; (clamp-vector-to-mesh-cross-gaps (_type_ vector nav-poly vector float symbol clamp-travel-vector-to-mesh-return-info) none)
     (nav-control-method-21 (_type_) none) ;; 21 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
     (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float)
     (nav-control-method-23 (_type_) none) ;; 23 ;; (set-spheres-from-nav-ids (_type_) none)
@@ -46525,7 +46535,7 @@
     (timetrial-recording-method-9 () none) ;; 9
     (timetrial-recording-method-10 () none) ;; 10
     (timetrial-recording-method-11 () none) ;; 11
-    (timetrial-recording-method-12 (_type_) int) ;; 12
+    (timetrial-recording-method-12 (_type_) uint) ;; 12
     (timetrial-recording-method-13 () none) ;; 13
     )
   )
@@ -50122,15 +50132,8 @@
   )
 |#
 
-(define-extern cam-fixed (state camera-slave)) ;; 
-(define-extern cam-fixed-read-entity (state camera-slave)) ;; 
 ;; (define-extern cam-standoff-calc-trans function) ;; (function vector :behavior camera-slave)
-(define-extern cam-standoff (state camera-slave)) ;; 
-(define-extern cam-standoff-read-entity (state camera-slave)) ;;
 ;; (define-extern cam-curve-closest-point function) ;; (function curve vector float float int float)
-(define-extern cam-spline (state camera-slave)) ;; 
-(define-extern cam-decel (state camera-slave))
-(define-extern cam-endlessfall (state camera-slave))
 ;; (define-extern cam-vehicle-update function)
 ;; (define-extern cam-vehicle state)
 ;; (define-extern *target-camera-runtime* object)
@@ -50205,7 +50208,6 @@
 ;; (define-extern cam-mouse-input function) ;; (function matrix vector vector object)
 ;; (define-extern cam-free-floating-input function) ;; (function matrix vector vector int int vector)
 ;; (define-extern cam-free-floating-move function) ;; (function matrix vector vector int vector)
-(define-extern cam-free-floating (state camera-slave)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-jak                     ;;
