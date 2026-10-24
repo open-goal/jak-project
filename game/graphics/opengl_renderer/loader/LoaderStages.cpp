@@ -547,17 +547,32 @@ class StallLoaderStage : public LoaderStage {
  public:
   StallLoaderStage() : LoaderStage("stall") {}
   bool run(Timer&, LoaderInput& /*data*/) override {
-    m_count++;
-    if (m_count > 10) {
+    if (!m_fence) {
+      m_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+      ASSERT(m_fence);
+      glFlush();
+    }
+
+    const GLenum wait_result = glClientWaitSync(m_fence, 0, 0);
+    ASSERT(wait_result != GL_WAIT_FAILED);
+
+    if (wait_result == GL_ALREADY_SIGNALED || wait_result == GL_CONDITION_SATISFIED) {
+      glDeleteSync(m_fence);
+      m_fence = nullptr;
       return true;
     }
     return false;
   }
 
-  void reset() override { m_count = 0; }
+  void reset() override {
+    if (m_fence) {
+      glDeleteSync(m_fence);
+      m_fence = nullptr;
+    }
+  }
 
  private:
-  int m_count = 0;
+  GLsync m_fence = nullptr;
 };
 
 class HfragLoaderStage : public LoaderStage {
