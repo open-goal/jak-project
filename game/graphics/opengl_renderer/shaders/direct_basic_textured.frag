@@ -23,6 +23,8 @@ flat in uvec4 tex_info;
 in float fog;
 
 uniform sampler2D tex_T20;
+// original size / loaded size of the texture. 1 unless the loaded resolution differs.
+uniform vec2 uv_tex_scale;
 
 vec4 sample_tex(vec2 coord, uint unit) {
   return texture(tex_T20, coord);
@@ -31,7 +33,7 @@ vec4 sample_tex(vec2 coord, uint unit) {
 vec4 sample_tex_px(vec2 coordf, uint unit) {
   // note: there is still fractional texels and filtering in this mode.
   vec2 coord_px = coordf / 16.f;
-  vec2 tex_size = vec2(textureSize(tex_T20, 0));
+  vec2 tex_size = vec2(textureSize(tex_T20, 0)) * uv_tex_scale;
   // but texture perspective correction is disabled.
   // current uses are on quads with the same z so it doesn't really matter.
   return textureProj(tex_T20, vec4(coord_px / tex_size, 1, 1));
