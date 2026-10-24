@@ -48,6 +48,7 @@ JAK2_AUTOGLOT_IDS = [
     "1347",
     "1348",
     "1349",
+    "134d",
 ]
 
 JAK3_AUTOGLOT_IDS = [
