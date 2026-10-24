@@ -20,7 +20,9 @@ namespace jak1 {
 bool run_build_level(const std::string& input_file,
                      const std::string& bsp_output_file,
                      const std::string& output_prefix,
-                     bool gen_fr3) {
+                     bool gen_fr3,
+                     const fs::path& iso_folder,
+                     const fs::path& decomp_folder) {
   auto level_json = parse_commented_json(
       file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
   LevelFile file{};                 // GOAL level file
@@ -163,9 +165,7 @@ bool run_build_level(const std::string& input_file,
   // TODO remove hardcoded config settings
   if (gen_fr3 && ((level_json.contains("art_groups") && !level_json.at("art_groups").empty()) ||
                   (level_json.contains("textures") && !level_json.at("textures").empty()))) {
-    lg::info("Looking for ISO path...");
-    const auto iso_folder = file_util::get_iso_dir_for_game(GameVersion::Jak1);
-    lg::info("Found ISO path: {}", iso_folder.string());
+    lg::info("Using ISO path: {}", iso_folder.string());
 
     if (iso_folder.empty() || !fs::exists(iso_folder)) {
       lg::warn("Could not locate ISO path!");
@@ -202,7 +202,7 @@ bool run_build_level(const std::string& input_file,
     db.process_link_data(config);
 
     decompiler::TextureDB tex_db;
-    auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak1/textures";
+    auto textures_out = decomp_folder / "textures";
     file_util::create_dir_if_needed(textures_out);
     db.process_tpages(tex_db, textures_out, config, "");
     auto replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
