@@ -48,6 +48,15 @@ if (APPLE)
     set(CMAKE_OSX_SYSROOT "${MACOSX_SYSROOT}" CACHE PATH "macOS SDK path" FORCE)
 endif()
 
+# -mavx is an x86 flag. AppleClang already skips it on ARM; Clang and GCC did not.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64|i686")
+    set(OPENGOAL_AVX_FLAG "-mavx")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(OPENGOAL_AVX_FLAG "-march=armv8-a+crc")
+else()
+    set(OPENGOAL_AVX_FLAG "")
+endif()
+
 # Setup compiler flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
@@ -56,7 +65,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fcxx-exceptions \
         -fexceptions \
         -fdiagnostics-color=always \
-        -mavx \
+        ${OPENGOAL_AVX_FLAG} \
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
@@ -111,7 +120,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -Wshadow \
         -Wsign-promo \
         -fdiagnostics-color=always \
-        -mavx")
+        ${OPENGOAL_AVX_FLAG}")
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
