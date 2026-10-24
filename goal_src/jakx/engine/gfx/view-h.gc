@@ -5,6 +5,14 @@
 ;; name in dgo: view-h
 ;; dgos: ENGINE, GAME
 
+(declare-type process-nettable process)
+(declare-type process-drawable process-nettable)
+(declare-type process-focusable process-drawable)
+(declare-type target process-focusable)
+(declare-type camera-master process)
+(declare-type camera-combiner process)
+(declare-type math-camera basic)
+
 ;; DECOMP BEGINS
 
 (define *view-count* 1)
@@ -12,13 +20,16 @@
 (define *view-assert* #f)
 
 (deftype view (basic)
-  ((index            int8)
-   (control-scheme   uint8)
-   (camera           basic)
-   (camera-combiner  basic)
-   (target           basic)
-   (math-camera      basic)
+  ((index           int8   :offset-assert 4)
+   (control-scheme  uint8  :offset-assert 5)
+   (camera          camera-master  :offset-assert 8)
+   (camera-combiner camera-combiner  :offset-assert 12)
+   (target          target  :offset-assert 16)
+   (math-camera     math-camera  :offset-assert 20)
    )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
   )
 
 
@@ -31,4 +42,4 @@
 
 (define *view-context-stack-ptr* (the-as (pointer int32) -1))
 
-(define *view-default* (the-as symbol 0))
+(define *view-default* 0)

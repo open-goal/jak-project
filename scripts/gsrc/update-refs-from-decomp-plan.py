@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import jsonc_document
+from jsonc_edit import modify, apply_edits
 import json
 import os
 import subprocess
@@ -30,6 +34,7 @@ def copy_to_ref(name: str):
     src = os.path.join(OUT_DIR, f"{name}_disasm.gc")
 
     if not os.path.exists(src):
+        print("couldn't copy to refs, file not found")
         return  # or raise
 
     ref_path = get_ref_path_from_filename("jakx", name, REF_BASE)
@@ -43,17 +48,21 @@ def copy_to_ref(name: str):
     shutil.copyfile(src, dst)
 
 
-with open("./scripts/gsrc/_decomp-plan.json", "r") as f:
-    data = json.load(f)
+todo_path = Path("./scripts/gsrc/_decomp-plan-todo.jsonc")
+done_path = Path("./scripts/gsrc/_decomp-plan-done.jsonc")
 
-for i, entry in enumerate(data):
-    name = entry.get("name")
-    print(f"[{i}/{len(data)}] {name}")
-    done = entry.get("done")
-    if entry.get("skip"):
-        print(f"skipping {name}")
-        continue
-    if done and name:
-        run_decomp(name)
-        copy_to_ref(name)
-        # exit(1)
+with todo_path.open("r", encoding="utf-8") as f:
+    data = jsonc_document.parse(source=f.read()).value
+
+done_source = done_path.read_text(encoding="utf-8")
+done_files = jsonc_document.parse(source=done_source).value
+
+entries = data["done-in-this-round"]
+
+for i, file_name in enumerate(entries):
+    print(f"[{i}/{len(entries)}] {file_name}")
+    if file_name not in done_files:
+        run_decomp(file_name)
+        copy_to_ref(file_name)
+    else:
+        print(f"file already in done list, not touching it")

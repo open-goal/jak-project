@@ -173,7 +173,7 @@
     (set! (-> a0-6 ignore-process1) #f)
     (set! (-> a0-6 ignore-pat) arg2)
     (set! (-> a0-6 action-mask) (collide-action solid))
-    (set! (-> a0-6 best-other-prim) #f)
+    (set! (-> a0-6 nav-mesh) #f)
     )
   (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* arg0)))
     (when (and arg1 (>= f30-0 0.0) (>= 0.0 (vector-dot (-> arg0 best-other-tri normal) (-> this dir))))
@@ -251,15 +251,17 @@
                                (as-type (handle->process arg0) process-focusable)
                                )
                               (else
-                                (let ((s1-0 (new 'stack-no-clear 'sphere))
+                                (let ((s1-0 (new 'stack-no-clear 'collide-prim-core))
                                       (s2-1 (new 'stack 'boxed-array collide-shape 32))
                                       )
-                                  (sphere<-vector+r! s1-0 arg1 arg2)
-                                  (let ((t9-4 (method-of-object *actor-hash* spatial-hash-method-38)))
-                                    (-> s2-1 data)
-                                    (-> s2-1 allocated-length)
-                                    (set! (-> s2-1 length) (the-as int (t9-4)))
-                                    )
+                                  (sphere<-vector+r! (the-as sphere s1-0) arg1 arg2)
+                                  (set! (-> s2-1 length) (spatial-hash-method-38
+                                                           *actor-hash*
+                                                           s1-0
+                                                           (the-as (pointer collide-shape) (-> s2-1 data))
+                                                           (-> s2-1 allocated-length)
+                                                           )
+                                        )
                                   (as-type
                                     (find-nearest-focusable
                                       (the-as (array collide-shape) s2-1)
@@ -309,16 +311,11 @@
         (set! (-> a1-4 message) 'nav-control)
         (let ((s4-1 (as-type (send-event-function (handle->process (-> this target)) a1-4) nav-control)))
           (when s4-1
-            (cond
-              (((method-of-type nav-control nav-control-method-11))
-               (let ((t9-4 (method-of-type nav-control nav-control-method-20)))
-                 #x45000000
-                 (t9-4)
-                 )
-               )
-              (else
-                (set! (-> arg0 quad) (the-as uint128 0))
-                )
+            (let ((a2-3 ((method-of-type nav-control find-poly-containing-point-1) (the-as nav-control s4-1) arg1)))
+              (if a2-3
+                  ((method-of-type nav-control nav-control-method-20) (the-as nav-control s4-1) arg1 a2-3 arg0 #x45000000 #f #f)
+                  (set! (-> arg0 quad) (the-as uint128 0))
+                  )
               )
             )
           )
@@ -530,7 +527,3 @@
   0
   (none)
   )
-
-
-
-

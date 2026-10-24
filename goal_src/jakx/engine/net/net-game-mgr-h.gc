@@ -5,5 +5,186 @@
 ;; name in dgo: net-game-mgr-h
 ;; dgos: ENGINE, GAME
 
+(define-extern *hud-results-medal-proc* process)
+(define-extern *hud-results-view-0-proc* process)
+(define-extern *hud-results-view-1-proc* process)
+(define-extern *hud-results-team-view-0-proc* process)
+(define-extern *hud-results-team-view-1-proc* process)
+
 ;; DECOMP BEGINS
 
+(deftype net-game-mgr-vehicle-info (structure)
+  ((all-vehicles          uint32  6)
+   (local-vehicles        uint32  6)
+   (ai-vehicles           uint32  6)
+   (player-vehicles       uint32  6)
+   (all-vehicle-count     int8)
+   (local-vehicle-count   int8)
+   (ai-vehicle-count      int8)
+   (player-vehicle-count  int8)
+   )
+  )
+
+
+(deftype net-game-mgr (process-nettable)
+  ((scheduled-finish-time  int32)
+   (scheduled-finish-mode  basic)
+   (sorted-ct              int8)
+   (human-ct               int8)
+   (sorted-ids             uint8   24)
+   (intro-end-time         int32)
+   (hud-player-indicators  handle  2)
+   (net-players            basic)
+   (stats-hud              handle  2)
+   (intro-handle           handle  2)
+   (cheats                 uint16  4)
+   (state-time             uint64)
+   )
+  (:methods
+    (net-game-mgr-method-42 () none)
+    (net-game-mgr-method-43 () none)
+    (net-game-mgr-method-44 () none)
+    (net-game-mgr-method-45 () none)
+    (net-game-mgr-method-46 () none)
+    (net-game-mgr-method-47 () none)
+    (net-game-mgr-method-48 () none)
+    (net-game-mgr-method-49 () none)
+    (net-game-mgr-method-50 () none)
+    (net-game-mgr-method-51 () none)
+    (net-game-mgr-method-52 () none)
+    (net-game-mgr-method-53 () none)
+    (net-game-mgr-method-54 () none)
+    (net-game-mgr-method-55 () none)
+    (net-game-mgr-method-56 () none)
+    (net-game-mgr-method-57 () none)
+    (net-game-mgr-method-58 () none)
+    (net-game-mgr-method-59 () none)
+    (net-game-mgr-method-60 () none)
+    (net-game-mgr-method-61 () none)
+    (net-game-mgr-method-62 () none)
+    (net-game-mgr-method-63 () none)
+    (net-game-mgr-method-64 () none)
+    (net-game-mgr-method-65 () none)
+    (net-game-mgr-method-66 () none)
+    (net-game-mgr-method-67 () none)
+    (net-game-mgr-method-68 () none)
+    (net-game-mgr-method-69 () none)
+    (net-game-mgr-method-70 () none)
+    (net-game-mgr-method-71 () none)
+    (net-game-mgr-method-72 () none)
+    (net-game-mgr-method-73 () none)
+    (net-game-mgr-method-74 () none)
+    (net-game-mgr-method-75 () none)
+    (net-game-mgr-method-76 () none)
+    (net-game-mgr-method-77 () none)
+    (net-game-mgr-method-78 () none)
+    (net-game-mgr-method-79 () none)
+    )
+  )
+
+
+(defbehavior net-game-mgr-init-remote net-game-mgr ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr) (arg0 int))
+  (ppointer->process (process-spawn net-game-mgr :init net-game-mgr-init-remote arg0 :name "net-game-mgr"))
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'game-finished)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'disable-turbos)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-intro-end-time)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'game-aborted)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-finish-time)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'cheat)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-game-mgr* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr* msg-map) *msg-map-net-game-mgr*)
+
+(write-msg-map-rec net-game-mgr *net-process-class-info-net-game-mgr*)
+
+(set! (-> *net-process-class-info-net-game-mgr* owner-type) net-game-mgr)
+
+(net-process-class-register *net-process-class-info-net-game-mgr*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr))
+  *net-process-class-info-net-game-mgr*
+  )
+
+(define *net-game-mgr* (the-as net-game-mgr #f))
+
+(define *should-update-stats* #f)
+
+(define *stats-adjusted* #f)
+
+;; WARN: Return type mismatch object vs symbol.
+(defun current-finish-mode ()
+  (let ((v1-0 (view-get-active-index)))
+    (the-as
+      symbol
+      (and *net-game-mgr* (or (-> *net-game-mgr* scheduled-finish-mode)
+                              (and (= (if *net-world*
+                                          (the-as int (-> *net-world* task-node-info net-play-mode))
+                                          18
+                                          )
+                                      0
+                                      )
+                                   (or (and (zero? v1-0) *hud-results-medal-proc*)
+                                       (and (zero? v1-0) *hud-results-view-0-proc*)
+                                       (and (= 1 v1-0) *hud-results-view-1-proc*)
+                                       (and (zero? v1-0) *hud-results-team-view-0-proc*)
+                                       (and (= 1 v1-0) *hud-results-team-view-1-proc*)
+                                       )
+                                   )
+                              )
+           )
+      )
+    )
+  )
+
+(define *fake-continue*
+  (new 'static 'continue-point :want (new 'static 'inline-array level-buffer-state-small 16
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       (new 'static 'level-buffer-state-small)
+                                       )
+                               )
+  )
+
+(define *overall-score-penalty* 0)
+
+(define *total-pts-at-stake* 0)
+
+(define *user-pts-at-stake* 0)
+
+(define *place-suffix* (new 'static 'boxed-array :type string "st" "nd" "rd" "th" "th" "th"))

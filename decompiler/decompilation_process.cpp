@@ -161,6 +161,11 @@ int run_decompilation_process(decompiler::Config config,
       db.dts.jg_info = config.jg_info_dump;
     }
   } else {
+    if (config.dump_art_group_info || config.dump_joint_geo_info) {
+      lg::error(
+          "`dump_art_group_info` or `dump_joint_geo_info` enabled WITHOUT enabling "
+          "`process_art_groups`");
+    }
     lg::error("`process_art_groups` was false and no art-group-info dump was provided!");
     return 1;
   }

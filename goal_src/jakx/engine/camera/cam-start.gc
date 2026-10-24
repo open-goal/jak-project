@@ -7,3 +7,60 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch int vs symbol.
+(defun cam-stop ()
+  (when (view-get-active-camera)
+    (deactivate (view-get-active-camera))
+    (view-set-active-camera (the-as camera-master #f))
+    )
+  (when (view-get-active-camera-combiner)
+    (deactivate (view-get-active-camera-combiner))
+    (view-set-active-camera-combiner (the-as camera-combiner #f))
+    )
+  (the-as symbol 0)
+  )
+
+(defun cam-start ((arg0 symbol))
+  (cam-stop)
+  (let* ((s5-0 view-set-active-camera-combiner)
+         (s4-0 (get-process *camera-dead-pool* camera-combiner #x4000 1))
+         (a0-4 (ppointer->process
+                 (when s4-0
+                   (let ((t9-2 (method-of-type camera-combiner activate)))
+                     (t9-2 (the-as camera-combiner s4-0) *camera-pool* "camera-combiner" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s4-0 cam-combiner-init)
+                   (-> s4-0 ppointer)
+                   )
+                 )
+               )
+         )
+    (s5-0 (the-as camera-combiner a0-4))
+    )
+  (let* ((s5-1 view-set-active-camera)
+         (s4-1 (get-process *camera-master-dead-pool* camera-master #x4000 1))
+         (a0-8 (ppointer->process
+                 (when s4-1
+                   (let ((t9-6 (method-of-type camera-master activate)))
+                     (t9-6 (the-as camera-master s4-1) *camera-pool* "camera-master" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s4-1 cam-master-init)
+                   (-> s4-1 ppointer)
+                   )
+                 )
+               )
+         )
+    (s5-1 (the-as camera-master a0-8))
+    )
+  (if arg0
+      (reset-cameras)
+      )
+  0
+  (none)
+  )
+
+(dotimes (gp-0 2)
+  (view-push-context gp-0)
+  (cam-start #f)
+  (view-pop-context)
+  )
