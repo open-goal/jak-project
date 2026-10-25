@@ -161,6 +161,11 @@ class Function {
 
     bool fp_set = false;
 
+    // callbacks and interrupt handlers back up s7 and rebuild s7/fp themselves
+    bool called_from_c = false;
+    // re-enables interrupts in the epilogue
+    bool interrupt_handler = false;
+
     int n_gpr_backup = 0;
     int gpr_backup_offset = -1;
 
