@@ -133,8 +133,8 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
   // if we got a null heap, put it on the global heap, but warn about it
   if (!heap.offset) {
     // the 0 is uninitialized in jak1, set to zero in jak 2. might just be compiler differences.
-    Msg(6, "--------------------> kmalloc: alloc %s mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name, 0,
-        alignment_flag, size);
+    Msg(6, "--------------------> kmalloc: alloc %s mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name,
+        0, alignment_flag, size);
     heap = kglobalheap;
   }
 

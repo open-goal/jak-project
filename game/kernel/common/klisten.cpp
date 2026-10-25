@@ -23,7 +23,7 @@ void klisten_init_globals() {
  * Changed slightly, it will also print to stdout if there's no compiler connected.
  */
 void ClearPending() {
-  if (!MasterDebug) { // TODO: why is ListenerStatus gone?
+  if (!MasterDebug) {  // TODO: why is ListenerStatus gone?
     // if we aren't debugging or connected print the print buffer to stdout.
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
@@ -34,7 +34,7 @@ void ClearPending() {
     }
   } else {
     if (ListenerStatus) {
-      if (OutputPending.offset != 0) { // TODO: why is the loop gone here?
+      if (OutputPending.offset != 0) {  // TODO: why is the loop gone here?
         // note - same 64 kB patch as prints done here
         char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
         auto size = strlen(msg);

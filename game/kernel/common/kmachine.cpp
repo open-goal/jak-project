@@ -43,7 +43,7 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 u32 vif1_interrupt_handler = 0;
 u32 vblank_interrupt_handler = 0;
 
-bool cd_S_INITIALIZE_CD_W = false; // New in Jak X
+bool cd_S_INITIALIZE_CD_W = false;  // New in Jak X
 
 Timer ee_clock_timer;
 
@@ -64,7 +64,7 @@ void InitCD() {
   if (cd_S_INITIALIZE_CD_W) {
     s32 result;
     while (true) {
-      strlen("dkernel: Initializing DVD drive...\n"); // FIXME: Why is there a strlen here?
+      strlen("dkernel: Initializing DVD drive...\n");  // FIXME: Why is there a strlen here?
       printf("dkernel: Initializing DVD drive...\n");
       result = ee::sceCdInit(SCECdINIT);
       if (result != 0) {
@@ -146,7 +146,8 @@ void CacheFlush(void* mem, int size) {
  * Set the new_pad flag to 1 and state to 0.
  * Prints an error if it fails to open.
  * FIXME: Different in Jak X, missing CPad library v2 symbols.
- * See decompiled function here: https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L126
+ * See decompiled function here:
+ * https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L126
  */
 u64 CPadOpen(u64 cpad_info, s32 pad_number) {
   auto cpad = Ptr<CPadInfo>(cpad_info).c();
@@ -166,7 +167,8 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
 /*!
  * Not checked super carefully for jak 2, but looks the same
  * FIXME: Different in Jak X, missing CPad library v2 symbols.
- * See decompiled function here: https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L143
+ * See decompiled function here:
+ * https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L143
  */
 u64 CPadGetData(u64 cpad_info) {
   using namespace ee;
@@ -304,10 +306,9 @@ void InstallDebugHandler() {
 
 s32 kmkdir(u64 name) {
   char acStack_90[128];
-  if (Ptr<String>(name)->data()[4] == '/') { // start from the fourth character?
+  if (Ptr<String>(name)->data()[4] == '/') {  // start from the fourth character?
     sprintf(acStack_90, "%s", Ptr<String>(name)->data() + 5);
-  }
-  else {
+  } else {
     sprintf(acStack_90, "host:%s", Ptr<String>(name)->data() + 4);
   }
   return ee::sceMkDir(acStack_90, 0x1fd);

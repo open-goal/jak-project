@@ -337,7 +337,7 @@ s32 FileSave(char* name, u8* data, s32 size) {
     // in jak 3, this became a loop over smaller writes for some reason.
     s32 chunkSize = 0x1000000;
     if (size < 0x1000000) {
-      chunkSize = size; // one or final write
+      chunkSize = size;  // one or final write
     }
     s32 written = sceWrite(fd, data + writeOffset, chunkSize);
     writeOffset += written;

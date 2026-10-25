@@ -25,7 +25,7 @@ extern u32 reboot_iop;  // renamed to reboot_iop to avoid conflict
 extern const char* init_types[];
 extern u32 vblank_interrupt_handler;
 
-extern bool cd_S_INITIALIZE_CD_W; // new in Jak X
+extern bool cd_S_INITIALIZE_CD_W;  // new in Jak X
 
 void kmachine_init_globals_common();
 
