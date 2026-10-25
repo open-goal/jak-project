@@ -41,6 +41,10 @@ std::string TP_Type::print() const {
     case Kind::PRODUCT_WITH_CONSTANT:
       return fmt::format("<value x {}>", m_int);
     case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      if (m_sum_multipliers.first) {
+        return fmt::format("<{} + {} + (value x {}) + (value x {})>", m_ts.print(), m_sum_constant,
+                           m_sum_multipliers.first, m_sum_multipliers.second);
+      }
       return fmt::format("<{} + (value x {})>", m_ts.print(), m_int);
     case Kind::OBJECT_NEW_METHOD:
       return fmt::format("<(object-new) for {}>", m_ts.print());
@@ -56,6 +60,9 @@ std::string TP_Type::print() const {
       return fmt::format("<integer {} + {}>", m_int, m_ts.print());
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       return fmt::format("<integer {} + ({} x {})>", m_int, m_extra_multiplier, m_ts.print());
+    case Kind::PRODUCT_SUM:
+      return fmt::format("<integer {} + (value x {}) + (value x {})>", m_sum_constant, m_int,
+                         m_extra_multiplier);
     case Kind::DYNAMIC_METHOD_ACCESS:
       return fmt::format("<dynamic-method-access>");
     case Kind::VIRTUAL_METHOD:
@@ -100,7 +107,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
 
   switch (kind) {
     case Kind::TYPESPEC:
-      return m_ts == other.m_ts;
+      return m_ts == other.m_ts && m_field_origin_type == other.m_field_origin_type &&
+             m_field_origin_offset == other.m_field_origin_offset;
     case Kind::TYPE_OF_TYPE_OR_CHILD:
       return m_ts == other.m_ts;
     case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
@@ -116,7 +124,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::PRODUCT_WITH_CONSTANT:
       return m_int == other.m_int;
     case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
-      return m_ts == other.m_ts && m_int == other.m_int;
+      return m_ts == other.m_ts && m_int == other.m_int &&
+             m_sum_multipliers == other.m_sum_multipliers && m_sum_constant == other.m_sum_constant;
     case Kind::OBJECT_NEW_METHOD:
       return m_ts == other.m_ts;
     case Kind::NON_OBJECT_NEW_METHOD:
@@ -135,6 +144,10 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       return m_int == other.m_int && m_ts == other.m_ts &&
              m_extra_multiplier == other.m_extra_multiplier;
+    case Kind::PRODUCT_SUM:
+      return m_int == other.m_int && m_ts == other.m_ts &&
+             m_extra_multiplier == other.m_extra_multiplier &&
+             m_sum_constant == other.m_sum_constant;
     case Kind::LEFT_SHIFTED_BITFIELD:
       return m_int == other.m_int && m_ts == other.m_ts && m_pcpyud == other.m_pcpyud;
     case Kind::PCPYUD_BITFIELD:
@@ -194,6 +207,7 @@ TypeSpec TP_Type::typespec() const {
     case Kind::INTEGER_CONSTANT:
       return TypeSpec("int");
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+    case Kind::PRODUCT_SUM:
       return m_ts;
     case Kind::INTEGER_CONSTANT_PLUS_VAR:
       return m_method_from_type;

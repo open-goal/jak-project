@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "common/goos/Reader.h"
 #include "common/goos/TextDB.h"
 #include "common/type_system/TypeSystem.h"
@@ -104,4 +106,11 @@ class DecompilerTypeSystem {
   GameVersion m_version;
   mutable goos::Reader m_reader;
 };
+
+std::optional<FieldReverseLookupOutput> lookup_2d_array_element(const TypeSystem& ts,
+                                                                const TypeSpec& base_type,
+                                                                const TP_Type& product_sum);
+std::optional<FieldReverseLookupOutput> lookup_array_element_from_field(const TypeSystem& ts,
+                                                                        const TP_Type& field_addr,
+                                                                        int stride);
 }  // namespace decompiler

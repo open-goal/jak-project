@@ -22,6 +22,42 @@ RegClass get_reg_kind(const Register& r) {
       return RegClass::INVALID;
   }
 }
+
+/*!
+ * Try to resolve obj + (idx * stride) + (idx2 * stride2) as an access into a 2d array.
+ */
+ArrayFieldAccess* try_2d_array_access(const TP_Type& input_type,
+                                      const IR2_RegOffset& ro,
+                                      const DerefKind& dk,
+                                      const Env& env,
+                                      FormPool& pool,
+                                      TypeSpec* result_type) {
+  const auto& [stride, stride2] = input_type.get_sum_multipliers();
+  FieldReverseLookupInput rd_in;
+  rd_in.deref = dk;
+  rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+  rd_in.stride = stride;
+  rd_in.stride2 = stride2;
+  rd_in.offset = ro.offset + input_type.get_sum_constant();
+  auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+  if (!rd.success) {
+    return nullptr;
+  }
+
+  std::vector<DerefToken> tokens;
+  std::vector<int> index_strides;
+  for (auto& token : rd.tokens) {
+    tokens.push_back(to_token(token));
+    if (token.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+      index_strides.push_back(token.idx == 0 ? stride : stride2);
+    }
+  }
+  auto access = pool.alloc_element<ArrayFieldAccess>(ro.var, tokens, 1, ro.offset,
+                                                     input_type.flipped_add_order());
+  access->set_index_strides(index_strides, input_type.get_sum_constant());
+  *result_type = rd.result_type;
+  return access;
+}
 }  // namespace
 
 ConditionElement* BranchOp::get_condition_as_form(FormPool& pool, const Env& env) const {
@@ -367,7 +403,20 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         }
       }
 
-      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+      if (input_type.has_sum_multipliers()) {
+        DerefKind dk;
+        dk.is_store = true;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.size = m_size;
+        TypeSpec result_type;
+        if (auto access = try_2d_array_access(input_type, ro, dk, env, pool, &result_type)) {
+          return pool.alloc_element<StoreArrayAccess>(
+              access, m_value.as_expr(), m_my_idx, ro.var,
+              get_typecast_for_atom(m_value, env, coerce_to_reg_type(result_type), m_my_idx));
+        }
+      }
+
+      if (input_type.is_plain_product_plus_obj()) {
         FieldReverseLookupInput rd_in;
         DerefKind dk;
         dk.is_store = true;
@@ -608,7 +657,19 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         return pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
       }
 
-      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+      if (input_type.has_sum_multipliers()) {
+        DerefKind dk;
+        dk.is_store = false;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.sign_extend = m_kind == Kind::SIGNED;
+        dk.size = m_size;
+        TypeSpec result_type;
+        if (auto access = try_2d_array_access(input_type, ro, dk, env, pool, &result_type)) {
+          return pool.alloc_single_form(nullptr, access);
+        }
+      }
+
+      if (input_type.is_plain_product_plus_obj()) {
         FieldReverseLookupInput rd_in;
         DerefKind dk;
         dk.is_store = false;
