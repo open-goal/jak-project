@@ -430,11 +430,13 @@ BankHandle Loader::BankLoad(std::span<u8> bank) {
     std::span<u8> midi_data(std::span<u8>(bank).subspan(fa.where[2].offset, fa.where[2].size));
 
     auto bank = MusicBank::ReadBank(bank_data, sample_data, midi_data);
+    bank->m_loader = this;
     mBanks.emplace_back(bank);
 
     return bank;
   } else if (fourcc == snd::fourcc("SBlk")) {
     auto block = SFXBlock::ReadBlock(bank_data, sample_data);
+    block->m_loader = this;
     mBanks.emplace_back(block);
 
     return block;
