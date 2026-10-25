@@ -54,7 +54,7 @@ class SoundBank {
   BlockFlags Flags;
   u32 BankID;
   s8 BankNum;
-  snd::Loader *m_loader = nullptr;
+  snd::Loader* m_loader = nullptr;
 
   virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
                                                                    u32 sound_id,

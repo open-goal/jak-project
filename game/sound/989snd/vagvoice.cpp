@@ -3,6 +3,7 @@
 #include "vagvoice.h"
 
 #include "util.h"
+
 #include "common/log/log.h"
 
 namespace snd {
@@ -20,7 +21,9 @@ void VoiceManager::StartTone(std::shared_ptr<VagVoice> voice) {
 
   // TODO? Maybe?
   if ((voice->tone.Flags & 0x10) != 0x0) {
-    lg::warn("Reverb-only voice not implemented. Falling back to default implementation. This tone might not sound the same as it did on the PS2");
+    lg::warn(
+        "Reverb-only voice not implemented. Falling back to default implementation. This tone "
+        "might not sound the same as it did on the PS2");
   }
 
   std::pair<s16, s16> note = PitchBend(voice->tone, voice->current_pb, voice->current_pm,

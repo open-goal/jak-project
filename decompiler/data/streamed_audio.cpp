@@ -410,7 +410,7 @@ void process_sfx(const Config& config, const fs::path& output_path, const fs::pa
   // Some JakX SFX blocks need sound effects from the common block
   // We will keep this and only unload it at the end.
   snd::SFXBlock* jakxCommonBlock = nullptr;
-  if(config.game_version == GameVersion::JakX){
+  if (config.game_version == GameVersion::JakX) {
     auto data = file_util::read_binary_file(dir / "COMMON.SBK");
     // No need to check for bank_offset within file as this file isn't from jak 1
     jakxCommonBlock = (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data));
@@ -421,10 +421,9 @@ void process_sfx(const Config& config, const fs::path& output_path, const fs::pa
     snd::SFXBlock* block;
     std::vector<std::string> sfx_names;
     // If looking for a common block and this is JakX, use the common block we already loaded!
-    if(config.game_version == GameVersion::JakX && sbk_name.string() == "COMMON"){
+    if (config.game_version == GameVersion::JakX && sbk_name.string() == "COMMON") {
       block = jakxCommonBlock;
-    }
-    else{
+    } else {
       auto data = file_util::read_binary_file(sbk);
       const size_t bank_offset = find_bank_offset(data);  // Find where the sfx bank starts
       if (bank_offset == SIZE_MAX) {
@@ -436,8 +435,7 @@ void process_sfx(const Config& config, const fs::path& output_path, const fs::pa
         parse_jak1_name_table(data, bank_offset, bank_name, sfx_names);
       }
 
-      block =
-        (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
+      block = (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
     }
 
     auto output_folder = output_path / sbk_name;
@@ -468,12 +466,12 @@ void process_sfx(const Config& config, const fs::path& output_path, const fs::pa
       right_samples.clear();
     }
     // Only unload blocks that aren't Jak X's common block
-    if(config.game_version != GameVersion::JakX || sbk_name.string() !=  "COMMON")
+    if (config.game_version != GameVersion::JakX || sbk_name.string() != "COMMON")
       fakeplayer.UnloadBank(block);
     lg::info("File {}, total {:.2f} minutes", sbk.filename().string(), audio_len / 60.0);
   }
   // Now that we've finished, we can unload Jak X's common block.
-  if(config.game_version == GameVersion::JakX)
+  if (config.game_version == GameVersion::JakX)
     fakeplayer.UnloadBank(jakxCommonBlock);
 }
 
