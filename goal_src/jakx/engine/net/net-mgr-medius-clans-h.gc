@@ -7,3 +7,944 @@
 
 ;; DECOMP BEGINS
 
+(define *clan-pending-deltas-valid* #f)
+
+(define *clan-pending-deltas* (new 'static 'array uint32 9 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0))
+
+(deftype medius-cached-info-clan (medius-cached-info)
+  ((name            uint8                  32)
+   (leader-acct-id  int32)
+   (leader-name     uint8                  32)
+   (stats           uint8                  256)
+   (members         medius-player-index-array)
+   (ladder-stats    net-clan-ladder-stats  :inline)
+   )
+  (:methods
+    (medius-cached-info-clan-method-12 (_type_ medius-cached-info-clan) none)
+    )
+  )
+
+
+(deftype medius-clan (medius-cache-index)
+  ()
+  (:methods
+    (medius-clan-method-11 (_type_) none)
+    )
+  )
+
+
+(deftype medius-clan-index-array (medius-cache-index-array)
+  ()
+  )
+
+
+(deftype medius-incoming-clan-invite (structure)
+  ((clan-id    int32)
+   (invite-id  int32)
+   (clan-name  uint8  32)
+   )
+  )
+
+
+(deftype medius-clan-challenge (structure)
+  ((send-clan-id  int32)
+   (recv-clan-id  int32)
+   (challenge-id  int32)
+   (status        int32)
+   )
+  )
+
+
+(define *clan-msg-text* (new 'static 'array uint8 200
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          #x0
+                          )
+        )
+
+(define *clan-msg-id* 0)
+
+(define *medius-clan-cache*
+  (new 'static 'medius-cache :objects (new 'static 'boxed-array :type medius-cached-info
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        (new 'static 'medius-cached-info-clan)
+                                        )
+                             )
+  )
+
+(clear-objects! *medius-clan-cache*)
+
+(define *medius-recent-clans*
+  (new 'static 'medius-clan-index-array :data (new 'static 'array medius-cache 141))
+  )
+
+(set! (-> *medius-recent-clans* max-ct) 128)
+
+(define *medius-clan-members-31*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-31* max-ct) 64)
+
+(define *medius-clan-members-30*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-30* max-ct) 64)
+
+(define *medius-clan-members-29*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-29* max-ct) 64)
+
+(define *medius-clan-members-28*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-28* max-ct) 64)
+
+(define *medius-clan-members-27*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-27* max-ct) 64)
+
+(define *medius-clan-members-26*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-26* max-ct) 64)
+
+(define *medius-clan-members-25*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-25* max-ct) 64)
+
+(define *medius-clan-members-24*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-24* max-ct) 64)
+
+(define *medius-clan-members-23*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-23* max-ct) 64)
+
+(define *medius-clan-members-22*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-22* max-ct) 64)
+
+(define *medius-clan-members-21*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-21* max-ct) 64)
+
+(define *medius-clan-members-20*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-20* max-ct) 64)
+
+(define *medius-clan-members-19*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-19* max-ct) 64)
+
+(define *medius-clan-members-18*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-18* max-ct) 64)
+
+(define *medius-clan-members-17*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-17* max-ct) 64)
+
+(define *medius-clan-members-16*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-16* max-ct) 64)
+
+(define *medius-clan-members-15*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-15* max-ct) 64)
+
+(define *medius-clan-members-14*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-14* max-ct) 64)
+
+(define *medius-clan-members-13*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-13* max-ct) 64)
+
+(define *medius-clan-members-12*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-12* max-ct) 64)
+
+(define *medius-clan-members-11*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-11* max-ct) 64)
+
+(define *medius-clan-members-10*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-10* max-ct) 64)
+
+(define *medius-clan-members-9*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-9* max-ct) 64)
+
+(define *medius-clan-members-8*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-8* max-ct) 64)
+
+(define *medius-clan-members-7*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-7* max-ct) 64)
+
+(define *medius-clan-members-6*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-6* max-ct) 64)
+
+(define *medius-clan-members-5*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-5* max-ct) 64)
+
+(define *medius-clan-members-4*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-4* max-ct) 64)
+
+(define *medius-clan-members-3*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-3* max-ct) 64)
+
+(define *medius-clan-members-2*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-2* max-ct) 64)
+
+(define *medius-clan-members-1*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-1* max-ct) 64)
+
+(define *medius-clan-members-0*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-clan-members-0* max-ct) 64)
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 31)) members)
+      *medius-clan-members-31*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 30)) members)
+      *medius-clan-members-30*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 29)) members)
+      *medius-clan-members-29*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 28)) members)
+      *medius-clan-members-28*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 27)) members)
+      *medius-clan-members-27*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 26)) members)
+      *medius-clan-members-26*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 25)) members)
+      *medius-clan-members-25*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 24)) members)
+      *medius-clan-members-24*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 23)) members)
+      *medius-clan-members-23*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 22)) members)
+      *medius-clan-members-22*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 21)) members)
+      *medius-clan-members-21*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 20)) members)
+      *medius-clan-members-20*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 19)) members)
+      *medius-clan-members-19*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 18)) members)
+      *medius-clan-members-18*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 17)) members)
+      *medius-clan-members-17*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 16)) members)
+      *medius-clan-members-16*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 15)) members)
+      *medius-clan-members-15*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 14)) members)
+      *medius-clan-members-14*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 13)) members)
+      *medius-clan-members-13*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 12)) members)
+      *medius-clan-members-12*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 11)) members)
+      *medius-clan-members-11*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 10)) members)
+      *medius-clan-members-10*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 9)) members)
+      *medius-clan-members-9*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 8)) members)
+      *medius-clan-members-8*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 7)) members)
+      *medius-clan-members-7*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 6)) members)
+      *medius-clan-members-6*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 5)) members)
+      *medius-clan-members-5*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 4)) members)
+      *medius-clan-members-4*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 3)) members)
+      *medius-clan-members-3*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 2)) members)
+      *medius-clan-members-2*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 1)) members)
+      *medius-clan-members-1*
+      )
+
+(set! (-> (the-as medius-cached-info-clan (-> *medius-clan-cache* objects 0)) members)
+      *medius-clan-members-0*
+      )
+
+(define *medius-incoming-clan-invites* (new 'static 'boxed-array :type medius-incoming-clan-invite
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         (new 'static 'medius-incoming-clan-invite)
+                                         )
+        )
+
+(define *medius-clan-challenges* (new 'static 'boxed-array :type medius-clan-challenge
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   (new 'static 'medius-clan-challenge)
+                                   )
+        )
+
+(define *medius-visible-clan-challenges* (new 'static 'boxed-array :type medius-clan-challenge
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           (new 'static 'medius-clan-challenge)
+                                           )
+        )
+
+(define *medius-my-clan* (new 'static 'medius-cached-info-clan))
+
+(define *medius-my-clan-members*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-my-clan-members* max-ct) 64)
+
+(set! (-> *medius-my-clan* members) *medius-my-clan-members*)
+
+(define *medius-enemy-clan* (new 'static 'medius-cached-info-clan))
+
+(define *medius-enemy-clan-members*
+  (new 'static 'medius-player-index-array :data (new 'static 'array medius-cache 77))
+  )
+
+(set! (-> *medius-enemy-clan-members* max-ct) 64)
+
+(set! (-> *medius-enemy-clan* members) *medius-enemy-clan-members*)
+
+(define *medius-enemy-clan-id* -1)
+
+(define *challenge-clans*
+  (new 'static 'boxed-array :type medius-cached-info-clan :length 0 :allocated-length 2)
+  )
+
+(defmethod medius-cached-info-clan-method-12 ((this medius-cached-info-clan) (arg0 medius-cached-info-clan))
+  (let ((s4-0 (-> this members)))
+    (mem-copy! (&-> this type) (&-> arg0 type) 388)
+    (set! (-> this members) s4-0)
+    )
+  (set! (-> this members ct) (-> arg0 members ct))
+  (set! (-> this members max-ct) (-> arg0 members max-ct))
+  (mem-copy! (-> this members data) (-> arg0 members data) (* (-> this members max-ct) 4))
+  0
+  (none)
+  )

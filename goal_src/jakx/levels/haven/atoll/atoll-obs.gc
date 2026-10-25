@@ -7,3 +7,102 @@
 
 ;; DECOMP BEGINS
 
+(deftype atoll-rotor (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-atoll-rotor atoll-rotor atoll-rotor-lod0-jg atoll-rotor-idle-ja
+              ((atoll-rotor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              :origin-joint-index 3
+              )
+
+(defmethod init-from-entity! ((this atoll-rotor) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask actor-pause))
+  (stack-size-set! (-> this main-thread) 32)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-atoll-rotor" (the-as (pointer level) #f))
+    0
+    )
+  (go (method-of-object this idle))
+  )
+
+(defstate idle (atoll-rotor)
+  :virtual #t
+  :code (behavior ()
+    (let* ((f30-0 65536.0)
+           (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-3 (the-as number (logior #x3f800000 v1-2)))
+           (f0-3 (* f30-0 (+ -1.0 (the-as float v1-3))))
+           )
+      (quaternion-rotate-z! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self root rot)) f0-3)
+      )
+    (until #f
+      (quaternion-rotate-z!
+        (the-as quaternion (-> self root rot))
+        (the-as quaternion (-> self root rot))
+        (* 16384.0 (seconds-per-frame))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(deftype atoll-dish (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-atoll-dish atoll-dish atoll-dish-lod0-jg atoll-dish-idle-ja
+              ((atoll-dish-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              :origin-joint-index 3
+              )
+
+(defmethod init-from-entity! ((this atoll-dish) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask actor-pause))
+  (stack-size-set! (-> this main-thread) 32)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-atoll-dish" (the-as (pointer level) #f))
+    0
+    )
+  (go (method-of-object this idle))
+  )
+
+(defstate idle (atoll-dish)
+  :virtual #t
+  :code (behavior ()
+    (let* ((f30-0 65536.0)
+           (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-3 (the-as number (logior #x3f800000 v1-2)))
+           (f0-3 (* f30-0 (+ -1.0 (the-as float v1-3))))
+           )
+      (quaternion-rotate-y! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self root rot)) f0-3)
+      )
+    (until #f
+      (quaternion-rotate-y!
+        (the-as quaternion (-> self root rot))
+        (the-as quaternion (-> self root rot))
+        (* 5461.3335 (seconds-per-frame))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post ja-post
+  )

@@ -5,5 +5,135 @@
 ;; name in dgo: net-powerup-h
 ;; dgos: ENGINE, GAME
 
+(define *powerup-static-hash* (the-as spatial-hash #f))
+(define *powerup-dynamic-hash* (the-as spatial-hash #f))
+
 ;; DECOMP BEGINS
 
+(define *powerup-static-hash* (new 'global 'spatial-hash 8192 512))
+
+(define *powerup-dynamic-hash* (new 'global 'spatial-hash 4096 64))
+
+(deftype net-powerup-motion-info (basic)
+  ((motion-hook      basic)
+   (flight-end-time  int32)
+   (vel              vector  :inline)
+   (rest-pos         vector  :inline)
+   )
+  (:methods
+    (net-powerup-motion-info-method-9 () none)
+    (net-powerup-motion-info-method-10 () none)
+    (net-powerup-motion-info-method-11 () none)
+    (net-powerup-motion-info-method-12 () none)
+    )
+  )
+
+
+(deftype net-powerup-spawn-params (structure)
+  ((tp             basic)
+   (pos            vector  :inline)
+   (lifetime       int32)
+   (initial-owner  int8)
+   (motion-info    basic)
+   )
+  )
+
+
+(deftype net-powerup (process-nettable)
+  ((child-proc           uint64)
+   (die-or-respawn-time  int32)
+   (touched-time         int32)
+   (touched-by           int8)
+   (ignore-frames        int8)
+   (hash-id              int16)
+   (pos                  vector  :inline)
+   (motion-info          basic)
+   )
+  (:methods
+    (net-powerup-method-42 () none)
+    (net-powerup-method-43 () none)
+    (net-powerup-method-44 () none)
+    (net-powerup-method-45 () none)
+    (net-powerup-method-46 () none)
+    (net-powerup-method-47 () none)
+    (net-powerup-method-48 () none)
+    (net-powerup-method-49 () none)
+    (net-powerup-method-50 () none)
+    (net-powerup-method-51 () none)
+    (net-powerup-method-52 () none)
+    (net-powerup-method-53 () none)
+    (net-powerup-method-54 () none)
+    (net-powerup-method-55 () none)
+    )
+  )
+
+
+(defbehavior net-powerup-init-remote net-powerup ((arg0 process))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as int arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-powerup) (arg0 int))
+  (ppointer->process (process-spawn net-powerup :init net-powerup-init-remote arg0 :name "net-powerup"))
+  )
+
+(defmethod process-nettable-method-37 ((this net-powerup) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'picked-up)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-powerup* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-powerup* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-powerup* msg-map) *msg-map-net-powerup*)
+
+(write-msg-map-rec net-powerup *net-process-class-info-net-powerup*)
+
+(set! (-> *net-process-class-info-net-powerup* owner-type) net-powerup)
+
+(net-process-class-register *net-process-class-info-net-powerup*)
+
+(defmethod process-nettable-method-40 ((this net-powerup))
+  *net-process-class-info-net-powerup*
+  )
+
+(deftype powerup-draw (process-drawable)
+  ((parent-proc  uint64)
+   (glow-sound   basic)
+   (part-time    int32)
+   )
+  (:state-methods
+    TODO
+    )
+  (:methods
+    (powerup-draw-method-51 () none)
+    (powerup-draw-method-52 () none)
+    (powerup-draw-method-53 () none)
+    (powerup-draw-method-54 () none)
+    (powerup-draw-method-55 () none)
+    (powerup-draw-method-56 () none)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior powerup-draw-init-by-other powerup-draw ((arg0 process) (arg1 vector) (arg2 process))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (if arg2
+        (set! (-> self level) (the-as level (-> arg2 brother 4)))
+        (art-group-get-by-name *level* (-> arg0 name) (&-> self level))
+        )
+    (set! (-> s5-0 quad) (-> arg1 quad))
+    )
+  (set! (-> self parent-proc) (the-as uint (process->handle arg0)))
+  (stack-size-set! (-> self main-thread) 32)
+  ((method-of-object self powerup-draw-method-53))
+  (go-virtual TODO)
+  (none)
+  )

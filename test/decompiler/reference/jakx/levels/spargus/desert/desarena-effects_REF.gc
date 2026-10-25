@@ -1,0 +1,414 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type desarena-states
+(deftype desarena-states (structure)
+  ((light  light-state   :inline)
+   (flame  flames-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type desarena-states
+(defmethod inspect ((this desarena-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'desarena-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> this light))
+  (format #t "~1Tflame: #<flames-state @ #x~X>~%" (-> this flame))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-desarena
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-desarena time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (copy-mood-exterior arg0)
+    (when (= (-> *level* level arg2 display?) 'display)
+      (let ((a1-3 (-> arg0 current-fog erase-color))
+            (v1-2 (new 'static 'vector :data (new 'static 'array float 4 78.0 78.0 66.0 128.0)))
+            (a2-1 (new 'static 'vector :data (new 'static 'array float 4 255.0 255.0 255.0 128.0)))
+            )
+        (set! (-> a1-3 quad) (-> arg0 light-group 0 ambi color quad))
+        (let ((t0-0 a1-3))
+          (let ((a0-6 a1-3))
+            (let ((a3-2 (-> arg0 light-group 0 dir0 color)))
+              (let ((t1-0 (fmax (-> arg0 light-group 0 dir0 direction y) (-> arg0 light-group 0 dir1 direction y))))
+                (.mov vf7 t1-0)
+                )
+              (.lvf vf5 (&-> a3-2 quad))
+              )
+            (.lvf vf4 (&-> a0-6 quad))
+            )
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
+          (.svf (&-> t0-0 quad) vf6)
+          )
+        (vector*! a1-3 a1-3 v1-2)
+        (vector-min! a1-3 a1-3 a2-1)
+        )
+      )
+    (when (and (= (-> *level* level arg2 status) 'active)
+               (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+               )
+      (-> arg0 state)
+      (update-mood-light arg0 5 0 -1.0 0.0 arg1 0.0 2.0)
+      (update-mood-flames arg0 6 1 8 1.0 0.000390625 1.5)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for symbol *desarena-water-texture-anim-array*, type texture-anim-array
+(define *desarena-water-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "desa-stillwater-dest"
+      :extra (new 'static 'vector :data (new 'static 'array float 4 128.0 128.0 4.0 0.0))
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 2100.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 2100.0
+          :tex-name "desa-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.33 0.33))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-st-rot (degrees 180)
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.33 1.33))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-st-rot (degrees 180)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 2100.0
+          :tex-name "desa-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.67 0.67))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-st-rot (degrees 90)
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.67 1.67))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-st-rot (degrees 90)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 2100.0
+          :tex-name "desa-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 1.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "desa-fallingwater-dest"
+      :extra (new 'static 'vector :data (new 'static 'array float 4 128.0 128.0 4.0 0.0))
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 600.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "desa-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.5 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.5 -1.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "desa-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.5))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.5))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "desa-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "desa-wave-dest"
+      :extra (new 'static 'vector :data (new 'static 'array float 4 128.0 128.0 4.0 0.0))
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 1800.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1800.0
+          :tex-name "desa-wave"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.67 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -1.67 1.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1800.0
+          :tex-name "desa-wave"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.33 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.33 2.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1800.0
+          :tex-name "desa-wave"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 3.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "desa-froth-dest"
+      :extra (new 'static 'vector :data (new 'static 'array float 4 128.0 128.0 4.0 0.0))
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 525.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x1
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "desa-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 -1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.0))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 -1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.0))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "desa-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.5))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.5))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "desa-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-color (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :data (new 'static 'array float 4 1.0 1.0 1.0 1.0))
+          )
+        )
+      )
+    )
+  )
+
+
+
+

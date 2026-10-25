@@ -1,0 +1,235 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(let ((t9-0 (method-of-type spatial-hash new))
+      (a0-0 'global)
+      (a1-0 spatial-hash)
+      )
+  8192
+  512
+  (set! *powerup-static-hash* (t9-0 a0-0 a1-0))
+  )
+
+;; failed to figure out what this is:
+(let ((t9-1 (method-of-type spatial-hash new))
+      (a0-1 'global)
+      (a1-1 spatial-hash)
+      )
+  4096
+  64
+  (set! *powerup-dynamic-hash* (t9-1 a0-1 a1-1))
+  )
+
+;; definition of type net-powerup-motion-info
+(deftype net-powerup-motion-info (basic)
+  ((motion-hook      basic)
+   (flight-end-time  int32)
+   (vel              vector  :inline)
+   (rest-pos         vector  :inline)
+   )
+  (:methods
+    (net-powerup-motion-info-method-9 () none)
+    (net-powerup-motion-info-method-10 () none)
+    (net-powerup-motion-info-method-11 () none)
+    (net-powerup-motion-info-method-12 () none)
+    )
+  )
+
+;; definition for method 3 of type net-powerup-motion-info
+(defmethod inspect ((this net-powerup-motion-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tmotion-hook: ~A~%" (-> this motion-hook))
+  (format #t "~1Tflight-end-time: ~D~%" (-> this flight-end-time))
+  (format #t "~1Tvel: #<vector @ #x~X>~%" (-> this vel))
+  (format #t "~1Trest-pos: #<vector @ #x~X>~%" (-> this rest-pos))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type net-powerup-spawn-params
+(deftype net-powerup-spawn-params (structure)
+  ((tp             basic)
+   (pos            vector  :inline)
+   (lifetime       int32)
+   (initial-owner  int8)
+   (motion-info    basic)
+   )
+  )
+
+;; definition for method 3 of type net-powerup-spawn-params
+(defmethod inspect ((this net-powerup-spawn-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'net-powerup-spawn-params)
+  (format #t "~1Ttp: ~A~%" (-> this tp))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tlifetime: ~D~%" (-> this lifetime))
+  (format #t "~1Tinitial-owner: ~D~%" (-> this initial-owner))
+  (format #t "~1Tmotion-info: ~A~%" (-> this motion-info))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type net-powerup
+(deftype net-powerup (process-nettable)
+  ((child-proc           uint64)
+   (die-or-respawn-time  int32)
+   (touched-time         int32)
+   (touched-by           int8)
+   (ignore-frames        int8)
+   (hash-id              int16)
+   (pos                  vector  :inline)
+   (motion-info          basic)
+   )
+  (:methods
+    (net-powerup-method-42 () none)
+    (net-powerup-method-43 () none)
+    (net-powerup-method-44 () none)
+    (net-powerup-method-45 () none)
+    (net-powerup-method-46 () none)
+    (net-powerup-method-47 () none)
+    (net-powerup-method-48 () none)
+    (net-powerup-method-49 () none)
+    (net-powerup-method-50 () none)
+    (net-powerup-method-51 () none)
+    (net-powerup-method-52 () none)
+    (net-powerup-method-53 () none)
+    (net-powerup-method-54 () none)
+    (net-powerup-method-55 () none)
+    )
+  )
+
+;; definition for method 3 of type net-powerup
+(defmethod inspect ((this net-powerup))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-nettable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tchild-proc: ~D~%" (-> this child-proc))
+  (format #t "~2Tdie-or-respawn-time: ~D~%" (-> this die-or-respawn-time))
+  (format #t "~2Ttouched-time: ~D~%" (-> this touched-time))
+  (format #t "~2Ttouched-by: ~D~%" (-> this touched-by))
+  (format #t "~2Tignore-frames: ~D~%" (-> this ignore-frames))
+  (format #t "~2Thash-id: ~D~%" (-> this hash-id))
+  (format #t "~2Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~2Tmotion-info: ~A~%" (-> this motion-info))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-powerup-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-powerup-init-remote net-powerup ((arg0 process))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as int arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-powerup
+(defmethod process-nettable-method-41 ((this net-powerup) (arg0 int))
+  (ppointer->process (process-spawn net-powerup :init net-powerup-init-remote arg0 :name "net-powerup"))
+  )
+
+;; definition for method 37 of type net-powerup
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-powerup) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'picked-up)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-powerup*, type (array symbol)
+(define *msg-map-net-powerup* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-powerup*, type net-process-class-info
+(define *net-process-class-info-net-powerup* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-powerup* msg-map) *msg-map-net-powerup*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-powerup *net-process-class-info-net-powerup*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-powerup* owner-type) net-powerup)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-powerup*)
+
+;; definition for method 40 of type net-powerup
+(defmethod process-nettable-method-40 ((this net-powerup))
+  *net-process-class-info-net-powerup*
+  )
+
+;; definition of type powerup-draw
+(deftype powerup-draw (process-drawable)
+  ((parent-proc  uint64)
+   (glow-sound   basic)
+   (part-time    int32)
+   )
+  (:state-methods
+    TODO
+    )
+  (:methods
+    (powerup-draw-method-51 () none)
+    (powerup-draw-method-52 () none)
+    (powerup-draw-method-53 () none)
+    (powerup-draw-method-54 () none)
+    (powerup-draw-method-55 () none)
+    (powerup-draw-method-56 () none)
+    )
+  )
+
+;; definition for method 3 of type powerup-draw
+(defmethod inspect ((this powerup-draw))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tparent-proc: ~D~%" (-> this parent-proc))
+  (format #t "~2Tglow-sound: ~A~%" (-> this glow-sound))
+  (format #t "~2Tpart-time: ~D~%" (-> this part-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function powerup-draw-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior powerup-draw-init-by-other powerup-draw ((arg0 process) (arg1 vector) (arg2 process))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (if arg2
+        (set! (-> self level) (the-as level (-> arg2 brother 4)))
+        (art-group-get-by-name *level* (-> arg0 name) (&-> self level))
+        )
+    (set! (-> s5-0 quad) (-> arg1 quad))
+    )
+  (set! (-> self parent-proc) (the-as uint (process->handle arg0)))
+  (stack-size-set! (-> self main-thread) 32)
+  ((method-of-object self powerup-draw-method-53))
+  (go-virtual TODO)
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

@@ -7,3 +7,278 @@
 
 ;; DECOMP BEGINS
 
+(defun attack-mode-is-invinc ((arg0 symbol) (arg1 symbol))
+  (case arg1
+    (('dark-eco-pool
+       'endlessfall
+       'melt
+       'lava
+       'fry
+       'slime
+       'bot
+       'instant-death
+       'grenade
+       'drill-mech-master
+       'centipede
+       'drown-death
+       'crush
+       'death
+       'tentacle
+       )
+     #t
+     )
+    )
+  )
+
+(defbehavior target-generic-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object) (a0-25 level-load-info) (a0-32 level-load-info))
+  (case arg2
+    (('get-pickup)
+     (when (not (focus-test? self dead))
+       (let ((s4-0 (-> arg3 param 0))
+             (f28-0 (the-as float (-> arg3 param 1)))
+             )
+         (if (!= (pickup-collectable! (-> self fact) (the-as pickup-type s4-0) 0.0 (the-as handle #f))
+                 (pickup-collectable! (-> self fact) (the-as pickup-type s4-0) f28-0 (process->handle arg0))
+                 )
+             #t
+             'full
+             )
+         )
+       )
+     )
+    (('test-pickup)
+     (let ((a1-6 (-> arg3 param 0)))
+       (pickup-collectable! (-> self fact) (the-as pickup-type a1-6) 0.0 (the-as handle #f))
+       )
+     )
+    (('reset-pickup)
+     (reset! (-> self fact) (the-as symbol (-> arg3 param 0)))
+     )
+    (('level-deactivate)
+     (cond
+       ((and (focus-test? self pilot)
+             (let ((a0-15 (lookup-level-info (the-as symbol (-> arg3 param 0)))))
+               (or (and a0-15 (logtest? (-> a0-15 level-flags) (level-flags end-mode))) (= (-> arg3 param 0) 'desliz))
+               )
+             )
+        (set! (-> self skel top-anim interp) 0.0)
+        (let ((v1-23 (get-channel (-> self skel top-anim) 0)))
+          (if v1-23
+              (set! (-> v1-23 frame-interp 1) 0.0)
+              )
+          )
+        (update (-> self skel top-anim))
+        (cond
+          ((focus-test? self teleporting)
+           #f
+           )
+          ((focus-test? self grabbed)
+           #f
+           )
+          (else
+            (set! (-> self event-hook) #f)
+            #f
+            )
+          )
+        )
+       ((and (focus-test? self flut)
+             (begin (set! a0-25 (lookup-level-info (the-as symbol (-> arg3 param 0)))) a0-25)
+             (logtest? (-> a0-25 level-flags) (level-flags flut))
+             )
+        (ja-channel-set! 0)
+        (when (not (focus-test? self grabbed teleporting))
+          (set! (-> self event-hook) #f)
+          #f
+          )
+        )
+       ((and (focus-test? self mech)
+             (begin (set! a0-32 (lookup-level-info (the-as symbol (-> arg3 param 0)))) a0-32)
+             (logtest? (-> a0-32 level-flags) (level-flags low-res-hfrag))
+             )
+        (ja-channel-set! 0)
+        (when (not (focus-test? self grabbed teleporting))
+          (set! (-> self event-hook) #f)
+          #f
+          )
+        )
+       )
+     )
+    (('level-enter)
+     (let ((v1-45 (level-get *level* (the-as symbol (-> arg3 param 0)))))
+       (when v1-45
+         (-> v1-45 info)
+         (update-task-masks 'level)
+         (format #t "GAMEPLAY: enter ~A~%" (-> arg3 param 0))
+         )
+       )
+     )
+    (('continue)
+     (when (not (focus-test? self dead))
+       (logior! (-> self focus-status) (focus-status teleporting))
+       enter-state
+       (-> arg3 param 0)
+       (go target-continue)
+       )
+     )
+    (('release)
+     #f
+     )
+    (('trans)
+     (case (-> arg3 param 0)
+       (('save)
+        (set! (-> self alt-cam-pos quad) (-> self control trans quad))
+        (logior! (-> self state-flags) (state-flags sf12))
+        (mem-copy! (the-as pointer (-> arg3 param 1)) (the-as pointer (-> self control trans)) 48)
+        )
+       (('restore)
+        (logclear! (-> self state-flags) (state-flags sf12))
+        (let ((gp-1 (-> arg3 param 1)))
+          (move-to-point! (-> self control) (the-as vector (+ gp-1 0)))
+          (quaternion-copy! (the-as quaternion (-> self control rot)) (the-as quaternion (+ gp-1 16)))
+          )
+        (rot->dir-targ! (-> self control))
+        (set! v0-0 (logior (-> self control status) 7))
+        (set! (-> self control status) (the-as uint v0-0))
+        v0-0
+        )
+       (('reset)
+        (set! v0-0 (logclear (-> self state-flags) (state-flags sf12)))
+        (set! (-> self state-flags) (the-as state-flags v0-0))
+        v0-0
+        )
+       )
+     )
+    (('touched)
+     (send-event arg0 'touch (-> arg3 param 0))
+     )
+    (('no-load-wait)
+     (set! v0-0 (+ (current-time) (the-as time-frame (-> arg3 param 0))))
+     (set! (-> self no-load-wait) (the-as uint v0-0))
+     v0-0
+     )
+    (('change-state)
+     (go
+       (the-as (state object object object object target) (-> arg3 param 0))
+       (-> arg3 param 1)
+       (-> arg3 param 2)
+       (-> arg3 param 3)
+       (-> arg3 param 4)
+       )
+     )
+    (('kill-vehicle)
+     (send-event (handle->process (-> self vehicle)) 'go 'die)
+     )
+    (('get-notify)
+     (set! v0-0 (process->handle (the-as process (-> arg3 param 0))))
+     (set! (-> self notify) (the-as uint v0-0))
+     v0-0
+     )
+    )
+  )
+
+(defbehavior target-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('attack 'attack-or-shove 'attack-invinc)
+     #f
+     )
+    (('launch)
+     (let ((v0-0 (the-as object (-> self control transv))))
+       (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> arg3 param 3)) quad))
+       v0-0
+       )
+     )
+    (('loading)
+     (if (not (or (logtest? (-> self state-flags) (state-flags sf1))
+                  (focus-test? self dead dangerous hit grabbed in-head edge-grab pole flut tube board pilot mech)
+                  (>= (the-as time-frame (-> self no-load-wait)) (current-time))
+                  )
+              )
+         (go target-load-wait)
+         )
+     )
+    (('gun-combo)
+     #t
+     )
+    (('change-mode)
+     (case (-> arg3 param 0)
+       (('pilot 'pilot-race 'pilot-daxter 'pilot-race-daxter)
+        (let ((s5-0 (the-as object (-> arg3 param 1))))
+          (when (not (the-as uint s5-0))
+            (let ((s4-0 (new 'stack 'vehicle-spawn-params)))
+              (set! (-> s4-0 behavior) (the-as uint 4))
+              (set! (-> s4-0 nav-mesh) #f)
+              (set! (-> s4-0 proc) #f)
+              (set! (-> s4-0 handle) (the-as uint #f))
+              (set! (-> s4-0 user-data) (the-as uint 0))
+              (set! (-> s4-0 flags) (the-as uint 3))
+              (set! (-> s4-0 entity) #f)
+              (set! (-> s4-0 player-id) (+ (view-get-active-index) (* (if *net-mgr*
+                                                                          (-> *net-mgr* game-state local-machine-idx)
+                                                                          0
+                                                                          )
+                                                                      2
+                                                                      )
+                                           )
+                    )
+              (set! (-> s4-0 velocity quad) (-> (the-as vector (-> arg3 param 3)) quad))
+              (set! (-> s4-0 position quad) (-> self control trans quad))
+              (quaternion-copy! (-> s4-0 rotation) (the-as quaternion (-> self control rot)))
+              (set! (-> s4-0 level-slot) 6)
+              (set! (-> s4-0 driver-slot) 12)
+              (set! (-> s4-0 driver-type) (driver-type d-jak))
+              (set! (-> s4-0 impact-callback) #f)
+              (let ((v1-26 (vehicle-spawn (the-as vehicle-type (-> arg3 param 2)) s4-0)))
+                (if v1-26
+                    (set! s5-0 v1-26)
+                    )
+                )
+              )
+            )
+          (when s5-0
+            enter-state
+            (process->handle s5-0)
+            (go target-pilot-start)
+            )
+          )
+        )
+       (('normal)
+        #f
+        )
+       )
+     )
+    (('end-mode)
+     #f
+     )
+    (else
+      (target-generic-event-handler arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defbehavior target-jump-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (target-standard-event-handler arg0 arg1 arg2 arg3)
+  )
+
+(defbehavior target-exit target ()
+  (logclear! (-> self state-flags) (state-flags sf1 sf5 sf13 sf14 sf15 sf19 sf20 sf21 sf22))
+  (logclear! (-> self focus-status) (focus-status hit grabbed in-head teleporting))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (function none) vs none.
+(defbehavior target-state-hook-exit target ()
+  (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
+  (none)
+  )
+
+;; WARN: Return type mismatch state-flags vs none.
+(defbehavior target-effect-exit target ()
+  (let ((v1-1 (-> self skel effect)))
+    (set! (-> v1-1 channel-offset) 0)
+    )
+  0
+  (logclear! (-> self state-flags) (state-flags sf19 sf20 sf21 sf22))
+  (none)
+  )
