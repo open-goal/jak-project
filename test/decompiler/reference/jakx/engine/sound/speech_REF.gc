@@ -1,0 +1,596 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *test-speech-info*, type speech-info
+(define *test-speech-info* (new 'static 'speech-info :list (new 'static 'boxed-array :type speech-info-item
+                                                             (new 'static 'speech-info-item :name "jak101")
+                                                             (new 'static 'speech-info-item :name "jak102")
+                                                             (new 'static 'speech-info-item :name "jak103")
+                                                             (new 'static 'speech-info-item :name "jak104")
+                                                             (new 'static 'speech-info-item :name "jak105")
+                                                             (new 'static 'speech-info-item :name "jak106")
+                                                             (new 'static 'speech-info-item :name "jak107")
+                                                             (new 'static 'speech-info-item :name "jak108")
+                                                             (new 'static 'speech-info-item :name "jak109")
+                                                             )
+                                                     )
+        )
+
+;; definition for method 9 of type speech-info
+(defmethod play ((this speech-info) (arg0 int) (arg1 gui-channel) (arg2 symbol))
+  (with-pp
+    (let ((gp-0 (new 'static 'sound-id)))
+      (when (and (or (not (logtest? (-> this list arg0 flags) (speech-info-item-flag sii0))) (= *game-mode* 'adventure))
+                 (or (not (logtest? (-> this list arg0 flags) (speech-info-item-flag sii1))) arg2)
+                 )
+        (set! gp-0 (add-process *gui-control* pp arg1 (gui-action play) (-> this list arg0 name) -99.0 0))
+        (sound-params-set! *gui-control* gp-0 #f -1.0 -1.0 1.0 (-> *setting-control* user-current talker-volume) #t)
+        (when (!= (-> *setting-control* user-current dialog-volume) 0.0)
+          (if (< *music-volume-during-speech* (-> *setting-control* user-target music-volume))
+              (set-setting! 'music-volume 'rel *music-volume-during-speech* 0)
+              )
+          (if (< *sfx-volume-during-speech* (-> *setting-control* user-target sfx-volume))
+              (set-setting! 'sfx-volume 'rel *sfx-volume-during-speech* 0)
+              )
+          )
+        )
+      gp-0
+      )
+    )
+  )
+
+;; definition for method 10 of type speech-info
+(defmethod speech-info-method-10 ((this speech-info) (arg0 string) (arg1 gui-channel))
+  (let ((s2-0 0)
+        (gp-0 (new 'static 'sound-id))
+        )
+    (let* ((s1-0 (-> this list allocated-length))
+           (s0-0 0)
+           (v1-3 (-> this list s0-0))
+           )
+      (while (< s0-0 s1-0)
+        (when (string= arg0 (-> v1-3 name))
+          (format 0 "speech: playing speech ~S~%" arg0)
+          (set! gp-0 (play this s2-0 arg1 #f))
+          )
+        (+! s2-0 1)
+        (+! s0-0 1)
+        (set! v1-3 (-> this list s0-0))
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 11 of type speech-info
+;; WARN: Return type mismatch int vs sound-id.
+(defmethod speech-info-method-11 ((this speech-info) (arg0 gui-channel) (arg1 symbol))
+  (let* ((gp-0 (-> this list))
+         (s3-0 (-> gp-0 length))
+         (s5-0 (mod (the-as int (rand-uint31-gen *random-generator*)) s3-0))
+         (v0-1 0)
+         )
+    (when (> s3-0 0)
+      (set! v0-1 (the-as int (play this s5-0 arg0 arg1)))
+      (let* ((v1-2 (+ s3-0 -1))
+             (a0-5 (-> gp-0 s5-0))
+             (a1-4 (-> gp-0 v1-2))
+             )
+        (cond
+          ((and (zero? v1-2) (not (logtest? (-> this flags) (speech-info-flag si0))))
+           (set! (-> gp-0 length) (-> gp-0 allocated-length))
+           )
+          (else
+            (set! (-> gp-0 s5-0) a1-4)
+            (set! (-> gp-0 v1-2) a0-5)
+            (set! (-> gp-0 length) v1-2)
+            )
+          )
+        )
+      )
+    (the-as sound-id v0-1)
+    )
+  )
+
+;; definition for method 12 of type speech-info
+;; WARN: Return type mismatch int vs none.
+(defmethod set-list-len! ((this speech-info))
+  (set! (-> this list length) (-> this list allocated-length))
+  0
+  (none)
+  )
+
+;; definition for method 9 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this speech-channel))
+  (set! (-> this gui-channel) (gui-channel speech))
+  (set! (-> this id) (new 'static 'sound-id))
+  (set! (-> this current-request) #f)
+  (set! (-> this requests) (new 'global 'boxed-array speech-request 3))
+  (set! (-> this requests length) 0)
+  (let ((s5-0 0)
+        (s4-0 (-> this requests allocated-length))
+        (s3-0 0)
+        )
+    (-> this requests s3-0)
+    (while (< s3-0 s4-0)
+      (let ((v0-1 (new 'global 'speech-request)))
+        (set! (-> this requests s5-0) v0-1)
+        (let ((v1-10 v0-1))
+          (set! (-> v1-10 handle) (the-as handle #f))
+          (set! (-> v1-10 name) #f)
+          )
+        )
+      (+! s5-0 1)
+      (+! s3-0 1)
+      (-> this requests s3-0)
+      )
+    )
+  (let ((v1-16 (-> this speeches)))
+    (dotimes (a0-6 31)
+      (set! (-> v1-16 a0-6) #f)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition (debug) for function speech-type->string
+(defun-debug speech-type->string ((arg0 speech-type))
+  (case arg0
+    (((speech-type passing))
+     "passing"
+     )
+    (((speech-type announce-race-start))
+     "announce-race-start"
+     )
+    (((speech-type boss-shooting))
+     "boss-shooting"
+     )
+    (((speech-type shooting))
+     "shooting"
+     )
+    (((speech-type announce-race-end))
+     "announce-race-end"
+     )
+    (((speech-type boss-taking-hits))
+     "boss-taking-hits"
+     )
+    (((speech-type frustrated))
+     "frustrated"
+     )
+    (((speech-type event-start))
+     "event-start"
+     )
+    (((speech-type boss-start))
+     "boss-start"
+     )
+    (((speech-type bumping))
+     "bumping"
+     )
+    (((speech-type boss-taunt))
+     "boss-taunt"
+     )
+    (((speech-type boss-kill))
+     "boss-kill"
+     )
+    (((speech-type collecting))
+     "collecting"
+     )
+    (((speech-type taking-hits))
+     "taking-hits"
+     )
+    (((speech-type race-start))
+     "race-start"
+     )
+    (((speech-type race-finish-lose))
+     "race-finish-lose"
+     )
+    (((speech-type deathmatch-finish-win))
+     "deathmatch-finish-win"
+     )
+    (((speech-type boss-support))
+     "boss-support"
+     )
+    (((speech-type hangtime))
+     "hangtime"
+     )
+    (((speech-type lap-count-1))
+     "lap-count-1"
+     )
+    (((speech-type announce-crash))
+     "announce-crash"
+     )
+    (((speech-type none))
+     "none"
+     )
+    (((speech-type lap-count-last))
+     "lap-count-last"
+     )
+    (((speech-type crashing))
+     "crashing"
+     )
+    (((speech-type boss-falling-behind))
+     "boss-falling-behind"
+     )
+    (((speech-type announce-race-go))
+     "announce-race-go"
+     )
+    (((speech-type lap-count))
+     "lap-count"
+     )
+    (((speech-type boss-catching-up))
+     "boss-catching-up"
+     )
+    (((speech-type deathmatch-finish-lose))
+     "deathmatch-finish-lose"
+     )
+    (((speech-type race-finish-win))
+     "race-finish-win"
+     )
+    (((speech-type boss-bumping))
+     "boss-bumping"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition (debug) for function gui-status->string
+(defun-debug gui-status->string ((arg0 gui-status))
+  (case arg0
+    (((gui-status ready))
+     "ready"
+     )
+    (((gui-status active))
+     "active"
+     )
+    (((gui-status stop))
+     "stop"
+     )
+    (((gui-status unknown))
+     "unknown"
+     )
+    (((gui-status hide))
+     "hide"
+     )
+    (((gui-status pending))
+     "pending"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition for method 10 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-channel-method-10 ((this speech-channel))
+  (set-time! (-> this time))
+  (logclear! (-> this flags) (speech-channel-flag disable))
+  (if (or (not (-> *setting-control* user-current speech-control))
+          (level-group-method-28 *level*)
+          (not (handle-command-list *gui-control* (-> this gui-channel) (the-as gui-connection #f)))
+          )
+      (logior! (-> this flags) (speech-channel-flag disable))
+      )
+  (let ((s5-0 (-> this current-request))
+        (v1-15 (-> this requests length))
+        )
+    (cond
+      (s5-0
+        (cond
+          ((nonzero? (-> this id))
+           (cond
+             ((not (handle->process (-> s5-0 handle)))
+              (set-action!
+                *gui-control*
+                (gui-action stop)
+                (-> this id)
+                (gui-channel none)
+                (gui-action none)
+                (the-as string #f)
+                (the-as (function gui-connection symbol) #f)
+                (the-as process #f)
+                )
+              (set! (-> this id) (new 'static 'sound-id))
+              (set! (-> this current-request) #f)
+              (remove-setting! 'music-volume)
+              (remove-setting! 'sfx-volume)
+              )
+             (else
+               (case (get-status *gui-control* (-> this id))
+                 (((gui-status active))
+                  (sound-params-set!
+                    *gui-control*
+                    (-> this id)
+                    #t
+                    -1.0
+                    -1.0
+                    1.0
+                    (-> *setting-control* user-current talker-volume)
+                    #t
+                    )
+                  )
+                 (((gui-status pending))
+                  (when (time-elapsed? (-> s5-0 start-time) (-> s5-0 max-delay))
+                    (set-action!
+                      *gui-control*
+                      (gui-action stop)
+                      (-> this id)
+                      (gui-channel none)
+                      (gui-action none)
+                      (the-as string #f)
+                      (the-as (function gui-connection symbol) #f)
+                      (the-as process #f)
+                      )
+                    (set! (-> this id) (new 'static 'sound-id))
+                    (set! (-> this current-request) #f)
+                    (remove-setting! 'music-volume)
+                    (remove-setting! 'sfx-volume)
+                    )
+                  )
+                 (((gui-status unknown))
+                  (set! (-> this id) (new 'static 'sound-id))
+                  (set! (-> this current-request) #f)
+                  (remove-setting! 'music-volume)
+                  (remove-setting! 'sfx-volume)
+                  )
+                 )
+               )
+             )
+           )
+          (else
+            (set! (-> this current-request) #f)
+            (remove-setting! 'music-volume)
+            (remove-setting! 'sfx-volume)
+            )
+          )
+        )
+      ((and (not (logtest? (-> this flags) (speech-channel-flag disable))) (nonzero? v1-15))
+       (set! (-> this current-request) (-> this requests (+ v1-15 -1)))
+       (let ((s5-1 (-> this current-request)))
+         (+! (-> this requests length) -1)
+         (let ((s4-0 (- (-> this time) (-> s5-1 req-time)))
+               (s3-0 (handle->process (-> s5-1 handle)))
+               )
+           (let ((s2-0 s3-0))
+             (if (type? s2-0 process-drawable)
+                 (empty)
+                 )
+             )
+           (cond
+             ((or (not s3-0) (< (-> s5-1 max-delay) s4-0))
+              (format 0 "WARNING: speech: dropping request for speech ~S.~%" (-> s5-1 name))
+              )
+             ((begin (set-time! (-> s5-1 start-time)) (logtest? (-> s5-1 flags) (speech-request-flag srf0)))
+              (set! (-> this id) (speech-info-method-11
+                                   (-> this speeches (-> s5-1 speech-type))
+                                   (-> this gui-channel)
+                                   (logtest? (-> s5-1 flags) (speech-request-flag srf1))
+                                   )
+                    )
+              )
+             (else
+               (set! (-> this id)
+                     (speech-info-method-10 (-> this speeches (-> s5-1 speech-type)) (-> s5-1 name) (-> this gui-channel))
+                     )
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-channel-method-11 ((this speech-channel) (arg0 process) (arg1 speech-type) (arg2 string) (arg3 symbol) (arg4 time-frame))
+  (cond
+    ((-> this speeches arg1)
+     (let* ((v1-3 (-> this requests))
+            (a0-1 (-> v1-3 length))
+            )
+       (cond
+         ((< a0-1 (-> v1-3 allocated-length))
+          (let ((a0-4 (-> v1-3 a0-1)))
+            (set! (-> a0-4 handle) (process->handle arg0))
+            (set-time! (-> a0-4 req-time))
+            (set! (-> a0-4 max-delay) arg4)
+            (set! (-> a0-4 speech-type) arg1)
+            (set! (-> a0-4 name) arg2)
+            (cond
+              ((not arg2)
+               (logior! (-> a0-4 flags) (speech-request-flag srf0))
+               (if arg3
+                   (logior! (-> a0-4 flags) (speech-request-flag srf1))
+                   (logclear! (-> a0-4 flags) (speech-request-flag srf1))
+                   )
+               )
+              (else
+                (logclear! (-> a0-4 flags) (speech-request-flag srf0))
+                )
+              )
+            )
+          (+! (-> v1-3 length) 1)
+          )
+         (else
+           (format 0 "WARNING: speech: not playing ~S because there are too many speech-requests.~%" arg2)
+           )
+         )
+       )
+     )
+    (else
+      (format
+        0
+        "WARNING: speech: not playing ~S because there are no speeches registered for speech-type '~S'.~%"
+        (if arg2
+            arg2
+            "random speech"
+            )
+        (speech-type->string arg1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type speech-channel
+;; WARN: Return type mismatch none vs object.
+(defmethod speech-channel-method-16 ((this speech-channel) (arg0 int))
+  (let ((a0-1 (-> this speeches arg0)))
+    (if a0-1
+        (set-list-len! a0-1)
+        )
+    )
+  )
+
+;; definition for method 12 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-channel-method-12 ((this speech-channel) (arg0 symbol) (arg1 symbol))
+  (when (or arg1 (= arg0 (handle->process (-> this current-request handle))))
+    (if (nonzero? (-> this id))
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> this id)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+    (set! (-> this id) (new 'static 'sound-id))
+    (set! (-> this current-request) #f)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! ((this speech-channel))
+  (set! (-> this requests length) 0)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type speech-channel
+(defmethod get-len ((this speech-channel) (arg0 int))
+  (let ((v1-2 (-> this speeches arg0)))
+    (if v1-2
+        (-> v1-2 list allocated-length)
+        0
+        )
+    )
+  )
+
+;; definition for method 15 of type speech-channel
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-channel-method-15 ((this speech-channel) (arg0 kheap))
+  (let ((v1-0 (-> arg0 base))
+        (a1-1 (-> arg0 top-base))
+        )
+    (dotimes (a2-0 31)
+      (let ((a3-2 (-> this speeches a2-0)))
+        (when a3-2
+          (if (and (>= (the-as uint (-> a3-2 list)) (the-as uint v1-0))
+                   (>= (the-as uint a1-1) (the-as uint (-> a3-2 list)))
+                   )
+              (set! (-> this speeches a2-0) #f)
+              )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this speech-control))
+  (dotimes (s5-0 22)
+    (init! (-> this channels s5-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-control-method-10 ((this speech-control))
+  (dotimes (s5-0 22)
+    (speech-channel-method-10 (-> this channels s5-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod play-on-channel ((this speech-control)
+                           (arg0 process)
+                           (arg1 uint)
+                           (arg2 speech-type)
+                           (arg3 string)
+                           (arg4 symbol)
+                           (arg5 time-frame)
+                           )
+  (speech-channel-method-11 (-> this channels arg1) arg0 arg2 arg3 arg4 arg5)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type speech-control
+(defmethod speech-control-method-16 ((this speech-control) (arg0 int) (arg1 int))
+  (speech-channel-method-16 (-> this channels (the-as uint arg0)) arg1)
+  )
+
+;; definition for method 12 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-control-method-12 ((this speech-control) (arg0 symbol) (arg1 symbol))
+  (dotimes (s3-0 22)
+    (speech-channel-method-12 (-> this channels s3-0) arg0 arg1)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod speech-control-method-13 ((this speech-control))
+  (speech-control-method-12 this #f #t)
+  (dotimes (s5-0 22)
+    (reset! (-> this channels s5-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type speech-control
+(defmethod get-channel-len ((this speech-control) (arg0 int) (arg1 int))
+  (get-len (-> this channels (the-as uint arg0)) arg1)
+  )
+
+;; definition for method 15 of type speech-control
+;; WARN: Return type mismatch int vs none.
+(defmethod reset ((this speech-control) (arg0 kheap))
+  (dotimes (s4-0 22)
+    (speech-channel-method-15 (-> this channels s4-0) arg0)
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *speech-control*, type speech-control
+(define *speech-control* (new 'static 'speech-control))
+
+;; failed to figure out what this is:
+(init! *speech-control*)

@@ -332,8 +332,8 @@
 ;; definition for function setup-slave-for-hopefull
 (defun setup-slave-for-hopefull ((arg0 camera-slave))
   (when (= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-    (cam-calc-follow! (-> arg0 tracking) (the-as vector (-> arg0 stack)) #f)
-    (slave-set-rotation! (-> arg0 tracking) (the-as vector (-> arg0 stack)) (-> arg0 options) (-> arg0 fov) #f)
+    (cam-calc-follow! (-> arg0 tracking) (-> arg0 trans) #f)
+    (slave-set-rotation! (-> arg0 tracking) (-> arg0 trans) (-> arg0 options) (-> arg0 fov) #f)
     )
   (none)
   )
@@ -371,7 +371,7 @@
                 )
             )
           (else
-            (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (-> s5-0 unknown))
+            (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (-> s5-0 name))
             )
           )
         (let* ((sv-96 (new 'static 'res-tag))
@@ -453,7 +453,7 @@
                               )
                             )
                           (else
-                            (format 0 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%" (-> sv-144 unknown))
+                            (format 0 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%" (-> sv-144 name))
                             )
                           )
                         )
@@ -463,7 +463,7 @@
                         0
                         "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
                         (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))
-                        (-> s5-0 unknown)
+                        (-> s5-0 name)
                         )
                       )
                     )
@@ -634,7 +634,7 @@
                (deactivate (-> self slave 0))
                (set! (-> self slave) (the-as (pointer camera-slave) #f))
                )
-             (set! (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad)
+             (set! (-> (the-as vector (-> (view-get-active-camera-combiner) trans)) quad)
                    (-> (the-as matrix gp-1) rvec quad)
                    )
              (quaternion->matrix
@@ -653,13 +653,13 @@
              (deactivate (-> self slave 0))
              (set! (-> self slave) (the-as (pointer camera-slave) #f))
              )
-           (set! (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad) (-> *camera-other-trans* quad))
+           (set! (-> (the-as vector (-> (view-get-active-camera-combiner) trans)) quad) (-> *camera-other-trans* quad))
            (vector-! gp-2 (-> self tpos-curr-adj) *camera-other-trans*)
            (vector-normalize! gp-2 1.0)
            (forward-down->inv-matrix
              (-> (view-get-active-camera-combiner) inv-camera-rot)
              gp-2
-             (new 'static 'vector :data (new 'static 'array float 4 0.0 -1.0 0.0 0.0))
+             (new 'static 'vector :y -1.0)
              )
            )
          (send-event self 'teleport)
@@ -674,13 +674,13 @@
                (deactivate (-> self slave 0))
                (set! (-> self slave) (the-as (pointer camera-slave) #f))
                )
-             (set! (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad) (-> (the-as vector s5-2) quad))
+             (set! (-> (the-as vector (-> (view-get-active-camera-combiner) trans)) quad) (-> (the-as vector s5-2) quad))
              (vector-! gp-3 (-> self tpos-curr-adj) (the-as vector s5-2))
              (vector-normalize! gp-3 1.0)
              (forward-down->inv-matrix
                (-> (view-get-active-camera-combiner) inv-camera-rot)
                gp-3
-               (new 'static 'vector :data (new 'static 'array float 4 0.0 -1.0 0.0 0.0))
+               (new 'static 'vector :y -1.0)
                )
              )
            (send-event self 'teleport)
