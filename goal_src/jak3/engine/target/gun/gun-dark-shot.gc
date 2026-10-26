@@ -1306,12 +1306,8 @@
                 (vector-float*! gp-6 gp-6 -1.0)
                 (vector-float*! s5-1 s5-1 -1.0)
                 )
-              (vector+! (the-as vector (+ (the-as uint (-> self strip data 0 pos)) (* v1-152 32))) s5-1 gp-6)
-              (vector+!
-                (the-as vector (+ (the-as uint (-> self strip data 0 pos)) (* v1-152 32)))
-                (the-as vector (+ (the-as uint (-> self strip data 0 pos)) (* v1-152 32)))
-                (-> self mushroom-top-pos)
-                )
+              (vector+! (-> self strip data v1-152 pos) s5-1 gp-6)
+              (vector+! (-> self strip data v1-152 pos) (-> self strip data v1-152 pos) (-> self mushroom-top-pos))
               (set! (-> self strip data v1-152 stq z) 0.0)
               (set! (-> self strip data v1-152 col) *color-gray*)
               (set! (-> self strip data v1-152 col a) (the int (* 127.0 f30-0)))
@@ -3121,7 +3117,7 @@
            (f30-0 (lerp-scale-clamp 0.0 1.0 f0-12 0.0 1.0))
            (s5-1 (new 'stack 'rgbaf))
            (s3-0 (new 'stack 'rgbaf))
-           (s4-1 0)
+           (s4-1 (new 'static 'rgba))
            )
       (cond
         ((or (= (level-status? *level* 'desert #f) 'active)
@@ -3137,19 +3133,20 @@
           )
         )
       (set! (-> s5-1 w) 0.25)
-      (let ((t1-0
-              (logior (logand (logior (logand (logior (logand (logior (logand s4-1 -256) (shr (shl (the int (* 127.5 (-> s5-1 x))) 56) 56)) -65281)
-                                                      (shr (shl (the int (* 127.5 (-> s5-1 y))) 56) 48)
-                                                      )
-                                              -16711681
-                                              )
-                                      (shr (shl (the int (* 127.5 (-> s5-1 z))) 56) 40)
-                                      )
-                              (the-as uint #xffffffff00ffffff)
-                              )
-                      (shr (shl (the int (* 127.5 (-> s5-1 w))) 56) 32)
+      (let ((t1-0 (copy-and-set-field
+                    (copy-and-set-field
+                      (copy-and-set-field
+                        (copy-and-set-field s4-1 r (the int (* 127.5 (-> s5-1 x))))
+                        g
+                        (the int (* 127.5 (-> s5-1 y)))
+                        )
+                      b
+                      (the int (* 127.5 (-> s5-1 z)))
                       )
-              )
+                    a
+                    (the int (* 127.5 (-> s5-1 w)))
+                    )
+                  )
             )
         (set-setting! 'highlight-color #f 0.0 t1-0)
         )
