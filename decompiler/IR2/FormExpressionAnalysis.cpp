@@ -2135,6 +2135,13 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
       bitfield_info =
           dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.get_bitfield_type()));
       ASSERT(bitfield_info);
+    } else if (arg0_reg_type.kind == TP_Type::Kind::TYPESPEC) {
+      // the variable isn't a bitfield, but it's cast to one here.
+      bitfield_info =
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.typespec()));
+      if (bitfield_info) {
+        bitfield_type = arg0_reg_type.typespec();
+      }
     }
   }
 
