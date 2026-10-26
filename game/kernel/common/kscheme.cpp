@@ -1,4 +1,5 @@
 #include "kscheme.h"
+
 #include "common/versions/versions.h"
 
 #include "game/kernel/common/fileio.h"
@@ -77,7 +78,7 @@ void init_crc_jakx() {
 u32 crc32(const u8* data, s32 size) {
   if (!Crc32_Initialized_W) {
     // Regardless of game version, only need to set up CRC table once.
-    if(g_game_version == GameVersion::JakX)
+    if (g_game_version == GameVersion::JakX)
       init_crc_jakx();
     else
       init_crc();
@@ -85,14 +86,12 @@ u32 crc32(const u8* data, s32 size) {
   }
 
   uint32_t crc;
-  if(g_game_version == GameVersion::JakX)
-  {
+  if (g_game_version == GameVersion::JakX) {
     crc = 0xffffffff;
     for (int i = size; i > 0; i--, data++) {
       crc = crc_table[crc & 0xff ^ (unsigned int)*data] ^ (crc >> 8);
     }
-  }
-  else{
+  } else {
     crc = 0;
     for (int i = size; i != 0; i--, data++) {
       crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);

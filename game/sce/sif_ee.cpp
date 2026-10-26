@@ -95,13 +95,12 @@ s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
 }
 
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
-  if(g_game_version != GameVersion::JakX){
+  if (g_game_version != GameVersion::JakX) {
     ASSERT(mode == 1);  // async
     bd->rpcd.id = request;
     bd->serve = (sceSifServeData*)1;
     return 0;
-  }
-  else{
+  } else {
     // TODO, fill in from Jak X ELF
     return -1;
   }
