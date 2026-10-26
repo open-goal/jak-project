@@ -32,31 +32,29 @@ void ClearPending() {
       }
       clear_print();
     }
-  } else {
-    if (ListenerStatus) {
-      if (OutputPending.offset != 0) {  // TODO: why is the loop gone here?
-        // note - same 64 kB patch as prints done here
-        char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
-        auto size = strlen(msg);
-        SendFromBuffer(msg, (s32)size);
-        clear_output();
-      }
+  } else if (ListenerStatus) {
+    if (OutputPending.offset != 0) {
+      // note - same 64 kB patch as prints done here
+      char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
+      auto size = strlen(msg);
+      SendFromBuffer(msg, (s32)size);
+      clear_output();
+    }
 
-      if (PrintPending.offset != 0) {
-        char* msg = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
-        auto size = strlen(msg);
-        while (size > 0) {
-          // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
-          auto send_size = size;
-          if (send_size > 64000) {
-            send_size = 64000;
-          }
-          SendFromBufferD(2, 0, msg, send_size);
-          size -= send_size;
-          msg += send_size;
+    if (PrintPending.offset != 0) {
+      char* msg = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
+      auto size = strlen(msg);
+      while (size > 0) {
+        // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
+        auto send_size = size;
+        if (send_size > 64000) {
+          send_size = 64000;
         }
-        clear_print();
+        SendFromBufferD(2, 0, msg, send_size);
+        size -= send_size;
+        msg += send_size;
       }
+      clear_print();
     }
   }
 }

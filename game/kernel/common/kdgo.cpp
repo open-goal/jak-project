@@ -21,6 +21,8 @@ u32 sMsgNum;                 //! Toggle for double buffered message sending.
 bool IOP_RUNNING_W;
 bool RPC_Initialized_G;
 
+typedef void EndFunctionType(int idk1, int idk2);
+
 const s32 NUMBER_OF_RPC_CHANNELS = 7;
 struct RpcCallEndFunctionArg_W {
   int sema_id;
@@ -37,7 +39,6 @@ struct RpcChannelIdPair_W {
 };
 RpcChannelIdPair_W RpcChannels_W[NUMBER_OF_RPC_CHANNEL_PAIRS];
 
-typedef void EndFunctionType(int idk1, int idk2);
 
 void kdgo_init_globals() {
   memset(x, 0, sizeof(x));
@@ -45,18 +46,18 @@ void kdgo_init_globals() {
   sShowStallMsg = 1;
 }
 
-int RpcCallEndFunction_W(long param_1) {
-  if (param_1 != 0) {
-    int* args = (int*)param_1;
-    if ((void*)(args[1]) != nullptr) {
-      ((EndFunctionType*)(args[1]))(args[2], args[3]);
-    }
+int RpcCallEndFunction_W(RpcCallEndFunctionArg_W *arg) {
+  if (arg != nullptr) {
+    //int* args = (int*)arg;
+    if(arg->callback)
+      ((EndFunctionType*)arg->callback)(arg->third, arg->fourth);
     // FIXME: What to do with this?
-    // return iSignalSema(*args);
+    //return iSignalSema(arg->sema_id);
     return 0;
   } else {
-    int in_v0_lo;
-    return in_v0_lo;
+    //int in_v0_lo; My guess is that this code was meant to be unreachable
+    //return in_v0_lo;
+    return -1;
   }
 }
 
