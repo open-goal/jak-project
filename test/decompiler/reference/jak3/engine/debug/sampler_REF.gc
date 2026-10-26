@@ -14,7 +14,25 @@
 (define *sampler-count* 0)
 
 ;; definition (debug) for function timer0-handler
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Interrupt handler
+;; WARN: Return type mismatch int vs none.
+(defun-debug timer0-handler ((arg0 int) (arg1 int) (arg2 int))
+  (let* ((v1-0 arg2)
+         (v1-1 (logand #x3ffffff v1-0))
+         )
+    (when (< (the-as uint v1-1) (the-as uint #x2000000))
+      (let ((v1-4 (&+ *sampler-mem* (* (shr v1-1 3) 4))))
+        (+! (-> (the-as (pointer uint32) v1-4)) 1)
+        )
+      (set! *sampler-count* (+ *sampler-count* 1))
+      )
+    )
+  (set! (-> (the-as timer-bank #x10000000) mode)
+        (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+        )
+  0
+  (none)
+  )
 
 ;; failed to figure out what this is:
 (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
@@ -49,7 +67,3 @@
   0
   (none)
   )
-
-
-
-
