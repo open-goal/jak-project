@@ -1,8 +1,10 @@
 #include "kscheme.h"
+#include "common/versions/versions.h"
 
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
+#include "game/runtime.h"
 
 // total number of symbols in the table
 s32 NumSymbols;
@@ -44,13 +46,26 @@ void kscheme_init_globals_common() {
 }
 
 /*!
- * Initialize CRC Table.
+ * Initialize CRC Table for Jak 1, 2 and 3.
  */
 void init_crc() {
   for (u32 i = 0; i < 0x100; i++) {
+    u32 n = i << 24;
+    for (u32 j = 0; j < 8; j++) {
+      n = n & 0x80000000 ? (n << 1) ^ CRC_POLY : (n << 1);
+    }
+    crc_table[i] = n;
+  }
+}
+
+/*!
+ * Initialize CRC Table for JakX.
+ */
+void init_crc_jakx() {
+  for (u32 i = 0; i < 0x100; i++) {
     u32 n = i;
     for (u32 j = 0; j < 8; j++) {
-      n = (n & 1 != 0) ? (n >> 1) ^ REVERSED_CRC_POLY : (n >> 1);
+      n = ((n & 1) != 0) ? (n >> 1) ^ REVERSED_CRC_POLY : (n >> 1);
     }
     crc_table[i] = n;
   }
@@ -61,12 +76,27 @@ void init_crc() {
  */
 u32 crc32(const u8* data, s32 size) {
   if (!Crc32_Initialized_W) {
-    init_crc();
+    // Regardless of game version, only need to set up CRC table once.
+    if(g_game_version == GameVersion::JakX)
+      init_crc_jakx();
+    else
+      init_crc();
     Crc32_Initialized_W = true;
   }
-  uint32_t crc = 0xffffffff;
-  for (int i = size; i > 0; i--, data++) {
-    crc = crc_table[crc & 0xff ^ (unsigned int)*data] ^ (crc >> 8);
+
+  uint32_t crc;
+  if(g_game_version == GameVersion::JakX)
+  {
+    crc = 0xffffffff;
+    for (int i = size; i > 0; i--, data++) {
+      crc = crc_table[crc & 0xff ^ (unsigned int)*data] ^ (crc >> 8);
+    }
+  }
+  else{
+    crc = 0;
+    for (int i = size; i != 0; i--, data++) {
+      crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);
+    }
   }
 
   ASSERT(~crc);
