@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "common/log/log.h"
+#include "common/versions/versions.h"
 
 #include "game/common/dgo_rpc_types.h"
 #include "game/common/loader_rpc_types.h"
@@ -74,6 +75,12 @@ s32 RpcCall(s32 rpcChannel,
             void* recvBuff,
             s32 recvSize,
             void* callback) {
+
+  if(g_game_version != GameVersion::JakX){
+    return sceSifCallRpc(&cd[rpcChannel], fno, async, sendBuff, sendSize, recvBuff, recvSize, nullptr,
+                       nullptr);
+  }
+
   if (rpcChannel >= NUMBER_OF_RPC_CHANNELS) {
     MsgErr("dkernel: RpcCall() error; invalid port id %d\n", rpcChannel);
   } else if (sendSize >= 0xffff1) {
@@ -98,7 +105,7 @@ s32 RpcCall(s32 rpcChannel,
     RpcCallEndFunctionArgs_W[rpcChannel].fourth = 0;  // in_stack_00000008;
     RpcCallEndFunctionArgs_W[rpcChannel].third = 0;   // in_stack_00000000;
     return sceSifCallRpc(&cd[rpcChannel], fno, (int)async, sendBuff, sendSize, recvBuff, recvSize,
-                         (void*)RpcCallEndFunction_W, &RpcCallEndFunctionArgs_W[rpcChannel]);
+                        (void*)RpcCallEndFunction_W, &RpcCallEndFunctionArgs_W[rpcChannel]);
   }
   return -1;
 }
@@ -241,57 +248,85 @@ s32 RpcBind(s32 channel, s32 id) {
  * Setup all RPCs
  */
 s32 InitRPC() {
-  if (RPC_Initialized_G) {
-    MsgErr("dkernel: InitRPC() error; multiple initializations attempted");
-    return -1;
-  } else {
-    for (int i = 0; i < NUMBER_OF_RPC_CHANNELS; i++) {
-      RpcCallEndFunctionArgs_W[i].fourth = 0;
-      RpcCallEndFunctionArgs_W[i].sema_id = -1;
-      RpcCallEndFunctionArgs_W[i].callback = nullptr;
-      RpcCallEndFunctionArgs_W[i].third = 0;
-    }
-    for (int i = 0; i < NUMBER_OF_RPC_CHANNEL_PAIRS; i++) {
-      if (!RpcBind(RpcChannels_W[i].channel, RpcChannels_W[i].id)) {
-        return -1;
+  if(g_game_version == GameVersion::JakX)
+  {
+    if (RPC_Initialized_G) {
+      MsgErr("dkernel: InitRPC() error; multiple initializations attempted");
+      return -1;
+    } else {
+      for (int i = 0; i < NUMBER_OF_RPC_CHANNELS; i++) {
+        RpcCallEndFunctionArgs_W[i].fourth = 0;
+        RpcCallEndFunctionArgs_W[i].sema_id = -1;
+        RpcCallEndFunctionArgs_W[i].callback = nullptr;
+        RpcCallEndFunctionArgs_W[i].third = 0;
       }
+      for (int i = 0; i < NUMBER_OF_RPC_CHANNEL_PAIRS; i++) {
+        if (!RpcBind(RpcChannels_W[i].channel, RpcChannels_W[i].id)) {
+          return -1;
+        }
+      }
+      for (int i = 0; i < NUMBER_OF_RPC_CHANNELS; i++) {
+        // FIXME: What to do with this?
+        // ee_sema_t someSema;
+        // memset(&someSema, 0, 0x18); // MACRO
+        // someSema.init_count = 1;
+        // someSema.max_count = 1;
+        // int semaId = CreateSema(&someSema);
+        // RpcCallEndFunctionArgs_W[i].sema_id = semaId;
+        // if (semaId < 0) {
+        //   for (int j = i; j > 0; --j) {
+        //     DeleteSema(RpcCallEndFunctionArgs_W[j].sema_id);
+        //     RpcCallEndFunctionArgs_W[j].sema_id = -1;
+        //   }
+        //   return -1;
+        // }
+      }
+      RPC_Initialized_G = true;
     }
-    for (int i = 0; i < NUMBER_OF_RPC_CHANNELS; i++) {
-      // FIXME: What to do with this?
-      // ee_sema_t someSema;
-      // memset(&someSema, 0, 0x18); // MACRO
-      // someSema.init_count = 1;
-      // someSema.max_count = 1;
-      // int semaId = CreateSema(&someSema);
-      // RpcCallEndFunctionArgs_W[i].sema_id = semaId;
-      // if (semaId < 0) {
-      //   for (int j = i; j > 0; --j) {
-      //     DeleteSema(RpcCallEndFunctionArgs_W[j].sema_id);
-      //     RpcCallEndFunctionArgs_W[j].sema_id = -1;
-      //   }
-      //   return -1;
-      // }
-    }
-    RPC_Initialized_G = true;
-    return 0;
   }
+  else{
+    RpcBind(PLAYER_RPC_CHANNEL, PLAYER_RPC_ID[g_game_version]);
+    RpcBind(LOADER_RPC_CHANNEL, LOADER_RPC_ID[g_game_version]);
+    RpcBind(RAMDISK_RPC_CHANNEL, RAMDISK_RPC_ID[g_game_version]);
+    RpcBind(DGO_RPC_CHANNEL, DGO_RPC_ID[g_game_version]);
+    RpcBind(STR_RPC_CHANNEL, STR_RPC_ID[g_game_version]);
+    RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID[g_game_version]);
+  }
+  return 0;
 }
 
 /*!
  * Send a message to the IOP to stop it.
  */
-int StopIOP() {
+int StopIOPJakX() {
   if (Is_RPC_Initialized_G() && IOP_RUNNING_W) {
-    x[2] = 0x10;
-    x[3] = 0;  // todo - this type and message
+    //x[2] = 0x10;
+    //x[3] = 0;  // todo - this type and message
     //  RpcSync(1); // FIXME: PLAYER_RPC_CHANNEL at 1? Previously at 0.
     IOP_RUNNING_W = false;
     // return RpcCall(1, 0, false, x, 0x30, nullptr, 0);
     lg::print("IOP shut down\n");
-    return 0;
-  } else {
-    return 0;
   }
+  return 0;
+}
+
+
+/*!
+ * Send a message to the IOP to stop it.
+ */
+int StopIOP(){
+  if(g_game_version == GameVersion::JakX){
+    return StopIOPJakX();
+  }
+
+  //0x19 not 0x14 for Jak 3
+  //x[2] = 0x19;  // todo - this type and message
+  //  RpcSync(PLAYER_RPC_CHANNEL);
+  //  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
+  lg::print("IOP shut down\n");
+  //  sceDmaSync(0x10009000, 0, 0);
+  lg::print("DMA shut down\n");
+  return 0;
 }
 
 /*!

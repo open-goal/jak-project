@@ -57,14 +57,15 @@ void kmachine_init_globals_common() {
   ee_clock_timer = Timer();
 }
 
+
 /*!
  * Initialize the CD Drive
  */
-void InitCD() {
+void InitCDJakX() {
   if (cd_S_INITIALIZE_CD_W) {
     s32 result;
     while (true) {
-      strlen("dkernel: Initializing DVD drive...\n");  // FIXME: Why is there a strlen here?
+      //strlen("dkernel: Initializing DVD drive...\n");  // FIXME: Why is there a strlen here?
       printf("dkernel: Initializing DVD drive...\n");
       result = ee::sceCdInit(SCECdINIT);
       if (result != 0) {
@@ -75,6 +76,26 @@ void InitCD() {
     printf("dkernel: DVD drive initialized; result=%d\n", result);
   }
 }
+
+
+/*!
+ * Initialize the CD Drive
+ * DONE, EXACT
+ */
+void InitCD() {
+  if(g_game_version == GameVersion::JakX){
+    InitCDJakX();
+    return;
+  }
+  lg::info("Initializing CD drive. This may take a while...");
+  ee::sceCdInit(SCECdINIT);
+  ee::sceCdMmode(SCECdDVD);
+  while (ee::sceCdDiskReady(0) == SCECdNotReady) {
+    lg::debug("Drive not ready... insert a disk!");
+  }
+  lg::debug("Disk type {}\n", ee::sceCdGetDiskType());
+}
+
 
 /*!
  * Initialize the GS and display the splash screen.
