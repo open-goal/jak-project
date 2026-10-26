@@ -6480,6 +6480,21 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
 namespace {
 
+bool is_zero_extended_32(const Env& env, const RegisterAccess& var) {
+  const auto& ops = env.func->ir2.atomic_ops->ops;
+  const auto& defs = env.get_use_def_info(var).defs;
+  if (defs.empty()) {
+    return false;
+  }
+  for (const auto& def : defs) {
+    auto load = dynamic_cast<const LoadVarOp*>(ops.at(def.op_id).get());
+    if (!load || load->kind() != LoadVarOp::Kind::UNSIGNED || load->size() > 4) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void push_asm_srl_to_stack(const AsmOp* op,
                            FormElement* form_elt,
                            const Env& env,
@@ -6516,6 +6531,19 @@ void push_asm_srl_to_stack(const AsmOp* op,
       auto other = as_ba->push_step(step, env.dts->ts, pool, env);
       ASSERT(other);  // should immediately get a field.
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                              env.get_variable_type(*dst, true));
+    } else if (integer > 0 && env.dts->ts.tc(TypeSpec("integer"), arg0_type)) {
+      // srl shifts the lower 32 bits, the result is always zero-extended.
+      Form* low = src_var;
+      if (!is_zero_extended_32(env, *var)) {
+        low = pool.form<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::LOGAND), src_var,
+            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(UINT32_MAX)));
+      }
+      auto shr = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::SHR), low,
+          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(integer)));
+      stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, shr), true,
                               env.get_variable_type(*dst, true));
     } else {
       stack.push_form_element(form_elt, true);
