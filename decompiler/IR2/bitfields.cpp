@@ -1,7 +1,5 @@
 #include "bitfields.h"
 
-#include <ranges>
-
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
 #include "common/util/BitUtils.h"
@@ -877,7 +875,8 @@ std::optional<std::vector<Form*>> masked_sets_to_logior_args(const BitFieldType*
   u64 dynamic_bits = 0;
   std::vector<Form*> dynamic_values;
   // innermost set first
-  for (auto& set : std::ranges::reverse_view(sets)) {
+  for (auto it = sets.rbegin(); it != sets.rend(); ++it) {
+    auto& set = *it;
     if (dynamic_bits & ~set.mask) {
       // clears a field we already set, not a static def.
       return std::nullopt;
