@@ -933,8 +933,13 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
           memcpy(&flt, &int_constant.value(), sizeof(float));
           if (proper_float(flt)) {
             result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
-            return;
+          } else if (frm->to_string(env) == "#x7f800000") {
+            auto cast = pool.alloc_element<CastElement>(TypeSpec("float"), frm);
+            env.func->warnings.warning("op {}: float inf {} moved to fpr", m_my_idx,
+                                       frm->to_string(env), cast->to_string(env));
+            result->push_back(cast);
           }
+          return;
         }
       }
       // converting something else to an FPR, put an expression around it.
