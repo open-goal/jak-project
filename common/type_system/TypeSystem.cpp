@@ -2201,9 +2201,8 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
           if (f_type && field.offset() + f_type->get_size_in_memory() > offset) {
             // struct that encompasses this field
             // simply search that structure for the field we want, offset by the field's offset
-            auto best_field_in_struct =
-                find_best_field_in_structure(ts, f_type, rel_offset % inline_stride,
-                                             requesting_field, want_fixed, 0);
+            auto best_field_in_struct = find_best_field_in_structure(
+                ts, f_type, rel_offset % inline_stride, requesting_field, want_fixed, 0);
             if (best_field_in_struct) {
               best_struct_field_deref = best_field_in_struct;
               best_struct_arr.first = &field;
