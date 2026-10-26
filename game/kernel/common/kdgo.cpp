@@ -12,6 +12,7 @@
 #include "game/common/str_rpc_types.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/kprint.h"
+#include "game/runtime.h"
 #include "game/sce/sif_ee.h"
 
 ee::sceSifClientData cd[6];  //! client data for each IOP Remove Procedure Call.
@@ -170,9 +171,10 @@ void RpcSync(s32 channel) {
 }
 
 /*!
- * Setup an RPC.
+ * Setup an RPC for Jak X
+ * Remains to be seen if the two ways to call rpc bind can be merged.
  */
-s32 RpcBind(s32 channel, s32 id) {
+s32 RpcBindJakX(s32 channel, s32 id) {
   if (channel < NUMBER_OF_RPC_CHANNELS) {
     bool displayedWarning = false;
     while (true) {
@@ -200,6 +202,39 @@ s32 RpcBind(s32 channel, s32 id) {
     MsgErr("dkernel: RpcBind() error; invalid port id %d\n", channel);
     return -1;
   }
+}
+
+s32 RpcBind(s32 channel, s32 id) {
+  if(g_game_version == GameVersion::JakX){
+    return RpcBindJakX(channel, id);
+  }
+
+  while (true) {
+    if (sceSifBindRpc(&cd[channel], id, 1) < 0) {
+      MsgErr("Error: RpcBind failed on port #%d [%4.4X]\n", channel, id);
+      return 1;
+    }
+    Msg(6, "kernel: RPC port #%d started [%4.4X]\n", channel, id);
+    //    FlushCache(0);
+    // In Jak 2 they do a sceSifCheckStatRpc, but we can just skip that.
+
+    // this was not optimized out in Jak 1, but is _almost_ optimized out in Jak 2 and later.
+    u32 i = 0;
+    while (i < 10000) {
+      i++;
+    }
+
+    if (cd[channel].serve) {
+      break;
+    }
+    Msg(6, "kernel: RPC port #%d not responding.\n", channel);
+    // it might seem like looping here is a bad idea (unclear if sceSifBindRpc can be called
+    // multiple times!) but this actually happens sometimes, at least on development hardware!
+    // (also, it's not clear that the "serve" field having data in it really means anything - maybe
+    // the sceSifBindRpc doesn't wait for the connection to be fully set up?  This seems likely
+    // because they had to put that little delay in there before checking.)
+  }
+  return 0;
 }
 
 /*!

@@ -6,6 +6,7 @@
 
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+#include "common/versions/versions.h"
 
 #include "game/runtime.h"
 #include "game/system/iop_thread.h"
@@ -94,10 +95,16 @@ s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
 }
 
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
-  ASSERT(mode == 1);  // async
-  bd->rpcd.id = request;
-  bd->serve = (sceSifServeData*)1;
-  return 0;
+  if(g_game_version != GameVersion::JakX){
+    ASSERT(mode == 1);  // async
+    bd->rpcd.id = request;
+    bd->serve = (sceSifServeData*)1;
+    return 0;
+  }
+  else{
+    // TODO, fill in from Jak X ELF
+    return -1;
+  }
 }
 
 s32 sceOpen(const char* filename, s32 flag) {
