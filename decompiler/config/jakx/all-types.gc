@@ -3196,7 +3196,7 @@
   ((name     symbol           :offset-assert 0) ;; guessed by decompiler
    (mode     sound-bank-mode  :offset-assert 4) ;; guessed by decompiler
    (high     symbol           :offset-assert 8)
-   (str-name symbol           :offset-assert 12)
+   (str-name string           :offset-assert 12)
    )
   :pack-me
   :method-count-assert 9
@@ -4895,18 +4895,12 @@
 (declare-type camera-slave process)
 (declare-type camera-combiner basic)
 (declare-type math-camera basic)
-(declare-type process-tree basic)
-(declare-type process process-tree)
-(declare-type process-nettable process)
-(declare-type process-drawable process-nettable)
-(declare-type process-focusable process-nettable)
-(declare-type target process-focusable)
 (deftype view (basic)
   ((index           int8            :offset-assert 4)
    (control-scheme  uint8           :offset-assert 5)
    (camera          camera-slave    :offset-assert 8)
    (camera-combiner camera-combiner :offset-assert 12)
-   (target          target          :offset-assert 16)
+   (target          process         :offset-assert 16) ;; actually target, but it's not fully defined this early
    (math-camera     math-camera     :offset-assert 20)
    )
   :method-count-assert 9
@@ -5111,7 +5105,7 @@
   :flag-assert         #x90000011c
   )
 
-(define-extern *cheat-mode* symbol) ;; 
+(define-extern *cheat-mode* symbol)
 ;; (define-extern cpad-invalid! function) ;; (function cpad-info cpad-info)
 ;; (define-extern analog-input function) ;; (function int float float float float float)
 ;; (define-extern cpad-set-buzz! function) ;; (function cpad-info int int time-frame none)
@@ -5121,7 +5115,7 @@
 (define-extern buzz-stop! (function int none))
 (define-extern *mouse* mouse-info) ;; 
 ;; (define-extern service-mouse function) ;; (function none)
-(define-extern *keybd* keybd-info) ;; 
+(define-extern *keybd* keybd-info)
 ;; (define-extern service-keybd function) ;; (function none)
 ;; (define-extern *usb-to-ascii-map* object)
 ;; (define-extern *keybd-last-key* object)
@@ -15838,10 +15832,12 @@
   :flag-assert         #x9000003c0
   )
 
+;; +++car-info-h:car-info-flag
 (defenum car-info-flag
   :type uint32
   :bitfield #t
   (cif0 0))
+;; ---car-info-h:car-info-flag
 
 (deftype car-info (structure)
   ((base-color    car-rgb-color :inline :offset-assert 0)
@@ -16452,15 +16448,15 @@
 
 (define-extern view-push-context (function int object))
 (define-extern view-pop-context (function object))
-(define-extern view-get-active-target (function target))
-(define-extern view-get-target (function int target))
-(define-extern view-set-active-target (function target target))
-(define-extern view-get-active-camera (function camera-master))
-(define-extern view-get-camera (function int camera-master))
-(define-extern view-set-active-camera (function camera-master camera-master))
-(define-extern view-get-active-camera-combiner (function camera-combiner))
-(define-extern view-get-camera-combiner (function int camera-combiner))
-(define-extern view-set-active-camera-combiner (function camera-combiner camera-combiner))
+(define-extern view-get-active-target (function process))
+(define-extern view-get-target (function int process))
+(define-extern view-set-active-target (function process process))
+(define-extern view-get-active-camera (function process))
+(define-extern view-get-camera (function int process))
+(define-extern view-set-active-camera (function process process))
+(define-extern view-get-active-camera-combiner (function process))
+(define-extern view-get-camera-combiner (function int process))
+(define-extern view-set-active-camera-combiner (function process process))
 (define-extern view-get-active-math-camera (function math-camera))
 (define-extern view-get-math-camera (function int math-camera))
 (define-extern view-set-active-math-camera (function math-camera math-camera))
@@ -21213,6 +21209,7 @@
   :size-assert         #x1088
   :flag-assert         #x1b00001088
   (:methods
+    (new (symbol type) _type_) ;; 0
     (reset! (_type_) _type_) ;; 9
     (load-state-method-10 (_type_) none) ;; 10 ;; (update! (_type_) int)
     (want-levels (_type_ (pointer symbol)) int) ;; 11
@@ -21765,12 +21762,14 @@
   )
 ;; ---speech-h:speech-type
 
+;; +++speech-h:speech-request-flag
 (defenum speech-request-flag
   :type uint8
   :bitfield #t
   (srf0 0)
   (srf1 1)
   )
+;; ---speech-h:speech-request-flag
 
 (deftype speech-request (structure)
   ((handle      handle              :offset-assert 0)
@@ -28623,7 +28622,7 @@
     (mem-buffer-method-29 (_type_ symbol) none) ;; 29
     (mem-buffer-method-30 (_type_ pointer) none) ;; 30
     (mem-buffer-method-31 (_type_ pointer int) none) ;; 31
-    (mem-buffer-method-32 (_type_) none) ;; 32
+    (mem-buffer-method-32 (_type_) int) ;; 32
     (mem-buffer-method-33 (_type_) int) ;; 33
     (mem-buffer-method-34 (_type_) int) ;; 34
     (mem-buffer-method-35 (_type_) int) ;; 35
@@ -28661,8 +28660,8 @@
   )
 
 (define-extern *level-bounding-box* level-bounding-box)
-(define-extern *msg-buffers* (pointer uint32))
-(define-extern alloc-msg-buffer (function (pointer uint32)))
+(define-extern *msg-buffers* (inline-array mem-buffer))
+(define-extern alloc-msg-buffer (function mem-buffer))
 (define-extern free-msg-buffer (function mem-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36221,7 +36220,7 @@
 ;; (define-extern current-str-status function) ;; (function sound-id stream-status)
 (define-extern *dnas-is-running* symbol)
 ;; (define-extern is-cd-in? function) ;; (function symbol)
-(define-extern new-sound-id (function sound-id)) ;; 
+(define-extern new-sound-id (function sound-id))
 (define-extern check-irx-version (function int))
 (define-extern sound-bank-load (function sound-name int int sound-id))
 (define-extern sound-bank-unload (function sound-name int))
@@ -37527,7 +37526,7 @@
   )
 |#
 
-(define-extern *blit-displays-work* blit-displays-work) ;; 
+(define-extern *blit-displays-work* blit-displays-work)
 ;; (define-extern clear-zbuf function)
 ;; (define-extern draw-color-bars function) ;; (function blit-displays-work none)
 ;; (define-extern draw-raw-image function) ;; (function blit-displays-work bucket-id art-group vector vector level int none)
@@ -38339,7 +38338,7 @@
 (define-extern ja-play-spooled-anim (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) spooler-flags int :behavior process-drawable)) ;; 
 ;; (define-extern ja-play-spooled-no-sync-anim function)
 ;; (define-extern ja-abort-spooled-anim function) ;; (function spool-anim art-joint-anim int int :behavior process-drawable)
-(define-extern *gui-control* gui-control) ;; gui-control
+(define-extern *gui-control* gui-control)
 (define-extern *art-control* external-art-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39220,7 +39219,7 @@
 (define-extern draw-debug-text-box (function font-context none)) ;; 
 ;; (define-extern *print-game-text-work* object)
 ;; (define-extern hyphenate-word function)
-(define-extern print-game-text (function string font-context symbol int bucket-id symbol dma-buffer float)) 
+(define-extern print-game-text (function string font-context symbol int bucket-id symbol dma-buffer float))
 (define-extern disable-level-text-file-loading (function none)) ;; 
 (define-extern enable-level-text-file-loading (function none)) ;; 
 
@@ -39345,8 +39344,8 @@
 
 ;; (define-extern find-ground-point function) ;; (function collide-shape vector float float vector)
 ;; (define-extern collide-shape-moving-angle-set! function) ;; (function collide-shape-moving vector vector none)
-(define-extern cshape-reaction-update-state (function collide-shape collide-query vector none)) ;; 
-(define-extern cshape-reaction-default (function collide-shape collide-query vector vector collide-status)) ;; 
+(define-extern cshape-reaction-update-state (function collide-shape collide-query vector none))
+(define-extern cshape-reaction-default (function collide-shape collide-query vector vector collide-status))
 ;; (define-extern cshape-reaction-just-move function) ;; (function collide-shape collide-query vector collide-status)
 ;; (define-extern collide-shape-draw-debug-marks function) ;; (function none)
 ;; (define-extern *col-timer* object) ;; stopwatch
@@ -42998,6 +42997,7 @@
   :flag-assert         #x900000042
   )
   
+;; +++headset-h:headset-flag
 (defenum headset-flag
   :type uint32
   :bitfield #t
@@ -43011,6 +43011,7 @@
   (hf7 7)
   (hf8 8)
   )
+;; ---headset-h:headset-flag
 
 (deftype headset (process)
   ((flags                   headset-flag               :offset-assert 144)
@@ -45714,11 +45715,13 @@
     )
   )
 
+;; +++net-player-h:net-player-flag
 (defenum net-player-flag
   :type uint8
   :bitfield #t
   (npf0 0)
   )
+;; ---net-player-h:net-player-flag
 
 (deftype net-player (process-nettable)
   ((last-known-pos          vector :inline :offset-assert 192)
