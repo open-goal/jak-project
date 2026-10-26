@@ -20,6 +20,7 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/runtime.h"
+#include "game/sce/iop.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -411,19 +412,20 @@ u64 kclose(u64 fs) {
 
 // TODO dma_to_iop
 bool dma_to_iop(void* src_G, int size_G, void* dest_G) {
-  // SifDmaTransfer_t transfer_W;
-  // transfer_W.attr = 0;
-  // transfer_W.src = src_G;
-  // transfer_W.dest = dest_G;
-  // transfer_W.size = size_G;
-  // u32 id = sceSifSetDma(&transfer_W, 1);
-  // if (id != 0) {
-  //   s32 sVar1;
-  //   do {
-  //     sVar1 = sceSifDmaStat(id);
-  //   } while (-1 < sVar1);
-  // }
-  // return id == 0;
+  iop::sceSifDmaData transfer_W;
+  transfer_W.mode = 0;
+  transfer_W.data = src_G;
+  transfer_W.addr = dest_G;
+  transfer_W.size = size_G;
+  u32 id = sceSifSetDma(&transfer_W, 1);
+  //if (id != 0) {
+    // TODO: no sceSifDmaStat
+    // s32 sVar1;
+    // do {
+    //   sVar1 = sceSifDmaStat(id);
+    // } while (-1 < sVar1);
+  //}
+  return id == 0;
 }
 
 u64 DecodeLanguage() {
