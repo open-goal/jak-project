@@ -36,6 +36,7 @@ struct Logger {
 };
 
 Logger gLogger;
+thread_local std::string* tl_print_capture = nullptr;
 
 namespace internal {
 const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die", "die"};
@@ -95,6 +96,10 @@ void log_message(level log_level, LogTime& now, const char* message) {
 }
 
 void log_print(const char* message) {
+  if (tl_print_capture) {
+    tl_print_capture->append(message);
+    return;
+  }
   {
     // We always immediately flush prints because since it has no associated level
     // it could be anything from a fatal error to a useless debug log.
@@ -212,6 +217,10 @@ void set_max_debug_levels() {
 
 void disable_ansi_colors() {
   gLogger.disable_colors = true;
+}
+
+void set_thread_print_capture(std::string* buffer) {
+  tl_print_capture = buffer;
 }
 
 void initialize() {

@@ -145,13 +145,21 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
 
     auto& data = get_data(dc, file.unique_name, file.name_in_dgo);
 
+    std::string compiler_output;
+    lg::set_thread_print_capture(&compiler_output);
     try {
       const auto& src = data.output_with_skips;
       total_lines += str_util::line_count(src);
       compiler.run_full_compiler_on_string_no_save(src, file.name_in_dgo);
+      lg::set_thread_print_capture(nullptr);
+      if (!compiler_output.empty()) {
+        lg::print("{}", compiler_output);
+      }
     } catch (const std::exception& e) {
+      lg::set_thread_print_capture(nullptr);
       result.ok = false;
-      result.failing_files.push_back({file.name_in_dgo, e.what()});
+      result.failing_files.push_back(
+          {file.name_in_dgo, compiler_output.empty() ? e.what() : compiler_output});
     }
     work_group.status->complete_step();
   }
