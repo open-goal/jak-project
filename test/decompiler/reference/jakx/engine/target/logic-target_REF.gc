@@ -163,7 +163,7 @@
     (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) #f)
     (let ((s5-1 pp))
       (set! pp this)
-      (view-set-active-target (the-as target #f))
+      (view-set-active-target (the-as process #f))
       (set! pp s5-1)
       )
     (set-zero! *camera-smush-control*)
@@ -195,7 +195,7 @@
   (format 0 "stop: ~D ~A~%" arg1 (view-get-active-target))
   (when (view-get-active-target)
     (deactivate (view-get-active-target))
-    (view-set-active-target (the-as target #f))
+    (view-set-active-target (the-as process #f))
     )
   (set! (-> *game-info* mode) arg0)
   (view-pop-context)
@@ -203,6 +203,7 @@
   )
 
 ;; definition for function start
+;; WARN: Return type mismatch process vs target.
 (defun start ((arg0 symbol) (arg1 continue-point) (arg2 int))
   (let ((v1-0 arg0))
     (set! (-> *level* play?) (if (= v1-0 'play)
@@ -217,7 +218,7 @@
   (if (not arg1)
       (set! arg1 (get-current-continue-forced *game-info* arg2))
       )
-  (let ((s3-0 (the-as target #f)))
+  (let ((s3-0 (the-as process #f)))
     (view-push-context arg2)
     (stop arg0 arg2)
     (let ((v1-11 (process-spawn
@@ -233,22 +234,18 @@
           )
       (cond
         (v1-11
-          (view-set-active-target (the-as target (-> v1-11 0 self)))
+          (view-set-active-target (-> v1-11 0 self))
           (set! s3-0 (view-get-active-target))
           )
         (else
-          (view-set-active-target (the-as target #f))
+          (view-set-active-target (the-as process #f))
           )
         )
       )
     (view-pop-context)
-    s3-0
+    (the-as target s3-0)
     )
   )
 
 ;; failed to figure out what this is:
 0
-
-
-
-

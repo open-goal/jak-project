@@ -527,7 +527,7 @@
     (vector-! s5-0 arg0 (-> this vec 0))
     (cond
       ((logtest? (-> this flags) (cam-index-options RADIAL))
-       (vector-flatten! s5-0 s5-0 (-> (view-get-active-camera) local-down))
+       (vector-flatten! s5-0 s5-0 (the-as vector (&-> (view-get-active-camera) stack 160)))
        (/ (- (vector-length s5-0) (-> this vec 1 x)) (-> this vec 1 w))
        )
       ((logtest? (-> this flags) (cam-index-options SPHERICAL))
@@ -1043,7 +1043,7 @@
 (defbehavior cam-slave-init-vars camera-slave ()
   (cond
     ((view-get-active-camera)
-     (set! (-> self options) (-> (view-get-active-camera) slave-options))
+     (set! (-> self options) (-> (the-as camera-master (view-get-active-camera)) slave-options))
      )
     (else
       (set! (-> self options) (cam-slave-options-u32))
@@ -1052,9 +1052,9 @@
     )
   (cond
     ((view-get-active-camera-combiner)
-     (set! (-> self trans quad) (-> (view-get-active-camera-combiner) trans quad))
+     (set! (-> self trans quad) (-> (the-as camera-combiner (view-get-active-camera-combiner)) trans quad))
      (let* ((gp-0 (-> self tracking))
-            (a2-0 (-> (view-get-active-camera-combiner) inv-camera-rot))
+            (a2-0 (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot))
             (v1-3 (-> a2-0 rvec quad))
             (a0-0 (-> a2-0 uvec quad))
             (a1-0 (-> a2-0 fvec quad))
@@ -1079,8 +1079,8 @@
          (set! (-> a2-2 inv-mat trans quad) a3-1)
          )
        )
-     (set! (-> self fov) (-> (view-get-active-camera-combiner) fov))
-     (set! (-> self velocity quad) (-> (view-get-active-camera-combiner) velocity quad))
+     (set! (-> self fov) (-> (the-as camera-combiner (view-get-active-camera-combiner)) fov))
+     (set! (-> self velocity quad) (-> (the-as camera-combiner (view-get-active-camera-combiner)) velocity quad))
      )
     (else
       (vector-reset! (-> self trans))
@@ -1100,7 +1100,7 @@
   (init (-> self tracking tilt-adjust) (-> *CAMERA-bank* default-tilt-adjust) 9.102222 91.022224 0.25)
   (init
     (-> self tracking follow-height-extra)
-    (-> (view-get-active-camera) settings extra-follow-height)
+    (-> (the-as camera-master (view-get-active-camera)) settings extra-follow-height)
     81.92
     819.2
     0.5
@@ -1262,7 +1262,7 @@
         ((= (-> self spline-follow-dist) 0.0)
          (let ((f0-18 (if arg3
                           (cam-index-method-10 (-> self index) (-> self tracking follow-pt))
-                          (cam-index-method-10 (-> self index) (-> (view-get-active-camera) tpos-curr-adj))
+                          (cam-index-method-10 (-> self index) (the-as vector (&-> (view-get-active-camera) stack 400)))
                           )
                       )
                )
@@ -1295,7 +1295,7 @@
             (curve-length (-> self spline-curve))
             (if arg3
                 (set! (-> s3-2 quad) (-> self tracking follow-pt quad))
-                (set! (-> s3-2 quad) (-> (view-get-active-camera) tpos-curr-adj quad))
+                (set! (-> s3-2 quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj quad))
                 )
             (let ((f0-22
                     (curve-closest-point (-> self spline-curve) s3-2 (-> self spline-tt) 40960.0 10 (-> self spline-follow-dist))
@@ -1357,7 +1357,7 @@
       (set! (-> self intro-t-step) 0.0)
       )
     )
-  (if (-> (view-get-active-camera) settings no-intro)
+  (if (-> (the-as camera-master (view-get-active-camera)) settings no-intro)
       (set! (-> self intro-t) 1.0)
       )
   0
@@ -1403,29 +1403,33 @@
           (jump-to-target! (-> arg0 underwater-blend) 0.0)
           )
         )
-      (set! (-> arg0 follow-height-extra target) (-> (view-get-active-camera) settings extra-follow-height))
+      (set! (-> arg0 follow-height-extra target)
+            (-> (the-as camera-master (view-get-active-camera)) settings extra-follow-height)
+            )
       (let ((s4-0 (new 'stack-no-clear 'vector)))
         (set! (-> s4-0 quad) (-> arg0 follow-pt quad))
         (cond
-          ((logtest? (-> (view-get-active-camera) settings slave-options) (cam-slave-options BIKE_MODE))
+          ((logtest? (-> (the-as camera-master (view-get-active-camera)) settings slave-options)
+                     (cam-slave-options BIKE_MODE)
+                     )
            (let ((s1-0 (new 'stack-no-clear 'vector))
                  (s0-0 (new 'stack-no-clear 'vector))
                  (f30-0
                    (vector-vector-distance
-                     (-> (view-get-active-camera) tpos-curr-adj)
-                     (-> (view-get-active-camera) tpos-old-adj)
+                     (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+                     (-> (the-as camera-master (view-get-active-camera)) tpos-old-adj)
                      )
                    )
                  (s2-1 (new 'stack-no-clear 'vector))
                  )
              (vector-flatten!
                s1-0
-               (-> (view-get-active-camera) tgt-face-mat fvec)
-               (-> (view-get-active-camera) local-down)
+               (-> (the-as camera-master (view-get-active-camera)) tgt-face-mat fvec)
+               (-> (the-as camera-master (view-get-active-camera)) local-down)
                )
              (vector-normalize! s1-0 1.0)
              (let ((sv-192 s0-0))
-               (let ((v1-17 (-> (view-get-active-camera) tpos-curr-adj))
+               (let ((v1-17 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
                      (a0-14 arg1)
                      )
                  (.lvf vf4 (&-> v1-17 quad))
@@ -1435,10 +1439,10 @@
                (.sub.vf.xyz vf6 vf4 vf5)
                (.svf (&-> sv-192 quad) vf6)
                )
-             (vector-flatten! s0-0 s0-0 (-> (view-get-active-camera) local-down))
+             (vector-flatten! s0-0 s0-0 (-> (the-as camera-master (view-get-active-camera)) local-down))
              (vector-normalize! s0-0 1.0)
              (let ((sv-256 s2-1))
-               (let ((v1-20 (-> (view-get-active-camera) tgt-face-mat fvec))
+               (let ((v1-20 (-> (the-as camera-master (view-get-active-camera)) tgt-face-mat fvec))
                      (f0-1 32768.0)
                      )
                  (.lvf vf1 (&-> v1-20 quad))
@@ -1471,7 +1475,7 @@
                    )
                )
              (cond
-               ((< (-> (view-get-active-camera) ease-t) 1.0)
+               ((< (-> (the-as camera-master (view-get-active-camera)) ease-t) 1.0)
                 )
                ((< (-> arg0 follow-blend) 1.0)
                 (let ((f0-23 (square (square (-> arg0 follow-blend)))))
@@ -1495,7 +1499,7 @@
            (cond
              (arg2
                (if (logtest? (cam-slave-options VERTICAL_FOLLOW_MATCHES_CAMERA)
-                             (-> (view-get-active-camera) settings slave-options)
+                             (-> (the-as camera-master (view-get-active-camera)) settings slave-options)
                              )
                    (set! (-> arg0 follow-height-extra vel) 0.0)
                    (update! (-> arg0 follow-height-extra) 0.0)
@@ -1506,7 +1510,7 @@
                )
              )
            (let ((s2-3 (-> arg0 follow-pt)))
-             (let ((v1-53 (-> (view-get-active-camera) tpos-curr-adj))
+             (let ((v1-53 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
                    (a0-31 (-> arg0 follow-off))
                    )
                (.lvf vf4 (&-> v1-53 quad))
@@ -1519,8 +1523,10 @@
            (vector--float*!
              (-> arg0 follow-pt)
              (-> arg0 follow-pt)
-             (-> (view-get-active-camera) local-down)
-             (+ (-> arg0 follow-height-extra value) (-> (view-get-active-camera) settings target-height))
+             (-> (the-as camera-master (view-get-active-camera)) local-down)
+             (+ (-> arg0 follow-height-extra value)
+                (-> (the-as camera-master (view-get-active-camera)) settings target-height)
+                )
              )
            )
           (else
@@ -1532,9 +1538,9 @@
                  (vector-reset! s2-5)
                  )
                 (else
-                  (vector-! s2-5 (-> (view-get-active-camera) tpos-curr-adj) arg1)
+                  (vector-! s2-5 (the-as vector (&-> (view-get-active-camera) stack 400)) arg1)
                   (vector-normalize! s2-5 1.0)
-                  (let* ((f0-32 (vector-dot (-> (view-get-active-camera) tgt-rot-mat fvec) s2-5))
+                  (let* ((f0-32 (vector-dot (the-as vector (&-> (view-get-active-camera) stack 256)) s2-5))
                          (f30-3 (cond
                                   ((< f0-32 0.0)
                                    1.0
@@ -1549,12 +1555,16 @@
                                   )
                                 )
                          )
-                    (vector-! s2-5 arg1 (-> (view-get-active-camera) tpos-curr-adj))
-                    (vector-flatten! s2-5 s2-5 (-> (view-get-active-camera) local-down))
+                    (vector-! s2-5 arg1 (the-as vector (&-> (view-get-active-camera) stack 400)))
+                    (vector-flatten! s2-5 s2-5 (the-as vector (&-> (view-get-active-camera) stack 160)))
                     (let* ((f1-14 (* 0.000022194603 (+ -20480.0 (vector-length s2-5))))
                            (f28-1 (fmax 0.0 (fmin 1.0 f1-14)))
                            )
-                      (vector-float*! s2-5 (-> (view-get-active-camera) tgt-rot-mat fvec) (* (lerp 2048.0 8192.0 f28-1) f30-3))
+                      (vector-float*!
+                        s2-5
+                        (the-as vector (&-> (view-get-active-camera) stack 256))
+                        (* (lerp 2048.0 8192.0 f28-1) f30-3)
+                        )
                       )
                     )
                   )
@@ -1563,7 +1573,7 @@
                 (arg2
                   (vector-seek-3d-smooth! (-> arg0 follow-off) s2-5 (* 20480.0 (seconds-per-frame)) 0.05)
                   (if (logtest? (cam-slave-options VERTICAL_FOLLOW_MATCHES_CAMERA)
-                                (-> (view-get-active-camera) settings slave-options)
+                                (-> (the-as camera-master (view-get-active-camera)) settings slave-options)
                                 )
                       (set! (-> arg0 follow-height-extra vel) 0.0)
                       (update! (-> arg0 follow-height-extra) 0.0)
@@ -1576,7 +1586,7 @@
                 )
               )
             (let ((s2-7 (-> arg0 follow-pt)))
-              (let ((v1-83 (-> (view-get-active-camera) tpos-curr-adj))
+              (let ((v1-83 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
                     (a0-43 (-> arg0 follow-off))
                     )
                 (.lvf vf4 (&-> v1-83 quad))
@@ -1589,25 +1599,27 @@
             (vector--float*!
               (-> arg0 follow-pt)
               (-> arg0 follow-pt)
-              (-> (view-get-active-camera) local-down)
-              (+ (-> arg0 follow-height-extra value) (-> (view-get-active-camera) settings target-height))
+              (-> (the-as camera-master (view-get-active-camera)) local-down)
+              (+ (-> arg0 follow-height-extra value)
+                 (-> (the-as camera-master (view-get-active-camera)) settings target-height)
+                 )
               )
             )
           )
         (when (and arg2
                    (logtest? (cam-slave-options VERTICAL_FOLLOW_MATCHES_CAMERA)
-                             (-> (view-get-active-camera) settings slave-options)
+                             (-> (the-as camera-master (view-get-active-camera)) settings slave-options)
                              )
                    )
           (let ((f30-5
                   (vector-dot
-                    (-> (view-get-active-camera) local-down)
+                    (-> (the-as camera-master (view-get-active-camera)) local-down)
                     (vector-! (new 'stack-no-clear 'vector) arg1 (-> arg0 old-cam-trans))
                     )
                   )
                 (f28-2
                   (vector-dot
-                    (-> (view-get-active-camera) local-down)
+                    (-> (the-as camera-master (view-get-active-camera)) local-down)
                     (vector-! (new 'stack-no-clear 'vector) (-> arg0 follow-pt) s4-0)
                     )
                   )
@@ -1615,17 +1627,19 @@
             (vector--float*!
               (-> arg0 follow-pt)
               (-> arg0 follow-pt)
-              (-> (view-get-active-camera) local-down)
+              (-> (the-as camera-master (view-get-active-camera)) local-down)
               (- f28-2 f30-5)
               )
             )
           (vector+float*!
             (-> arg0 follow-off)
             (-> arg0 follow-pt)
-            (-> (view-get-active-camera) local-down)
-            (+ (-> arg0 follow-height-extra value) (-> (view-get-active-camera) settings target-height))
+            (-> (the-as camera-master (view-get-active-camera)) local-down)
+            (+ (-> arg0 follow-height-extra value)
+               (-> (the-as camera-master (view-get-active-camera)) settings target-height)
+               )
             )
-          (vector-! (-> arg0 follow-off) (-> arg0 follow-off) (-> (view-get-active-camera) tpos-curr-adj))
+          (vector-! (-> arg0 follow-off) (-> arg0 follow-off) (the-as vector (&-> (view-get-active-camera) stack 400)))
           )
         )
       (set! (-> arg0 old-cam-trans quad) (-> arg1 quad))
@@ -1677,7 +1691,7 @@
                         (vector-length arg2)
                         )
                        (else
-                         (vector-flatten! s1-0 arg2 (-> (view-get-active-camera) local-down))
+                         (vector-flatten! s1-0 arg2 (the-as vector (&-> (view-get-active-camera) stack 160)))
                          (vector-length s1-0)
                          )
                        )
@@ -1692,9 +1706,11 @@
              (set! f30-0 1.0)
              )
             )
-          (let ((f30-1
-                  (* f30-0 (* (-> (view-get-active-camera) settings matrix-blend-max-angle) (-> pp clock time-adjust-ratio)))
-                  )
+          (let ((f30-1 (* f30-0 (* (-> (the-as camera-master (view-get-active-camera)) settings matrix-blend-max-angle)
+                                   (-> pp clock time-adjust-ratio)
+                                   )
+                          )
+                       )
                 )
             (matrix->quaternion s4-0 arg0)
             (matrix->quaternion s2-0 arg3)
@@ -1705,11 +1721,16 @@
                 (quaternion-negate! gp-0 gp-0)
                 )
             (let ((f28-0 (acos (-> gp-0 w))))
-              (if (< (* f28-0 (-> (view-get-active-camera) settings matrix-blend-max-partial) (-> pp clock time-adjust-ratio))
+              (if (< (* f28-0
+                        (-> (the-as camera-master (view-get-active-camera)) settings matrix-blend-max-partial)
+                        (-> pp clock time-adjust-ratio)
+                        )
                      f30-1
                      )
-                  (set! f30-1
-                        (* f28-0 (-> (view-get-active-camera) settings matrix-blend-max-partial) (-> pp clock time-adjust-ratio))
+                  (set! f30-1 (* f28-0
+                                 (-> (the-as camera-master (view-get-active-camera)) settings matrix-blend-max-partial)
+                                 (-> pp clock time-adjust-ratio)
+                                 )
                         )
                   )
               (cond
@@ -1755,7 +1776,7 @@
               )
           0.0
           (let ((sv-112 s3-0))
-            (let ((v1-1 (-> (view-get-active-camera) tpos-curr))
+            (let ((v1-1 (-> (the-as camera-master (view-get-active-camera)) tpos-curr))
                   (a0-1 arg1)
                   )
               (.lvf vf4 (&-> v1-1 quad))
@@ -1809,8 +1830,8 @@
               )
             )
           (let ((sv-176 s3-0))
-            (let ((sv-160 (-> (view-get-active-camera) tpos-curr))
-                  (v1-21 (-> (view-get-active-camera) pitch-off))
+            (let ((sv-160 (-> (the-as camera-master (view-get-active-camera)) tpos-curr))
+                  (v1-21 (-> (the-as camera-master (view-get-active-camera)) pitch-off))
                   )
               (.lvf vf4 (&-> sv-160 quad))
               (.lvf vf5 (&-> v1-21 quad))
@@ -1823,8 +1844,8 @@
           (vector--float*!
             s3-0
             s3-0
-            (-> (view-get-active-camera) local-down)
-            (-> (view-get-active-camera) settings foot-offset)
+            (-> (the-as camera-master (view-get-active-camera)) local-down)
+            (-> (the-as camera-master (view-get-active-camera)) settings foot-offset)
             )
           (vector-flatten! s3-0 s3-0 (-> arg0 rvec))
           (vector-normalize! s3-0 1.0)
@@ -1862,8 +1883,8 @@
               )
             )
           (let ((sv-304 s3-0))
-            (let ((sv-288 (-> (view-get-active-camera) tpos-curr))
-                  (v1-46 (-> (view-get-active-camera) pitch-off))
+            (let ((sv-288 (-> (the-as camera-master (view-get-active-camera)) tpos-curr))
+                  (v1-46 (-> (the-as camera-master (view-get-active-camera)) pitch-off))
                   )
               (.lvf vf4 (&-> sv-288 quad))
               (.lvf vf5 (&-> v1-46 quad))
@@ -1876,8 +1897,8 @@
           (vector--float*!
             s3-0
             s3-0
-            (-> (view-get-active-camera) local-down)
-            (-> (view-get-active-camera) settings head-offset)
+            (-> (the-as camera-master (view-get-active-camera)) local-down)
+            (-> (the-as camera-master (view-get-active-camera)) settings head-offset)
             )
           (vector-flatten! s3-0 s3-0 (-> arg0 rvec))
           (vector-normalize! s3-0 1.0)
@@ -1942,8 +1963,10 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (if (-> (view-get-active-camera) settings use-look-at-point)
-        (set! (-> arg0 follow-pt quad) (-> (view-get-active-camera) settings look-at-point quad))
+    (if (-> (the-as camera-master (view-get-active-camera)) settings use-look-at-point)
+        (set! (-> arg0 follow-pt quad)
+              (-> (the-as camera-master (view-get-active-camera)) settings look-at-point quad)
+              )
         )
     (let ((s0-0 (new-stack-vector0))
           (s1-1 (new-stack-matrix0))
@@ -1956,7 +1979,7 @@
              (vector-! s0-0 (-> arg0 follow-pt) arg1)
              (let ((f28-0 (vector-length s0-0)))
                (let ((sv-208 sv-224))
-                 (let ((v1-13 (-> (view-get-active-camera) settings point-of-interest))
+                 (let ((v1-13 (-> (the-as camera-master (view-get-active-camera)) settings point-of-interest))
                        (a0-2 arg1)
                        )
                    (.lvf vf4 (&-> v1-13 quad))
@@ -1978,7 +2001,7 @@
                )
              )
            (let ((sv-240 (-> arg0 looking-interesting)))
-             (let ((v1-18 (-> (view-get-active-camera) settings point-of-interest))
+             (let ((v1-18 (-> (the-as camera-master (view-get-active-camera)) settings point-of-interest))
                    (a0-7 (-> arg0 follow-pt))
                    )
                (.lvf vf4 (&-> v1-18 quad))
@@ -2011,14 +2034,14 @@
           (.add.vf.xyz vf6 vf4 vf5)
           (.svf (&-> a1-8 quad) vf6)
           )
-        (forward-down->inv-matrix s1-1 s0-0 (-> (view-get-active-camera) local-down))
+        (forward-down->inv-matrix s1-1 s0-0 (-> (the-as camera-master (view-get-active-camera)) local-down))
         (when (!= f30-0 0.0)
           0.0
           0.0
           (let ((sv-320 (new 'stack-no-clear 'matrix)))
             (let ((sv-304 (new 'stack-no-clear 'vector)))
               (vector-normalize-copy! sv-304 s0-0 1.0)
-              (let* ((v1-29 (-> (view-get-active-camera) local-down)))
+              (let* ((v1-29 (-> (the-as camera-master (view-get-active-camera)) local-down)))
                 (set! f0-9 (vector-dot sv-304 v1-29))
                 )
               )
@@ -2047,10 +2070,10 @@
             )
           )
         )
-      (when (not (-> (view-get-active-camera) settings use-look-at-point))
+      (when (not (-> (the-as camera-master (view-get-active-camera)) settings use-look-at-point))
         (let ((sv-336 2))
           )
-        (if (zero? (-> (view-get-active-camera) under-water))
+        (if (zero? (-> (the-as camera-master (view-get-active-camera)) under-water))
             (set! (-> arg0 underwater-blend target) 1.0)
             (set! (-> arg0 underwater-blend target) 0.0)
             )
@@ -2067,13 +2090,18 @@
                     )
             )
       )
-    (mat-remove-z-rot (-> arg0 inv-mat) (-> (view-get-active-camera) local-down))
+    (mat-remove-z-rot (-> arg0 inv-mat) (-> (the-as camera-master (view-get-active-camera)) local-down))
     (cond
-      ((not (-> (view-get-active-camera) settings use-point-of-interest))
+      ((not (-> (the-as camera-master (view-get-active-camera)) settings use-point-of-interest))
        (set! (-> arg0 point-of-interest-blend target) 0.0)
        )
       (else
-        (let ((s4-3 (vector-! (new 'stack-no-clear 'vector) (-> (view-get-active-camera) settings point-of-interest) arg1))
+        (let ((s4-3 (vector-!
+                      (new 'stack-no-clear 'vector)
+                      (-> (the-as camera-master (view-get-active-camera)) settings point-of-interest)
+                      arg1
+                      )
+                    )
               )
           0.0
           (vector-flatten! s4-3 s4-3 (-> arg0 inv-mat uvec))
