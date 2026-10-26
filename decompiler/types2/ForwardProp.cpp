@@ -1828,6 +1828,11 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
         out[m_dst->reg()]->type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
         return;
       }
+      if (m_instr.src[1].get_imm() > 0 &&
+          dts.ts.tc(TypeSpec("integer"), src_type->type->typespec())) {
+        out[m_dst->reg()]->type = TP_Type::make_from_ts("uint");
+        return;
+      }
     }
   }
 

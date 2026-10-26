@@ -904,6 +904,11 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
       result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
       return result;
     }
+    if (m_instr.src[1].get_imm() > 0 &&
+        dts.ts.tc(TypeSpec("integer"), result.get(m_src[0]->reg()).typespec())) {
+      result.get(m_dst->reg()) = TP_Type::make_from_ts("uint");
+      return result;
+    }
   }
 
   if (m_dst.has_value()) {
