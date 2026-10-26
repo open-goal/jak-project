@@ -5,29 +5,188 @@
 ;; name in dgo: view
 ;; dgos: ENGINE, GAME
 
+(define-extern view-get-active (function view))
+
 ;; DECOMP BEGINS
 
-(declare-type target process-focusable)
-(declare-type camera-combiner process)
-(declare-type camera-master process)
+;; WARN: Return type mismatch int vs object.
+(defun view-push-context ((arg0 int))
+  (when (>= *view-context-stack-ptr* 8)
+    (break!)
+    0
+    )
+  (set! *view-context-stack-ptr* (+ *view-context-stack-ptr* 1))
+  (set! (-> *view-context-stack* *view-context-stack-ptr*) arg0)
+  0
+  )
 
-(define-extern view-push-context (function int none))
-(define-extern view-pop-context (function none))
-(define-extern view-get-active-target (function target))
-(define-extern view-get-target (function int target))
-(define-extern view-set-active-target (function target target))
-(define-extern view-get-active-camera (function camera-master))
-(define-extern view-get-camera (function int camera-master))
-(define-extern view-set-active-camera (function camera-master camera-master))
-(define-extern view-get-active-camera-combiner (function camera-combiner))
-(define-extern view-get-camera-combiner (function int camera-combiner))
-(define-extern view-set-active-camera-combiner (function camera-combiner camera-combiner))
-(define-extern view-get-active-math-camera (function math-camera))
-(define-extern view-get-math-camera (function int math-camera))
-(define-extern view-set-active-math-camera (function math-camera math-camera))
-(define-extern view-get-real-active (function view))
-(define-extern view-get-active (function view))
-(define-extern view-get-index (function view int))
-(define-extern view-get-active-index (function int))
-(define-extern view-get-real-active-index (function int))
-(define-extern view-print (function none))
+;; WARN: Return type mismatch int vs object.
+(defun view-pop-context ()
+  (when (< *view-context-stack-ptr* 0)
+    (break!)
+    0
+    )
+  (set! *view-context-stack-ptr* (+ *view-context-stack-ptr* -1))
+  0
+  )
+
+(defun view-get-active-target ()
+  (-> (view-get-active) target)
+  )
+
+(defun view-get-target ((arg0 int))
+  (-> *views* arg0 target)
+  )
+
+(defun view-set-active-target ((arg0 process))
+  (set! (-> (view-get-active) target) arg0)
+  arg0
+  )
+
+;; WARN: Return type mismatch camera-slave vs process.
+(defun view-get-active-camera ()
+  (the-as process (-> (view-get-active) camera))
+  )
+
+;; WARN: Return type mismatch camera-slave vs process.
+(defun view-get-camera ((arg0 int))
+  (the-as process (-> *views* arg0 camera))
+  )
+
+(defun view-set-active-camera ((arg0 process))
+  (set! (-> (view-get-active) camera) (the-as camera-slave arg0))
+  arg0
+  )
+
+;; WARN: Return type mismatch camera-combiner vs process.
+(defun view-get-active-camera-combiner ()
+  (the-as process (-> (view-get-active) camera-combiner))
+  )
+
+;; WARN: Return type mismatch camera-combiner vs process.
+(defun view-get-camera-combiner ((arg0 int))
+  (the-as process (-> *views* arg0 camera-combiner))
+  )
+
+(defun view-set-active-camera-combiner ((arg0 process))
+  (set! (-> (view-get-active) camera-combiner) (the-as camera-combiner arg0))
+  arg0
+  )
+
+(defun view-get-active-math-camera ()
+  (-> (view-get-active) math-camera)
+  )
+
+(defun view-get-math-camera ((arg0 int))
+  (-> *views* arg0 math-camera)
+  )
+
+(defun view-set-active-math-camera ((arg0 math-camera))
+  (set! (-> (view-get-active) math-camera) arg0)
+  arg0
+  )
+
+(defun view-get-real-active ()
+  (with-pp
+    (cond
+      ((and pp (-> pp view))
+       (-> pp view)
+       )
+      ((>= *view-context-stack-ptr* 0)
+       (-> *views* (-> *view-context-stack* *view-context-stack-ptr*))
+       )
+      (else
+        (the-as view #f)
+        )
+      )
+    )
+  )
+
+(defun view-get-active ()
+  (with-pp
+    (cond
+      ((and pp (-> pp view))
+       (-> pp view)
+       )
+      ((>= *view-context-stack-ptr* 0)
+       (-> *views* (-> *view-context-stack* *view-context-stack-ptr*))
+       )
+      (else
+        (when *view-assert*
+          (break!)
+          0
+          )
+        (-> *views* *view-default*)
+        )
+      )
+    )
+  )
+
+(defun view-get-index ((arg0 view))
+  (if arg0
+      (-> arg0 index)
+      -1
+      )
+  )
+
+(defun view-get-active-index ()
+  (with-pp
+    (let ((v1-1 (cond
+                  ((and pp (-> pp view))
+                   (-> pp view)
+                   )
+                  ((>= *view-context-stack-ptr* 0)
+                   (-> *views* (-> *view-context-stack* *view-context-stack-ptr*))
+                   )
+                  (else
+                    (when *view-assert*
+                      (break!)
+                      0
+                      )
+                    (-> *views* *view-default*)
+                    )
+                  )
+                )
+          )
+      (if v1-1
+          (-> v1-1 index)
+          -1
+          )
+      )
+    )
+  )
+
+(defun view-get-real-active-index ()
+  (let ((v1-0 (view-get-real-active)))
+    (if v1-0
+        (-> v1-0 index)
+        -1
+        )
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun view-print ((arg0 process))
+  (let ((t9-0 format)
+        (v1-0 #t)
+        (a1-0 "[~D]")
+        (a0-1 (-> arg0 view))
+        )
+    (t9-0 v1-0 a1-0 (if a0-1
+                        (-> a0-1 index)
+                        -1
+                        )
+          )
+    )
+  0
+  )
+
+(dotimes (gp-0 2)
+  (format 0 "allocating view ~D~%" gp-0)
+  (set! (-> *views* gp-0) (new 'global 'view))
+  (set! (-> *views* gp-0 camera) #f)
+  (set! (-> *views* gp-0 camera-combiner) #f)
+  (set! (-> *views* gp-0 target) #f)
+  (set! (-> *views* gp-0 math-camera) (new 'global 'math-camera))
+  (set! (-> *views* gp-0 index) gp-0)
+  )
