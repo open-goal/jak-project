@@ -51,4 +51,12 @@ class GameController : public InputDevice {
   bool m_has_pressure_sensitive_buttons = false;
   bool m_is_dualsense;
   bool m_has_trigger_rumble;
+
+  std::unordered_map<u8, u8> m_axis_adjusted_rest_value;
+  std::unordered_map<u8, u8> m_axis_previous_value;
+  u8 m_axis_near_rest_threshold = 4;
+  u8 m_axis_stable_threshold = 2;
+
+  int drift_compensate_axis(u8 axis_id, u8 raw);
+  int drift_compensate_trigger_axis(u8 axis_id, u8 raw);
 };

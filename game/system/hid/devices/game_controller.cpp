@@ -5,6 +5,7 @@
 #include "dualsense_effects.h"
 #include "game_controller.h"
 
+#include "SDL3/SDL_gamepad.h"
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/format.h"
@@ -27,7 +28,6 @@ GameController::GameController(int sdl_device_id,
         fmt::format("Could not get underlying joystick for gamecontroller: id {}", sdl_device_id));
     return;
   }
-  auto test = SDL_GetNumJoystickAxes(m_low_device_handle);
   m_sdl_instance_id = SDL_GetJoystickID(m_low_device_handle);
   if (!m_sdl_instance_id) {
     sdl_util::log_error(
@@ -87,6 +87,17 @@ GameController::GameController(int sdl_device_id,
   if (m_has_pressure_sensitive_buttons) {
     lg::info("Detected a PS3 controller with support for pressure sensitive buttons");
   }
+
+  // initialize axis drift compensation
+  for (int i = SDL_GAMEPAD_AXIS_LEFTX; i <= SDL_GAMEPAD_AXIS_RIGHTY; i++) {
+    m_axis_adjusted_rest_value[i] = 128;
+    m_axis_previous_value[i] = 128;
+  }
+  for (int i = SDL_GAMEPAD_AXIS_LEFT_TRIGGER; i <= SDL_GAMEPAD_AXIS_RIGHT_TRIGGER; i++) {
+    m_axis_adjusted_rest_value[i] = 0;
+    m_axis_previous_value[i] = 0;
+  }
+
   m_loaded = true;
 }
 
@@ -110,17 +121,58 @@ int normalize_axes_value(int sdl_val) {
   return ((sdl_val + 32768) * 256) / 65536;
 }
 
-// Adjust the value range to 0-255 (127 being neutral)
-// Values come out of SDL as -32,768 to 32,767
-// with 5% of the bottom range ignored for drift compensation
-int normalize_axes_value_drift_compensated(int sdl_val) {
-  if (sdl_val < -32768 + 1638) {
-    return 0;
+int GameController::drift_compensate_axis(u8 axis_id, u8 raw) {
+  int center = m_axis_adjusted_rest_value[axis_id];
+  int prev = m_axis_previous_value[axis_id];
+  int delta = (int)raw - center;
+
+  bool near_center = abs(delta) < m_axis_near_rest_threshold;
+  bool stable = abs((int)raw - prev) < m_axis_stable_threshold;
+
+  if (near_center && stable) {
+    m_axis_adjusted_rest_value[axis_id] += (delta >> 7);
   }
-  if (sdl_val > 32767 - 1638) {
-    return 255;
+  m_axis_previous_value[axis_id] = raw;
+
+  // re-bias so center → 128
+  int adjusted = (int)raw - center + 128;
+  if (adjusted < 0) {
+    adjusted = 0;
   }
-  return normalize_axes_value(sdl_val);
+  if (adjusted > 255) {
+    adjusted = 255;
+  }
+  return adjusted;
+}
+
+int GameController::drift_compensate_trigger_axis(u8 axis_id, u8 raw) {
+  int baseline = m_axis_adjusted_rest_value[axis_id];
+  int prev = m_axis_previous_value[axis_id];
+  int delta = raw - baseline;
+  int motion = raw - prev;
+  bool near_rest = (delta >= 0) && (delta < m_axis_near_rest_threshold);
+  bool stable = abs(motion) < m_axis_stable_threshold;
+
+  if (near_rest && stable) {
+    if (raw < baseline) {
+      baseline = raw;
+    } else {
+      baseline += (delta >> 7);
+    }
+  }
+
+  m_axis_adjusted_rest_value[axis_id] = baseline;
+  m_axis_previous_value[axis_id] = raw;
+  // subtract baseline (rest → 0)
+  int adjusted = raw - baseline;
+
+  if (adjusted < 0) {
+    adjusted = 0;
+  }
+  if (adjusted > 255) {
+    adjusted = 255;
+  }
+  return adjusted;
 }
 
 void GameController::process_event(const SDL_Event& event,
@@ -141,8 +193,8 @@ void GameController::process_event(const SDL_Event& event,
         !data->analogs_being_simulated() &&
         binds.analog_axii.find(event.gaxis.axis) != binds.analog_axii.end()) {
       for (const auto& bind : binds.analog_axii.at(event.gaxis.axis)) {
-        data->analog_data.at(bind.pad_data_index) =
-            normalize_axes_value(m_settings->axis_scale * event.gaxis.value);
+        data->analog_data.at(bind.pad_data_index) = drift_compensate_axis(
+            event.gaxis.axis, normalize_axes_value(m_settings->axis_scale * event.gaxis.value));
       }
     } else if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER &&
                event.gaxis.axis <= SDL_GAMEPAD_AXIS_RIGHT_TRIGGER &&
@@ -175,17 +227,16 @@ void GameController::process_event(const SDL_Event& event,
 
       // and analog triggers
       for (const auto& bind : binds.button_axii.at(event.gaxis.axis)) {
-        // ignore 5% of the bottom range for temporary drift compensation
-        // do something better later (and for the sticks too)
-        data->button_data.at(bind.pad_data_index) = event.gaxis.value > 1638;
+        const auto axis_value = drift_compensate_trigger_axis(
+            event.gaxis.axis, normalize_axes_value(event.gaxis.value));
+        data->button_data.at(bind.pad_data_index) = axis_value > 0;
         const auto pressure_index = data->button_index_to_pressure_index(
             static_cast<PadData::ButtonIndex>(bind.pad_data_index));
         if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
           if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons) {
-            data->pressure_data.at(pressure_index) = normalize_axes_value_drift_compensated(
-                m_settings->pressure_scale * event.gaxis.value);
+            data->pressure_data.at(pressure_index) = axis_value;
           } else {
-            data->pressure_data.at(pressure_index) = event.gaxis.value > 1638 ? 255 : 0;
+            data->pressure_data.at(pressure_index) = axis_value > 0 ? 255 : 0;
           }
         }
       }
