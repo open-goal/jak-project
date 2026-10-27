@@ -21,8 +21,12 @@ class ProgressRenderer : public DirectRenderer {
   void post_render() override;
 
  private:
+  void update_minimap_resolution(SharedRenderState* render_state);
+
   GpuTexture* m_minimap_gpu_tex = nullptr;
   FramebufferTexturePair m_minimap_fb;
   std::optional<FramebufferTexturePairContext> m_fb_ctxt;
   u32 m_current_fbp = kScreenFbp;
+  int m_minimap_scale = 1;
+  float m_minimap_tex_upscale = 1.f;
 };

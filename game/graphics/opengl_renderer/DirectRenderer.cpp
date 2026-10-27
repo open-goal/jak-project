@@ -199,6 +199,24 @@ void DirectRenderer::lookup_textures_again(SharedRenderState* render_state) {
   }
 }
 
+namespace {
+/*!
+ * GS "UV" texture coordinates are in texels of the texture the game uploaded. If a texture pack
+ * replaced that texture with a different resolution, the shader must normalize by the original
+ * size, not the size of the loaded texture. Returns (original size / loaded size), which is 1 if
+ * the sizes match or the original is unknown.
+ */
+math::Vector2f get_uv_texture_scale(TexturePool* pool, u32 tbp, bool mt4hh) {
+  // the original size is only known for textures from the game's texture pages (and the minimap).
+  // Other textures made by the PC port, like screen copies, are normalized by their real size.
+  GpuTexture* src = mt4hh ? nullptr : pool->lookup_gpu_texture(tbp);
+  if (!src || src->is_placeholder || src->ps2_w == 0 || src->ps2_h == 0) {
+    return math::Vector2f(1, 1);
+  }
+  return math::Vector2f((float)src->ps2_w / src->w, (float)src->ps2_h / src->h);
+}
+}  // namespace
+
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
   if (m_blend_state_needs_gl_update) {
@@ -268,6 +286,19 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   glGetIntegerv(GL_VIEWPORT, viewport_size);
   glUniform1i(glGetUniformLocation(current_shader, "scissor_enable"),
               m_scissor_enable && !m_offscreen_mode);
+  math::Vector2f uv_tex_scale(1, 1);
+  if (m_prim_gl_state.texture_enable && m_prim_gl_state.use_uv) {
+    // the currently bound texture is always described by m_buffered_tex_state[0]
+    const auto& tex_state = m_buffered_tex_state[0];
+    uv_tex_scale = get_uv_texture_scale(render_state->texture_pool.get(),
+                                        tex_state.texture_base_ptr, tex_state.using_mt4hh);
+    if (m_offscreen_mode) {
+      m_max_offscreen_uv_upscale =
+          std::max({m_max_offscreen_uv_upscale, 1.f / uv_tex_scale.x(), 1.f / uv_tex_scale.y()});
+    }
+  }
+  glUniform2f(glGetUniformLocation(current_shader, "uv_tex_scale"), uv_tex_scale.x(),
+              uv_tex_scale.y());
   glUniform4f(glGetUniformLocation(current_shader, "game_sizes"), 512.0f,
               game_height[render_state->version], viewport_size[2], viewport_size[3]);
 
