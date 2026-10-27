@@ -9,9 +9,10 @@
 #include "common/common_types.h"
 
 #include "../common/synth.h"
-#include "game/sound/989snd/loader.h"
 
 namespace snd {
+
+class Loader;
 
 struct SndPlayParams {
   std::optional<s32> vol;
@@ -53,6 +54,7 @@ class SoundBank {
   BlockFlags Flags;
   u32 BankID;
   s8 BankNum;
+  snd::Loader* m_loader = nullptr;
 
   virtual std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
                                                                    u32 sound_id,
