@@ -335,7 +335,7 @@ s32 format_impl_jak1(uint64_t* args) {
           if (arg0 == -1) {
             print_object(in);
           } else {
-            auto sym = find_symbol_from_c(argument_data[0].data);
+            auto sym = find_symbol_from_c(reinterpret_cast<const char*>(argument_data[0].data));
             if (sym.offset) {
               Ptr<Type> type = *sym.cast<Ptr<Type>>();
               if (type.offset) {
@@ -356,7 +356,7 @@ s32 format_impl_jak1(uint64_t* args) {
           if (arg0 == -1) {
             inspect_object(in);
           } else {
-            auto sym = find_symbol_from_c(argument_data[0].data);
+            auto sym = find_symbol_from_c(reinterpret_cast<const char*>(argument_data[0].data));
             if (sym.offset) {
               Ptr<Type> type = *sym.cast<Ptr<Type>>();
               if (type.offset) {

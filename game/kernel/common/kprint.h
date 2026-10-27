@@ -23,7 +23,9 @@ constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
 constexpr u32 PRINT_BUFFER_SIZE = 0x40000;  // upped from 0x2000 on PS2 because we ran out of memory
 
 struct format_struct {
-  char data[0x40];
+  // aarch64 char is unsigned, so a plain char cannot hold the -1 "no argument"
+  // sentinel. That made ~D/~X pad with 255 0xFF bytes and corrupted ISO filenames.
+  s8 data[0x40];
   void reset() {
     for (auto& c : data)
       c = -1;
