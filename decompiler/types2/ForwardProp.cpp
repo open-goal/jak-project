@@ -1132,6 +1132,15 @@ void types2_for_add(types2::Type& type_out,
     return;
   }
 
+  // propagate integer math: a * C1 + b * C2 + C3
+  if (arg1_type.is_integer_constant() && arg0_type.kind == TP_Type::Kind::PRODUCT_SUM) {
+    const auto& [mult, mult2] = arg0_type.get_product_sum_multipliers();
+    type_out.type = TP_Type::make_from_product_sum(
+        mult, mult2, arg0_type.typespec(),
+        arg0_type.get_sum_constant() + arg1_type.get_integer_constant());
+    return;
+  }
+
   // propagate integer math: a + C1
   if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
     TypeSpec sum_type = arg0_type.typespec();
@@ -1202,6 +1211,35 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
+  // a * C1 + b * C2 (+ C3), possibly the two indices of a 2d array access.
+  {
+    auto as_product = [&](const TP_Type& t, int64_t* mult, int64_t* constant) {
+      if (t.is_product()) {
+        *mult = t.get_multiplier();
+        *constant = 0;
+        return true;
+      }
+      if (t.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+        *mult = t.get_mult_int_constant();
+        *constant = t.get_add_int_constant();
+        return true;
+      }
+      if (t.kind == TP_Type::Kind::TYPESPEC && is_int_or_uint(dts, t)) {
+        *mult = 1;
+        *constant = 0;
+        return true;
+      }
+      return false;
+    };
+    int64_t mult0, mult1, constant0, constant1;
+    if (as_product(arg0_type, &mult0, &constant0) && as_product(arg1_type, &mult1, &constant1) &&
+        mult0 != mult1) {
+      type_out.type =
+          TP_Type::make_from_product_sum(mult0, mult1, arg0_type.typespec(), constant0 + constant1);
+      return;
+    }
+  }
+
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
@@ -1218,11 +1256,14 @@ void types2_for_add(types2::Type& type_out,
     if (out.success) {
       if (out.results.size() == 1) {
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
-        return;
       } else {
         types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
-        return;
       }
+      if (!out.results.front().addr_of && type_out.type &&
+          type_out.type->kind == TP_Type::Kind::TYPESPEC) {
+        type_out.type->set_field_origin(arg0_type.typespec(), arg1.get_int());
+      }
+      return;
     }
   }
 
@@ -1277,6 +1318,20 @@ void types2_for_add(types2::Type& type_out,
       return;
     } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
+      return;
+    }
+  }
+
+  // (+ (+ obj C1) (* a C2)), with obj + C1 already resolved to an element field access
+  if (arg1_type.is_product()) {
+    if (auto elt = lookup_array_element_from_field(dts.ts, arg0_type, arg1_type.get_multiplier())) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+      return;
+    }
+  }
+  if (arg0_type.is_product()) {
+    if (auto elt = lookup_array_element_from_field(dts.ts, arg1_type, arg0_type.get_multiplier())) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
       return;
     }
   }
@@ -1368,11 +1423,31 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_integer_constant_plus_var(
             arg0_type.get_integer_constant(), arg1_type.typespec(), sum_type);
         return;
+      } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_SUM) {
+        if (auto elt = lookup_2d_array_element(dts.ts, arg1_type.typespec(), arg0_type)) {
+          type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+          return;
+        }
+        const auto& [mult, mult2] = arg0_type.get_product_sum_multipliers();
+        type_out.type = TP_Type::make_object_plus_product_sum(arg1_type.typespec(), mult, mult2,
+                                                              arg0_type.get_sum_constant(), true);
+        return;
       } else {
         type_out.type = TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
         return;
       }
     }
+  }
+
+  if (arg1_type.kind == TP_Type::Kind::PRODUCT_SUM && tc(dts, TypeSpec("structure"), arg0_type)) {
+    if (auto elt = lookup_2d_array_element(dts.ts, arg0_type.typespec(), arg1_type)) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+      return;
+    }
+    const auto& [mult, mult2] = arg1_type.get_product_sum_multipliers();
+    type_out.type = TP_Type::make_object_plus_product_sum(arg0_type.typespec(), mult, mult2,
+                                                          arg1_type.get_sum_constant(), false);
+    return;
   }
 
   if (env.version >= GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
@@ -1753,6 +1828,11 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
         out[m_dst->reg()]->type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
         return;
       }
+      if (m_instr.src[1].get_imm() > 0 &&
+          dts.ts.tc(TypeSpec("integer"), src_type->type->typespec())) {
+        out[m_dst->reg()]->type = TP_Type::make_from_ts("uint");
+        return;
+      }
     }
   }
 
@@ -2021,7 +2101,26 @@ bool load_var_op_determine_type(types2::Type& type_out,
       }
     }
 
-    if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+    if (input_type.has_sum_multipliers()) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = op.kind() == LoadVarOp::Kind::SIGNED;
+      dk.size = op.size();
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+      rd_in.stride = input_type.get_sum_multipliers().first;
+      rd_in.stride2 = input_type.get_sum_multipliers().second;
+      rd_in.offset = ro.offset + input_type.get_sum_constant();
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      if (rd.success) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        return true;
+      }
+    }
+
+    if (input_type.is_plain_product_plus_obj()) {
       FieldReverseLookupInput rd_in;
       DerefKind dk;
       dk.is_store = false;

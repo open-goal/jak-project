@@ -50,6 +50,8 @@ void set_file_level(level log_level);
 void set_stdout_level(level log_level);
 void set_max_debug_levels();
 void disable_ansi_colors();
+// while set, prints from the calling thread are appended to buffer instead of being output
+void set_thread_print_capture(std::string* buffer);
 void initialize();
 void finish();
 

@@ -32,6 +32,70 @@ Register get_expected_fpr_backup(int n, int total) {
   return fpr_backups.at((total - 1) - n);
 }
 
+/*!
+ *   sd s7, 16(sp)
+ *   bgezal r0, L
+ *   sll r0, r0, 0
+ * L26:
+ *   sd fp, 8(sp)       ;; not done by interrupt handlers
+ *   daddiu fp, ra, -20
+ *   lw s7, L24(fp)
+ *   lw s7, 0(s7)
+ *   daddiu s7, s7, -8  ;; -16 in jak 1
+ */
+int match_called_from_c_prologue(const std::vector<Instruction>& instrs,
+                                 const LinkedObjectFile& file,
+                                 int start_word,
+                                 int idx,
+                                 bool* fp_backed_up) {
+  if (idx + 7 >= int(instrs.size()) ||
+      !is_no_link_gpr_store(instrs.at(idx), 8, make_gpr(Reg::S7), 16, make_gpr(Reg::SP))) {
+    return -1;
+  }
+  idx++;
+
+  // branch to the instruction after the delay slot to get the pc in ra
+  const auto& bgezal = instrs.at(idx);
+  if (bgezal.kind != InstructionKind::BGEZAL || bgezal.get_src(0).get_reg() != make_gpr(Reg::R0)) {
+    return -1;
+  }
+  int ra_idx = idx + 2;
+  const auto& target = file.labels.at(bgezal.get_label_target());
+  if (target.offset != (start_word + ra_idx) * 4 || !is_nop(instrs.at(idx + 1))) {
+    return -1;
+  }
+  idx = ra_idx;
+
+  *fp_backed_up = is_no_link_gpr_store(instrs.at(idx), 8, make_gpr(Reg::FP), 8, make_gpr(Reg::SP));
+  if (*fp_backed_up) {
+    idx++;
+  }
+
+  if (!is_gpr_2_imm_int(instrs.at(idx), InstructionKind::DADDIU, make_gpr(Reg::FP),
+                        make_gpr(Reg::RA), -(ra_idx - 1) * 4)) {
+    return -1;
+  }
+  idx++;
+
+  const auto& s7_ptr = instrs.at(idx);
+  if (s7_ptr.kind != InstructionKind::LW || s7_ptr.get_dst(0).get_reg() != make_gpr(Reg::S7) ||
+      !s7_ptr.get_src(0).is_label() || s7_ptr.get_src(1).get_reg() != make_gpr(Reg::FP)) {
+    return -1;
+  }
+  idx++;
+
+  if (!is_no_ll_gpr_load(instrs.at(idx), 4, true, make_gpr(Reg::S7), 0, make_gpr(Reg::S7))) {
+    return -1;
+  }
+  idx++;
+
+  if (!is_gpr_2_imm_int(instrs.at(idx), InstructionKind::DADDIU, make_gpr(Reg::S7),
+                        make_gpr(Reg::S7), {})) {
+    return -1;
+  }
+  return idx + 1;
+}
+
 }  // namespace
 
 Function::Function(int _start_word, int _end_word, GameVersion version)
@@ -86,11 +150,26 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       idx++;
     }
 
-    {
+    // check for C callees and interrupt handlers (they back up s7 on the stack and restore it
+    // later)
+    bool c_fp_backed_up = false;
+    int c_prologue_end = -1;
+    if (prologue.ra_backed_up) {
+      c_prologue_end =
+          match_called_from_c_prologue(instructions, file, start_word, idx, &c_fp_backed_up);
+    }
+    if (c_prologue_end != -1) {
+      prologue.called_from_c = true;
+      prologue.fp_set = true;
+      if (c_fp_backed_up) {
+        prologue.fp_backed_up = true;
+        prologue.fp_backup_offset = 8;
+      }
+      idx = c_prologue_end;
+    } else {
       auto& instr = instructions.at(idx);
 
-      // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
-      // support
+      // anything else storing s7 on the stack is probably asm
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7) &&
           instr.get_src(2).get_reg() == make_gpr(Reg::SP)) {
         lg::warn(
@@ -104,7 +183,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     }
 
     // next is fp backup
-    if (is_no_link_gpr_store(instructions.at(idx), 8, Register(Reg::GPR, Reg::FP), {},
+    if (!prologue.called_from_c &&
+        is_no_link_gpr_store(instructions.at(idx), 8, Register(Reg::GPR, Reg::FP), {},
                              Register(Reg::GPR, Reg::SP))) {
       prologue.fp_backed_up = true;
       prologue.fp_backup_offset = get_gpr_store_offset_as_int(instructions.at(idx));
@@ -269,9 +349,6 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     ASSERT(prologue.total_stack_usage == total_stack);
   }
 
-  // it's fine to have the entire first basic block be the prologue - you could loop back to the
-  // first instruction past the prologue.
-  ASSERT(basic_blocks.at(0).end_word >= prologue_end);
   resize_first_block(prologue_end, file);
   prologue.decoded = true;
 
@@ -279,10 +356,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
 }
 
 void Function::resize_first_block(int new_start, const LinkedObjectFile&) {
-  basic_blocks.at(0).start_word = new_start;
-
-  if (basic_blocks.size() >= 2 && basic_blocks.at(1).start_word == new_start) {
-    // block 1 is now zero size, so we should eliminate it
+  // the prologue of a function called from C spans two blocks because of the bgezal.
+  while (basic_blocks.size() >= 2 && basic_blocks.at(1).start_word <= new_start) {
+    // block 0 is entirely prologue, so merge it into block 1
     auto& block0 = basic_blocks.at(0);
     auto& block1 = basic_blocks.at(1);
     block0.succ_ft = block1.succ_ft;
@@ -309,6 +385,9 @@ void Function::resize_first_block(int new_start, const LinkedObjectFile&) {
     }
     basic_blocks.pop_back();
   }
+
+  ASSERT(basic_blocks.at(0).end_word >= new_start);
+  basic_blocks.at(0).start_word = new_start;
 }
 
 /*!
@@ -389,6 +468,13 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
   ASSERT(is_jr_ra(instructions.at(idx)));
   idx--;
 
+  if (prologue.called_from_c && instructions.at(idx).kind == InstructionKind::EI) {
+    idx--;
+    ASSERT(instructions.at(idx).kind == InstructionKind::SYNCL);
+    idx--;
+    prologue.interrupt_handler = true;
+  }
+
   // restore gprs
   for (int i = 0; i < prologue.n_gpr_backup; i++) {
     int gpr_idx = prologue.n_gpr_backup - (1 + i);
@@ -416,6 +502,13 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
     idx--;
   }
 
+  // restore s7
+  if (prologue.called_from_c) {
+    ASSERT(
+        is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::S7), 16, make_gpr(Reg::SP)));
+    idx--;
+  }
+
   // restore ra
   if (prologue.ra_backed_up) {
     ASSERT(is_no_ll_gpr_load(instructions.at(idx), 8, true, make_gpr(Reg::RA),
@@ -428,6 +521,12 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
   basic_blocks.back().end_word = idx + 1;
   prologue.epilogue_ok = true;
   epilogue_start = idx + 1;
+
+  if (prologue.interrupt_handler) {
+    warnings.info("Interrupt handler");
+  } else if (prologue.called_from_c) {
+    warnings.info("Called from C");
+  }
 }
 
 /*!

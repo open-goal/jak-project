@@ -934,6 +934,12 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
           if (proper_float(flt)) {
             result->push_back(pool.alloc_element<ConstantFloatElement>(flt));
             return;
+          } else if (frm->to_string(env) == "#x7f800000") {
+            auto cast = pool.alloc_element<CastElement>(TypeSpec("float"), frm);
+            env.func->warnings.warning("op {}: float inf {} moved to fpr", m_my_idx,
+                                       frm->to_string(env), cast->to_string(env));
+            result->push_back(cast);
+            return;
           }
         }
       }
@@ -1154,6 +1160,11 @@ void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
       GenericOperator::make_fixed(kind),
       make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
 }
+
+namespace {
+Form* strip_int_or_uint_cast(Form* in);
+Form* match_index_product(Form* in, int stride);
+}  // namespace
 
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
@@ -1438,6 +1449,80 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           lg::error("Bad {} at OP: {}", args.at(0)->to_string(env), m_my_idx);
           throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
+      }
+    } else if ((arg1_type.is_product() && arg0_type.has_field_origin()) ||
+               (arg0_type.is_product() && arg1_type.has_field_origin())) {
+      // (+ (+ obj C1) (* idx C2)), where obj + C1 was already turned into a field access.
+      // same path as the element access with index 0.
+      bool field_first = arg1_type.is_product() && arg0_type.has_field_origin();
+      const auto& field_type = field_first ? arg0_type : arg1_type;
+      int stride = (field_first ? arg1_type : arg0_type).get_multiplier();
+      auto elt = lookup_array_element_from_field(env.dts->ts, field_type, stride);
+      auto idx = match_index_product(args.at(field_first ? 1 : 0), stride);
+      auto deref =
+          strip_int_or_uint_cast(args.at(field_first ? 0 : 1))->try_as_element<DerefElement>();
+      if (elt && idx && deref && !deref->is_addr_of() &&
+          deref->tokens().size() >= elt->tokens.size()) {
+        const auto& old_tokens = deref->tokens();
+        size_t start = old_tokens.size() - elt->tokens.size();
+        std::vector<DerefToken> tokens(old_tokens.begin(), old_tokens.begin() + start);
+        bool same_path = true;
+        for (size_t i = 0; i < elt->tokens.size() && same_path; i++) {
+          const auto& tok = elt->tokens.at(i);
+          const auto& old_tok = old_tokens.at(start + i);
+          switch (tok.kind) {
+            case FieldReverseLookupOutput::Token::Kind::FIELD:
+              same_path = old_tok.is_field_name(tok.name);
+              tokens.push_back(old_tok);
+              break;
+            case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
+              same_path = old_tok.is_int(tok.idx);
+              tokens.push_back(old_tok);
+              break;
+            case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
+              same_path = old_tok.is_int(0);
+              tokens.push_back(DerefToken::make_int_expr(idx));
+              break;
+          }
+        }
+        if (same_path) {
+          result->push_back(pool.alloc_element<DerefElement>(deref->base(), false, tokens));
+          return;
+        }
+      }
+      if (elt) {
+        auto sum = pool.alloc_single_element_form<GenericElement>(
+            nullptr, GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR),
+            args.at(field_first ? 0 : 1), args.at(field_first ? 1 : 0));
+        result->push_back(
+            pool.alloc_element<CastElement>(coerce_to_reg_type(elt->result_type), sum));
+        return;
+      }
+    } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_SUM ||
+               arg1_type.kind == TP_Type::Kind::PRODUCT_SUM) {
+      bool sum_first = arg0_type.kind == TP_Type::Kind::PRODUCT_SUM;
+      const auto& sum_type = sum_first ? arg0_type : arg1_type;
+      const auto& base_type = sum_first ? arg1_type : arg0_type;
+      auto elt = lookup_2d_array_element(env.dts->ts, base_type.typespec(), sum_type);
+      if (elt && base_type.kind == TP_Type::Kind::TYPESPEC) {
+        std::vector<int> strides;
+        const auto& [stride, stride2] = sum_type.get_product_sum_multipliers();
+        for (auto& tok : elt->tokens) {
+          if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+            strides.push_back(tok.idx == 0 ? stride : stride2);
+          }
+        }
+        auto match = match_2d_indices(args.at(sum_first ? 0 : 1), strides,
+                                      sum_type.get_sum_constant(), false, env, pool);
+        if (!match) {
+          throw std::runtime_error(fmt::format("Failed to match 2d array access with add: {}",
+                                               args.at(sum_first ? 0 : 1)->to_string(env)));
+        }
+        result->push_back(pool.alloc_element<DerefElement>(
+            cast_stack_slot_var_if_needed(args.at(sum_first ? 1 : 0), base_type.typespec(), pool,
+                                          env),
+            false, fill_2d_index_placeholders(to_tokens(elt->tokens), *match)));
+        return;
       }
     } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT) {
       // try to see if this is valid, from the type system.
@@ -1914,6 +1999,104 @@ Form* strip_int_or_uint_cast(Form* in) {
 }
 }  // namespace
 
+namespace {
+/*!
+ * match (* idx stride) or (* stride idx) and return idx.
+ */
+Form* match_index_product(Form* in, int stride) {
+  auto stride_matcher =
+      Matcher::match_or({Matcher::cast("uint", Matcher::integer(stride)),
+                         Matcher::cast("int", Matcher::integer(stride)), Matcher::integer(stride)});
+  auto idx_matcher = Matcher::match_or({Matcher::cast("uint", Matcher::any(0)),
+                                        Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
+  auto mult_matcher = Matcher::match_or(
+      {Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION, {idx_matcher, stride_matcher}),
+       Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION, {stride_matcher, idx_matcher})});
+  mult_matcher = Matcher::match_or(
+      {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
+  auto mr = match(mult_matcher, in);
+  return mr.matched ? mr.maps.forms.at(0) : nullptr;
+}
+
+}  // namespace
+
+std::optional<Match2dIndices> match_2d_indices(Form* in,
+                                               const std::vector<int>& strides,
+                                               s64 constant,
+                                               bool with_base,
+                                               const Env& env,
+                                               FormPool& pool) {
+  ASSERT(strides.size() == 2 && strides.at(0) != strides.at(1));
+  int unit_slot = strides.at(0) == 1 ? 0 : (strides.at(1) == 1 ? 1 : -1);
+  if (unit_slot != -1 && with_base) {
+    return std::nullopt;
+  }
+  std::vector<Form*> terms;
+  std::function<void(Form*)> flatten = [&](Form* f) {
+    auto as_generic = strip_int_or_uint_cast(f)->try_as_element<GenericElement>();
+    if (as_generic && (as_generic->op().is_fixed(FixedOperatorKind::ADDITION) ||
+                       as_generic->op().is_fixed(FixedOperatorKind::ADDITION_PTR))) {
+      for (auto elt : as_generic->elts()) {
+        flatten(elt);
+      }
+    } else {
+      terms.push_back(f);
+    }
+  };
+  flatten(in);
+
+  Match2dIndices result;
+  s64 found_constant = 0;
+  std::vector<Form*> unit_terms;
+  for (auto term : terms) {
+    bool used = false;
+    for (int i = 0; i < 2 && !used; i++) {
+      if (!result.idx[i] && i != unit_slot) {
+        result.idx[i] = match_index_product(term, strides.at(i));
+        used = result.idx[i];
+      }
+    }
+    if (used) {
+      continue;
+    }
+    if (auto as_int = get_goal_integer_constant(strip_int_or_uint_cast(term), env)) {
+      found_constant += *as_int;
+    } else if (unit_slot != -1) {
+      unit_terms.push_back(strip_int_or_uint_cast(term));
+    } else if (with_base && !result.base) {
+      result.base = strip_int_or_uint_cast(term);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  if (unit_terms.size() == 1) {
+    result.idx[unit_slot] = unit_terms.front();
+  } else if (unit_terms.size() > 1) {
+    result.idx[unit_slot] = pool.alloc_single_element_form<GenericElement>(
+        nullptr, GenericOperator::make_fixed(FixedOperatorKind::ADDITION), unit_terms);
+  }
+
+  if (!result.idx[0] || !result.idx[1] || (with_base && !result.base) ||
+      found_constant != constant) {
+    return std::nullopt;
+  }
+  return result;
+}
+
+std::vector<DerefToken> fill_2d_index_placeholders(const std::vector<DerefToken>& tokens,
+                                                   const Match2dIndices& match) {
+  std::vector<DerefToken> result = tokens;
+  int placeholder = 0;
+  for (auto& x : result) {
+    if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+      ASSERT(placeholder < 2);
+      x = DerefToken::make_int_expr(match.idx[placeholder++]);
+    }
+  }
+  return result;
+}
+
 FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
     const Env& env,
     FixedOperatorKind kind,
@@ -1952,6 +2135,13 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
       bitfield_info =
           dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.get_bitfield_type()));
       ASSERT(bitfield_info);
+    } else if (arg0_reg_type.kind == TP_Type::Kind::TYPESPEC) {
+      // the variable isn't a bitfield, but it's cast to one here.
+      bitfield_info =
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.typespec()));
+      if (bitfield_info) {
+        bitfield_type = arg0_reg_type.typespec();
+      }
     }
   }
 
@@ -6290,6 +6480,21 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
 namespace {
 
+bool is_zero_extended_32(const Env& env, const RegisterAccess& var) {
+  const auto& ops = env.func->ir2.atomic_ops->ops;
+  const auto& defs = env.get_use_def_info(var).defs;
+  if (defs.empty()) {
+    return false;
+  }
+  for (const auto& def : defs) {
+    auto load = dynamic_cast<const LoadVarOp*>(ops.at(def.op_id).get());
+    if (!load || load->kind() != LoadVarOp::Kind::UNSIGNED || load->size() > 4) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void push_asm_srl_to_stack(const AsmOp* op,
                            FormElement* form_elt,
                            const Env& env,
@@ -6326,6 +6531,19 @@ void push_asm_srl_to_stack(const AsmOp* op,
       auto other = as_ba->push_step(step, env.dts->ts, pool, env);
       ASSERT(other);  // should immediately get a field.
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                              env.get_variable_type(*dst, true));
+    } else if (integer > 0 && env.dts->ts.tc(TypeSpec("integer"), arg0_type)) {
+      // srl shifts the lower 32 bits, the result is always zero-extended.
+      Form* low = src_var;
+      if (!is_zero_extended_32(env, *var)) {
+        low = pool.form<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::LOGAND), src_var,
+            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(UINT32_MAX)));
+      }
+      auto shr = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::SHR), low,
+          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(integer)));
+      stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, shr), true,
                               env.get_variable_type(*dst, true));
     } else {
       stack.push_form_element(form_elt, true);
@@ -6713,11 +6931,48 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
 // ArrayFieldAccess
 ////////////////////////
 
+/*!
+ * Rebuild an access into a 2d array from (+ (* idx stride) (* idx2 stride2) constant base), in any
+ * order and nesting.
+ */
+void ArrayFieldAccess::update_with_val_2d(Form* new_val,
+                                          const Env& env,
+                                          FormPool& pool,
+                                          std::vector<FormElement*>* result) {
+  std::optional<Match2dIndices> match;
+  if (std::find(m_index_strides.begin(), m_index_strides.end(), 1) != m_index_strides.end()) {
+    // the base can't be told apart from a stride 1 index, so use the order of the last add.
+    auto as_generic = strip_int_or_uint_cast(new_val)->try_as_element<GenericElement>();
+    if (as_generic && as_generic->elts().size() == 2 &&
+        (as_generic->op().is_fixed(FixedOperatorKind::ADDITION) ||
+         as_generic->op().is_fixed(FixedOperatorKind::ADDITION_PTR))) {
+      auto base = as_generic->elts().at(m_flipped ? 1 : 0);
+      auto rest = as_generic->elts().at(m_flipped ? 0 : 1);
+      match = match_2d_indices(rest, m_index_strides, m_index_constant, false, env, pool);
+      if (match) {
+        match->base = strip_int_or_uint_cast(base);
+      }
+    }
+  } else {
+    match = match_2d_indices(new_val, m_index_strides, m_index_constant, true, env, pool);
+  }
+  if (!match) {
+    throw std::runtime_error("Failed to match 2d array access: " + new_val->to_string(env));
+  }
+  result->push_back(pool.alloc_element<DerefElement>(
+      match->base, false, fill_2d_index_placeholders(m_deref_tokens, *match)));
+}
+
 void ArrayFieldAccess::update_with_val(Form* new_val,
                                        const Env& env,
                                        FormPool& pool,
                                        std::vector<FormElement*>* result,
                                        bool) {
+  if (!m_index_strides.empty()) {
+    update_with_val_2d(new_val, env, pool, result);
+    return;
+  }
+
   int power_of_two = 0;
 
   if (m_constant_offset == 0) {

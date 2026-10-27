@@ -107,9 +107,9 @@
     (init-vf0-vector)
     (let ((gp-0 (handle->process (-> self focus handle))))
       (cond
-        ((and (view-get-active-target) (the-as target #f))
+        ((and (view-get-active-target) (the-as process #f))
          (format 0 "camera picked up new target!~%")
-         (focus-on! (-> self focus) (view-get-active-target))
+         (focus-on! (-> self focus) (the-as process-focusable (view-get-active-target)))
          (logior! (-> self master-options) (cam-master-options-u32 HAVE_TARGET))
          (reset-target-tracking)
          )
@@ -332,8 +332,8 @@
 ;; definition for function setup-slave-for-hopefull
 (defun setup-slave-for-hopefull ((arg0 camera-slave))
   (when (= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-    (cam-calc-follow! (-> arg0 tracking) (the-as vector (-> arg0 stack)) #f)
-    (slave-set-rotation! (-> arg0 tracking) (the-as vector (-> arg0 stack)) (-> arg0 options) (-> arg0 fov) #f)
+    (cam-calc-follow! (-> arg0 tracking) (-> arg0 trans) #f)
+    (slave-set-rotation! (-> arg0 tracking) (-> arg0 trans) (-> arg0 options) (-> arg0 fov) #f)
     )
   (none)
   )
@@ -348,8 +348,8 @@
      #t
      )
     (else
-      (< (vector-dot (-> arg0 tracking inv-mat fvec) (-> (view-get-active-camera-combiner) inv-camera-rot fvec))
-         (vector-dot (-> arg1 tracking inv-mat fvec) (-> (view-get-active-camera-combiner) inv-camera-rot fvec))
+      (< (vector-dot (-> arg0 tracking inv-mat fvec) (the-as vector (&-> (view-get-active-camera-combiner) stack 48)))
+         (vector-dot (-> arg1 tracking inv-mat fvec) (the-as vector (&-> (view-get-active-camera-combiner) stack 48)))
          )
       )
     )
@@ -371,7 +371,7 @@
                 )
             )
           (else
-            (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (-> s5-0 unknown))
+            (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (-> s5-0 name))
             )
           )
         (let* ((sv-96 (new 'static 'res-tag))
@@ -453,7 +453,7 @@
                               )
                             )
                           (else
-                            (format 0 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%" (-> sv-144 unknown))
+                            (format 0 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%" (-> sv-144 name))
                             )
                           )
                         )
@@ -463,7 +463,7 @@
                         0
                         "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
                         (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))
-                        (-> s5-0 unknown)
+                        (-> s5-0 name)
                         )
                       )
                     )
@@ -543,16 +543,17 @@
 ;; definition for function cam-master-activate-slave
 ;; WARN: Return type mismatch int vs none.
 (defun cam-master-activate-slave ((arg0 symbol))
-  (when (and (view-get-active-camera) (or arg0
-                                          (not (-> (view-get-active-camera) slave))
-                                          (-> (view-get-active-camera) settings entity-or-mode-changed)
-                                          )
+  (when (and (view-get-active-camera)
+             (or arg0
+                 (not (-> (the-as camera-master (view-get-active-camera)) slave))
+                 (-> (the-as camera-master (view-get-active-camera)) settings entity-or-mode-changed)
+                 )
              )
-    (when (and arg0 (-> (view-get-active-camera) slave))
-      (deactivate (-> (view-get-active-camera) slave 0))
-      (set! (-> (view-get-active-camera) slave) (the-as (pointer camera-slave) #f))
+    (when (and arg0 (-> (the-as camera-master (view-get-active-camera)) slave))
+      (deactivate (-> (the-as camera-master (view-get-active-camera)) slave 0))
+      (set! (-> (the-as camera-master (view-get-active-camera)) slave) (the-as (pointer camera-slave) #f))
       )
-    (let* ((s5-0 (-> (view-get-active-camera) settings))
+    (let* ((s5-0 (-> (the-as camera-master (view-get-active-camera)) settings))
            (gp-1 (entity-by-name (-> s5-0 real-entity-name)))
            (s4-0 (the-as object (-> s5-0 cam-mode)))
            )
@@ -594,11 +595,11 @@
            ((not (view-get-active-camera-combiner))
             #x48c80000
             )
-           ((= (-> (view-get-active-camera-combiner) interp-val) 0.0)
+           ((= (-> (the-as camera-combiner (view-get-active-camera-combiner)) interp-val) 0.0)
             0
             )
            (else
-             (-> (view-get-active-camera-combiner) dist-from-src)
+             (-> (the-as camera-combiner (view-get-active-camera-combiner)) dist-from-src)
              )
            )
          )
@@ -607,11 +608,11 @@
            ((not (view-get-active-camera-combiner))
             0
             )
-           ((= (-> (view-get-active-camera-combiner) interp-val) 0.0)
+           ((= (-> (the-as camera-combiner (view-get-active-camera-combiner)) interp-val) 0.0)
             #x48c80000
             )
            (else
-             (-> (view-get-active-camera-combiner) dist-from-dest)
+             (-> (the-as camera-combiner (view-get-active-camera-combiner)) dist-from-dest)
              )
            )
          )
@@ -638,7 +639,7 @@
                    (-> (the-as matrix gp-1) rvec quad)
                    )
              (quaternion->matrix
-               (-> (view-get-active-camera-combiner) inv-camera-rot)
+               (the-as matrix (&-> (view-get-active-camera-combiner) stack 16))
                (the-as quaternion (+ (the-as uint gp-1) 16))
                )
              )
@@ -653,13 +654,15 @@
              (deactivate (-> self slave 0))
              (set! (-> self slave) (the-as (pointer camera-slave) #f))
              )
-           (set! (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad) (-> *camera-other-trans* quad))
+           (set! (-> (the-as vector (-> (the-as camera-combiner (view-get-active-camera-combiner)) trans)) quad)
+                 (-> *camera-other-trans* quad)
+                 )
            (vector-! gp-2 (-> self tpos-curr-adj) *camera-other-trans*)
            (vector-normalize! gp-2 1.0)
            (forward-down->inv-matrix
-             (-> (view-get-active-camera-combiner) inv-camera-rot)
+             (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot)
              gp-2
-             (new 'static 'vector :data (new 'static 'array float 4 0.0 -1.0 0.0 0.0))
+             (new 'static 'vector :y -1.0)
              )
            )
          (send-event self 'teleport)
@@ -674,13 +677,15 @@
                (deactivate (-> self slave 0))
                (set! (-> self slave) (the-as (pointer camera-slave) #f))
                )
-             (set! (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad) (-> (the-as vector s5-2) quad))
+             (set! (-> (the-as vector (-> (the-as camera-combiner (view-get-active-camera-combiner)) trans)) quad)
+                   (-> (the-as vector s5-2) quad)
+                   )
              (vector-! gp-3 (-> self tpos-curr-adj) (the-as vector s5-2))
              (vector-normalize! gp-3 1.0)
              (forward-down->inv-matrix
-               (-> (view-get-active-camera-combiner) inv-camera-rot)
+               (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot)
                gp-3
-               (new 'static 'vector :data (new 'static 'array float 4 0.0 -1.0 0.0 0.0))
+               (new 'static 'vector :y -1.0)
                )
              )
            (send-event self 'teleport)
@@ -701,7 +706,7 @@
                )
              )
            )
-         (set! (-> (view-get-active-camera-combiner) tracking no-follow) #f)
+         (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking no-follow) #f)
          #f
          )
         (('intro-done?)
@@ -728,7 +733,7 @@
            (when (and s5-4 (!= s5-4 gp-4))
              (set! (-> self slave) (the-as (pointer camera-slave) s5-4))
              (logior! (-> self master-options) (cam-master-options-u32 SET_COMBINER_AXIS))
-             (set! (-> (view-get-active-camera-combiner) tracking tilt-adjust target)
+             (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking tilt-adjust target)
                    (-> self slave 0 tracking tilt-adjust target)
                    )
              (cond
@@ -762,7 +767,7 @@
                       (send-event (ppointer->process (-> self decel)) 'change-state cam-decel)
                       )
                     )
-                  (set! v1-108 (-> (view-get-active-camera-combiner) tracking-status))
+                  (set! v1-108 (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status))
                   (zero? v1-108)
                   )
                 (case (-> (the-as camera-slave (-> s5-4 0)) blend-to-type)
@@ -775,7 +780,7 @@
                        (send-event (view-get-active-camera-combiner) 'copy-tracking (ppointer->process gp-4))
                        (send-event (view-get-active-camera-combiner) 'start-tracking (ppointer->process s5-4))
                        )
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 2))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 2))
                    )
                   (else
                     (format 0 "unknown blend-to type~%")
@@ -785,10 +790,10 @@
                ((= v1-108 1)
                 (case (-> (the-as camera-slave (-> s5-4 0)) blend-to-type)
                   (((camera-blend-to-type unknown-0))
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 3))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 3))
                    )
                   (((camera-blend-to-type unknown-1))
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 3))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 3))
                    )
                   (((camera-blend-to-type unknown-2))
                    )
@@ -800,15 +805,15 @@
                ((or (= v1-108 2) (= v1-108 3))
                 (case (-> (the-as camera-slave (-> s5-4 0)) blend-to-type)
                   (((camera-blend-to-type unknown-0))
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 0))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 0))
                    0
                    )
                   (((camera-blend-to-type unknown-1))
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 0))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 0))
                    0
                    )
                   (((camera-blend-to-type unknown-2))
-                   (set! (-> (view-get-active-camera-combiner) tracking-status) (the-as uint 2))
+                   (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking-status) (the-as uint 2))
                    )
                   (else
                     (format 0 "unknown blend-to type~%")
@@ -896,8 +901,8 @@
            (set! (-> self slave 0 tracking no-follow) (the-as basic #t))
            (vector-reset! (-> self slave 0 tracking follow-off))
            )
-         (set! (-> (view-get-active-camera-combiner) tracking no-follow) (the-as basic #t))
-         (set! v0-1 (-> (view-get-active-camera-combiner) tracking follow-off))
+         (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking no-follow) (the-as basic #t))
+         (set! v0-1 (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking follow-off))
          (.svf (&-> (the-as vector v0-1) quad) vf0)
          v0-1
          )
@@ -905,7 +910,7 @@
          (if (-> self slave)
              (set! (-> self slave 0 tracking no-follow) #f)
              )
-         (set! (-> (view-get-active-camera-combiner) tracking no-follow) #f)
+         (set! (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking no-follow) #f)
          #f
          )
         (('blend-from-as-fixed)

@@ -542,10 +542,7 @@
                                (add-debug-sphere
                                  #t
                                  (bucket-id debug-no-zbuf1)
-                                 (the-as
-                                   vector
-                                   (+ (the-as uint (-> (the-as drawable-inline-array-instance-tie s1-0) data 0 bsphere)) (* s0-0 64))
-                                   )
+                                 (-> (the-as drawable-inline-array-instance-tie s1-0) data s0-0 bsphere)
                                  (-> (the-as drawable-inline-array-instance-tie s1-0) data s0-0 bsphere w)
                                  (new 'static 'rgba :g #xff :a #x80)
                                  )
@@ -859,9 +856,7 @@
 
 ;; definition for function calc-shadow-masks
 ;; WARN: Return type mismatch symbol vs none.
-;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
 (defun calc-shadow-masks ((arg0 light-group) (arg1 draw-control) (arg2 uint))
-  (local-vars (v1-25 uint) (v1-26 int))
   (let ((s5-0 (the-as (array float) (new 'stack 'boxed-array float 6))))
     (let ((v1-1 (-> arg1 shadow-mask))
           (a0-2 (-> arg1 shadow-values))
@@ -899,8 +894,9 @@
                                    (f0-8 (fmax 0.0 (fmin 1.0 (/ (- (vector-vector-distance (-> s0-0 bsphere) sv-68) f28-0) f26-0))))
                                    )
                               (when (!= f0-8 1.0)
-                                (.srl v1-26 v1-25 24)
-                                (let ((a0-26 (shr (shl (-> s0-0 shadow) 40) 40)))
+                                (let ((v1-26 (shr (-> s0-0 shadow) 24))
+                                      (a0-26 (shr (shl (-> s0-0 shadow) 40) 40))
+                                      )
                                   (dotimes (a1-6 5)
                                     (when (logtest? v1-26 (ash 1 a1-6))
                                       (let ((f1-5 (* 0.0625 (the float (logand (ash a0-26 (* -4 a1-6)) 15)))))
@@ -2579,3 +2575,7 @@
     )
   (none)
   )
+
+
+
+

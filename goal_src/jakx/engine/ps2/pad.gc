@@ -98,6 +98,26 @@
   `(-> *cpad-list* cpads ,pad-idx change-time)
   )
 
+(deftype scf-time (structure)
+  ((stat   uint8  :offset-assert 0)
+   (second uint8  :offset-assert 1)
+   (minute uint8  :offset-assert 2)
+   (hour   uint8  :offset-assert 3)
+   (week   uint8  :offset-assert 4)
+   (day    uint8  :offset-assert 5)
+   (month  uint8  :offset-assert 6)
+   (year   uint8  :offset-assert 7)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(define-extern *cheat-mode* symbol)
+
+(define-extern scf-get-time (function scf-time none))
+(define-extern buzz-stop! (function int none))
+
 ;; DECOMP BEGINS
 
 (deftype mouse-info (basic)
@@ -176,7 +196,7 @@
   :flag-assert         #xa00000098
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
-    (cpad-info-method-9 () none) ;; 9 ;; (adjust-to-screen-flip (_type_) int)
+    (cpad-info-method-9 (_type_) int) ;; 9 ;; (adjust-to-screen-flip (_type_) int)
     )
   )
 
@@ -190,3 +210,11 @@
   )
 
 (define *cpad-list* (new 'global 'cpad-list))
+
+(deftype keybd-info (basic)
+  ((active symbol)
+   (valid  symbol)
+   (kdata  uint8 16)
+   (keys   uint8 256)
+   )
+  )

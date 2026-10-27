@@ -18,6 +18,14 @@
   (halfb 7)
   (halfc 8)
   (virtual 9)
+  (higha 10)
+  (mida 11)
+  (midb 12)
+  (lowb 13)
+  (lowc 14)
+  (lowd 15)
+  (lowe 16)
+  (lowf 17)
   )
 ;; ---sound-bank-mode
 
@@ -34,11 +42,37 @@
 ;; ---stream-status
 
 (declare-type sound-name uint128)
-(define-extern string->sound-name (function string sound-name))
 
+;; +++sound-group
+(defenum sound-group
+  :bitfield #t
+  :type uint8
+  (sfx)
+  (music)
+  (dialog) ;; same as jak 1 dialog
+  (sog3)
+  (ambient)
+  (dialog2) ;; more dialog
+  (special)
+  (sog7)
+  )
+;; ---sound-group
+
+(define-extern *sound-player-enable* symbol)
+(define-extern *dnas-is-running* symbol)
+
+(define-extern string->sound-name (function string sound-name))
 (define-extern get-sound-buffer-entry (function pointer))
 (define-extern sound-set-ear-trans (function vector vector vector vector vector float int))
 (define-extern ear-trans (function int vector))
+(define-extern sound-set-volume (function sound-group float int))
+(define-extern set-language (function language-enum int))
+(define-extern sound-set-stereo-mode (function int none))
+(define-extern sound-music-load (function sound-name int))
+(define-extern sound-music-unload (function int))
+(define-extern sound-set-reverb (function int float float uint int))
+(define-extern sound-group-continue (function sound-group int))
+(define-extern sound-group-pause (function sound-group int))
 
 ;; DECOMP BEGINS
 
@@ -313,7 +347,7 @@
 
 
 (deftype sound-handle (structure)
-  ((proc           uint64)
+  ((proc           handle)
    (flags          uint64)
    (fader-cur      float)
    (fader-targ     float)
@@ -327,7 +361,7 @@
 
 
 (deftype sound-instance (sound-spec)
-  ((last-update  uint64)
+  ((last-update  time-frame)
    (joint        uint8)
    (sh           sound-handle)
    (id           uint32)
@@ -340,8 +374,8 @@
 (deftype sound-bank-state (structure)
   ((name      symbol)
    (mode      sound-bank-mode)
-   (high      basic)
-   (str-name  basic)
+   (high      symbol)
+   (str-name  string)
    )
   :pack-me
   )
@@ -378,9 +412,9 @@
    (entity       entity)
    (sound-count  int32)
    (spec         sound-spec  :inline)
-   (play-time    uint64)
-   (time-base    uint64)
-   (time-random  uint64)
+   (play-time    time-frame)
+   (time-base    time-frame)
+   (time-random  time-frame)
    )
   (:methods
     (new (symbol type basic vector float) _type_)

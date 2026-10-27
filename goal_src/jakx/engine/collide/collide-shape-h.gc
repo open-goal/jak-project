@@ -86,7 +86,6 @@
 
 (declare-type collide-shape trsqv)
 (declare-type collide-shape-moving collide-shape)
-(declare-type control-info collide-shape-moving)
 (declare-type touching-list structure)
 (declare-type collide-query structure)
 (declare-type water-info structure)
@@ -96,8 +95,9 @@
 (declare-type collide-cache basic)
 (declare-type rigid-body structure)
 
-(define-extern cshape-reaction-update-state (function control-info collide-query vector none))
-(define-extern cshape-reaction-just-move (function control-info collide-query vector collide-status))
+(define-extern cshape-reaction-update-state (function collide-shape collide-query vector none))
+(define-extern cshape-reaction-default (function collide-shape collide-query vector vector collide-status))
+(define-extern cshape-reaction-just-move (function collide-shape collide-query vector collide-status))
 (define-extern collide-shape-draw-debug-marks (function none))
 
 ;; DECOMP BEGINS
@@ -317,22 +317,22 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
 
 (deftype collide-shape-moving (collide-shape)
   "A [[collide-shape]] for moving objects."
-  ((rider-time          uint64)
-   (rider-last-move     vector                                                              :inline)
-   (trans-old           vector                                                              :inline)
-   (poly-pat            pat-surface                                                         :offset 272)
+  ((rider-time          time-frame)
+   (rider-last-move     vector                                                                      :inline)
+   (trans-old           vector                                                                      :inline)
+   (poly-pat            pat-surface                                                                 :offset 272)
    (cur-pat             pat-surface)
    (ground-pat          pat-surface)
-   (status              uint64)
-   (reaction            (function control-info collide-query vector vector collide-status)  :offset 316)
+   (status              collide-status)
+   (reaction            (function collide-shape-moving collide-query vector vector collide-status)  :offset 316)
    (no-reaction         (function collide-shape-moving collide-query vector vector object))
-   (local-normal        vector                                                              :inline)
-   (surface-normal      vector                                                              :inline)
-   (poly-normal         vector                                                              :inline)
-   (ground-poly-normal  vector                                                              :inline)
-   (gspot-pos           vector                                                              :inline)
-   (gspot-normal        vector                                                              :inline)
-   (ground-touch-point  vector                                                              :inline)
+   (local-normal        vector                                                                      :inline)
+   (surface-normal      vector                                                                      :inline)
+   (poly-normal         vector                                                                      :inline)
+   (ground-poly-normal  vector                                                                      :inline)
+   (gspot-pos           vector                                                                      :inline)
+   (gspot-normal        vector                                                                      :inline)
+   (ground-touch-point  vector                                                                      :inline)
    (ground-impact-vel   meters)
    (surface-angle       float)
    (poly-angle          float)
@@ -469,46 +469,43 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
     )
   )
 
-(define *collide-shape-prim-backgnd*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec backgnd)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-backgnd* (new 'static 'collide-shape-prim-mesh
+                                       :cshape #f
+                                       :prim-core (new 'static 'collide-prim-core
+                                         :world-sphere (new 'static 'vector :w 204800000.0)
+                                         :collide-as (collide-spec backgnd)
+                                         :action (collide-action solid)
+                                         :prim-type 2
+                                         )
+                                       :local-sphere (new 'static 'vector :w 204800000.0)
+                                       :mesh #f
+                                       )
+        )
 
-(define *collide-shape-prim-water*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec water)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-water* (new 'static 'collide-shape-prim-mesh
+                                     :cshape #f
+                                     :prim-core (new 'static 'collide-prim-core
+                                       :world-sphere (new 'static 'vector :w 204800000.0)
+                                       :collide-as (collide-spec water)
+                                       :action (collide-action solid)
+                                       :prim-type 2
+                                       )
+                                     :local-sphere (new 'static 'vector :w 204800000.0)
+                                     :mesh #f
+                                     )
+        )
 
-(define *collide-shape-prim-nav-mesh*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec nav-mesh)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-nav-mesh* (new 'static 'collide-shape-prim-mesh
+                                        :cshape #f
+                                        :prim-core (new 'static 'collide-prim-core
+                                          :world-sphere (new 'static 'vector :w 204800000.0)
+                                          :collide-as (collide-spec nav-mesh)
+                                          :action (collide-action solid)
+                                          :prim-type 2
+                                          )
+                                        :local-sphere (new 'static 'vector :w 204800000.0)
+                                        :mesh #f
+                                        )
+        )
 
 (define-perm *collide-rider-pool* collide-rider-pool (new 'global 'collide-rider-pool))

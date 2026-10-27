@@ -1,0 +1,251 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition (debug) for function draw-history
+;; WARN: Return type mismatch symbol vs none.
+(defun-debug draw-history ((arg0 collide-shape-moving))
+  (none)
+  )
+
+;; definition (debug) for function target-history-print
+(defun-debug target-history-print ((arg0 history-iterator))
+  #f
+  )
+
+;; definition (debug) for function target-print-stats
+(defun-debug target-print-stats ((arg0 target) (arg1 symbol))
+  #f
+  )
+
+;; definition for function target-move-dist
+(defbehavior target-move-dist target ((arg0 time-frame))
+  0.0
+  )
+
+;; definition for function level-setup
+;; WARN: Return type mismatch int vs none.
+(defbehavior level-setup target ()
+  (let ((gp-0 (-> self current-level)))
+    (set! (-> self current-level) (level-get-target-inside *level*))
+    (when (-> self current-level)
+      )
+    (if (and (-> self current-level) (or (not gp-0) (!= (-> gp-0 name) (-> self current-level name))))
+        (send-event self 'level-enter (-> self current-level name))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-real-post
+;; WARN: Return type mismatch quaternion vs none.
+(defbehavior target-real-post target ()
+  (quaternion-copy! (the-as quaternion (-> self root rot)) (-> self root dir-targ))
+  (none)
+  )
+
+;; definition for function target-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-post target ()
+  (target-real-post)
+  0
+  (none)
+  )
+
+;; definition for function target-no-move-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-no-move-post target ()
+  (quaternion-copy! (the-as quaternion (-> self root rot)) (-> self root dir-targ))
+  0
+  (none)
+  )
+
+;; definition for function reset-target-state
+;; INFO: Used lq/sq
+(defbehavior reset-target-state target ((arg0 symbol))
+  (when arg0
+    (vector-identity! (-> self root scale))
+    (quaternion-identity! (the-as quaternion (-> self root rot)))
+    (set! (-> self root transv quad) (the-as uint128 0))
+    )
+  (target-exit)
+  (set! (-> self cam-user-mode) 'normal)
+  (buzz-stop! 0)
+  self
+  )
+
+;; definition for method 59 of type target
+;; WARN: Return type mismatch int vs object.
+(defmethod setup ((this target) (arg0 continue-point) (arg1 symbol))
+  (set! (-> this mode-cache) #f)
+  (set! (-> this color-effect) #f)
+  (set! (-> this major-mode-exit-hook) #f)
+  (set! (-> this major-mode-event-hook) #f)
+  (set! (-> this sub-mode-exit-hook) #f)
+  (set! (-> this game) *game-info*)
+  (set-setting! 'allow-pause #f 0.0 0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) 'cam-string)
+  (apply-settings! *setting-control*)
+  (if (not arg0)
+      (set! arg0 (get-current-continue-forced *game-info* (view-get-active-index)))
+      )
+  (set-continue! *game-info* arg0 (view-get-active-index) #f)
+  (stack-size-set! (-> this main-thread) 1024)
+  (logior! (-> this mask) (process-mask target))
+  (logclear! (-> this mask) (process-mask pause))
+  (set! (-> this state-hook) (the-as (function none :behavior target) nothing))
+  (let ((s4-3 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> s4-3 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-3 reaction)
+          (the-as (function collide-shape-moving collide-query vector vector collide-status) cshape-reaction-default)
+          )
+    (set! (-> s4-3 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-2 (new 'process 'collide-shape-prim-group s4-3 (the-as uint 1) 1)))
+      (set! (-> s4-3 total-prims) (the-as uint 2))
+      (set! (-> s3-2 prim-core action) (collide-action solid can-ride))
+      (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s4-3 root-prim) s3-2)
+      )
+    (let ((v1-31 (new 'process 'collide-shape-prim-sphere s4-3 (the-as uint 6))))
+      (set! (-> v1-31 prim-core action) (collide-action solid can-ride))
+      (set-vector! (-> v1-31 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (set! (-> s4-3 nav-radius) (* 0.75 (-> s4-3 root-prim local-sphere w)))
+    (let ((v1-34 (-> s4-3 root-prim)))
+      (set! (-> s4-3 backup-collide-as) (-> v1-34 prim-core collide-as))
+      (set! (-> s4-3 backup-collide-with) (-> v1-34 prim-core collide-with))
+      )
+    (set! (-> s4-3 event-priority) (the-as uint 9))
+    (set! (-> this root) s4-3)
+    )
+  (let ((v1-37 (-> this root)))
+    (set! (-> v1-37 max-iteration-count) (the-as uint 8))
+    (set! (-> v1-37 event-self) 'touched)
+    )
+  (move-to-point! (-> this root) (-> arg0 trans))
+  (set! (-> this notify) (the-as handle #f))
+  (let ((v1-41 (-> this root root-prim)))
+    (set! (-> this root backup-collide-as) (-> v1-41 prim-core collide-as))
+    (set! (-> this root backup-collide-with) (-> v1-41 prim-core collide-with))
+    )
+  (if *debug-segment*
+      (add-connection *debug-engine* this target-print-stats this *stdcon0* #f)
+      )
+  (set! (-> this fp-hud) (the-as handle #f))
+  (set! (-> this burn-proc) (the-as handle #f))
+  (reset-target-state #t)
+  (set! (-> this event-hook) target-generic-event-handler)
+  (set! (-> this current-level) #f)
+  (level-setup)
+  (set! (-> this pre-joint-hook) (the-as (function none :behavior target) nothing))
+  (set-time! (-> this init-time))
+  0
+  )
+
+;; definition for function target-init
+;; WARN: Return type mismatch object vs none.
+(defbehavior target-init target ((arg0 continue-point))
+  (setup self arg0 #f)
+  (set! (-> self event-hook) (-> target-continue event))
+  (logior! (-> self focus-status) (focus-status teleporting))
+  (go target-continue arg0)
+  (none)
+  )
+
+;; definition for method 10 of type target
+(defmethod deactivate ((this target))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (with-pp
+    (kill-persister *setting-control* 'bg-a-speed 'bg-a-speed)
+    (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) #f)
+    (let ((s5-1 pp))
+      (set! pp this)
+      (view-set-active-target (the-as process #f))
+      (set! pp s5-1)
+      )
+    (set-zero! *camera-smush-control*)
+    (call-parent-method this)
+    (none)
+    )
+  )
+
+;; definition for function start-2
+;; WARN: Return type mismatch none vs object.
+(defun start-2 ((arg0 symbol) (arg1 int))
+  (set! *view-count* 2)
+  (start 'play (the-as continue-point (-> *level* level2 info continues car)) 0)
+  (start 'play (the-as continue-point (-> *level* level2 info continues car)) 1)
+  (viewport-array-method-9 *viewport-array* (the-as viewport 2))
+  )
+
+;; definition for function start-1
+;; WARN: Return type mismatch none vs object.
+(defun start-1 ((arg0 symbol) (arg1 int))
+  (set! *view-count* 1)
+  (start 'play (get-continue-by-name-active-lvl *game-info* "snake-0") 0)
+  (viewport-array-method-9 *viewport-array* (the-as viewport 0))
+  )
+
+;; definition for function stop
+(defun stop ((arg0 symbol) (arg1 int))
+  (view-push-context arg1)
+  (format 0 "stop: ~D ~A~%" arg1 (view-get-active-target))
+  (when (view-get-active-target)
+    (deactivate (view-get-active-target))
+    (view-set-active-target (the-as process #f))
+    )
+  (set! (-> *game-info* mode) arg0)
+  (view-pop-context)
+  0
+  )
+
+;; definition for function start
+;; WARN: Return type mismatch process vs target.
+(defun start ((arg0 symbol) (arg1 continue-point) (arg2 int))
+  (let ((v1-0 arg0))
+    (set! (-> *level* play?) (if (= v1-0 'play)
+                                 #t
+                                 (-> *setting-control* user-default border-mode)
+                                 )
+          )
+    )
+  (set! (-> *setting-control* user-default border-mode) #f)
+  (set! (-> *setting-control* user-default region-mode) #f)
+  (apply-settings! *setting-control*)
+  (if (not arg1)
+      (set! arg1 (get-current-continue-forced *game-info* arg2))
+      )
+  (let ((s3-0 (the-as process #f)))
+    (view-push-context arg2)
+    (stop arg0 arg2)
+    (let ((v1-11 (process-spawn
+                   target
+                   :init target-init
+                   arg1
+                   :name "target"
+                   :from *target-dead-pool*
+                   :to *target-pool*
+                   :stack *kernel-dram-stack*
+                   )
+                 )
+          )
+      (cond
+        (v1-11
+          (view-set-active-target (-> v1-11 0 self))
+          (set! s3-0 (view-get-active-target))
+          )
+        (else
+          (view-set-active-target (the-as process #f))
+          )
+        )
+      )
+    (view-pop-context)
+    (the-as target s3-0)
+    )
+  )
+
+;; failed to figure out what this is:
+0

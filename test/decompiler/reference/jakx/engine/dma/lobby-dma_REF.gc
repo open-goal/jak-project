@@ -1,0 +1,347 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dma-block
+(deftype dma-block (structure)
+  ((tp            symbol)
+   (offset        int32)
+   (length        int32)
+   (alloc-frames  int32)
+   (order         int32)
+   (buffer-id     int32)
+   )
+  :allow-misaligned
+  (:methods
+    (dma-block-method-9 (_type_ int) int)
+    (get-buf-offset (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type dma-block
+(defmethod inspect ((this dma-block))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-block)
+  (format #t "~1Ttp: ~A~%" (-> this tp))
+  (format #t "~1Toffset: ~D~%" (-> this offset))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Talloc-frames: ~D~%" (-> this alloc-frames))
+  (format #t "~1Torder: ~D~%" (-> this order))
+  (format #t "~1Tbuffer-id: ~D~%" (-> this buffer-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-block-list
+(deftype dma-block-list (structure)
+  ((total-length  int32)
+   (min-offset    int32)
+   (blocks        dma-block  4 :inline)
+   )
+  (:methods
+    (dma-block-list-method-9 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type dma-block-list
+(defmethod inspect ((this dma-block-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-block-list)
+  (format #t "~1Ttotal-length: ~D~%" (-> this total-length))
+  (format #t "~1Tmin-offset: ~D~%" (-> this min-offset))
+  (format #t "~1Tblocks[4] @ #x~X~%" (-> this blocks))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *dma-block-lists*, type (array dma-block-list)
+(define *dma-block-lists*
+  (new 'static 'boxed-array :type dma-block-list (new 'static 'dma-block-list) (new 'static 'dma-block-list))
+  )
+
+;; definition for method 9 of type dma-block-list
+;; WARN: Return type mismatch int vs none.
+(defmethod dma-block-list-method-9 ((this dma-block-list))
+  (set! (-> this total-length) 0)
+  (set! (-> this min-offset) 0)
+  (dotimes (v1-0 4)
+    (let ((a1-2 (-> this blocks v1-0)))
+      (when (> (-> a1-2 length) 0)
+        (+! (-> this total-length) (-> a1-2 length))
+        (set! (-> this min-offset) (min (-> this min-offset) (-> a1-2 offset)))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type dma-block
+(defmethod dma-block-method-9 ((this dma-block) (arg0 int))
+  (let ((v1-3 (-> *dma-block-lists* (-> this buffer-id))))
+    (set! (-> this length) arg0)
+    (dma-block-list-method-9 v1-3)
+    )
+  0
+  )
+
+;; definition for method 10 of type dma-block
+(defmethod get-buf-offset ((this dma-block))
+  (let ((v0-0 (+ (-> this offset) (-> *display* frames (-> this buffer-id) global-buf real-buffer-end))))
+    (let ((v1-1 (logand v0-0 63)))
+      (if (nonzero? v1-1)
+          (set! v0-0 (+ (- 64 v1-1) v0-0))
+          )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function can-place-block?
+(defun can-place-block? ((arg0 dma-block-list) (arg1 int) (arg2 int) (arg3 int))
+  (let ((v0-0 (the-as dma-block #f)))
+    (if (< arg2 -917504)
+        (return (the-as dma-block #f))
+        )
+    (if (< (- arg1) arg2)
+        (return (the-as dma-block #f))
+        )
+    (dotimes (v1-6 4)
+      (let ((t0-2 (-> arg0 blocks v1-6)))
+        (cond
+          ((zero? (-> t0-2 length))
+           (if (not v0-0)
+               (set! v0-0 t0-2)
+               )
+           )
+          (else
+            (if (not (or (>= (-> t0-2 offset) (+ arg2 arg1)) (>= arg2 (+ (-> t0-2 offset) (-> t0-2 length)))))
+                (return (the-as dma-block #f))
+                )
+            (if (or (and (< (-> t0-2 offset) arg2) (< (-> t0-2 order) arg3))
+                    (and (< arg2 (-> t0-2 offset)) (< arg3 (-> t0-2 order)))
+                    )
+                (return (the-as dma-block #f))
+                )
+            )
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function dma-try-alloc-single
+;; INFO: Used lq/sq
+(defun dma-try-alloc-single ((arg0 int) (arg1 int) (arg2 symbol) (arg3 int))
+  (let ((s0-0 (-> *dma-block-lists* arg1))
+        (s2-0 -999999999)
+        )
+    (let ((s1-0 (can-place-block? s0-0 arg0 (- arg0) arg3)))
+      (when s1-0
+        (set! s2-0 (- arg0))
+        (goto cfg-16)
+        )
+      (let ((sv-16 0))
+        (while (< sv-16 4)
+          (let ((sv-32 (-> s0-0 blocks sv-16)))
+            (when (> (-> sv-32 length) 0)
+              (let ((sv-48 (+ (-> sv-32 offset) (-> sv-32 length))))
+                (when (< s2-0 sv-48)
+                  (let ((v0-1 (can-place-block? s0-0 arg0 sv-48 arg3)))
+                    (when v0-1
+                      (set! s1-0 v0-1)
+                      (set! s2-0 sv-48)
+                      )
+                    )
+                  )
+                )
+              (let ((sv-64 (- (-> sv-32 offset) arg0)))
+                (when (< s2-0 sv-64)
+                  (let ((v0-2 (can-place-block? s0-0 arg0 sv-64 arg3)))
+                    (when v0-2
+                      (set! s1-0 v0-2)
+                      (set! s2-0 sv-64)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (+! sv-16 1)
+          )
+        )
+      (when (not s1-0)
+        (set! s1-0 (the-as dma-block #f))
+        (goto cfg-17)
+        )
+      (label cfg-16)
+      (set! (-> s1-0 offset) s2-0)
+      (set! (-> s1-0 buffer-id) arg1)
+      (set! (-> s1-0 tp) arg2)
+      (set! (-> s1-0 order) arg3)
+      (label cfg-17)
+      s1-0
+      )
+    )
+  )
+
+;; definition for function dma-try-alloc
+;; INFO: Used lq/sq
+(defun dma-try-alloc ((arg0 int) (arg1 int) (arg2 symbol) (arg3 int) (arg4 (pointer int32)) (arg5 (pointer int32)) (arg6 symbol))
+  (local-vars (sv-16 int))
+  (if (> arg0 0)
+      (+! arg0 63)
+      )
+  (if (> arg1 0)
+      (+! arg1 63)
+      )
+  (set! sv-16 (cond
+                ((< (-> *dma-block-lists* 0 total-length) (-> *dma-block-lists* 1 total-length))
+                 (set! sv-16 0)
+                 sv-16
+                 )
+                (else
+                  1
+                  )
+                )
+        )
+  (let ((sv-32 (dma-try-alloc-single arg0 sv-16 arg2 arg3))
+        (sv-48 (the-as dma-block #f))
+        )
+    (when (not sv-32)
+      (set! sv-32 (dma-try-alloc-single arg0 (- 1 sv-16) arg2 arg3))
+      sv-32
+      )
+    (if (not sv-32)
+        (return #f)
+        )
+    (when (> arg1 0)
+      (set! sv-48 (dma-try-alloc-single arg1 (- 1 (-> sv-32 buffer-id)) arg2 arg3))
+      (if (not sv-48)
+          (return #f)
+          )
+      (if arg6
+          (return #t)
+          )
+      (dma-block-method-9 sv-48 arg1)
+      (set! (-> sv-48 alloc-frames) 0)
+      0
+      )
+    (if arg6
+        (return #t)
+        )
+    (dma-block-method-9 sv-32 arg0)
+    (set! (-> sv-32 alloc-frames) 0)
+    (if arg4
+        (set! (-> arg4 0) (get-buf-offset sv-32))
+        )
+    (if (and arg5 sv-48)
+        (set! (-> arg5 0) (get-buf-offset sv-48))
+        )
+    )
+  #t
+  )
+
+;; definition for function dma-release
+;; WARN: Return type mismatch int vs none.
+(defun dma-release ((arg0 symbol))
+  (dotimes (s5-0 2)
+    (dotimes (s4-0 4)
+      (let ((a0-4 (-> *dma-block-lists* s5-0 blocks s4-0)))
+        (if (and (> (-> a0-4 length) 0) (= (-> a0-4 tp) arg0))
+            (dma-block-method-9 a0-4 0)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function dma-dump
+(defun dma-dump ()
+  (dotimes (gp-0 2)
+    (dotimes (s5-0 4)
+      (let ((s4-0 (-> *dma-block-lists* gp-0 blocks s5-0)))
+        (when (> (-> s4-0 length) 0)
+          (format
+            0
+            " ~D ~D->~D  ~D ~A [~D]~%"
+            gp-0
+            (-> s4-0 offset)
+            (+ (-> s4-0 offset) (-> s4-0 length))
+            (-> s4-0 length)
+            (if (nonzero? (-> s4-0 tp))
+                (-> s4-0 tp)
+                #f
+                )
+            (-> s4-0 order)
+            )
+          (format 0 "    alloc-frames: ~D @ #x~X~%" (-> s4-0 alloc-frames) (get-buf-offset s4-0))
+          )
+        )
+      )
+    (format 0 "~%")
+    )
+  #f
+  )
+
+;; definition for function dma-is-empty
+(defun dma-is-empty ()
+  (dotimes (gp-0 2)
+    (dotimes (v1-0 4)
+      (if (> (-> *dma-block-lists* gp-0 blocks v1-0 length) 0)
+          (return #f)
+          )
+      )
+    (format 0 "~%")
+    )
+  #t
+  )
+
+;; definition for function dma-get-named-buffer
+(defun dma-get-named-buffer ((arg0 symbol) (arg1 int) (arg2 int))
+  (dotimes (v1-0 2)
+    (dotimes (a3-0 4)
+      (let ((t0-2 (-> *dma-block-lists* v1-0 blocks a3-0)))
+        (when (and (= (-> t0-2 tp) arg0) (> (-> t0-2 length) 0) (>= (-> t0-2 alloc-frames) arg2))
+          (if (zero? arg1)
+              (return (get-buf-offset t0-2))
+              )
+          (+! arg1 -1)
+          )
+        )
+      )
+    )
+  (the-as int #f)
+  )
+
+;; definition for function lobby-dma-reserve-hook
+;; WARN: Return type mismatch int vs object.
+(defun lobby-dma-reserve-hook ()
+  (let ((v1-5 (- (min (-> *dma-block-lists* 0 min-offset) (-> *dma-block-lists* 1 min-offset))))
+        (a0-8 (-> *display* frames (-> *display* on-screen) global-buf))
+        )
+    (set! (-> a0-8 end)
+          (the-as pointer (&- (-> a0-8 end) (the-as uint (the-as pointer (* (/ (+ v1-5 63) 64) 64)))))
+          )
+    )
+  (dotimes (v1-10 2)
+    (dotimes (a0-9 4)
+      (let ((a1-4 (-> *dma-block-lists* v1-10 blocks a0-9)))
+        (+! (-> a1-4 alloc-frames) 1)
+        )
+      )
+    )
+  0
+  )
+
+
+
+

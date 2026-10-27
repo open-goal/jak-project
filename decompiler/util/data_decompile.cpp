@@ -1106,6 +1106,16 @@ const std::unordered_map<
               {
                   {"local-pos-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
               }},
+             {"attackable-hash",
+              {
+                  {"procs", ArrayFieldDecompMeta(TypeSpec("handle"),
+                                                 8,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+                  {"trans", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"masks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                                 4,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+              }},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

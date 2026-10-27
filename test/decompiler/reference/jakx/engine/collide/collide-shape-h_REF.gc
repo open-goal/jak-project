@@ -1383,22 +1383,22 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
 ;; definition of type collide-shape-moving
 (deftype collide-shape-moving (collide-shape)
   "A [[collide-shape]] for moving objects."
-  ((rider-time          uint64)
-   (rider-last-move     vector                                                              :inline)
-   (trans-old           vector                                                              :inline)
-   (poly-pat            pat-surface                                                         :offset 272)
+  ((rider-time          time-frame)
+   (rider-last-move     vector                                                                      :inline)
+   (trans-old           vector                                                                      :inline)
+   (poly-pat            pat-surface                                                                 :offset 272)
    (cur-pat             pat-surface)
    (ground-pat          pat-surface)
-   (status              uint64)
-   (reaction            (function control-info collide-query vector vector collide-status)  :offset 316)
+   (status              collide-status)
+   (reaction            (function collide-shape-moving collide-query vector vector collide-status)  :offset 316)
    (no-reaction         (function collide-shape-moving collide-query vector vector object))
-   (local-normal        vector                                                              :inline)
-   (surface-normal      vector                                                              :inline)
-   (poly-normal         vector                                                              :inline)
-   (ground-poly-normal  vector                                                              :inline)
-   (gspot-pos           vector                                                              :inline)
-   (gspot-normal        vector                                                              :inline)
-   (ground-touch-point  vector                                                              :inline)
+   (local-normal        vector                                                                      :inline)
+   (surface-normal      vector                                                                      :inline)
+   (poly-normal         vector                                                                      :inline)
+   (ground-poly-normal  vector                                                                      :inline)
+   (gspot-pos           vector                                                                      :inline)
+   (gspot-normal        vector                                                                      :inline)
+   (ground-touch-point  vector                                                                      :inline)
    (ground-impact-vel   meters)
    (surface-angle       float)
    (poly-angle          float)
@@ -1605,56 +1605,49 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
   )
 
 ;; definition for symbol *collide-shape-prim-backgnd*, type collide-shape-prim-mesh
-(define *collide-shape-prim-backgnd*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec backgnd)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-backgnd* (new 'static 'collide-shape-prim-mesh
+                                       :cshape #f
+                                       :prim-core (new 'static 'collide-prim-core
+                                         :world-sphere (new 'static 'vector :w 204800000.0)
+                                         :collide-as (collide-spec backgnd)
+                                         :action (collide-action solid)
+                                         :prim-type 2
+                                         )
+                                       :local-sphere (new 'static 'vector :w 204800000.0)
+                                       :mesh #f
+                                       )
+        )
 
 ;; definition for symbol *collide-shape-prim-water*, type collide-shape-prim-mesh
-(define *collide-shape-prim-water*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec water)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-water* (new 'static 'collide-shape-prim-mesh
+                                     :cshape #f
+                                     :prim-core (new 'static 'collide-prim-core
+                                       :world-sphere (new 'static 'vector :w 204800000.0)
+                                       :collide-as (collide-spec water)
+                                       :action (collide-action solid)
+                                       :prim-type 2
+                                       )
+                                     :local-sphere (new 'static 'vector :w 204800000.0)
+                                     :mesh #f
+                                     )
+        )
 
 ;; definition for symbol *collide-shape-prim-nav-mesh*, type collide-shape-prim-mesh
-(define *collide-shape-prim-nav-mesh*
-  (new 'static 'collide-shape-prim-mesh
-    :cshape #f
-    :prim-core (new 'static 'collide-prim-core
-      :world-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-      :collide-as (collide-spec nav-mesh)
-      :action (collide-action solid)
-      :prim-type 2
-      )
-    :local-sphere (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 204800000.0))
-    :mesh #f
-    )
-  )
+(define *collide-shape-prim-nav-mesh* (new 'static 'collide-shape-prim-mesh
+                                        :cshape #f
+                                        :prim-core (new 'static 'collide-prim-core
+                                          :world-sphere (new 'static 'vector :w 204800000.0)
+                                          :collide-as (collide-spec nav-mesh)
+                                          :action (collide-action solid)
+                                          :prim-type 2
+                                          )
+                                        :local-sphere (new 'static 'vector :w 204800000.0)
+                                        :mesh #f
+                                        )
+        )
 
 ;; definition (perm) for symbol *collide-rider-pool*, type collide-rider-pool
 (define-perm *collide-rider-pool* collide-rider-pool (new 'global 'collide-rider-pool))
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -2,6 +2,7 @@
 (in-package goal)
 
 ;; definition for method 3 of type quaternion
+;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this quaternion))
   (format #t "[~8x] quaternion~%" this)
   (format #t "~T[~F] [~F] [~F] [~F]~%" (-> this x) (-> this y) (-> this z) (-> this w))
@@ -496,48 +497,24 @@
             (set! a3-0 2)
             (set! v1-4 0)
             )
-          (when (< (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a2-0 16)) (the-as int arg1)))) (-> arg1 fvec z))
+          (when (< (-> arg1 vector a2-0 data a2-0) (-> arg1 fvec z))
             (set! a2-0 2)
             (set! a3-0 0)
             (set! v1-4 1)
             )
-          (let ((f0-12
-                  (sqrtf
-                    (+ (- 1.0
-                          (+ (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* a3-0 16)) (the-as int arg1))))
-                             (-> (the-as (pointer float) (+ (+ (* v1-4 4) (* v1-4 16)) (the-as int arg1))))
-                             )
-                          )
-                       (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a2-0 16)) (the-as int arg1))))
+          (let ((f0-12 (sqrtf (+ (- 1.0 (+ (-> arg1 vector a3-0 data a3-0) (-> arg1 vector v1-4 data v1-4)))
+                                 (-> arg1 vector a2-0 data a2-0)
+                                 )
+                              )
                        )
-                    )
-                  )
                 )
-            (set! (-> arg0 vec data a2-0) (/ f0-12 2))
+            (set! (-> arg0 data a2-0) (/ f0-12 2))
             (if (!= f0-12 0.0)
                 (set! f0-12 (/ 0.5 f0-12))
                 )
-            (set! (-> arg0 w)
-                  (* (- (-> (the-as (pointer float) (+ (+ (* v1-4 4) (* a3-0 16)) (the-as int arg1))))
-                        (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* v1-4 16)) (the-as int arg1))))
-                        )
-                     f0-12
-                     )
-                  )
-            (set! (-> arg0 vec data a3-0)
-                  (* (+ (-> (the-as (pointer float) (+ (+ (* a3-0 4) (* a2-0 16)) (the-as int arg1))))
-                        (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* a3-0 16)) (the-as int arg1))))
-                        )
-                     f0-12
-                     )
-                  )
-            (set! (-> arg0 vec data v1-4)
-                  (* (+ (-> (the-as (pointer float) (+ (+ (* v1-4 4) (* a2-0 16)) (the-as int arg1))))
-                        (-> (the-as (pointer float) (+ (+ (* a2-0 4) (* v1-4 16)) (the-as int arg1))))
-                        )
-                     f0-12
-                     )
-                  )
+            (set! (-> arg0 w) (* (- (-> arg1 vector a3-0 data v1-4) (-> arg1 vector v1-4 data a3-0)) f0-12))
+            (set! (-> arg0 data a3-0) (* (+ (-> arg1 vector a2-0 data a3-0) (-> arg1 vector a3-0 data a2-0)) f0-12))
+            (set! (-> arg0 data v1-4) (* (+ (-> arg1 vector a2-0 data v1-4) (-> arg1 vector v1-4 data a2-0)) f0-12))
             )
           )
         )
@@ -899,13 +876,7 @@
 ;; INFO: Used lq/sq
 (defun quaternion-rotate-local-x! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along x axis."
-  (let ((a2-1 (quaternion-vector-angle!
-                (new-stack-quaternion0)
-                (new 'static 'vector :data (new 'static 'array float 4 1.0 0.0 0.0 1.0))
-                arg2
-                )
-              )
-        )
+  (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :x 1.0 :w 1.0) arg2)))
     (quaternion-normalize! (quaternion*! arg0 arg1 a2-1))
     )
   )
@@ -914,13 +885,7 @@
 ;; INFO: Used lq/sq
 (defun quaternion-rotate-local-y! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along y axis."
-  (let ((a2-1 (quaternion-vector-angle!
-                (new-stack-quaternion0)
-                (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
-                arg2
-                )
-              )
-        )
+  (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :y 1.0 :w 1.0) arg2)))
     (quaternion-normalize! (quaternion*! arg0 arg1 a2-1))
     )
   )
@@ -929,13 +894,7 @@
 ;; INFO: Used lq/sq
 (defun quaternion-rotate-local-z! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along z axis."
-  (let ((a2-1 (quaternion-vector-angle!
-                (new-stack-quaternion0)
-                (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1.0 1.0))
-                arg2
-                )
-              )
-        )
+  (let ((a2-1 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :z 1.0 :w 1.0) arg2)))
     (quaternion-normalize! (quaternion*! arg0 arg1 a2-1))
     )
   )
@@ -944,13 +903,7 @@
 ;; INFO: Used lq/sq
 (defun quaternion-rotate-y! ((arg0 quaternion) (arg1 quaternion) (arg2 float))
   "Rotate existing quaternion along y axis (right multiply)."
-  (let ((a1-2 (quaternion-vector-angle!
-                (new-stack-quaternion0)
-                (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
-                arg2
-                )
-              )
-        )
+  (let ((a1-2 (quaternion-vector-angle! (new-stack-quaternion0) (new 'static 'vector :y 1.0 :w 1.0) arg2)))
     (quaternion-normalize! (quaternion*! arg0 a1-2 arg1))
     )
   )
@@ -1052,11 +1005,7 @@
 ;; definition for function quaternion<-rotate-y-vector
 (defun quaternion<-rotate-y-vector ((arg0 quaternion) (arg1 vector))
   "Create a quaternion representing only the yaw of the given vector."
-  (quaternion-vector-angle!
-    arg0
-    (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
-    (vector-y-angle arg1)
-    )
+  (quaternion-vector-angle! arg0 (new 'static 'vector :y 1.0 :w 1.0) (vector-y-angle arg1))
   )
 
 ;; definition (debug) for function quaternion-validate
@@ -1090,7 +1039,3 @@
     (vector-y-angle s5-0)
     )
   )
-
-
-
-

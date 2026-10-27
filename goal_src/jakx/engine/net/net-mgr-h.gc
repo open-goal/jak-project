@@ -8,166 +8,767 @@
 ;; DECOMP BEGINS
 
 (deftype net-aux-msg-handler (structure)
-  ((handler-func function  :offset-assert 0)
+  ((handler-func  function)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
+
+
+(define *net-aux-msg-handlers* (new 'static 'inline-array net-aux-msg-handler 12
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 (new 'static 'net-aux-msg-handler)
+                                 )
+        )
 
 (deftype net-mgr-game-state (structure)
-  ((connect-handle     basic  :offset-assert 0)
-   (local-machine-idx  int32  :offset-assert 4)
-   (session-master-idx int32  :offset-assert 8)
-   (host-idx           int32  :offset-assert 12)
-   (connected-bitfield int32  :offset-assert 16)
-   (time               int32  :offset-assert 20)
-   (first-time-host    basic  :offset-assert 24)
-   (locked             basic  :offset-assert 28)
-   (kicked             basic  :offset-assert 32)
-   (sm-eligible        basic  :offset-assert 36)
+  ((connect-handle      basic)
+   (local-machine-idx   int32)
+   (session-master-idx  int32)
+   (host-idx            int32)
+   (connected-bitfield  int32)
+   (time                int32)
+   (first-time-host     basic)
+   (locked              basic)
+   (kicked              basic)
+   (sm-eligible         basic)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
-  ;; field connect-handle uses ~A with a signed load.
   )
+
 
 (deftype net-mgr-lobby-state (structure)
-  ((connect-handle         basic   :offset-assert 0)
-   (connect-handle-mgcl    basic   :offset-assert 4)
-   (connect-handle-muis    basic   :offset-assert 8)
-   (my-account-id          int32   :offset-assert 12)
-   (channel-id             int32   :offset-assert 16)
-   (in-special-channel     basic   :offset-assert 20)
-   (last-normal-channel-id int32   :offset-assert 24)
-   (created-game-id        int32   :offset-assert 28)
-   (joined-game-id         int32   :offset-assert 32)
-   (channel-list-valid     basic   :offset-assert 36)
-   (last-medius-error      int32   :offset-assert 40)
-   (last-mgcl-error        int32   :offset-assert 44)
-   (last-dme-error         int32   :offset-assert 48)
-   (callback-occurred      basic   :offset-assert 52)
-   (callback-status        int32   :offset-assert 56)
-   (callback-userdata      basic   :offset-assert 60)
-   (timeout                basic   :offset-assert 64)
-   (got-error              basic   :offset-assert 68)
-   (last-report-time       int32   :offset-assert 72)
-   (game-on-me             uint64  :offset-assert 80)
-   (game-on-me-error-delay int32   :offset-assert 88)
+  ((connect-handle          basic)
+   (connect-handle-mgcl     basic)
+   (connect-handle-muis     basic)
+   (my-account-id           int32)
+   (channel-id              int32)
+   (in-special-channel      basic)
+   (last-normal-channel-id  int32)
+   (created-game-id         int32)
+   (joined-game-id          int32)
+   (channel-list-valid      basic)
+   (last-medius-error       int32)
+   (last-mgcl-error         int32)
+   (last-dme-error          int32)
+   (callback-occurred       basic)
+   (callback-status         int32)
+   (callback-userdata       basic)
+   (timeout                 basic)
+   (got-error               basic)
+   (last-report-time        int32)
+   (game-on-me              uint64)
+   (game-on-me-error-delay  int32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x5c
-  :flag-assert         #x90000005c
-  ;; field connect-handle uses ~A with a signed load. field connect-handle-mgcl uses ~A with a signed load. field connect-handle-muis uses ~A with a signed load. field callback-userdata uses ~A with a signed load.
   )
 
+
 (deftype net-mgr (process)
-  ((game-type      uint8                       :offset-assert 144)
-   (last-game-type uint8                       :offset-assert 145)
-   (notify         basic                       :offset-assert 148)
-   (game-state     net-mgr-game-state  :inline :offset-assert 152)
-   (lobby-state    net-mgr-lobby-state :inline :offset-assert 192)
-   (scert-initted  symbol                       :offset-assert 284)
-   (auto-register  symbol                       :offset-assert 288)
-   (skip-policy    symbol                       :offset-assert 292)
+  ((game-type       uint8)
+   (last-game-type  uint8)
+   (notify          engine)
+   (game-state      net-mgr-game-state   :inline)
+   (lobby-state     net-mgr-lobby-state  :inline)
+   (scert-initted   symbol)
+   (auto-register   symbol)
+   (skip-policy     symbol)
    )
-  :method-count-assert 60
-  :size-assert         #x128
-  :flag-assert         #x3c00a00128
   (:methods
-    (net-mgr-method-15 () none) ;; 15
-    (net-mgr-method-16 () none) ;; 16
-    (net-mgr-method-17 () none) ;; 17
-    (net-mgr-method-18 () none) ;; 18
-    (net-mgr-method-19 () none) ;; 19
-    (net-mgr-method-20 () none) ;; 20
-    (net-mgr-method-21 () none) ;; 21
-    (net-mgr-method-22 () none) ;; 22
-    (net-mgr-method-23 () none) ;; 23
-    (net-mgr-method-24 () none) ;; 24
-    (net-mgr-method-25 () none) ;; 25
-    (net-mgr-method-26 () none) ;; 26
-    (net-mgr-method-27 () none) ;; 27
-    (net-mgr-method-28 () none) ;; 28
-    (net-mgr-method-29 () none) ;; 29
-    (net-mgr-method-30 () none) ;; 30
-    (net-mgr-method-31 () none) ;; 31
-    (net-mgr-method-32 () none) ;; 32
-    (net-mgr-method-33 () none) ;; 33
-    (net-mgr-method-34 () none) ;; 34
-    (net-mgr-method-35 () none) ;; 35
-    (net-mgr-method-36 () none) ;; 36
-    (net-mgr-method-37 () none) ;; 37
-    (net-mgr-method-38 () none) ;; 38
-    (net-mgr-method-39 () none) ;; 39
-    (net-mgr-method-40 () none) ;; 40
-    (net-mgr-method-41 () none) ;; 41
-    (net-mgr-method-42 () none) ;; 42
-    (net-mgr-method-43 () none) ;; 43
-    (net-mgr-method-44 () none) ;; 44
-    (net-mgr-method-45 () none) ;; 45
-    (net-mgr-method-46 () none) ;; 46
-    (net-mgr-method-47 () none) ;; 47
-    (net-mgr-method-48 () none) ;; 48
-    (net-mgr-method-49 () none) ;; 49
-    (net-mgr-method-50 () none) ;; 50
-    (net-mgr-method-51 () none) ;; 51
-    (net-mgr-method-52 () none) ;; 52
-    (net-mgr-method-53 () none) ;; 53
-    (net-mgr-method-54 () none) ;; 54
-    (net-mgr-method-55 () none) ;; 55
-    (net-mgr-method-56 () none) ;; 56
-    (net-mgr-method-57 () none) ;; 57
-    (net-mgr-method-58 () none) ;; 58
-    (net-mgr-method-59 () none) ;; 59
+    (net-mgr-method-15 () none)
+    (net-mgr-method-16 () none)
+    (net-mgr-method-17 () none)
+    (net-mgr-method-18 () none)
+    (net-mgr-method-19 () none)
+    (net-mgr-method-20 () none)
+    (net-mgr-method-21 () none)
+    (net-mgr-method-22 () none)
+    (net-mgr-method-23 () none)
+    (net-mgr-method-24 () none)
+    (net-mgr-method-25 () none)
+    (net-mgr-method-26 () none)
+    (net-mgr-method-27 () none)
+    (net-mgr-method-28 () none)
+    (net-mgr-method-29 () none)
+    (net-mgr-method-30 () none)
+    (net-mgr-method-31 () none)
+    (net-mgr-method-32 () none)
+    (net-mgr-method-33 () none)
+    (net-mgr-method-34 () none)
+    (net-mgr-method-35 () none)
+    (net-mgr-method-36 () none)
+    (net-mgr-method-37 () none)
+    (net-mgr-method-38 () none)
+    (net-mgr-method-39 () none)
+    (net-mgr-method-40 () none)
+    (net-mgr-method-41 () none)
+    (net-mgr-method-42 () none)
+    (net-mgr-method-43 () none)
+    (net-mgr-method-44 () none)
+    (net-mgr-method-45 () none)
+    (net-mgr-method-46 (_type_) symbol)
+    (net-mgr-method-47 () none)
+    (net-mgr-method-48 () none)
+    (net-mgr-method-49 () none)
+    (net-mgr-method-50 () none)
+    (net-mgr-method-51 () none)
+    (net-mgr-method-52 () none)
+    (net-mgr-method-53 () none)
+    (net-mgr-method-54 () none)
+    (net-mgr-method-55 () none)
+    (net-mgr-method-56 () none)
+    (net-mgr-method-57 () none)
+    (net-mgr-method-58 () none)
+    (net-mgr-method-59 () none)
     )
   )
 
+
+(define *net-mgr-startup-status* #f)
+
+(define *net-mgr* (the-as net-mgr #f))
+
+(define *net-error* 0)
+
+(define *medius-world-status* 0)
+
+(define *dme-initted* #f)
+
+(define *medius-initted* #f)
+
+(define *mgcl-initted* #f)
+
 (deftype net-available-game-info (structure)
-  ((game-name    uint8   64 :offset-assert 0)
-   (player-count uint8      :offset-assert 64)
-   (min-players  uint8      :offset-assert 65)
-   (max-players  uint8      :offset-assert 66)
-   (in-staging   basic      :offset-assert 68)
-   (event        uint8      :offset-assert 72)
-   (location     uint8      :offset-assert 73)
-   (task-node    uint8      :offset-assert 74)
-   (generic-1    int32      :offset-assert 76)
-   (generic-2    int32      :offset-assert 80)
-   (generic-3    int32      :offset-assert 84)
-   (burn-version uint32     :offset 76)
-   (lobby-world  int32      :offset 80)
-   (class-type   int32      :offset 84)
-   (clan-1       int32      :offset-assert 88)
-   (clan-2       int32      :offset-assert 92)
-   (skill-level  int32      :offset-assert 96)
-   (avg-ping     int32      :offset-assert 100)
+  ((game-name     uint8   64)
+   (player-count  uint8)
+   (min-players   uint8)
+   (max-players   uint8)
+   (in-staging    basic)
+   (event         uint8)
+   (location      uint8)
+   (task-node     uint8)
+   (generic-1     int32)
+   (generic-2     int32)
+   (generic-3     int32)
+   (burn-version  uint32  :overlay-at generic-1)
+   (lobby-world   int32   :overlay-at generic-2)
+   (class-type    int32   :overlay-at generic-3)
+   (clan-1        int32)
+   (clan-2        int32)
+   (skill-level   int32)
+   (avg-ping      int32)
    )
-  :method-count-assert 9
-  :size-assert         #x68
-  :flag-assert         #x900000068
+  )
+
+
+(defun encode-net-available-game-info ((arg0 net-available-game-info) (arg1 mem-buffer))
+  (mem-buffer-method-31 arg1 (-> arg0 game-name) 64)
+  (mem-buffer-method-18 arg1 (the-as int (-> arg0 player-count)))
+  (mem-buffer-method-18 arg1 (the-as int (-> arg0 min-players)))
+  (mem-buffer-method-18 arg1 (the-as int (-> arg0 max-players)))
+  (mem-buffer-method-29 arg1 (the-as symbol (-> arg0 in-staging)))
+  (mem-buffer-method-14 arg1 (the-as int (-> arg0 event)))
+  (mem-buffer-method-14 arg1 (the-as int (-> arg0 location)))
+  (mem-buffer-method-18 arg1 (the-as int (-> arg0 task-node)))
+  (mem-buffer-method-16 arg1 (-> arg0 generic-1))
+  (mem-buffer-method-20 arg1 (the-as int (-> arg0 burn-version)))
+  (mem-buffer-method-16 arg1 (-> arg0 generic-2))
+  (mem-buffer-method-16 arg1 (-> arg0 generic-2))
+  (mem-buffer-method-16 arg1 (-> arg0 generic-3))
+  (mem-buffer-method-16 arg1 (-> arg0 generic-3))
+  (mem-buffer-method-16 arg1 (-> arg0 clan-1))
+  (mem-buffer-method-16 arg1 (-> arg0 clan-2))
+  (mem-buffer-method-16 arg1 (-> arg0 skill-level))
+  (mem-buffer-method-16 arg1 (-> arg0 avg-ping))
+  (none)
+  )
+
+(defun decode-net-available-game-info ((arg0 net-available-game-info) (arg1 mem-buffer))
+  (mem-buffer-method-48 arg1 (-> arg0 game-name) 64)
+  (set! (-> arg0 player-count) (the-as uint (mem-buffer-method-36 arg1)))
+  (set! (-> arg0 min-players) (the-as uint (mem-buffer-method-36 arg1)))
+  (set! (-> arg0 max-players) (the-as uint (mem-buffer-method-36 arg1)))
+  (set! (-> arg0 in-staging) (the-as basic (mem-buffer-method-46 arg1)))
+  (set! (-> arg0 event) (the-as uint (mem-buffer-method-32 arg1)))
+  (set! (-> arg0 location) (the-as uint (mem-buffer-method-32 arg1)))
+  (set! (-> arg0 task-node) (the-as uint (mem-buffer-method-36 arg1)))
+  (set! (-> arg0 generic-1) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 generic-1) (the-as int (mem-buffer-method-38 arg1)))
+  (set! (-> arg0 generic-2) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 generic-2) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 generic-3) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 generic-3) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 clan-1) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 clan-2) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 skill-level) (mem-buffer-method-34 arg1))
+  (set! (-> arg0 avg-ping) (mem-buffer-method-34 arg1))
+  (none)
   )
 
 (deftype net-available-game (structure)
-  ((info             net-available-game-info :inline :offset-assert 0)
-   (connect-info     net-connection-info     :inline :offset-assert 104)
-   (medius-world-id  int32                           :offset-assert 260)
-   (format-game-name uint8                  64      :offset-assert 264)
+  ((info              net-available-game-info  :inline)
+   (connect-info      net-connection-info      :inline)
+   (medius-world-id   int32)
+   (format-game-name  uint8                    64)
    )
-  :method-count-assert 15
-  :size-assert         #x148
-  :flag-assert         #xf00000148
   (:methods
-    (net-available-game-method-9 () none) ;; 9
-    (net-available-game-method-10 () none) ;; 10
-    (net-available-game-method-11 () none) ;; 11
-    (net-available-game-method-12 () none) ;; 12
-    (net-available-game-method-13 () none) ;; 13
-    (net-available-game-method-14 () none) ;; 14
+    (net-available-game-method-9 () none)
+    (net-available-game-method-10 () none)
+    (net-available-game-method-11 () none)
+    (net-available-game-method-12 () none)
+    (net-available-game-method-13 () none)
+    (net-available-game-method-14 () none)
     )
   )
 
-(define-extern *net-mgr* net-mgr)
+
+(define *net-mgr-scratch* (new 'static 'array uint32 512
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            )
+        )
+
+(define *net-available-game-ct* 0)
+
+(define *net-available-games* *net-mgr-scratch*)
+
+(define *net-active-game* (new 'static 'net-available-game))
+
+(defbehavior net-mgr-notify-connect net-mgr ((arg0 process) (arg1 int))
+  (if (not *net-mgr*)
+      (return #t)
+      )
+  (let ((s4-0 (-> *net-mgr* notify alive-list next0)))
+    (-> *net-mgr* notify)
+    (let ((s3-0 (-> s4-0 next0)))
+      (while (!= s4-0 (-> *net-mgr* notify alive-list-end))
+        (when (= ((method-of-type connection get-process) (the-as connection s4-0)) arg0)
+          (set! (-> (the-as connection s4-0) param2) arg1)
+          (return #t)
+          )
+        (set! s4-0 s3-0)
+        (-> *net-mgr* notify)
+        (set! s3-0 (-> s3-0 next0))
+        )
+      )
+    )
+  (add-connection (-> *net-mgr* notify) arg0 #f arg1 0 0)
+  )

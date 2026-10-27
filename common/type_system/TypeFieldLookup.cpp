@@ -139,10 +139,16 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
   ASSERT(di.mem_deref);  // it's accessing a pointer.
   auto elt_type = di.result_type;
 
-  if (input.stride) {
+  if (input.has_stride()) {
     // variable access to the array.
     // this is an array of values, nothing inline, so we must get an _exact_ match for this to work.
-    if (input.stride != di.stride) {
+    int var_id = -1;
+    if (input.stride == di.stride && !input.stride2) {
+      var_id = 0;
+    } else if (input.stride2 == di.stride && !input.stride) {
+      var_id = 1;
+    }
+    if (var_id == -1) {
       // mismatched array strides, fail!
       return;
     }
@@ -158,6 +164,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
     ReverseLookupNode variable_node;
     variable_node.prev = parent;
     variable_node.token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
+    variable_node.token.idx = var_id;
 
     if (input.deref.has_value()) {
       // input did a load or store, we need to check the size/signed/kind.
@@ -250,14 +257,29 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   ASSERT(di.can_deref);
   ASSERT(!di.mem_deref);
 
-  if (input.stride && input.stride == di.stride && input.offset < di.stride) {
+  int var_id = -1;
+  if (input.stride && input.stride == di.stride) {
+    var_id = 0;
+  } else if (input.stride2 && input.stride2 == di.stride) {
+    var_id = 1;
+  }
+
+  if (var_id != -1 && input.offset < di.stride) {
     // variable lookup.
     ReverseLookupNode var_idx_node;
     var_idx_node.prev = parent;
 
     var_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
+    var_idx_node.token.idx = var_id;
 
-    if (input.offset == 0 && !input.deref.has_value()) {
+    FieldReverseLookupInput next_input;
+    next_input.deref = input.deref;
+    next_input.stride = var_id == 0 ? 0 : input.stride;
+    next_input.stride2 = var_id == 1 ? 0 : input.stride2;
+    next_input.offset = input.offset;  // includes the offset.
+    next_input.base_type = di.result_type;
+
+    if (input.offset == 0 && !input.deref.has_value() && !next_input.has_stride()) {
       // put the element first, to match the old behavior.
       output->results.emplace_back(false, di.result_type, var_idx_node.to_vector());
       // keep trying!
@@ -267,11 +289,6 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
       return;
     }
 
-    FieldReverseLookupInput next_input;
-    next_input.deref = input.deref;
-    next_input.stride = 0;
-    next_input.offset = input.offset;  // includes the offset.
-    next_input.base_type = di.result_type;
     try_reverse_lookup(next_input, ts, &var_idx_node, output, max_count);
     return;
   }
@@ -288,7 +305,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   const_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
   const_idx_node.token.idx = elt_idx;
 
-  if (offset_into_elt == 0 && !input.deref.has_value() && !input.stride) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && !input.has_stride()) {
     // just get an element (possibly zero, and we want to include the 0 if so)
     // for the degenerate inline-array case, it seems more likely that we get the zeroth object
     // rather than the array, so this goes before that case.
@@ -300,7 +317,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   }
 
   // can we just return the array?
-  if (offset_into_elt == 0 && !input.deref.has_value() && elt_idx == 0 && !input.stride) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && elt_idx == 0 && !input.has_stride()) {
     auto parent_vec = parent_to_vector(parent);
     if (!parent_vec.empty()) {
       output->results.emplace_back(false, input.base_type, parent_to_vector(parent));
@@ -316,6 +333,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   FieldReverseLookupInput next_input;
   next_input.deref = input.deref;
   next_input.stride = input.stride;
+  next_input.stride2 = input.stride2;
   next_input.offset = offset_into_elt;
   next_input.base_type = di.result_type;
   try_reverse_lookup(next_input, ts, &const_idx_node, output, max_count);
@@ -383,7 +401,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
               continue;  // try another field!
             }
             // it's a match, just access the field like normal!
-            if (input.stride) {
+            if (input.has_stride()) {
               continue;
             }
             ReverseLookupNode node;
@@ -394,7 +412,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
           } else {
             // needs a deref, offset is 0, didn't do a deref.
             // we're taking the address
-            if (input.stride) {
+            if (input.has_stride()) {
               continue;
             }
             ReverseLookupNode node;
@@ -422,7 +440,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
           expected_offset_into_field = ts.lookup_type(field.type())->get_offset();
         }
         if (offset_into_field == expected_offset_into_field && !input.deref.has_value() &&
-            !input.stride) {
+            !input.has_stride()) {
           ReverseLookupNode node;
           node.prev = parent;
           node.token = token;
@@ -433,6 +451,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
           next_input.deref = input.deref;
           next_input.offset = offset_into_field - expected_offset_into_field;
           next_input.stride = input.stride;
+          next_input.stride2 = input.stride2;
           next_input.base_type = field_deref.type;
           ReverseLookupNode node;
           node.prev = parent;

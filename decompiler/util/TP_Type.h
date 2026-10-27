@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "common/common_types.h"
 #include "common/type_system/TypeSpec.h"
@@ -32,6 +33,7 @@ class TP_Type {
     INTEGER_CONSTANT,           // a constant integer.
     INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. for dynamic addr of
     INTEGER_CONSTANT_PLUS_VAR_MULT,  // like var + 100 + 12 * var2
+    PRODUCT_SUM,                     // constant + (val * multiplier) + (val2 * multiplier2)
     DYNAMIC_METHOD_ACCESS,           // partial access into a
     VIRTUAL_METHOD,
     NON_VIRTUAL_METHOD,
@@ -68,6 +70,7 @@ class TP_Type {
       case Kind::INTEGER_CONSTANT:
       case Kind::INTEGER_CONSTANT_PLUS_VAR:
       case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+      case Kind::PRODUCT_SUM:
       case Kind::VIRTUAL_METHOD:
       case Kind::NON_VIRTUAL_METHOD:
       case Kind::LEFT_SHIFTED_BITFIELD:
@@ -231,6 +234,19 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_product_sum(int64_t multiplier,
+                                       int64_t multiplier2,
+                                       const TypeSpec& ts,
+                                       int64_t constant = 0) {
+    TP_Type result;
+    result.kind = Kind::PRODUCT_SUM;
+    result.m_int = multiplier;
+    result.m_extra_multiplier = multiplier2;
+    result.m_ts = ts;
+    result.m_sum_constant = constant;
+    return result;
+  }
+
   static TP_Type make_partial_dyanmic_vtable_access() {
     TP_Type result;
     result.kind = Kind::DYNAMIC_METHOD_ACCESS;
@@ -261,6 +277,20 @@ class TP_Type {
     result.m_ts = ts;
     result.m_int = multiplier;
     result.m_flipped_order = flipped;
+    return result;
+  }
+
+  /*!
+   * obj + constant + (val * multiplier) + (val2 * multiplier2), 2d array access
+   */
+  static TP_Type make_object_plus_product_sum(const TypeSpec& ts,
+                                              int64_t multiplier,
+                                              int64_t multiplier2,
+                                              int64_t constant,
+                                              bool flipped) {
+    TP_Type result = make_object_plus_product(ts, 1, flipped);
+    result.m_sum_multipliers = {multiplier, multiplier2};
+    result.m_sum_constant = constant;
     return result;
   }
 
@@ -371,6 +401,42 @@ class TP_Type {
     return m_extra_multiplier;
   }
 
+  std::pair<int64_t, int64_t> get_product_sum_multipliers() const {
+    ASSERT(kind == Kind::PRODUCT_SUM);
+    return {m_int, m_extra_multiplier};
+  }
+
+  bool has_sum_multipliers() const {
+    return kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT && m_sum_multipliers.first;
+  }
+
+  const std::pair<int64_t, int64_t>& get_sum_multipliers() const {
+    ASSERT(has_sum_multipliers());
+    return m_sum_multipliers;
+  }
+
+  void set_field_origin(const TypeSpec& base_type, int offset) {
+    ASSERT(kind == Kind::TYPESPEC);
+    m_field_origin_type = base_type;
+    m_field_origin_offset = offset;
+  }
+
+  bool has_field_origin() const {
+    return kind == Kind::TYPESPEC && m_field_origin_type != TypeSpec();
+  }
+
+  const TypeSpec& field_origin_type() const { return m_field_origin_type; }
+  int field_origin_offset() const { return m_field_origin_offset; }
+
+  int64_t get_sum_constant() const {
+    ASSERT(kind == Kind::PRODUCT_SUM || has_sum_multipliers());
+    return m_sum_constant;
+  }
+
+  bool is_plain_product_plus_obj() const {
+    return kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT && !m_sum_constant;
+  }
+
   int get_left_shift() const {
     ASSERT(kind == Kind::LEFT_SHIFTED_BITFIELD);
     return m_int;
@@ -422,6 +488,10 @@ class TP_Type {
   bool m_flipped_order = false;
 
   int64_t m_extra_multiplier = 0;
+  std::pair<int64_t, int64_t> m_sum_multipliers = {0, 0};
+  int64_t m_sum_constant = 0;
+  TypeSpec m_field_origin_type;
+  int m_field_origin_offset = 0;
 };
 
 class TypeState {
