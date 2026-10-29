@@ -102,10 +102,12 @@
 
 (declare-type cpad-info basic)
 (declare-type mouse-info basic)
+(declare-type keybd-info basic)
 (define-extern cpad-open (function cpad-info int cpad-info))
 (define-extern cpad-get-data (function cpad-info cpad-info))
 (define-extern scf-get-territory (function int)) ;; not actually a scf function...
 (define-extern mouse-get-data (function mouse-info none))
+(define-extern keybd-get-data (function keybd-info none))
 (define-extern file-stream-open (function file-stream string symbol file-stream))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -815,7 +817,7 @@
   )
 
 (deftype handle-wrapper (structure)
-  ((handle uint64  :offset-assert 0)
+  ((handle handle  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -5042,7 +5044,7 @@
   :size-assert         #x98
   :flag-assert         #xa00000098
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (new (symbol type int) _type_) ;; 0 ;; (new (symbol type int) _type_)
     (cpad-info-method-9 (_type_) int) ;; 9 ;; (adjust-to-screen-flip (_type_) int)
     )
   )
@@ -5054,6 +5056,9 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
 
 ;; +++pad:mouse-buttons
@@ -5076,7 +5081,7 @@
    (deltax             int8            :offset-assert 22)
    (deltay             int8            :offset-assert 23)
    (wheel              uint8           :offset-assert 24)
-   (change-time        uint64          :offset-assert 32) ;; time-frame
+   (change-time        time-frame      :offset-assert 32)
    (button0-abs        mouse-buttons 3 :offset-assert 40) ;; guessed by decompiler
    (button0-shadow-abs mouse-buttons 1 :offset-assert 52) ;; guessed by decompiler
    (button0-rel        mouse-buttons 3 :offset-assert 56) ;; guessed by decompiler
@@ -5084,7 +5089,7 @@
   ;;  (UNKNOWN            UNKNOWN         :offset-assert -1) ;; field could not be read.
    (posx               float           :offset 80)
    (posy               float           :offset 84)
-   (oldposx            float           :offset 96)
+   (oldposx            float           :offset 96 :do-not-decompile)
    (oldposy            float           :offset 100)
    (speedx             float           :offset 92)
    (speedy             float           :offset 108)
@@ -5092,6 +5097,9 @@
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
 
 (deftype keybd-info (basic)
@@ -5103,25 +5111,28 @@
   :method-count-assert 9
   :size-assert         #x11c
   :flag-assert         #x90000011c
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
 
-(define-extern *cheat-mode* symbol)
-;; (define-extern cpad-invalid! function) ;; (function cpad-info cpad-info)
-;; (define-extern analog-input function) ;; (function int float float float float float)
-;; (define-extern cpad-set-buzz! function) ;; (function cpad-info int int time-frame none)
+(define-extern *cheat-mode* symbol) ;; 
+(define-extern cpad-invalid! (function cpad-info cpad-info)) ;; (function cpad-info cpad-info)
+(define-extern analog-input (function int float float float float float)) ;; (function int float float float float float)
+(define-extern cpad-set-buzz! (function cpad-info int int time-frame int)) ;; (function cpad-info int int time-frame none)
 (define-extern *cpad-list* cpad-list) ;; 
 (define-extern *cpad-debug* symbol) ;; 
-;; (define-extern service-cpads function) ;; (function cpad-list)
-(define-extern buzz-stop! (function int none))
+(define-extern service-cpads (function cpad-list)) ;; (function cpad-list)
+(define-extern buzz-stop! (function int int)) ;; (function int none)
 (define-extern *mouse* mouse-info) ;; 
-;; (define-extern service-mouse function) ;; (function none)
-(define-extern *keybd* keybd-info)
-;; (define-extern service-keybd function) ;; (function none)
-;; (define-extern *usb-to-ascii-map* object)
-;; (define-extern *keybd-last-key* object)
-;; (define-extern *keybd-hold-ct* object)
-;; (define-extern *keybd-ungetc* object)
-;; (define-extern keybd-read-ascii function)
+(define-extern service-mouse (function mouse-info)) ;; (function none)
+(define-extern *keybd* keybd-info) ;; 
+(define-extern service-keybd (function keybd-info)) ;; (function none)
+(define-extern *usb-to-ascii-map* (pointer uint32))
+(define-extern *keybd-last-key* uint)
+(define-extern *keybd-hold-ct* uint)
+(define-extern *keybd-ungetc* uint)
+(define-extern keybd-read-ascii (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gs                             ;;
@@ -8277,6 +8288,57 @@
   )
 ;; ---level-h:level-memory-mode
 
+;; +++level-h:task-level
+(defenum task-level
+  :type uint8
+  (default 0)
+  (brdroom 1)
+  (jungle 2)
+  (snow 3)
+  (kras 4)
+  (canyon 5)
+  (canspar 6)
+  (temple 7)
+  (spartem 8)
+  (haven 9)
+  (havjung 10)
+  (havsew 11)
+  (havtour 12)
+  (ice 13)
+  (sewer 14)
+  (coliseum 15)
+  (desarena 16)
+  (snobowl 17)
+  (cliffs 18)
+  (spargus 19)
+  (spatour 20)
+  (docks 21)
+  (dockkra 22)
+  (dromdoc 23)
+  (kcross 24)
+  (peak 25)
+  (iceberg 26)
+  (icepass 27)
+  (drome 28)
+  (kratour 29)
+  (icetour 30)
+  (desisle 31)
+  (atoll 32)
+  (fort 33)
+  (garage 34)
+  (hiphog 35)
+  (eight 36)
+  (eightb 37)
+  (rustyh 38)
+  (curve 39)
+  (andrew 40)
+  (ben 41)
+  (test 42)
+  (city 43)
+  (artist 44)
+  )
+;; ---level-h:task-level
+
 (deftype level-load-info (basic)
   ((name-list         symbol            4 :offset-assert 4 :score -1) ;; guessed by decompiler
    (name              symbol              :offset 4) ;; guessed by decompiler
@@ -8285,7 +8347,7 @@
    (dbname            symbol              :offset 4) ;; guessed by decompiler
    (taskname          symbol              :offset 16) ;; guessed by decompiler
    (index             int16               :offset-assert 20)
-   (task-level        uint8               :offset-assert 22)
+   (task-level        task-level          :offset-assert 22)
    (race-minimap      uint8               :offset-assert 23)
    (level-flags       level-flags         :offset-assert 24) ;; guessed by decompiler
    (packages          pair                :offset-assert 28) ;; guessed by decompiler
@@ -14731,8 +14793,8 @@
    (level-slot      int8               :offset-assert 93)
    (driver-type     driver-type        :offset-assert 94)
    (driver-slot     int8               :offset-assert 95)
-   (impact-callback basic              :offset-assert 96)
-   (proc            basic              :offset-assert 100)
+   (impact-callback function           :offset-assert 96)
+   (proc            process            :offset-assert 100)
    )
   :method-count-assert 9
   :size-assert         #x68
@@ -14750,6 +14812,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-task-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declare-type task-level-info structure)
 
 ;; +++game-task-h:game-task
 (defenum game-task
@@ -15202,7 +15266,7 @@
   (add-av-map 71)
   (add-jakc 72)
   )
-;; +++game-task-h:game-task-node-command
+;; ---game-task-h:game-task-node-command
 
 ;; +++game-task-h:game-task-action
 (defenum game-task-action
@@ -15473,6 +15537,33 @@
   :flag-assert         #x900000020
   )
 
+;; +++game-task-h:net-play-mode
+(defenum net-play-mode
+  :type uint8
+  (race 0)
+  (deathrace 1)
+  (timebox 2)
+  (timetrial 3)
+  (deathmatch 4)
+  (hunt 5)
+  (collect 6)
+  (ctf 7)
+  (reversi 8)
+  (team-deathmatch 9)
+  (football 10)
+  (artifact 11)
+  (king-of-hill 12)
+  (rushhour 13)
+  (assassin 14)
+  (training 15)
+  (training2 16)
+  (boss-battle 17)
+  (artist 18)
+  (invalid 19)
+  (intro-b 20)
+  )
+;; ---game-task-h:net-play-mode
+
 (define-extern *net-play-mode-names* (array symbol))
 (define-extern *net-play-mode-text-ids* (pointer text-id))
 (define-extern *net-play-mode-icon-string* (array string))
@@ -15556,7 +15647,7 @@
 (deftype game-task-node-info (basic)
   ((level                              symbol                             :offset-assert 4) ;; guessed by decompiler
    (task uint8)
-   (net-play-mode                      uint8                              :offset-assert 9)
+   (net-play-mode                      net-play-mode                      :offset-assert 9)
    (name                               string                             :offset-assert 12) ;; guessed by decompiler
    (max-humans                         int8                               :offset-assert 16)
    (max-cpu                            int8                               :offset-assert 17)
@@ -15619,17 +15710,17 @@
   )
 
 (deftype game-task-info (basic)
-  ((name                       string   :offset-assert 4) ;; guessed by decompiler
-   (task-level                 uint8    :offset-assert 8)
-   (text-name                  text-id  :offset-assert 12) ;; guessed by decompiler
-   (text-id-long               text-id  :offset-assert 16)
-   (single-player              symbol   :offset-assert 20)
-   (kiosk-play-node            uint16   :offset-assert 24) ;; game-task-node
-   (play-node                  uint16   :offset-assert 26) ;; game-task-node
-   (play-continue              string   :offset-assert 28) ;; guessed by decompiler
-   (split-continue             string   :offset-assert 32)
-   (kiosk-play-continue        object   :offset-assert 36) ;; guessed by decompiler
-   (kiosk-online-play-continue string   :offset-assert 40)
+  ((name                       string        :offset-assert 4) ;; guessed by decompiler
+   (task-level                 task-level    :offset-assert 8)
+   (text-name                  text-id       :offset-assert 12) ;; guessed by decompiler
+   (text-id-long               text-id       :offset-assert 16)
+   (single-player              symbol        :offset-assert 20)
+   (kiosk-play-node            uint16        :offset-assert 24) ;; game-task-node
+   (play-node                  uint16        :offset-assert 26) ;; game-task-node
+   (play-continue              string        :offset-assert 28) ;; guessed by decompiler
+   (split-continue             string        :offset-assert 32)
+   (kiosk-play-continue        string        :offset-assert 36) ;; guessed by decompiler
+   (kiosk-online-play-continue string        :offset-assert 40)
    )
   :method-count-assert 10
   :size-assert         #x2c
@@ -15839,10 +15930,56 @@
   (cif0 0))
 ;; ---car-info-h:car-info-flag
 
+;; +++car-info-h:car-type
+(defenum car-type
+  :type int8
+  (none -1)
+  (mongoose 0)
+  (falcon 1)
+  (wombat 2)
+  (possum 3)
+  (bobcat 4)
+  (cougar 5)
+  (wolf 6)
+  (bear 7)
+  (leopard 8)
+  (panther 9)
+  (tiger 10)
+  (cheetah 11)
+  (gila 12)
+  (snake 13)
+  (daxtermobile 14)
+  )
+;; ---car-info-h:car-type
+
+;; +++car-info-h:car-type-u8
+(defenum car-type-u8
+  :type uint8
+  :copy-entries car-type
+  )
+;; ---car-info-h:car-type-u8
+
+;; +++car-info-h:car-parts
+(defenum car-parts
+  :type int8
+  (f-fender 0)
+  (r-fender 1)
+  (door 2)
+  (f-bumper 3)
+  (r-bumper 4)
+  (hood 5)
+  (trunk 6)
+  (roof 7)
+  (wheel 8)
+  (antenna 9)
+  (helmet 10)
+  )
+;; ---car-info-h:car-parts
+
 (deftype car-info (structure)
   ((base-color    car-rgb-color :inline :offset-assert 0)
    (stripe-color  car-rgb-color :inline :offset-assert 16)
-   (car-type      int8                  :offset-assert 32)
+   (car-type      car-type              :offset-assert 32)
    (current-parts int8       11         :offset-assert 33)
    (tuning        uint32                :offset-assert 44)
    (flags         car-info-flag         :offset-assert 48)
@@ -15853,7 +15990,7 @@
   )
 
 (deftype car-info-save (structure)
-  ((car-type     int8       :offset-assert 0)
+  ((car-type     car-type   :offset-assert 0)
    (base-color   rgba       :offset-assert 4)
    (stripe-color rgba       :offset-assert 8)
    (parts        int8    11 :offset-assert 12)
@@ -15866,7 +16003,7 @@
   )
 
 (deftype car-info-full (car-info)
-  ((level              basic                :offset-assert 52)
+  ((level              symbol               :offset-assert 52)
    (wheel-blur         float                :offset-assert 56)
    (tread-texture      basic                :offset-assert 60)
    (textures           car-textures         :offset-assert 64)
@@ -15919,7 +16056,8 @@
 
 ;; +++car-info-h:vehicle-type
 (defenum vehicle-type
-  :type uint8
+  :type int8
+  (none -1)
   (mongoose 0)
   (falcon 1)
   (wombat 2)
@@ -15936,17 +16074,24 @@
   (snake 13)
   (daxtermobile 14)
   (drone 15)
-)
+  )
 ;; ---car-info-h:vehicle-type
+
+;; +++car-info-h:vehicle-type-u8
+(defenum vehicle-type-u8
+  :type uint8
+  :copy-entries vehicle-type
+  )
+;; ---car-info-h:vehicle-type-u8
 
 (define-extern *car-type-names* (array string))
 (define-extern type-from-vehicle-type (function vehicle-type type))
 (define-extern level-name-from-vehicle-type (function vehicle-type symbol))
-(define-extern car-type-from-vehicle-type (function int vehicle-type))
-(define-extern vehicle-type-from-car-type "does nothing, returns input" (function int int))
-(define-extern car-type-from-level-name (function symbol vehicle-type))
-(define-extern vehicle-type-from-level-name (function symbol int))
-(define-extern vehicle-type-from-name (function string int))
+(define-extern car-type-from-vehicle-type (function vehicle-type-u8 car-type))
+(define-extern vehicle-type-from-car-type "does nothing, returns input" (function car-type vehicle-type))
+(define-extern car-type-from-level-name (function symbol car-type))
+(define-extern vehicle-type-from-level-name (function symbol vehicle-type))
+(define-extern vehicle-type-from-name (function string vehicle-type))
 (define-extern *car-part-names* (array string))
 (define-extern *car-part-translate-array* (array uint8))
 (define-extern *car-part-translate-names* (array string))
@@ -36343,10 +36488,10 @@
 ;; (define-extern joint-anim-inspect-elt function) ;; (function joint-anim float joint-anim)
 ;; (define-extern jacc-mem-usage function) ;; (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control)
 ;; (define-extern joint-control-cleanup function) ;; (function joint-control kheap art-joint-anim symbol)
-(define-extern joint-control-channel-eval (function joint-control-channel float :behavior process)) ;; 
-;; (define-extern joint-control-channel-eval! function) ;; (function joint-control-channel (function joint-control-channel float float float float) float :behavior process)
-(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)) ;; 
-(define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int)) ;; 
+(define-extern joint-control-channel-eval (function joint-control-channel float :behavior process))
+(define-extern joint-control-channel-eval! (function joint-control-channel (function joint-control-channel float float float float) float :behavior process))
+(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
+(define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
 ;; (define-extern joint-control-copy! function) ;; (function joint-control joint-control joint-control)
 ;; (define-extern joint-control-remap! function) ;; (function joint-control art-group art-group pair int string symbol)
 ;; (define-extern flatten-joint-control-to-spr function) ;; (function joint-control int)
@@ -44498,7 +44643,7 @@
 
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags           uint32                               :offset-assert 200)
-   (vehicle-type    uint8                                :offset-assert 204) ;; vehicle-type-u8
+   (vehicle-type    vehicle-type-u8                      :offset-assert 204)
    (engine          vehicle-engine-info          :inline :offset-assert 208)
    (transmission    vehicle-transmission-info    :inline :offset-assert 264)
    (handling        vehicle-handling-info        :inline :offset-assert 316)
@@ -46004,27 +46149,48 @@
   )
 
 (deftype prebuilt-ai-vehicle (structure)
-  ((levname    basic   :offset-assert 0)
-   (v-type     uint8   :offset-assert 4)
-   (load-parts uint64  :offset-assert 8)
+  ((levname    symbol            :offset-assert 0)
+   (v-type     vehicle-type-u8   :offset-assert 4)
+   (load-parts uint64            :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
+;; +++net-world-h:net-vehicle-type
+(defenum net-vehicle-type
+  :type int8
+  (falcon 0)
+  (possum 1)
+  (bobcat 2)
+  (cougar 3)
+  (wombat 4)
+  (leopard 5)
+  (wolf 6)
+  (panther 7)
+  (tiger 8)
+  (bear 9)
+  (gila 10)
+  (cheetah 11)
+  (snake 12)
+  (mongoose 13)
+  (daxtermobile 14)
+)
+;; ---net-world-h:net-vehicle-type
+
 (deftype net-vehicle (structure)
-  ((id         uint32  :offset-assert 0)
-   (name       string   :offset-assert 4)
-   (levname    basic   :offset-assert 8)
-   (vt         uint8   :offset-assert 12)
-   (ct         int8    :offset-assert 13)
-   (tex-name   basic   :offset-assert 16)
-   (sound-bank basic   :offset-assert 20)
-   (index      int8    :offset-assert 24)
-   (cup-mask   uint32  :offset-assert 28)
-   (id-variant uint32  :offset-assert 32)
-   (ai-levels  basic   :offset-assert 36)
+  ((id         uint32           :offset-assert 0)
+   (name       string           :offset-assert 4)
+   (levname    string           :offset-assert 8)
+   (vt         vehicle-type-u8  :offset-assert 12)
+   (ct         car-type         :offset-assert 13)
+   (tex-name   string           :offset-assert 16)
+   (sound-bank symbol           :offset-assert 20)
+   (index      net-vehicle-type :offset-assert 24)
+   (cup-mask   uint32           :offset-assert 28)
+   (id-variant uint32           :offset-assert 32)
+   (ai-levels  (array symbol)   :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -46032,25 +46198,25 @@
   )
 
 (deftype net-driver (structure)
-  ((id            uint32  :offset-assert 0)
-   (levname       basic   :offset-assert 4)
-   (dt            uint8   :offset-assert 8)
-   (tex-name      basic   :offset-assert 12)
-   (picture-part1 uint32  :offset-assert 16)
-   (picture-part2 uint32  :offset-assert 20)
-   (icon-part1    uint32  :offset-assert 24)
-   (icon-part2    uint32  :offset-assert 28)
-   (base-color    uint32  :offset-assert 32)
-   (stripe-color  uint32  :offset-assert 36)
-   (ai-car-levels basic   :offset-assert 40)
-   (driver-name   basic   :offset-assert 44)
-   (sex           int8    :offset-assert 48)
-   (height        int8    :offset-assert 49)
-   (weight        int16   :offset-assert 50)
-   (eyes          basic   :offset-assert 52)
-   (age           int8    :offset-assert 56)
-   (helmet-scale  float   :offset-assert 60)
-   (no-ai         basic   :offset-assert 64)
+  ((id            uint32          :offset-assert 0)
+   (levname       string          :offset-assert 4)
+   (dt            driver-type     :offset-assert 8)
+   (tex-name      string          :offset-assert 12)
+   (picture-part1 uint32          :offset-assert 16)
+   (picture-part2 uint32          :offset-assert 20)
+   (icon-part1    uint32          :offset-assert 24)
+   (icon-part2    uint32          :offset-assert 28)
+   (base-color    uint32          :offset-assert 32)
+   (stripe-color  uint32          :offset-assert 36)
+   (ai-car-levels (array symbol)  :offset-assert 40)
+   (driver-name   string          :offset-assert 44)
+   (sex           int8            :offset-assert 48)
+   (height        int8            :offset-assert 49)
+   (weight        int16           :offset-assert 50)
+   (eyes          basic           :offset-assert 52)
+   (age           int8            :offset-assert 56)
+   (helmet-scale  float           :offset-assert 60)
+   (no-ai         symbol          :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x44
@@ -46067,8 +46233,8 @@
   )
 
 (define-extern *ghost-info-ptr* pointer) ;; to something
-;; (define-extern net-play-mode-race? function)
-;; (define-extern get-task-node-id-from-location-and-event function)
+(define-extern net-play-mode-race? (function net-play-mode symbol))
+(define-extern get-task-node-id-from-location-and-event (function task-level net-play-mode int))
 (define-extern *default-vehicle-load-parts* int) ;; TODO - likely an enum
 ;; (define-extern encode-green-room-stats function)
 ;; (define-extern decode-green-room-stats function)
@@ -46082,11 +46248,11 @@
 (define-extern *prebuilt-ai-vehicles* (array prebuilt-ai-vehicle))
 (define-extern *net-vehicles* (array net-vehicle))
 (define-extern find-vehicle-info (function symbol net-vehicle))
-;; (define-extern find-prebuilt-ai-vehicle function)
+(define-extern find-prebuilt-ai-vehicle (function symbol prebuilt-ai-vehicle))
 (define-extern *net-drivers* (array net-driver))
-;; (define-extern get-vehicle-name function)
+(define-extern get-vehicle-name (function net-vehicle-type string))
 (define-extern *protect-vehicle-slot-1* symbol)
-;; (define-extern protect-vehicle-slot-1 function)
+(define-extern protect-vehicle-slot-1 (function symbol int))
 (define-extern *in-end-of-race-preload* symbol)
 (define-extern *race-end-camera-pos-valid* symbol)
 (define-extern *race-end-camera-pos* vector)
@@ -47785,13 +47951,12 @@
 ;; keyboard                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype keyboard-key (structure)
-  ((data  UNKNOWN 4 :offset-assert 0)
-   (char  uint8     :offset-assert 0)
-   (char2 uint8     :offset-assert 1)
-   (char3 uint8     :offset-assert 2)
-   (char4 uint8     :offset-assert 3)
+  ((data  uint8 4   :offset-assert 0)
+   (char  uint8     :offset 0)
+   (char2 uint8     :offset 1)
+   (char3 uint8     :offset 2)
+   (char4 uint8     :offset 3)
    (pos-x int8      :offset-assert 4)
    (pos-y int8      :offset-assert 5)
    (size  int8      :offset-assert 6)
@@ -47804,9 +47969,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype keyboard-control (process-drawable)
   ((selected      int32                       :offset-assert 248)
    (pos-x         int32                       :offset-assert 252)
@@ -47820,8 +47983,7 @@
    (left-count    int32                       :offset-assert 284)
    (right-count   int32                       :offset-assert 288)
    (layout-select int32                       :offset-assert 292)
-   (name          basic                       :offset-assert 4)
-   (screen-pos-x  int32                       :offset-assert 300)
+   (screen-pos-x  int32                       :offset 300)
    (screen-pos-y  int32                       :offset-assert 304)
    (max-chars     int32                       :offset-assert 308)
    (flags         uint64                      :offset-assert 312)
@@ -47831,32 +47993,31 @@
   :method-count-assert 55
   :size-assert         #x190
   :flag-assert         #x3701000190
-  (:methods
-    (keyboard-control-method-53 () none) ;; 53
-    (keyboard-control-method-54 () none) ;; 54
-    )
   (:state-methods
+    idle ;; 50
     done ;; 51
     cancel ;; 52
-    idle ;; 50
+    )
+  (:methods
+    (keyboard-control-method-53 (_type_) int)
+    (keyboard-control-method-54 (_type_) int)
     )
   )
-|#
 
-;; (define-extern cpad-or-kbd-pressed-var? function)
-;; (define-extern kbd-clear! function)
-;; (define-extern cpad-or-kbd-clear-func! function)
-;; (define-extern *keyboard-proc* object)
-;; (define-extern *keyboard-string-buf* object)
-;; (define-extern *keyboard-init-state* object)
-;; (define-extern *keyboard-layout-default* array)
-;; (define-extern char-allowed function)
-;; (define-extern set-keyboard-jmod function)
-;; (define-extern render-entered-text function)
-;; (define-extern keyboard-control-init-by-other function)
-;; (define-extern keyboard-control-spawn function)
-;; (define-extern kill-keyboard-control function)
-;; (define-extern get-keyboard-control function)
+(define-extern cpad-or-kbd-pressed-var? (function uint8 pad-buttons symbol))
+(define-extern kbd-clear! (function int int))
+(define-extern cpad-or-kbd-clear-func! (function uint8 pad-buttons int))
+(define-extern *keyboard-proc* handle-wrapper)
+(define-extern *keyboard-string-buf* string)
+(define-extern *keyboard-init-state* symbol)
+(define-extern *keyboard-layout-default* (array keyboard-key))
+(define-extern char-allowed (function int uint symbol))
+(define-extern set-keyboard-jmod (function keyboard-control float))
+(define-extern render-entered-text (function keyboard-control font-context int :behavior keyboard-control))
+(define-extern keyboard-control-init-by-other (function int uint string object :behavior keyboard-control))
+(define-extern keyboard-control-spawn (function symbol vector symbol symbol int))
+(define-extern kill-keyboard-control (function symbol))
+(define-extern get-keyboard-control (function process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lobby-menu-manager-h           ;;
@@ -50318,9 +50479,9 @@
   )
 
 (deftype driver-initialize-params (structure)
-  ((vehicle     basic  :offset-assert 0)
-   (level-slot  int8   :offset-assert 4)
-   (driver-type uint8  :offset-assert 5)
+  ((vehicle     basic       :offset-assert 0)
+   (level-slot  int8        :offset-assert 4)
+   (driver-type driver-type :offset-assert 5)
    )
   :method-count-assert 9
   :size-assert         #x6
@@ -51059,17 +51220,17 @@
     )
   )
 
-;; (define-extern vehicle-manager-event-handler function) ;; (function process int symbol event-message-block object :behavior vehicle-manager)
-;; (define-extern vehicle-manager-init-by-other function) ;; (function object :behavior vehicle-manager)
-(define-extern vehicle-manager-start (function process none)) ;; 
-;; (define-extern vehicle-manager-kill function) ;; (function none)
+(define-extern vehicle-manager-event-handler (function process int symbol event-message-block object :behavior vehicle-manager))
+(define-extern vehicle-manager-init-by-other (function object :behavior vehicle-manager))
+(define-extern vehicle-manager-start (function process int)) ;; 
+(define-extern vehicle-manager-kill (function symbol)) ;; (function none)
 (define-extern *car-appearance-hack* int)
 (define-extern *car-info-default* (pointer uint32))
-;; (define-extern vehicle-init-by-other function) ;; (function int traffic-object-spawn-params object :behavior vehicle)
-;; (define-extern vehicle-idx-from-level-name function)
-;; (define-extern vehicle-in-level? function)
-(define-extern vehicle-spawn (function vehicle-type object process-drawable)) ;; TODO - probably vehicle-spawn-params but not big enough...
-;; (define-extern find-vehicle function)
+(define-extern vehicle-init-by-other (function int vehicle-spawn-params object :behavior vehicle))
+(define-extern vehicle-idx-from-level-name (function symbol int))
+(define-extern vehicle-in-level? (function vehicle-type level symbol))
+(define-extern vehicle-spawn (function vehicle-type vehicle-spawn-params process-drawable)) ;; TODO - probably vehicle-spawn-params but not big enough...
+(define-extern find-vehicle (function int vehicle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-hud                    ;;
@@ -51093,7 +51254,7 @@
 
 #|
 (deftype vehicle-net-construction (structure)
-  ((vehicle-type uint8              :offset-assert 0)
+  ((vehicle-type vehicle-type-u8    :offset-assert 0)
    (pos          vector     :inline :offset-assert 16)
    (rot          quaternion :inline :offset-assert 32)
    (player-id    int8               :offset-assert 48)
@@ -60371,7 +60532,7 @@
 
 (deftype credits-char (structure)
   ((levname symbol   :offset-assert 0)
-   (skel    basic   :offset-assert 4)
+   (skel    string   :offset-assert 4)
    (anim    uint32  :offset-assert 8)
    (scale   float   :offset-assert 12)
    (dt      uint8   :offset-assert 16)
@@ -60397,7 +60558,7 @@
   )
 
 (deftype end-credits-proc (process)
-  ((char-viewer uint64  :offset-assert 144)
+  ((char-viewer handle  :offset-assert 144)
    )
   :method-count-assert 17
   :size-assert         #x98
@@ -60409,8 +60570,8 @@
   )
 
 (deftype end-credits-character-viewer (process)
-  ((hirez-viewer     uint64        :offset-assert 144)
-   (vehicle          uint64        :offset-assert 152)
+  ((hirez-viewer     handle        :offset-assert 144)
+   (vehicle          handle        :offset-assert 152)
    (turntable-handle handle        :offset-assert 160)
    (last-up-time     int32         :offset-assert 168)
    (finish           basic         :offset-assert 172)
@@ -60427,13 +60588,13 @@
   )
 
 (define-extern *credits-chars* (array credits-char))
-(define-extern hirez-viewer-init-by-other (function credits-char symbol symbol object :behavior hirez-viewer))
-(define-extern spawn-hirez-viewer (function credits-char symbol symbol handle))
+(define-extern hirez-viewer-init-by-other (function credits-char symbol object :behavior hirez-viewer))
+(define-extern spawn-hirez-viewer (function credits-char symbol process-tree handle))
 (define-extern draw-end-credits (function level float symbol))
-;; (define-extern end-credits-character-viewer-init-by-other function)
-(define-extern update-stuff (function none))
-(define-extern end-credits-proc-init-by-other (function none :behavior end-credits-proc))
-(define-extern activate-end-credits-proc (function none))
+(define-extern end-credits-character-viewer-init-by-other (function object :behavior end-credits-character-viewer))
+(define-extern update-stuff (function int :behavior end-credits-character-viewer))
+(define-extern end-credits-proc-init-by-other (function object :behavior end-credits-proc))
+(define-extern activate-end-credits-proc (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; kras-effects                   ;;

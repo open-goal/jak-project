@@ -5,6 +5,11 @@
 ;; name in dgo: pad
 ;; dgos: ENGINE, GAME
 
+(define-extern get-current-language (function language-enum))
+(define-extern get-current-time (function time-frame))
+(define-extern get-integral-current-time (function time-frame))
+(define-extern get-real-current-time (function time-frame))
+
 ;; +++mouse-buttons
 (defenum mouse-buttons
   :bitfield #t
@@ -14,6 +19,8 @@
   (middle)
   )
 ;; ---mouse-buttons
+
+(define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
 
 ;; +++pad-buttons
 (defenum pad-buttons
@@ -116,9 +123,11 @@
 (define-extern *cheat-mode* symbol)
 
 (define-extern scf-get-time (function scf-time none))
-(define-extern buzz-stop! (function int none))
+(define-extern buzz-stop! (function int int))
 
 ;; DECOMP BEGINS
+
+(define *cheat-mode* #t)
 
 (deftype mouse-info (basic)
   ((active             symbol          :offset-assert 4) ;; guessed by decompiler
@@ -130,7 +139,7 @@
    (deltax             int8            :offset-assert 22)
    (deltay             int8            :offset-assert 23)
    (wheel              uint8           :offset-assert 24)
-   (change-time        uint64          :offset-assert 32) ;; time-frame
+   (change-time        time-frame      :offset-assert 32) ;; time-frame
    (button0-abs        mouse-buttons 3 :offset-assert 40) ;; guessed by decompiler
    (button0-shadow-abs mouse-buttons 1 :offset-assert 52) ;; guessed by decompiler
    (button0-rel        mouse-buttons 3 :offset-assert 56) ;; guessed by decompiler
@@ -146,67 +155,64 @@
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
 
 (define-extern *mouse* mouse-info)
 
 (deftype hw-cpad (basic)
-  ((valid   uint8     :offset-assert 4)
-   (status  uint8     :offset-assert 5)
-   (button0 uint16    :offset-assert 6)
-   (rightx  uint8     :offset-assert 8)
-   (righty  uint8     :offset-assert 9)
-   (leftx   uint8     :offset-assert 10)
-   (lefty   uint8     :offset-assert 11)
-   (abutton uint8  12 :offset-assert 12) ;; guessed by decompiler
-   (dummy   uint8  12 :offset-assert 24) ;; guessed by decompiler
+  ((valid    uint8)
+   (status   uint8)
+   (button0  uint16)
+   (rightx   uint8)
+   (righty   uint8)
+   (leftx    uint8)
+   (lefty    uint8)
+   (abutton  uint8  12)
+   (dummy    uint8  12)
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 (deftype cpad-info (hw-cpad)
-  ((number             int32         :offset-assert 36)
-   (cpad-file          int32         :offset-assert 40)
-   (button0-abs        pad-buttons 3 :offset-assert 44) ;; guessed by decompiler
-   (button0-shadow-abs pad-buttons 1 :offset-assert 56) ;; guessed by decompiler
-   (button0-rel        pad-buttons 3 :offset-assert 60) ;; guessed by decompiler
-   (stick0-dir         float         :offset-assert 72)
-   (stick0-speed       float         :offset-assert 76)
-   (new-pad            int32         :offset-assert 80)
-   (state              int32         :offset-assert 84)
-   (align              uint8       6 :offset-assert 88) ;; guessed by decompiler
-   (direct             uint8       6 :offset-assert 94) ;; guessed by decompiler
-   (buzz-val           uint8       2 :offset-assert 100) ;; guessed by decompiler
-   (buzz-pause-val     uint8       1 :offset-assert 102) ;; guessed by decompiler
-   (buzz-pause-time    uint8         :offset-assert 103)
-   (buzz-time          time-frame  2 :offset-assert 104) ;; guessed by decompiler
-   (buzz               symbol        :offset-assert 120) ;; guessed by decompiler
-   (buzz-act           int32         :offset-assert 124)
-   (change-time        uint64        :offset-assert 128) ;; time-frame
-   (real-change-time   uint64        :offset-assert 136) ;; time-frame
-   (old-rightx         uint8       2 :offset-assert 144) ;; guessed by decompiler
-   (old-righty         uint8       2 :offset-assert 146) ;; guessed by decompiler
-   (old-leftx          uint8       2 :offset-assert 148) ;; guessed by decompiler
-   (old-lefty          uint8       2 :offset-assert 150) ;; guessed by decompiler
+  ((number              int32)
+   (cpad-file           int32)
+   (button0-abs         pad-buttons  3)
+   (button0-shadow-abs  pad-buttons  1)
+   (button0-rel         pad-buttons  3)
+   (stick0-dir          float)
+   (stick0-speed        float)
+   (new-pad             int32)
+   (state               int32)
+   (align               uint8        6)
+   (direct              uint8        6)
+   (buzz-val            uint8        2)
+   (buzz-pause-val      uint8        1)
+   (buzz-pause-time     uint8)
+   (buzz-time           time-frame   2)
+   (buzz                symbol)
+   (buzz-act            int32)
+   (change-time         uint64)
+   (real-change-time    uint64)
+   (old-rightx          uint8        2)
+   (old-righty          uint8        2)
+   (old-leftx           uint8        2)
+   (old-lefty           uint8        2)
    )
-  :method-count-assert 10
-  :size-assert         #x98
-  :flag-assert         #xa00000098
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (new (symbol type int) _type_) ;; 0 ;; (new (symbol type int) _type_)
     (cpad-info-method-9 (_type_) int) ;; 9 ;; (adjust-to-screen-flip (_type_) int)
     )
   )
 
 (deftype cpad-list (basic)
-  ((num-cpads int32       :offset-assert 4)
-   (cpads     cpad-info 2 :offset-assert 8) ;; guessed by decompiler
+  ((num-cpads  int32)
+   (cpads      cpad-info  2)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
 
 (define *cpad-list* (new 'global 'cpad-list))
@@ -217,4 +223,7 @@
    (kdata  uint8 16)
    (keys   uint8 256)
    )
+  (:methods
+    (new (symbol type) _type_)
+    )
   )
