@@ -4116,7 +4116,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                             {"slave-options", "cam-slave-options"},
                             {"minimap", "minimap-flag"},
                             {"task-mask", "task-mask"},
-                        };
+                    };
                     static const std::unordered_map<std::string, std::string> use_enum_settings = {
                         {"sound-flava", "music-flava"},
                         {"exclusive-task", "game-task"},
