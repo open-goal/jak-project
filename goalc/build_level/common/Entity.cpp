@@ -101,247 +101,214 @@ std::vector<T> enum_from_json(const nlohmann::json& json, decompiler::Decompiler
   return result;
 }
 
-static std::unordered_map<
-    std::string,
-    std::function<std::unique_ptr<
-        Res>(const std::string&, const nlohmann::json&, float, decompiler::DecompilerTypeSystem&)>>
-    lump_map = {  // integers
-        {"int32",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<s32> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<int>());
-           }
-           return std::make_unique<ResInt32>(name, data, time);
-         }},
-        {"uint32",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<u32> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<u32>());
-           }
-           return std::make_unique<ResUint32>(name, data, time);
-         }},
-        {"enum-int32",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<s32> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data = enum_from_json<s32>(json[i], dts);
-           }
-           return std::make_unique<ResInt32>(name, data, time);
-         }},
-        {"enum-uint32",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<u32> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data = enum_from_json<u32>(json[i], dts);
-           }
-           return std::make_unique<ResUint32>(name, data, time);
-         }},
-        // special lumps
-        {"eco-info",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<s32> data;
-           // pickup-type
-           data.push_back(static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts)));
-           // amount
-           data.push_back(static_cast<s32>(get_enum_or_int(json[2], dts)));
-           return std::make_unique<ResInt32>(name, data, time);
-         }},
-        {"cell-info",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<s32> data;
-           // (pickup-type fuel-cell)
-           data.push_back(6);
-           data.push_back(static_cast<s32>(get_enum_or_int(json[1], dts)));
-           return std::make_unique<ResInt32>(name, data, time);
-         }},
-        {"buzzer-info",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<s32> data;
-           // (pickup-type buzzer)
-           data.push_back(8);
-           auto task = static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts));
-           auto buzzer = json[2].get<int>();
-           data.push_back(task + (buzzer * (1 << 16)));
-           return std::make_unique<ResInt32>(name, data, time);
-         }},
-        {"water-height",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           std::vector<float> data;
-           // water-height
-           data.push_back(json[1].get<float>() * METER_LENGTH);
-           // wade-height
-           data.push_back(json[2].get<float>() * METER_LENGTH);
-           // swim-height
-           data.push_back(json[3].get<float>() * METER_LENGTH);
-           // water-flags
-           data.push_back(static_cast<float>(get_enum_val(json[4].get<std::string>(), dts)));
-           // bottom-height
-           if (json.size() >= 6) {
-             data.push_back(json[5].get<float>() * METER_LENGTH);
-           }
-           return std::make_unique<ResFloat>(name, data, time);
-         }},
-        {"symbol",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<std::string> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<std::string>());
-           }
-           return std::make_unique<ResSymbol>(name, data, time);
-         }},
-        {"type",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<std::string> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<std::string>());
-           }
-           return std::make_unique<ResType>(name, data, time);
-         }},
-        {"string",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<std::string> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<std::string>());
-           }
-           return std::make_unique<ResString>(name, data, time);
-         }},
-        // vectors
-        {"vector",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<math::Vector4f> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(vector_from_json(json[i]));
-           }
-           return std::make_unique<ResVector>(name, data, time);
-         }},
-        {"vector4m",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<math::Vector4f> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(vectorm4_from_json(json[i]));
-           }
-           return std::make_unique<ResVector>(name, data, time);
-         }},
-        {"vector3m",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<math::Vector4f> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(vectorm3_from_json(json[i]));
-           }
-           return std::make_unique<ResVector>(name, data, time);
-         }},
-        {"movie-pos",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<math::Vector4f> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(movie_pos_from_json(json[i]));
-           }
-           return std::make_unique<ResVector>(name, data, time);
-         }},
-        {"vector-vol",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<math::Vector4f> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(vector_vol_from_json(json[i]));
-           }
-           return std::make_unique<ResVector>(name, data, time);
-         }},
-        // floats
-        {"float",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<float> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<float>());
-           }
-           return std::make_unique<ResFloat>(name, data, time);
-         }},
-        {"meters",
-         [](const std::string& name,
-            const nlohmann::json& json,
-            float time,
-            decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<float> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<float>() * METER_LENGTH);
-           }
-           return std::make_unique<ResFloat>(name, data, time);
-         }},
-        {"degrees", [](const std::string& name,
-                       const nlohmann::json& json,
-                       float time,
-                       decompiler::DecompilerTypeSystem& dts) {
-           (void)dts;
-           std::vector<float> data;
-           for (size_t i = 1; i < json.size(); i++) {
-             data.push_back(json[i].get<float>() * DEGREES_LENGTH);
-           }
-           return std::make_unique<ResFloat>(name, data, time);
-         }}};
+static std::unordered_map<std::string, std::function<std::unique_ptr<Res>(const std::string&, const nlohmann::json&, float, decompiler::DecompilerTypeSystem&)>> lump_map =
+    {// integers
+     {"int32",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<s32> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<int>());
+        }
+        return std::make_unique<ResInt32>(name, data, time);
+      }},
+     {"uint32",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<u32> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<u32>());
+        }
+        return std::make_unique<ResUint32>(name, data, time);
+      }},
+     {"enum-int32",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        std::vector<s32> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data = enum_from_json<s32>(json[i], dts);
+        }
+        return std::make_unique<ResInt32>(name, data, time);
+      }},
+     {"enum-uint32",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        std::vector<u32> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data = enum_from_json<u32>(json[i], dts);
+        }
+        return std::make_unique<ResUint32>(name, data, time);
+      }},
+     // special lumps
+     {"eco-info",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        std::vector<s32> data;
+        // pickup-type
+        data.push_back(static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts)));
+        // amount
+        data.push_back(static_cast<s32>(get_enum_or_int(json[2], dts)));
+        return std::make_unique<ResInt32>(name, data, time);
+      }},
+     {"cell-info",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        std::vector<s32> data;
+        // (pickup-type fuel-cell)
+        data.push_back(6);
+        data.push_back(static_cast<s32>(get_enum_or_int(json[1], dts)));
+        return std::make_unique<ResInt32>(name, data, time);
+      }},
+     {"buzzer-info",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        std::vector<s32> data;
+        // (pickup-type buzzer)
+        data.push_back(8);
+        auto task = static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts));
+        auto buzzer = json[2].get<int>();
+        data.push_back(task + (buzzer * (1 << 16)));
+        return std::make_unique<ResInt32>(name, data, time);
+      }},
+     {"water-height",
+      [](const std::string& name,
+         const nlohmann::
+             json& json,
+         float time,
+         decompiler::
+             DecompilerTypeSystem& dts) {
+        std::vector<float> data;
+        // water-height
+        data.push_back(json[1].get<float>() * METER_LENGTH);
+        // wade-height
+        data.push_back(json[2].get<float>() * METER_LENGTH);
+        // swim-height
+        data.push_back(json[3].get<float>() * METER_LENGTH);
+        // water-flags
+        data.push_back(static_cast<float>(get_enum_val(json[4].get<std::string>(), dts)));
+        // bottom-height
+        if (json.size() >= 6) {
+          data.push_back(json[5].get<float>() * METER_LENGTH);
+        }
+        return std::make_unique<ResFloat>(name, data, time);
+      }},
+     {"symbol",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<std::string> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<std::string>());
+        }
+        return std::make_unique<ResSymbol>(name, data, time);
+      }},
+     {"type",
+      [](const std::string& name,
+         const nlohmann::
+             json& json,
+         float time,
+         decompiler::
+             DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<std::string> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<std::string>());
+        }
+        return std::make_unique<ResType>(name, data, time);
+      }},
+     {"string",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<std::string> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<std::string>());
+        }
+        return std::make_unique<ResString>(name, data, time);
+      }},
+     // vectors
+     {"vector",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<math::Vector4f> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(vector_from_json(json[i]));
+        }
+        return std::make_unique<ResVector>(name, data, time);
+      }},
+     {"vector4m",
+      [](const std::string& name,
+         const nlohmann::
+             json& json,
+         float time,
+         decompiler::
+             DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<math::Vector4f> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(vectorm4_from_json(json[i]));
+        }
+        return std::make_unique<ResVector>(name, data, time);
+      }},
+     {"vector3m",
+      [](const std::string& name,
+         const nlohmann::
+             json& json,
+         float time,
+         decompiler::
+             DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<math::Vector4f> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(vectorm3_from_json(json[i]));
+        }
+        return std::make_unique<ResVector>(name, data, time);
+      }},
+     {"movie-pos",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<math::Vector4f> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(movie_pos_from_json(json[i]));
+        }
+        return std::make_unique<ResVector>(name, data, time);
+      }},
+     {"vector-vol",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<math::Vector4f> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(vector_vol_from_json(json[i]));
+        }
+        return std::make_unique<ResVector>(name, data, time);
+      }},
+     // floats
+     {"float",
+      [](const std::string& name, const nlohmann::json& json, float time, decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<float> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<float>());
+        }
+        return std::make_unique<ResFloat>(name, data, time);
+      }},
+     {"meters",
+      [](const std::string& name,
+         const nlohmann::
+             json& json,
+         float time,
+         decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<float> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<float>() * METER_LENGTH);
+        }
+        return std::make_unique<ResFloat>(name, data, time);
+      }},
+     {"degrees", [](const std::string& name,
+                    const nlohmann::json& json,
+                    float time,
+                    decompiler::DecompilerTypeSystem& dts) {
+        (void)dts;
+        std::vector<float> data;
+        for (size_t i = 1; i < json.size(); i++) {
+          data.push_back(json[i].get<float>() * DEGREES_LENGTH);
+        }
+        return std::make_unique<ResFloat>(name, data, time);
+      }}};
 
 std::unique_ptr<Res> res_from_json_array(const std::string& name,
                                          const nlohmann::json& json_array,

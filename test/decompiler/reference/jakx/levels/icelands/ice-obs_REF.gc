@@ -1,0 +1,69 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ice-flag
+(deftype ice-flag (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type ice-flag
+(defmethod inspect ((this ice-flag))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ice-flag ice-flag ice-flag-lod0-jg ice-flag-idle-ja
+              ((ice-flag-lod0-mg (meters 999999)))
+              :bounds (static-spherem 40 0 0 55)
+              :origin-joint-index 3
+              )
+
+;; definition for method 11 of type ice-flag
+(defmethod init-from-entity! ((this ice-flag) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-ice-flag" (the-as (pointer level) #f))
+    0
+    )
+  (go (method-of-object this idle))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (ice-flag)
+  :virtual #t
+  :code (behavior ()
+    (let* ((v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-2 (the-as number (logior #x3f800000 v1-1)))
+           (f0-4 (* (+ -1.0 (the-as float v1-2)) (the float (ja-num-frames 0))))
+           )
+      (until #f
+        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num f0-4)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (set! f0-4 0.0)
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+
+
+

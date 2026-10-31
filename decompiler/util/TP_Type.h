@@ -137,23 +137,27 @@ class TP_Type {
 
   static TP_Type make_virtual_method(const TypeSpec& method_type,
                                      const TypeSpec& obj_type,
-                                     int method_id) {
+                                     int method_id,
+                                     const std::string& method_name = {}) {
     TP_Type result;
     result.kind = Kind::VIRTUAL_METHOD;
     result.m_ts = method_type;
     result.m_method_from_type = obj_type;
     result.m_method_id = method_id;
+    result.m_method_name = method_name;
     return result;
   }
 
   static TP_Type make_non_virtual_method(const TypeSpec& method_type,
                                          const TypeSpec& obj_type,
-                                         int method_id) {
+                                         int method_id,
+                                         const std::string& method_name = {}) {
     TP_Type result;
     result.kind = Kind::NON_VIRTUAL_METHOD;
     result.m_method_from_type = obj_type;
     result.m_ts = method_type;
     result.m_method_id = method_id;
+    result.m_method_name = method_name;
     return result;
   }
 
@@ -468,6 +472,8 @@ class TP_Type {
     return m_method_id;
   }
 
+  const std::string& method_name() const { return m_method_name; }
+
   bool flipped_add_order() const {
     ASSERT(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_flipped_order;
@@ -482,6 +488,7 @@ class TP_Type {
   TypeSpec m_ts;
   TypeSpec m_method_from_type;  // hack, also stores sum type.
   int m_method_id = -1;
+  std::string m_method_name;
   std::string m_str;
   int64_t m_int = 0;
   bool m_pcpyud = false;  // have we extracted the top doubleword of a bitfield?

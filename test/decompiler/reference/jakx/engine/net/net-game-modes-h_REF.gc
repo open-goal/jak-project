@@ -1,0 +1,1387 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type deathmatch-spawner
+(deftype deathmatch-spawner (structure)
+  ((entity           entity)
+   (next-spawn-time  time-frame)
+   )
+  )
+
+;; definition for method 3 of type deathmatch-spawner
+(defmethod inspect ((this deathmatch-spawner))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'deathmatch-spawner)
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tnext-spawn-time: ~D~%" (-> this next-spawn-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type deathmatch-spawner-array
+(deftype deathmatch-spawner-array (inline-array-class)
+  ((data  deathmatch-spawner  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type deathmatch-spawner-array
+(defmethod inspect ((this deathmatch-spawner-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> deathmatch-spawner-array heap-base) (the-as uint 16))
+
+;; definition of type net-player-deathmatch
+(deftype net-player-deathmatch (net-player)
+  ((target-vehicle      uint64)
+   (last-attack-time    uint64)
+   (last-attacker       uint64)
+   (dropdown-score      uint64)
+   (next-spawn-seed     int32)
+   (last-push-time      int32)
+   (free-powerup-timer  uint64)
+   )
+  (:methods
+    (net-player-deathmatch-method-98 () none)
+    (net-player-deathmatch-method-99 () none)
+    )
+  )
+
+;; definition for method 3 of type net-player-deathmatch
+(defmethod inspect ((this net-player-deathmatch))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttarget-vehicle: ~D~%" (-> this target-vehicle))
+  (format #t "~2Tlast-attack-time: ~D~%" (-> this last-attack-time))
+  (format #t "~2Tlast-attacker: ~D~%" (-> this last-attacker))
+  (format #t "~2Tdropdown-score: ~D~%" (-> this dropdown-score))
+  (format #t "~2Tnext-spawn-seed: ~D~%" (-> this next-spawn-seed))
+  (format #t "~2Tlast-push-time: ~D~%" (-> this last-push-time))
+  (format #t "~2Tfree-powerup-timer: ~D~%" (-> this free-powerup-timer))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-deathmatch-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-deathmatch-init-remote net-player-deathmatch ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-deathmatch
+(defmethod process-nettable-method-41 ((this net-player-deathmatch) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-deathmatch
+                       :init net-player-deathmatch-init-remote
+                       arg0
+                       :name "net-player-deathmatch"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-player-deathmatch
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-deathmatch) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-deathmatch*, type (array symbol)
+(define *msg-map-net-player-deathmatch*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-player-deathmatch*, type net-process-class-info
+(define *net-process-class-info-net-player-deathmatch* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-deathmatch* msg-map) *msg-map-net-player-deathmatch*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-deathmatch *net-process-class-info-net-player-deathmatch*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-deathmatch* owner-type) net-player-deathmatch)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-deathmatch*)
+
+;; definition for method 40 of type net-player-deathmatch
+(defmethod process-nettable-method-40 ((this net-player-deathmatch))
+  *net-process-class-info-net-player-deathmatch*
+  )
+
+;; definition of type net-game-mgr-deathmatch
+(deftype net-game-mgr-deathmatch (net-game-mgr)
+  ((spawner-array  deathmatch-spawner-array)
+   (spawner-count  int8)
+   )
+  (:methods
+    (net-game-mgr-deathmatch-method-80 () none)
+    (net-game-mgr-deathmatch-method-81 () none)
+    (net-game-mgr-deathmatch-method-82 () none)
+    (net-game-mgr-deathmatch-method-83 () none)
+    )
+  )
+
+;; definition for method 3 of type net-game-mgr-deathmatch
+(defmethod inspect ((this net-game-mgr-deathmatch))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tspawner-array: ~A~%" (-> this spawner-array))
+  (format #t "~2Tspawner-count: ~D~%" (-> this spawner-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-deathmatch-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-deathmatch-init-remote net-game-mgr-deathmatch ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-deathmatch
+(defmethod process-nettable-method-41 ((this net-game-mgr-deathmatch) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-deathmatch
+                       :init net-game-mgr-deathmatch-init-remote
+                       arg0
+                       :name "net-game-mgr-deathmatch"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-deathmatch
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-deathmatch) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawner-time-update)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-deathmatch*, type (array symbol)
+(define *msg-map-net-game-mgr-deathmatch*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-deathmatch*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-deathmatch* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-deathmatch* msg-map) *msg-map-net-game-mgr-deathmatch*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-deathmatch *net-process-class-info-net-game-mgr-deathmatch*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-deathmatch* owner-type) net-game-mgr-deathmatch)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-deathmatch*)
+
+;; definition for method 40 of type net-game-mgr-deathmatch
+(defmethod process-nettable-method-40 ((this net-game-mgr-deathmatch))
+  *net-process-class-info-net-game-mgr-deathmatch*
+  )
+
+;; definition of type net-player-assassin
+(deftype net-player-assassin (net-player-deathmatch)
+  ()
+  )
+
+;; definition for method 3 of type net-player-assassin
+(defmethod inspect ((this net-player-assassin))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-assassin-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-assassin-init-remote net-player-assassin ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-assassin
+(defmethod process-nettable-method-41 ((this net-player-assassin) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-assassin :init net-player-assassin-init-remote arg0 :name "net-player-assassin")
+    )
+  )
+
+;; definition for method 37 of type net-player-assassin
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-assassin) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-assassin*, type (array symbol)
+(define *msg-map-net-player-assassin* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-player-assassin*, type net-process-class-info
+(define *net-process-class-info-net-player-assassin* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-assassin* msg-map) *msg-map-net-player-assassin*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-assassin *net-process-class-info-net-player-assassin*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-assassin* owner-type) net-player-assassin)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-assassin*)
+
+;; definition for method 40 of type net-player-assassin
+(defmethod process-nettable-method-40 ((this net-player-assassin))
+  *net-process-class-info-net-player-assassin*
+  )
+
+;; definition of type net-game-mgr-assassin
+(deftype net-game-mgr-assassin (net-game-mgr-deathmatch)
+  ((mark  int8  24 :offset 309)
+   )
+  (:methods
+    (net-game-mgr-assassin-method-84 () none)
+    (net-game-mgr-assassin-method-85 () none)
+    )
+  )
+
+;; definition for method 3 of type net-game-mgr-assassin
+(defmethod inspect ((this net-game-mgr-assassin))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmark[24] @ #x~X~%" (-> this mark))
+  (dotimes (s5-0 24)
+    (format #t "~T  [~D]~2Tmark: ~D~%" s5-0 (-> this mark s5-0))
+    )
+  (label cfg-7)
+  this
+  )
+
+;; definition for function net-game-mgr-assassin-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-assassin-init-remote net-game-mgr-assassin ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-assassin
+(defmethod process-nettable-method-41 ((this net-game-mgr-assassin) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-assassin
+                       :init net-game-mgr-assassin-init-remote
+                       arg0
+                       :name "net-game-mgr-assassin"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-assassin
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-assassin) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-assassin*, type (array symbol)
+(define *msg-map-net-game-mgr-assassin*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-assassin*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-assassin* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-assassin* msg-map) *msg-map-net-game-mgr-assassin*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-assassin *net-process-class-info-net-game-mgr-assassin*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-assassin* owner-type) net-game-mgr-assassin)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-assassin*)
+
+;; definition for method 40 of type net-game-mgr-assassin
+(defmethod process-nettable-method-40 ((this net-game-mgr-assassin))
+  *net-process-class-info-net-game-mgr-assassin*
+  )
+
+;; definition of type net-player-deathrace
+(deftype net-player-deathrace (net-player-race)
+  ((impact-death        basic)
+   (focus-player-index  int8)
+   (combo-score         int32)
+   (combo-count         int32)
+   (last-score-time     int32)
+   (combo-hud           uint64)
+   )
+  (:methods
+    (net-player-deathrace-method-108 () none)
+    (net-player-deathrace-method-109 () none)
+    (net-player-deathrace-method-110 () none)
+    )
+  )
+
+;; definition for method 3 of type net-player-deathrace
+(defmethod inspect ((this net-player-deathrace))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Timpact-death: ~A~%" (-> this impact-death))
+  (format #t "~2Tfocus-player-index: ~D~%" (-> this focus-player-index))
+  (format #t "~2Tcombo-score: ~D~%" (-> this combo-score))
+  (format #t "~2Tcombo-count: ~D~%" (-> this combo-count))
+  (format #t "~2Tlast-score-time: ~D~%" (-> this last-score-time))
+  (format #t "~2Tcombo-hud: ~D~%" (-> this combo-hud))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-deathrace-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-deathrace-init-remote net-player-deathrace ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-deathrace
+(defmethod process-nettable-method-41 ((this net-player-deathrace) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-deathrace :init net-player-deathrace-init-remote arg0 :name "net-player-deathrace")
+    )
+  )
+
+;; definition for method 37 of type net-player-deathrace
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-deathrace) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-deathrace*, type (array symbol)
+(define *msg-map-net-player-deathrace* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-player-deathrace*, type net-process-class-info
+(define *net-process-class-info-net-player-deathrace* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-deathrace* msg-map) *msg-map-net-player-deathrace*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-deathrace *net-process-class-info-net-player-deathrace*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-deathrace* owner-type) net-player-deathrace)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-deathrace*)
+
+;; definition for method 40 of type net-player-deathrace
+(defmethod process-nettable-method-40 ((this net-player-deathrace))
+  *net-process-class-info-net-player-deathrace*
+  )
+
+;; definition of type net-game-mgr-deathrace
+(deftype net-game-mgr-deathrace (net-game-mgr-race)
+  ((next-drone-spawn-time  uint64)
+   )
+  )
+
+;; definition for method 3 of type net-game-mgr-deathrace
+(defmethod inspect ((this net-game-mgr-deathrace))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tnext-drone-spawn-time: ~D~%" (-> this next-drone-spawn-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-deathrace-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-deathrace-init-remote net-game-mgr-deathrace ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-deathrace
+(defmethod process-nettable-method-41 ((this net-game-mgr-deathrace) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-deathrace
+                       :init net-game-mgr-deathrace-init-remote
+                       arg0
+                       :name "net-game-mgr-deathrace"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-deathrace
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-deathrace) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-next-drone-spawn-time)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-deathrace*, type (array symbol)
+(define *msg-map-net-game-mgr-deathrace*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-deathrace*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-deathrace* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-deathrace* msg-map) *msg-map-net-game-mgr-deathrace*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-deathrace *net-process-class-info-net-game-mgr-deathrace*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-deathrace* owner-type) net-game-mgr-deathrace)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-deathrace*)
+
+;; definition for method 40 of type net-game-mgr-deathrace
+(defmethod process-nettable-method-40 ((this net-game-mgr-deathrace))
+  *net-process-class-info-net-game-mgr-deathrace*
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-fuel-cell fuel-cell fuel-cell-lod0-jg fuel-cell-idle-ja
+              ((fuel-cell-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :shadow fuel-cell-shadow-mg
+              )
+
+;; definition of type net-game-mgr-football
+(deftype net-game-mgr-football (net-game-mgr-race)
+  ((borrow-level       basic)
+   (intro-hud-manager  handle  2)
+   (intro-sfx          uint32  2)
+   )
+  )
+
+;; definition for method 3 of type net-game-mgr-football
+(defmethod inspect ((this net-game-mgr-football))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tborrow-level: ~A~%" (-> this borrow-level))
+  (format #t "~2Tintro-hud-manager[2] @ #x~X~%" (-> this intro-hud-manager))
+  (format #t "~2Tintro-sfx[2] @ #x~X~%" (-> this intro-sfx))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-football-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-football-init-remote net-game-mgr-football ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-football
+(defmethod process-nettable-method-41 ((this net-game-mgr-football) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-football
+                       :init net-game-mgr-football-init-remote
+                       arg0
+                       :name "net-game-mgr-football"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-football
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-football) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-football*, type (array symbol)
+(define *msg-map-net-game-mgr-football*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-football*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-football* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-football* msg-map) *msg-map-net-game-mgr-football*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-football *net-process-class-info-net-game-mgr-football*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-football* owner-type) net-game-mgr-football)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-football*)
+
+;; definition for method 40 of type net-game-mgr-football
+(defmethod process-nettable-method-40 ((this net-game-mgr-football))
+  *net-process-class-info-net-game-mgr-football*
+  )
+
+;; definition of type net-player-football
+(deftype net-player-football (net-player-race)
+  ((my-potato              uint64)
+   (slow-warning           uint64)
+   (pt-multiplier-timeout  uint64)
+   (aux-hud                uint64)
+   (turbo-part-tracker     uint64)
+   (turbo-meter            float)
+   (cheat-award-time       uint64)
+   (cheat-turbo-fill       float)
+   (bing                   uint32  2)
+   )
+  )
+
+;; definition for method 3 of type net-player-football
+(defmethod inspect ((this net-player-football))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmy-potato: ~D~%" (-> this my-potato))
+  (format #t "~2Tslow-warning: ~D~%" (-> this slow-warning))
+  (format #t "~2Tpt-multiplier-timeout: ~D~%" (-> this pt-multiplier-timeout))
+  (format #t "~2Taux-hud: ~D~%" (-> this aux-hud))
+  (format #t "~2Tturbo-part-tracker: ~D~%" (-> this turbo-part-tracker))
+  (format #t "~2Tturbo-meter: ~f~%" (-> this turbo-meter))
+  (format #t "~2Tcheat-award-time: ~D~%" (-> this cheat-award-time))
+  (format #t "~2Tcheat-turbo-fill: ~f~%" (-> this cheat-turbo-fill))
+  (format #t "~2Tbing[2] @ #x~X~%" (-> this bing))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-football-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-football-init-remote net-player-football ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-football
+(defmethod process-nettable-method-41 ((this net-player-football) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-football :init net-player-football-init-remote arg0 :name "net-player-football")
+    )
+  )
+
+;; definition for method 37 of type net-player-football
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-football) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-football*, type (array symbol)
+(define *msg-map-net-player-football* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-player-football*, type net-process-class-info
+(define *net-process-class-info-net-player-football* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-football* msg-map) *msg-map-net-player-football*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-football *net-process-class-info-net-player-football*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-football* owner-type) net-player-football)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-football*)
+
+;; definition for method 40 of type net-player-football
+(defmethod process-nettable-method-40 ((this net-player-football))
+  *net-process-class-info-net-player-football*
+  )
+
+;; definition of type powercell-dispenser
+(deftype powercell-dispenser (net-powerup)
+  ((original-owner  int32)
+   )
+  )
+
+;; definition for method 3 of type powercell-dispenser
+(defmethod inspect ((this powercell-dispenser))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-powerup inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Toriginal-owner: ~D~%" (-> this original-owner))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function powercell-dispenser-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior powercell-dispenser-init-remote powercell-dispenser ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type powercell-dispenser
+(defmethod process-nettable-method-41 ((this powercell-dispenser) (arg0 int))
+  (ppointer->process
+    (process-spawn powercell-dispenser :init powercell-dispenser-init-remote arg0 :name "powercell-dispenser")
+    )
+  )
+
+;; definition for method 37 of type powercell-dispenser
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this powercell-dispenser) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-powercell-dispenser*, type (array symbol)
+(define *msg-map-powercell-dispenser* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-powercell-dispenser*, type net-process-class-info
+(define *net-process-class-info-powercell-dispenser* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-dispenser* msg-map) *msg-map-powercell-dispenser*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec powercell-dispenser *net-process-class-info-powercell-dispenser*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-dispenser* owner-type) powercell-dispenser)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-powercell-dispenser*)
+
+;; definition for method 40 of type powercell-dispenser
+(defmethod process-nettable-method-40 ((this powercell-dispenser))
+  *net-process-class-info-powercell-dispenser*
+  )
+
+;; definition of type powercell-dispenser-draw
+(deftype powercell-dispenser-draw (powerup-draw)
+  ((subdraw  uint64)
+   )
+  (:methods
+    (powercell-dispenser-draw-method-57 () none)
+    )
+  )
+
+;; definition for method 3 of type powercell-dispenser-draw
+(defmethod inspect ((this powercell-dispenser-draw))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type powerup-draw inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tsubdraw: ~D~%" (-> this subdraw))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function powercell-dispenser-draw-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior powercell-dispenser-draw-init-remote powercell-dispenser-draw ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type powercell-dispenser-draw
+(defmethod process-nettable-method-41 ((this powercell-dispenser-draw) (arg0 int))
+  (ppointer->process (process-spawn
+                       powercell-dispenser-draw
+                       :init powercell-dispenser-draw-init-remote
+                       arg0
+                       :name "powercell-dispenser-draw"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type powercell-dispenser-draw
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this powercell-dispenser-draw) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-powercell-dispenser-draw*, type (array symbol)
+(define *msg-map-powercell-dispenser-draw*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-powercell-dispenser-draw*, type net-process-class-info
+(define *net-process-class-info-powercell-dispenser-draw* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-dispenser-draw* msg-map) *msg-map-powercell-dispenser-draw*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec powercell-dispenser-draw *net-process-class-info-powercell-dispenser-draw*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-dispenser-draw* owner-type) powercell-dispenser-draw)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-powercell-dispenser-draw*)
+
+;; definition for method 40 of type powercell-dispenser-draw
+(defmethod process-nettable-method-40 ((this powercell-dispenser-draw))
+  *net-process-class-info-powercell-dispenser-draw*
+  )
+
+;; definition of type powercell-footie
+(deftype powercell-footie (rigid-body-object)
+  ((owner       uint64)
+   (plyid       int8)
+   (tip-vel     vector  :inline)
+   (spring-pos  vector  :inline)
+   (spring-vel  vector  :inline)
+   (bolt        basic)
+   (loose-part  basic)
+   )
+  (:methods
+    (powercell-footie-method-89 () none)
+    (powercell-footie-method-90 () none)
+    )
+  )
+
+;; definition for method 3 of type powercell-footie
+(defmethod inspect ((this powercell-footie))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rigid-body-object inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Towner: ~D~%" (-> this owner))
+  (format #t "~2Tplyid: ~D~%" (-> this plyid))
+  (format #t "~2Ttip-vel: #<vector @ #x~X>~%" (-> this tip-vel))
+  (format #t "~2Tspring-pos: #<vector @ #x~X>~%" (-> this spring-pos))
+  (format #t "~2Tspring-vel: #<vector @ #x~X>~%" (-> this spring-vel))
+  (format #t "~2Tbolt: ~A~%" (-> this bolt))
+  (format #t "~2Tloose-part: ~A~%" (-> this loose-part))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function powercell-footie-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior powercell-footie-init-remote powercell-footie ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type powercell-footie
+(defmethod process-nettable-method-41 ((this powercell-footie) (arg0 int))
+  (ppointer->process
+    (process-spawn powercell-footie :init powercell-footie-init-remote arg0 :name "powercell-footie")
+    )
+  )
+
+;; definition for method 37 of type powercell-footie
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this powercell-footie) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-powercell-footie*, type (array symbol)
+(define *msg-map-powercell-footie* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-powercell-footie*, type net-process-class-info
+(define *net-process-class-info-powercell-footie* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-footie* msg-map) *msg-map-powercell-footie*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec powercell-footie *net-process-class-info-powercell-footie*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-powercell-footie* owner-type) powercell-footie)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-powercell-footie*)
+
+;; definition for method 40 of type powercell-footie
+(defmethod process-nettable-method-40 ((this powercell-footie))
+  *net-process-class-info-powercell-footie*
+  )
+
+;; definition of type net-player-artifact
+(deftype net-player-artifact (net-player-deathmatch)
+  ((seek-after  int32)
+   )
+  )
+
+;; definition for method 3 of type net-player-artifact
+(defmethod inspect ((this net-player-artifact))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tseek-after: ~D~%" (-> this seek-after))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-artifact-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-artifact-init-remote net-player-artifact ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-artifact
+(defmethod process-nettable-method-41 ((this net-player-artifact) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-artifact :init net-player-artifact-init-remote arg0 :name "net-player-artifact")
+    )
+  )
+
+;; definition for method 37 of type net-player-artifact
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-artifact) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-artifact*, type (array symbol)
+(define *msg-map-net-player-artifact* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-player-artifact*, type net-process-class-info
+(define *net-process-class-info-net-player-artifact* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-artifact* msg-map) *msg-map-net-player-artifact*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-artifact *net-process-class-info-net-player-artifact*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-artifact* owner-type) net-player-artifact)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-artifact*)
+
+;; definition for method 40 of type net-player-artifact
+(defmethod process-nettable-method-40 ((this net-player-artifact))
+  *net-process-class-info-net-player-artifact*
+  )
+
+;; definition of type artifact-location-array
+(deftype artifact-location-array (inline-array-class)
+  ((data  net-player-artifact  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type artifact-location-array
+(defmethod inspect ((this artifact-location-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> artifact-location-array heap-base) (the-as uint 16))
+
+;; definition of type net-game-mgr-artifact
+(deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
+  ((artifact-location-array  basic)
+   (artifact-location-count  int8)
+   (artifact                 handle  6)
+   (num-artifacts            int32)
+   (last-artifact-index      int32)
+   (last-position-index      int32   6)
+   (special-rule             basic)
+   )
+  (:methods
+    (net-game-mgr-artifact-method-84 () none)
+    (net-game-mgr-artifact-method-85 () none)
+    )
+  )
+
+;; definition for method 3 of type net-game-mgr-artifact
+(defmethod inspect ((this net-game-mgr-artifact))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tartifact-location-array: ~A~%" (-> this artifact-location-array))
+  (format #t "~2Tartifact-location-count: ~D~%" (-> this artifact-location-count))
+  (format #t "~2Tartifact[6] @ #x~X~%" (-> this artifact))
+  (format #t "~2Tnum-artifacts: ~D~%" (-> this num-artifacts))
+  (format #t "~2Tlast-artifact-index: ~D~%" (-> this last-artifact-index))
+  (format #t "~2Tlast-position-index[6] @ #x~X~%" (-> this last-position-index))
+  (format #t "~2Tspecial-rule: ~A~%" (-> this special-rule))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-artifact-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-artifact-init-remote net-game-mgr-artifact ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-artifact
+(defmethod process-nettable-method-41 ((this net-game-mgr-artifact) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-artifact
+                       :init net-game-mgr-artifact-init-remote
+                       arg0
+                       :name "net-game-mgr-artifact"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-artifact
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-artifact) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawn-new-artifact)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-artifact*, type (array symbol)
+(define *msg-map-net-game-mgr-artifact*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-artifact*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-artifact* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-artifact* msg-map) *msg-map-net-game-mgr-artifact*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-artifact *net-process-class-info-net-game-mgr-artifact*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-artifact* owner-type) net-game-mgr-artifact)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-artifact*)
+
+;; definition for method 40 of type net-game-mgr-artifact
+(defmethod process-nettable-method-40 ((this net-game-mgr-artifact))
+  *net-process-class-info-net-game-mgr-artifact*
+  )
+
+;; definition of type net-player-beasthunt
+(deftype net-player-beasthunt (net-player-deathmatch)
+  ((prev-send-score       int32)
+   (last-score-send-time  int32)
+   (big-air-launch-time   int32)
+   (in-big-air            basic)
+   (last-fly-time         int32)
+   )
+  )
+
+;; definition for method 3 of type net-player-beasthunt
+(defmethod inspect ((this net-player-beasthunt))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tprev-send-score: ~D~%" (-> this prev-send-score))
+  (format #t "~2Tlast-score-send-time: ~D~%" (-> this last-score-send-time))
+  (format #t "~2Tbig-air-launch-time: ~D~%" (-> this big-air-launch-time))
+  (format #t "~2Tin-big-air: ~A~%" (-> this in-big-air))
+  (format #t "~2Tlast-fly-time: ~D~%" (-> this last-fly-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-beasthunt-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-beasthunt-init-remote net-player-beasthunt ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-beasthunt
+(defmethod process-nettable-method-41 ((this net-player-beasthunt) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-beasthunt :init net-player-beasthunt-init-remote arg0 :name "net-player-beasthunt")
+    )
+  )
+
+;; definition for method 37 of type net-player-beasthunt
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-beasthunt) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-beasthunt*, type (array symbol)
+(define *msg-map-net-player-beasthunt* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-player-beasthunt*, type net-process-class-info
+(define *net-process-class-info-net-player-beasthunt* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-beasthunt* msg-map) *msg-map-net-player-beasthunt*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-beasthunt *net-process-class-info-net-player-beasthunt*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-beasthunt* owner-type) net-player-beasthunt)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-beasthunt*)
+
+;; definition for method 40 of type net-player-beasthunt
+(defmethod process-nettable-method-40 ((this net-player-beasthunt))
+  *net-process-class-info-net-player-beasthunt*
+  )
+
+;; definition of type net-game-mgr-beasthunt
+(deftype net-game-mgr-beasthunt (net-game-mgr-deathmatch)
+  ()
+  )
+
+;; definition for method 3 of type net-game-mgr-beasthunt
+(defmethod inspect ((this net-game-mgr-beasthunt))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-beasthunt-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-beasthunt-init-remote net-game-mgr-beasthunt ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-beasthunt
+(defmethod process-nettable-method-41 ((this net-game-mgr-beasthunt) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-beasthunt
+                       :init net-game-mgr-beasthunt-init-remote
+                       arg0
+                       :name "net-game-mgr-beasthunt"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-beasthunt
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-beasthunt) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-beasthunt*, type (array symbol)
+(define *msg-map-net-game-mgr-beasthunt*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-beasthunt*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-beasthunt* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-beasthunt* msg-map) *msg-map-net-game-mgr-beasthunt*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-beasthunt *net-process-class-info-net-game-mgr-beasthunt*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-beasthunt* owner-type) net-game-mgr-beasthunt)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-beasthunt*)
+
+;; definition for method 40 of type net-game-mgr-beasthunt
+(defmethod process-nettable-method-40 ((this net-game-mgr-beasthunt))
+  *net-process-class-info-net-game-mgr-beasthunt*
+  )
+
+;; definition of type net-player-collectable
+(deftype net-player-collectable (net-player-deathmatch)
+  ()
+  )
+
+;; definition for method 3 of type net-player-collectable
+(defmethod inspect ((this net-player-collectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-player-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-player-collectable-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-player-collectable-init-remote net-player-collectable ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-player-collectable
+(defmethod process-nettable-method-41 ((this net-player-collectable) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-collectable
+                       :init net-player-collectable-init-remote
+                       arg0
+                       :name "net-player-collectable"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-player-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-player-collectable) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-player-collectable*, type (array symbol)
+(define *msg-map-net-player-collectable*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-player-collectable*, type net-process-class-info
+(define *net-process-class-info-net-player-collectable* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-collectable* msg-map) *msg-map-net-player-collectable*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-player-collectable *net-process-class-info-net-player-collectable*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-player-collectable* owner-type) net-player-collectable)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-player-collectable*)
+
+;; definition for method 40 of type net-player-collectable
+(defmethod process-nettable-method-40 ((this net-player-collectable))
+  *net-process-class-info-net-player-collectable*
+  )
+
+;; definition of type net-game-mgr-collectable
+(deftype net-game-mgr-collectable (net-game-mgr-deathmatch)
+  ((steal-mode  symbol)
+   )
+  )
+
+;; definition for method 3 of type net-game-mgr-collectable
+(defmethod inspect ((this net-game-mgr-collectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-game-mgr-deathmatch inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tsteal-mode: ~A~%" (-> this steal-mode))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-game-mgr-collectable-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-game-mgr-collectable-init-remote net-game-mgr-collectable ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-game-mgr-collectable
+(defmethod process-nettable-method-41 ((this net-game-mgr-collectable) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-collectable
+                       :init net-game-mgr-collectable-init-remote
+                       arg0
+                       :name "net-game-mgr-collectable"
+                       )
+                     )
+  )
+
+;; definition for method 37 of type net-game-mgr-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-game-mgr-collectable) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-game-mgr-collectable*, type (array symbol)
+(define *msg-map-net-game-mgr-collectable*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+;; definition for symbol *net-process-class-info-net-game-mgr-collectable*, type net-process-class-info
+(define *net-process-class-info-net-game-mgr-collectable* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-collectable* msg-map) *msg-map-net-game-mgr-collectable*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-game-mgr-collectable *net-process-class-info-net-game-mgr-collectable*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-game-mgr-collectable* owner-type) net-game-mgr-collectable)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-game-mgr-collectable*)
+
+;; definition for method 40 of type net-game-mgr-collectable
+(defmethod process-nettable-method-40 ((this net-game-mgr-collectable))
+  *net-process-class-info-net-game-mgr-collectable*
+  )
+
+
+
+

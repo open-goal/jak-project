@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import jsonc_document
-from jsonc_edit import modify, apply_edits
 import json
 import os
 import subprocess
@@ -48,21 +46,12 @@ def copy_to_ref(name: str):
     shutil.copyfile(src, dst)
 
 
-todo_path = Path("./scripts/gsrc/_decomp-plan-todo.jsonc")
-done_path = Path("./scripts/gsrc/_decomp-plan-done.jsonc")
+todo_path = Path("./scripts/gsrc/_decomp-plan-todo.json")
 
 with todo_path.open("r", encoding="utf-8") as f:
-    data = jsonc_document.parse(source=f.read()).value
-
-done_source = done_path.read_text(encoding="utf-8")
-done_files = jsonc_document.parse(source=done_source).value
-
-entries = data["done-in-this-round"]
+    entries = json.load(f)
 
 for i, file_name in enumerate(entries):
     print(f"[{i}/{len(entries)}] {file_name}")
-    if file_name not in done_files:
-        run_decomp(file_name)
-        copy_to_ref(file_name)
-    else:
-        print(f"file already in done list, not touching it")
+    run_decomp(file_name)
+    copy_to_ref(file_name)

@@ -7,3 +7,132 @@
 
 ;; DECOMP BEGINS
 
+(define mercneric-vu0-block (new 'static 'vu-function :length #xbe :origin #x118 :qlength 95))
+
+(deftype invinitdata (structure)
+  ((count      uint8)
+   (init-data  uint8)
+   (init-addr  uint16)
+   )
+  )
+
+
+(define *inv-init-table* (new 'static 'inline-array invinitdata 8
+                           (new 'static 'invinitdata :count #x48 :init-addr #x1)
+                           (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
+                           (new 'static 'invinitdata :count #xbe)
+                           (new 'static 'invinitdata :count #x81 :init-data #x80 :init-addr #x3b80)
+                           (new 'static 'invinitdata :count #x88 :init-data #x50 :init-addr #x100a)
+                           (new 'static 'invinitdata :count #x7d :init-data #xb :init-addr #x81e8)
+                           (new 'static 'invinitdata :count #x7d :init-data #x1b :init-addr #x81e8)
+                           (new 'static 'invinitdata :count #x2 :init-data #x68 :init-addr #x5200)
+                           )
+        )
+
+(def-mips2c generic-merc-init-asm (function none))
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function has no type analysis. Cannot decompile.
+
+(def-mips2c mercneric-convert function)
+
+(def-mips2c high-speed-reject function)
+
+(def-mips2c generic-translucent (function gsf-buffer none))
+
+(def-mips2c generic-merc-query function)
+
+(def-mips2c generic-merc-death function)
+
+(def-mips2c generic-merc-execute-asm function)
+
+(def-mips2c generic-merc-do-chain (function mercneric-chain dma-buffer pointer))
+
+(defun generic-merc-execute-all ((arg0 dma-buffer))
+  (let ((s4-0 (-> *foreground* foreground-grid))
+        (gp-0 (-> *display* frames (-> *display* on-screen) global-buf base))
+        )
+    (when *debug-segment*
+      'generic
+      (let ((s3-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-15 'generic)
+            (s2-0 *profile-generic-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s1-0 (-> s3-0 data (-> s3-0 count))))
+            (let ((s0-0 (-> s3-0 base-time)))
+              (set! (-> s1-0 name) v1-15)
+              (set! (-> s1-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-0))))
+              )
+            (set! (-> s1-0 depth) (the-as uint (-> s3-0 depth)))
+            (set! (-> s1-0 color) s2-0)
+            (set! (-> s3-0 segment (-> s3-0 depth)) s1-0)
+            )
+          (set! (-> s3-0 count) (min 2099 (+ (-> s3-0 count) 1)))
+          (+! (-> s3-0 depth) 1)
+          (set! (-> s3-0 max-depth) (max (-> s3-0 max-depth) (-> s3-0 depth)))
+          )
+        )
+      0
+      )
+    (-> *perf-stats* data 38)
+    0
+    (set! (-> (the-as generic-work #x70000000) saves to-vu0-waits) (the-as uint 0))
+    (set! (-> (the-as generic-work #x70000000) saves to-spr-waits) (the-as uint 0))
+    (set! (-> (the-as generic-work #x70000000) saves from-spr-waits) (the-as uint 0))
+    (flush-cache 0)
+    (generic-initialize-without-sync (-> (view-get-active-math-camera) perspective) *default-lights*)
+    (generic-merc-init-asm)
+    (set! (-> (the-as generic-work #x70000000) in-buf merc shadow write-limit)
+          (the-as int (&+ (-> arg0 end) -262144))
+          )
+    (dotimes (s3-2 19)
+      (dotimes (s2-1 10)
+        (generic-merc-do-chain
+          (the-as mercneric-chain (+ (the-as uint (-> s4-0 level-buckets 0 data 0 mercneric)) (* 480 s3-2) (* 48 s2-1)))
+          arg0
+          )
+        )
+      )
+    (generic-merc-do-chain (-> s4-0 warp-chain) arg0)
+    (-> *perf-stats* data 38)
+    0
+    (update-wait-stats
+      (-> *perf-stats* data 38)
+      (-> (the-as generic-work #x70000000) saves to-vu0-waits)
+      (-> (the-as generic-work #x70000000) saves to-spr-waits)
+      (-> (the-as generic-work #x70000000) saves from-spr-waits)
+      )
+    (when *debug-segment*
+      (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-61 (+ (-> s5-1 depth) -1))
+                 (s4-1 (-> s5-1 segment v1-61))
+                 (s3-3 (-> s5-1 base-time))
+                 )
+            (when (>= v1-61 0)
+              (set! (-> s4-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-3))))
+              (+! (-> s5-1 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (let ((v1-66 *dma-mem-usage*))
+      (when (nonzero? v1-66)
+        (set! (-> v1-66 length) (max 90 (-> v1-66 length)))
+        (set! (-> v1-66 data 89 name) "pris-generic")
+        (+! (-> v1-66 data 89 count) 1)
+        (+! (-> v1-66 data 89 used)
+            (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint gp-0))
+            )
+        (set! (-> v1-66 data 89 total) (-> v1-66 data 89 used))
+        )
+      )
+    )
+  (none)
+  )

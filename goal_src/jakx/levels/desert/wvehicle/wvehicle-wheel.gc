@@ -7,3 +7,422 @@
 
 ;; DECOMP BEGINS
 
+(deftype vehicle-wheel-init-params (structure)
+  ((vehicle   vehicle)
+   (skel      skeleton-group)
+   (level     symbol)
+   (radius    float)
+   (position  vector      :inline)
+   (rotation  quaternion  :inline)
+   (scale     vector      :inline)
+   )
+  )
+
+
+(define *vehicle-wheel-constants*
+  (new 'static 'rigid-body-object-constants
+    :info (new 'static 'rigid-body-info
+      :max-time-step 0.033333335
+      :mass 1.0
+      :inv-mass 1.0
+      :linear-damping 0.01
+      :angular-damping 0.01
+      :bounce-factor 0.5
+      :friction-factor 0.5
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 1.0))
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 2) (meters 3) (meters 3))
+      :gravity 204800.0
+      )
+    :name '*vehicle-wheel-constants*
+    )
+  )
+
+(deftype vehicle-wheel (rigid-body-object)
+  ((camera-dist  float)
+   )
+  (:state-methods
+    explode
+    fade-out
+    die
+    )
+  (:methods
+    (vehicle-wheel-method-92 (_type_ int int) none)
+    )
+  )
+
+
+(defmethod vehicle-wheel-method-92 ((this vehicle-wheel) (arg0 int) (arg1 int))
+  (set! (-> this draw status) (logclear (logior (-> this draw status) arg0) arg1))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-65 ((this vehicle-wheel) (arg0 vector))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set! (-> v1-7 transform-index) 0)
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 (-> arg0 w))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (iterate-prims (-> this root) (lambda ((arg0 collide-shape-prim))
+                                  (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                                           backgnd
+                                                                           bot
+                                                                           crate
+                                                                           civilian
+                                                                           enemy
+                                                                           obstacle
+                                                                           vehicle-sphere
+                                                                           vehicle-debris
+                                                                           hit-by-player-list
+                                                                           hit-by-others-list
+                                                                           collectable
+                                                                           pusher
+                                                                           shield
+                                                                           vehicle-sphere-no-probe
+                                                                           )
+                                        )
+                                  (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-debris))
+                                  (none)
+                                  )
+                 )
+  (let ((v1-15 (-> this root root-prim)))
+    (set! (-> this root backup-collide-as) (-> v1-15 prim-core collide-as))
+    (set! (-> this root backup-collide-with) (-> v1-15 prim-core collide-with))
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-66 ((this vehicle-wheel))
+  (rigid-body-object-method-64 this *vehicle-wheel-constants*)
+  (set! (-> this root max-iteration-count) (the-as uint 3))
+  (set! (-> this max-time-step) 0.05)
+  (set! (-> this draw shadow-ctrl)
+        (new 'process 'shadow-control -43008.0 -2048.0 69632.0 (the-as vector #f) (shadow-flags) 245760.0)
+        )
+  (set! (-> this focus-status)
+        (the-as focus-status (logior (focus-status gun-no-target) (-> this focus-status)))
+        )
+  0.0
+  )
+
+(defmethod rigid-body-object-method-61 ((this vehicle-wheel))
+  (ja-post)
+  (if (logtest? (-> this rbody flags) (rigid-body-flag display-marks))
+      (update-transforms (-> this root))
+      )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-87 ((this vehicle-wheel))
+  (let ((v1-0 (new 'stack-no-clear 'rigid-body-move-work)))
+    (set! (-> v1-0 cquery start-pos quad) (-> this rbody position quad))
+    (vector-float*! (-> v1-0 cquery move-dist) (-> this rbody lin-velocity) (seconds-per-frame))
+    (let ((a0-4 (-> v1-0 cquery)))
+      (set! (-> a0-4 radius) (+ 4096.0 (-> this root root-prim local-sphere w)))
+      (set! (-> a0-4 collide-with)
+            (collide-spec
+              backgnd
+              jak
+              bot
+              crate
+              civilian
+              enemy
+              obstacle
+              vehicle-sphere
+              hit-by-player-list
+              hit-by-others-list
+              player-list
+              collectable
+              blocking-plane
+              pusher
+              shield
+              vehicle-sphere-no-probe
+              )
+            )
+      (set! (-> a0-4 ignore-process0) this)
+      (set! (-> a0-4 ignore-process1) #f)
+      (set! (-> a0-4 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :nopilot #x1 :probe #x1 :board #x1)
+            )
+      (set! (-> a0-4 action-mask) (collide-action solid))
+      (set! (-> a0-4 nav-mesh) #f)
+      )
+    (collide-cache-method-13 *collide-cache* (-> v1-0 cquery))
+    )
+  (if *display-collide-cache*
+      (debug-draw *collide-cache*)
+      )
+  (rigid-body-control-method-10 (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-88 ((this vehicle-wheel))
+  (set! (-> this camera-dist) (find-nearest-camera-distance (-> this rbody position)))
+  (if (< 901120.0 (-> this camera-dist))
+      (go (method-of-object this die))
+      )
+  (rigid-body-object-method-70 this)
+  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (rigid-body-object-method-61 this)
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-71 ((this vehicle-wheel))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-80 ((this vehicle-wheel) (arg0 rigid-body-impact))
+  (when (< 40960.0 (-> arg0 impulse))
+    (let ((f30-0 (* 0.000024414063 (+ -40960.0 (-> arg0 impulse))))
+          (v1-5 (make-sound-instance (-> *sound-info* 625) 0 (the-as handle #f)))
+          )
+      (cond
+        (v1-5
+          (set! (-> v1-5 volume) (the int (* 1024.0 (fmin 1.0 f30-0))))
+          (logior! (-> v1-5 flags) 64)
+          (-> v1-5 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (when (< 81920.0 (-> arg0 impulse))
+      (let ((f30-1 (* 0.000024414063 (+ -81920.0 (-> arg0 impulse))))
+            (v1-13 (make-sound-instance (-> *sound-info* 624) 0 (the-as handle #f)))
+            )
+        (cond
+          (v1-13
+            (set! (-> v1-13 volume) (the int (* 1024.0 (fmin 1.0 f30-1))))
+            (logior! (-> v1-13 flags) 64)
+            (-> v1-13 id)
+            )
+          (else
+            0
+            )
+          )
+        )
+      )
+    0
+    )
+  (logior! (-> this root penetrated-by) (penetrate vehicle))
+  #t
+  )
+
+(defstate idle (vehicle-wheel)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('explode)
+       (let ((a0-3 (-> self draw color-mult)))
+         (vector-float*! (the-as vector a0-3) (the-as vector a0-3) 0.25)
+         )
+       (set! (-> self rbody position quad) (-> self root trans quad))
+       (quaternion-copy! (the-as quaternion (-> self rbody rot)) (the-as quaternion (-> self root rot)))
+       (let ((a1-3 (-> block param 0))
+             (gp-1 (-> block param 1))
+             )
+         (when (and a1-3 gp-1)
+           ((method-of-object (-> self rbody) rigid-body-control-method-31))
+           ((method-of-object (-> self rbody) rigid-body-control-method-32))
+           (go-virtual explode)
+           )
+         )
+       )
+      (('enable-collision)
+       (set! v0-1 (logior (-> self flags) (rigid-body-object-flag enable-collision)))
+       (set! (-> self flags) (the-as rigid-body-object-flag v0-1))
+       v0-1
+       )
+      (('disable-collision)
+       (set! v0-1 (logclear (-> self flags) (rigid-body-object-flag enable-collision)))
+       (set! (-> self flags) (the-as rigid-body-object-flag v0-1))
+       v0-1
+       )
+      (('modify-draw-status)
+       (let ((a1-5 (-> block param 0))
+             (a2-1 (-> block param 1))
+             )
+         (vehicle-wheel-method-92 self (the-as int a1-5) (the-as int a2-1))
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  :trans #f
+  :post (behavior ()
+    (rigid-body-object-method-61 self)
+    )
+  )
+
+(defstate explode (vehicle-wheel)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('impact-impulse)
+       (let ((a1-1 (-> block param 0)))
+         (rigid-body-object-method-80 self (the-as rigid-body-impact a1-1))
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let* ((f30-0 0.5)
+           (v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-5 (the-as number (logior #x3f800000 v1-4)))
+           )
+      (when (< f30-0 (+ -1.0 (the-as float v1-5)))
+        (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 42))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) self)
+        (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 42 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        )
+      )
+    (logior! (-> self rbody flags) (rigid-body-flag enable-physics enable-penetrate-mode))
+    (rigid-body-queue-method-11 *rigid-body-queue* self)
+    (let ((v1-42 (-> self root root-prim)))
+      (set! (-> v1-42 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-42 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    )
+  :trans #f
+  :code sleep-code
+  :post (behavior ()
+    (rigid-body-object-method-71 self)
+    (if (time-elapsed? (-> self state-time) (seconds 4))
+        (go-virtual fade-out)
+        )
+    )
+  )
+
+(defstate fade-out (vehicle-wheel)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logior! (-> self draw status) (draw-control-status force-fade))
+    )
+  :code sleep-code
+  :post (behavior ()
+    (set! (-> self draw force-fade)
+          (the-as
+            uint
+            (the int (fmax 0.0 (- 128.0 (* 0.42666668 (the float (- (current-time) (-> self state-time)))))))
+            )
+          )
+    (if (< (-> self draw force-fade) (the-as uint 2))
+        (go-virtual die)
+        )
+    (rigid-body-object-method-71 self)
+    )
+  )
+
+(defstate die (vehicle-wheel)
+  :virtual #t
+  :code (behavior ()
+    (process-drawable-method-44 self)
+    )
+  )
+
+(defbehavior vehicle-wheel-init-by-other vehicle-wheel ((arg0 vehicle-wheel-init-params))
+  (rigid-body-object-method-65 self (the-as vector arg0))
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (the-as quaternion (-> self root rot)) (-> arg0 rotation))
+  (set! (-> self root scale quad) (-> arg0 scale quad))
+  (set! (-> self level) (the-as level (-> arg0 level)))
+  (process-drawable-method-42 self (-> arg0 skel) 0)
+  (let ((v1-10 (-> self draw)))
+    (set! (-> v1-10 lod-set lod 0 dist) 4096.0)
+    (set! (-> v1-10 lod-set lod 1 dist) 81920.0)
+    (set! (-> v1-10 lod-set lod 2 dist) 163840.0)
+    (set! (-> v1-10 lod-set lod (-> v1-10 lod-set max-lod) dist) 819200.0)
+    )
+  (let ((f0-7 (fmax (fmax (fabs (-> arg0 scale x)) (fabs (-> arg0 scale y))) (fabs (-> arg0 scale z)))))
+    (set! (-> self draw bounds w) (* (-> arg0 skel bounds w) f0-7))
+    (set! (-> self draw longest-edge) (* (-> arg0 skel longest-edge) f0-7))
+    )
+  (set! (-> self draw lights) (-> arg0 vehicle draw lights))
+  (when (and (nonzero? (-> self draw)) (= *lobby-local-players* 2))
+    (logior! (-> self draw global-effect) (draw-control-global-effect rim-lights3))
+    (set! (-> self draw lod-set lod 0 dist) (/ (-> self draw lod-set lod 0 dist) 2))
+    (set! (-> self draw lod-set lod 1 dist) (/ (-> self draw lod-set lod 1 dist) 2))
+    )
+  (rigid-body-object-method-66 self)
+  (go-virtual idle)
+  )
+
+;; WARN: Return type mismatch process vs vehicle-wheel.
+(defun vehicle-wheel-spawn ((arg0 process) (arg1 vehicle-wheel-init-params))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* vehicle-wheel #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg0 "vehicle-wheel" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 vehicle-wheel-init-by-other arg1)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as vehicle-wheel gp-0)
+    )
+  )

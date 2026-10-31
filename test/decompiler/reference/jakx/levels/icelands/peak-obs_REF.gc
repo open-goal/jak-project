@@ -1,0 +1,537 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type peak-snowball
+(deftype peak-snowball (rigid-body-object)
+  ((target-position          vector  :inline)
+   (impact-direction         vector  :inline)
+   (particle-matrix          matrix  :inline)
+   (path-length              float)
+   (peak-snowball-unknown-1  vector  2)
+   (last-u                   float)
+   (roll-sound               uint32)
+   (offset                   float)
+   )
+  (:state-methods
+    explode
+    )
+  )
+
+;; definition for method 3 of type peak-snowball
+(defmethod inspect ((this peak-snowball))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rigid-body-object inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttarget-position: #<vector @ #x~X>~%" (-> this target-position))
+  (format #t "~2Timpact-direction: #<vector @ #x~X>~%" (-> this impact-direction))
+  (format #t "~2Tparticle-matrix: #<matrix @ #x~X>~%" (-> this particle-matrix))
+  (format #t "~2Tpath-length: ~f~%" (-> this path-length))
+  (format #t "~2Tlast-u: ~f~%" (-> this last-u))
+  (format #t "~2Troll-sound: ~D~%" (-> this roll-sound))
+  (format #t "~2Toffset: ~f~%" (-> this offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function peak-snowball-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior peak-snowball-init-remote peak-snowball ((arg0 mem-buffer))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type peak-snowball
+(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 int))
+  (ppointer->process (process-spawn peak-snowball :init peak-snowball-init-remote arg0 :name "peak-snowball"))
+  )
+
+;; definition for method 37 of type peak-snowball
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this peak-snowball) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-destruction-time)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-peak-snowball*, type (array symbol)
+(define *msg-map-peak-snowball* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-peak-snowball*, type net-process-class-info
+(define *net-process-class-info-peak-snowball* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-peak-snowball* msg-map) *msg-map-peak-snowball*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec peak-snowball *net-process-class-info-peak-snowball*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-peak-snowball* owner-type) peak-snowball)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-peak-snowball*)
+
+;; definition for method 40 of type peak-snowball
+(defmethod process-nettable-method-40 ((this peak-snowball))
+  *net-process-class-info-peak-snowball*
+  )
+
+;; definition for symbol *snowball-constants*, type rigid-body-object-constants
+(define *snowball-constants* (new 'static 'rigid-body-object-constants
+                               :info (new 'static 'rigid-body-info
+                                 :max-time-step 0.033333335
+                                 :mass 1000.0
+                                 :inv-mass 0.001
+                                 :cm-offset-joint (new 'static 'vector :w 1.0)
+                                 :inertial-tensor-box (new 'static 'array meters 3 (meters 20) (meters 20) (meters 20))
+                                 :gravity 163840.0
+                                 )
+                               :name '*snowball-constants*
+                               )
+        )
+
+;; definition for method 80 of type peak-snowball
+(defmethod rigid-body-object-method-80 ((this peak-snowball) (arg0 rigid-body-impact))
+  (let ((s4-0
+          (new 'static 'attack-info :mask (attack-mask attacker id damage vehicle-damage-factor vehicle-impulse-factor))
+          )
+        )
+    (let* ((v1-0 *game-info*)
+           (a0-2 (+ (-> v1-0 attack-id) 1))
+           )
+      (set! (-> v1-0 attack-id) a0-2)
+      (set! (-> s4-0 id) a0-2)
+      )
+    (set! (-> s4-0 damage) 25.0)
+    (set! (-> s4-0 vehicle-damage-factor) 1.0)
+    (set! (-> s4-0 vehicle-impulse-factor) 1.0)
+    (set! (-> s4-0 attacker) (process->handle this))
+    (send-event (-> arg0 process) 'attack #f s4-0)
+    (if (nonzero? (-> s4-0 attacker))
+        (send-event (handle->process (-> s4-0 attacker)) 'you-attacked 'attack (-> arg0 process) s4-0)
+        )
+    )
+  (let ((s4-1 (process-nettable-method-27 this 'set-destruction-time)))
+    (mem-buffer-method-22 s4-1 (the-as int (-> this last-u)))
+    (process-nettable-method-29 this s4-1 -2 16)
+    (process-nettable-method-28 this s4-1)
+    )
+  (vector-float*! (-> this impact-direction) (-> arg0 normal) -1.0)
+  (let ((v1-34 (make-sound-instance (-> *sound-info* 603) 0 (process->handle this))))
+    (if v1-34
+        (-> v1-34 id)
+        0
+        )
+    )
+  (set! (-> this peak-snowball-unknown-1 0 y) -9102.223)
+  (set! (-> this peak-snowball-unknown-1 0 z) -7281.778)
+  (set! (-> this peak-snowball-unknown-1 1 y) 1228.8)
+  (set! (-> this peak-snowball-unknown-1 1 z) 2048.0)
+  (when (type? (-> this root) collide-shape)
+    (let ((v1-47 (-> this root root-prim)))
+      (set! (-> v1-47 prim-core collide-as) (collide-spec))
+      (set! (-> v1-47 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (if (type? (-> this root) collide-shape)
+      (transform-post)
+      )
+  (go (method-of-object this explode))
+  ((method-of-type rigid-body-object rigid-body-object-method-80) this arg0)
+  )
+
+;; definition for method 71 of type peak-snowball
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-71 ((this peak-snowball))
+  (let ((f30-0 (seconds-per-frame)))
+    (let ((v1-1 (new 'stack-no-clear 'vector)))
+      (vector-! (the-as vector (&-> v1-1 x)) (-> this target-position) (-> this root trans))
+      (vector-float*! (-> this rbody lin-velocity) (the-as vector (&-> v1-1 x)) (/ 1.0 f30-0))
+      )
+    (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-velocity) (-> this rbody info mass))
+    (vector-reset! (-> this rbody ang-momentum))
+    (let ((v1-8 (new 'stack-no-clear 'inline-array 'collide-query 1)))
+      (set! (-> v1-8 0 start-pos quad) (-> this root root-prim prim-core world-sphere quad))
+      (vector-float*! (-> v1-8 0 move-dist) (-> this rbody lin-velocity) (seconds-per-frame))
+      (let ((a0-10 (-> v1-8 0)))
+        (set! (-> a0-10 radius) (+ 122880.0 (-> this root root-prim local-sphere w)))
+        (set! (-> a0-10 collide-with) (collide-spec vehicle-sphere hit-by-others-list))
+        (set! (-> a0-10 ignore-process0) #f)
+        (set! (-> a0-10 ignore-process1) #f)
+        (set! (-> a0-10 ignore-pat)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        (set! (-> a0-10 action-mask) (collide-action solid))
+        (set! (-> a0-10 nav-mesh) #f)
+        )
+      (OK-fill-using-line-sphere *collide-cache* (-> v1-8 0))
+      )
+    (rigid-body-control-method-13 (-> this rbody))
+    (rbody-collision (-> this root) (-> this rbody) f30-0)
+    )
+  (rigid-body-object-method-70 this)
+  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (rigid-body-object-method-61 this)
+  (OK-update-transforms (-> this root))
+  0
+  (none)
+  )
+
+;; definition for method 77 of type peak-snowball
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-77 ((this peak-snowball))
+  0
+  (none)
+  )
+
+;; definition for method 17 of type peak-snowball
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod process-nettable-method-17 ((this peak-snowball) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+  (case arg0
+    (('explode)
+     (when (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
+       (let ((f30-0 (mem-buffer-method-40 arg1))
+             (s4-0 (new 'stack-no-clear 'vector))
+             )
+         (path-control-method-14 (-> this path) s4-0 f30-0 'interp)
+         (let ((s3-0 (new 'stack-no-clear 'vector)))
+           (path-control-method-16 (-> this path) s3-0 f30-0)
+           (let ((s5-0 (new 'stack-no-clear 'peak-obs-stackvar0)))
+             (quaternion-look-at! (-> s5-0 quat) s3-0 *up-vector*)
+             (quaternion->matrix (-> s5-0 mat) (-> s5-0 quat))
+             (when (not (logtest? (-> this draw status) (draw-control-status no-draw)))
+               (set! (-> s5-0 mat trans quad) (-> s4-0 quad))
+               (set! (-> this root trans quad) (-> s4-0 quad))
+               (set! (-> this target-position quad) (-> s4-0 quad))
+               (matrix-copy! (-> this particle-matrix) (-> s5-0 mat))
+               (set! (-> this impact-direction quad) (-> s5-0 mat fvec quad))
+               )
+             )
+           )
+         )
+       (go (method-of-object this explode))
+       )
+     )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-peak-snowball peak-snowball peak-snowball-lod0-jg peak-snowball-idle-ja
+              ((peak-snowball-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              :origin-joint-index 3
+              )
+
+;; definition for method 66 of type peak-snowball
+(defmethod rigid-body-object-method-66 ((this peak-snowball))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (set! (-> this path-length) (total-distance (-> this path)))
+  (set! (-> this roll-sound) (the-as uint 0))
+  (set! (-> this offset) (res-lump-float (-> this entity) 'offset))
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-peak-snowball" (the-as (pointer level) #f))
+    0
+    )
+  (rigid-body-object-method-64 this *snowball-constants*)
+  (logior! (-> this rbody flags) (rigid-body-flag enable-physics enable-penetrate-mode debug-active))
+  (set! (-> this root max-iteration-count) (the-as uint 8))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 429) this))
+  (set! (-> this peak-snowball-unknown-1 0) (the-as vector (-> *part-id-table* 1424 init-specs 18)))
+  (set! (-> this peak-snowball-unknown-1 1) (the-as vector (-> *part-id-table* 1424 init-specs 10)))
+  (if (not (process-nettable-method-25 this))
+      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+      )
+  0.0
+  )
+
+;; failed to figure out what this is:
+(defstate explode (peak-snowball)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 428))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> self particle-matrix))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 428 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    (sound-stop (the-as sound-id (-> self roll-sound)) #t)
+    (let ((v1-32 (make-sound-instance (-> *sound-info* 604) 0 (process->handle self))))
+      (if v1-32
+          (-> v1-32 id)
+          0
+          )
+      )
+    )
+  :exit (behavior ()
+    (when (type? (-> self root) collide-shape)
+      (let ((v1-2 (-> self root root-prim)))
+        (set! (-> v1-2 prim-core collide-as) (collide-spec))
+        (set! (-> v1-2 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (if (type? (-> self root) collide-shape)
+        (transform-post)
+        )
+    (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+    )
+  :code (behavior ()
+    (local-vars (f30-0 float))
+    1.0
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (new 'stack-no-clear 'quaternion)))
+        (quaternion-look-at! (the-as quaternion (&-> s5-0 x)) (-> self impact-direction) *up-vector*)
+        (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (&-> s5-0 x)))
+        )
+      (suspend-for (seconds 0.04)
+        (let ((f0-2 (fmax 0.0 (fmin 1.0 (* 0.083333336 (the float (- (current-time) time)))))))
+          (set! f30-0 (lerp 1.0 0.2 f0-2))
+          )
+        (set-vector! (-> self root scale) 1.0 1.0 f30-0 1.0)
+        (vector+float*! (-> self root trans) gp-0 (-> self impact-direction) (* 81920.0 (- 1.0 f30-0)))
+        )
+      (set! (-> self peak-snowball-unknown-1 0 y) 0.0)
+      (set! (-> self peak-snowball-unknown-1 0 z) -7281.778)
+      (set! (-> self peak-snowball-unknown-1 1 y) 546.13336)
+      (set! (-> self peak-snowball-unknown-1 1 z) 2048.0)
+      (suspend-for (seconds 4.96)
+        (let ((f0-13 (fmax 0.0 (fmin 1.0 (- 1.0 (* 0.013333334 (the float (- (current-time) time))))))))
+          (vector+float*! (-> self root trans) gp-0 (-> self impact-direction) (* 81920.0 (- 1.0 (* f0-13 f30-0))))
+          (set-vector! (-> self root scale) f0-13 f0-13 (* f30-0 f0-13) 1.0)
+          )
+        )
+      )
+    (go-virtual idle)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate idle (peak-snowball)
+  :virtual #t
+  :post (behavior ()
+    (local-vars (f26-0 float))
+    (when (nonzero? (-> self path))
+      0.0
+      (let ((f28-0 0.0)
+            (f0-2
+              (* 0.0033333334
+                 (the float (mod
+                              (+ (the int (* 4800.0 (-> self offset))) (- (- (if *net-mgr*
+                                                                                 (-> *net-mgr* game-state time)
+                                                                                 0
+                                                                                 )
+                                                                             (if *net-world*
+                                                                                 (-> *net-world* net-state game-start-time)
+                                                                                 0
+                                                                                 )
+                                                                             )
+                                                                          (if *net-world*
+                                                                              (-> *net-world* net-state total-pause-time)
+                                                                              0
+                                                                              )
+                                                                          )
+                                 )
+                              4800
+                              )
+                      )
+                 )
+              )
+            (f1-5 4.0)
+            )
+        0.0
+        (let ((f30-0
+                (cond
+                  ((< f0-2 f1-5)
+                   (set! f26-0 (+ (* 256000.0 f0-2) (* 0.5 (square f0-2) (/ 1024000.0 f1-5))))
+                   (+ 256000.0 (* 1024000.0 (/ f0-2 f1-5)))
+                   )
+                  (else
+                    (set! f26-0 (+ (* 256000.0 f1-5) (* 0.5 (square f1-5) (/ 1024000.0 f1-5)) (* 1024000.0 (- f0-2 f1-5))))
+                    1024000.0
+                    )
+                  )
+                )
+              )
+          (cond
+            ((not (logtest? (-> self draw status) (draw-control-status no-draw)))
+             (let ((f24-0 (lerp-scale 0.2 0.7 f30-0 0.0 1024000.0))
+                   (v1-28 (make-sound-instance (-> *sound-info* 602) (the-as int (-> self roll-sound)) (process->handle self)))
+                   )
+               (set! (-> self roll-sound) (the-as uint (cond
+                                                         (v1-28
+                                                           (set! (-> v1-28 pitch-mod) (the int (* 1524.0 f24-0)))
+                                                           (logior! (-> v1-28 flags) 64)
+                                                           (logior! (-> v1-28 mask) 1)
+                                                           (the-as int (-> v1-28 id))
+                                                           )
+                                                         (else
+                                                           0
+                                                           )
+                                                         )
+                                                  )
+                     )
+               )
+             )
+            (else
+              (sound-stop (the-as sound-id (-> self roll-sound)) #t)
+              )
+            )
+          (let ((f28-1 (path-control-method-26 (-> self path) f28-0 f26-0)))
+            (set! (-> self last-u) f28-1)
+            (if (and (not (logtest? (-> self draw status) (draw-control-status no-draw))) (= 1.0 f28-1))
+                (go-virtual explode)
+                )
+            (let ((s5-0 (new 'stack-no-clear 'vector)))
+              (path-control-method-14 (-> self path) s5-0 f28-1 'interp)
+              (let ((gp-0 (new 'stack-no-clear 'vector)))
+                (path-control-method-16 (-> self path) gp-0 f28-1)
+                (let ((s4-0 (new 'stack-no-clear 'peak-obs-stackvar0)))
+                  (quaternion-look-at! (-> s4-0 quat) gp-0 *up-vector*)
+                  (quaternion->matrix (-> s4-0 mat) (-> s4-0 quat))
+                  (when (not (logtest? (-> self draw status) (draw-control-status no-draw)))
+                    (set! (-> s4-0 mat trans quad) (-> self root trans quad))
+                    (matrix-copy! (-> self particle-matrix) (-> s4-0 mat))
+                    (set! (-> self impact-direction quad) (-> s4-0 mat fvec quad))
+                    (spawn-from-mat (-> self part) (-> s4-0 mat))
+                    )
+                  (vector+float*! s5-0 s5-0 (-> s4-0 mat uvec) 81920.0)
+                  )
+                (cond
+                  ((and (< 0.02 f28-1) (and (< f28-1 0.1) (logtest? (-> self draw status) (draw-control-status no-draw))))
+                   (when (type? (-> self root) collide-shape)
+                     (let ((v1-65 (-> self root root-prim)))
+                       (set! (-> v1-65 prim-core collide-as) (-> self root backup-collide-as))
+                       (set! (-> v1-65 prim-core collide-with) (-> self root backup-collide-with))
+                       )
+                     )
+                   (logclear! (-> self draw status) (draw-control-status no-draw))
+                   (if (type? (-> self root) collide-shape)
+                       (transform-post)
+                       )
+                   (set! (-> self target-position quad) (-> s5-0 quad))
+                   (set! (-> self root trans quad) (-> s5-0 quad))
+                   )
+                  (else
+                    (vector-lerp! (-> self target-position) (-> self target-position) s5-0 0.125)
+                    )
+                  )
+                (vector-float*! gp-0 gp-0 f30-0)
+                (let* ((f0-15 (seconds-per-frame))
+                       (f30-1 (* (/ f0-15 (meters 20)) f30-0))
+                       )
+                  (when (< 0.0 f30-1)
+                    (let ((s5-1 (new 'stack-no-clear 'inline-array 'vector 3)))
+                      (set! (-> s5-1 0 quad) (-> gp-0 quad))
+                      (vector-normalize! (-> s5-1 0) 1.0)
+                      (vector-cross! (-> s5-1 1) (-> s5-1 0) (new 'static 'vector :y 1.0 :w 1.0))
+                      (if (and (= (-> s5-1 1 x) 0.0) (= (-> s5-1 1 y) 0.0) (= (-> s5-1 1 z) 0.0))
+                          (vector-cross! (-> s5-1 1) (-> s5-1 0) (new 'static 'vector :x 1.0 :w 1.0))
+                          )
+                      (let ((f0-23 (- (* 182.04445 (* 57.295784 f30-1)))))
+                        (quaternion-vector-angle! (the-as quaternion (-> s5-1 2)) (-> s5-1 1) f0-23)
+                        )
+                      (quaternion*!
+                        (the-as quaternion (-> self rbody rot))
+                        (the-as quaternion (-> s5-1 2))
+                        (the-as quaternion (-> self rbody rot))
+                        )
+                      )
+                    (quaternion-normalize! (the-as quaternion (-> self rbody rot)))
+                    (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self rbody rot)))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (rigid-body-object-method-71 self)
+    )
+  )
+
+;; definition for method 65 of type peak-snowball
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-65 ((this peak-snowball) (arg0 vector))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec vehicle-sphere hit-by-others-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (OK-pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec vehicle-sphere hit-by-others-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+
+
+

@@ -1,0 +1,102 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type spar-lighthouse-light
+(deftype spar-lighthouse-light (process-drawable)
+  ((part-tracker  handle)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type spar-lighthouse-light
+(defmethod inspect ((this spar-lighthouse-light))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tpart-tracker: ~D~%" (-> this part-tracker))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-spar-lighthouse-light spar-lighthouse-light spar-lighthouse-light-lod0-jg spar-lighthouse-light-idle-ja
+              ((spar-lighthouse-light-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 250)
+              :origin-joint-index 3
+              )
+
+;; definition for method 11 of type spar-lighthouse-light
+(defmethod init-from-entity! ((this spar-lighthouse-light) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-spar-lighthouse-light" (the-as (pointer level) #f))
+    0
+    )
+  (ja-post)
+  (go (method-of-object this idle))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (spar-lighthouse-light)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 388))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 0))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) self)
+    (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (set! (-> self part-tracker)
+          (ppointer->handle (if (logtest? (-> *part-group-id-table* 388 flags) (sp-group-flag sp13))
+                                (process-spawn
+                                  part-tracker-subsampler
+                                  :init part-tracker-subsampler-init
+                                  *part-tracker-params-default*
+                                  :name "part-tracker-subsampler"
+                                  :to *entity-pool*
+                                  :unk 0
+                                  )
+                                (process-spawn
+                                  part-tracker
+                                  :init part-tracker-init
+                                  *part-tracker-params-default*
+                                  :name "part-tracker"
+                                  :to *entity-pool*
+                                  :unk 0
+                                  )
+                                )
+                            )
+          )
+    )
+  :exit (behavior ()
+    (send-event (handle->process (-> self part-tracker)) 'die)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (quaternion-rotate-y!
+      (the-as quaternion (-> self root rot))
+      (the-as quaternion (-> self root rot))
+      (* 2730.6667 (seconds-per-frame))
+      )
+    (ja-post)
+    )
+  )
+
+
+
+

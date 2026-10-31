@@ -1,0 +1,1125 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type title-control
+(deftype title-control (process)
+  ((buffer     external-art-buffer  2)
+   (want       int32                2)
+   (want-name  string               2)
+   (have       int32                2)
+   (draw       int32)
+   (draw-name  string)
+   (active     symbol)
+   )
+  (:state-methods
+    startup
+    splashh-screen
+    thxx-dolby
+    (scrap-book int)
+    (control-spec int)
+    splash-screen
+    thx-dolby
+    )
+  )
+
+;; definition for method 3 of type title-control
+(defmethod inspect ((this title-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tbuffer[2] @ #x~X~%" (-> this buffer))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~2Tbuffer: ~A~%" s5-0 (-> this buffer s5-0))
+    )
+  (format #t "~2Twant[2] @ #x~X~%" (-> this want))
+  (format #t "~2Twant-name[2] @ #x~X~%" (-> this want-name))
+  (format #t "~2Thave[2] @ #x~X~%" (-> this have))
+  (format #t "~2Tdraw: ~D~%" (-> this draw))
+  (format #t "~2Tdraw-name: ~A~%" (-> this draw-name))
+  (format #t "~2Tactive: ~A~%" (-> this active))
+  (label cfg-7)
+  this
+  )
+
+;; definition for method 7 of type title-control
+;; WARN: Return type mismatch process vs title-control.
+(defmethod relocate ((this title-control) (offset int))
+  (dotimes (v1-0 2)
+    (if (nonzero? (-> this buffer v1-0))
+        (&+! (-> this buffer v1-0) offset)
+        )
+    )
+  (the-as title-control ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type title-control
+(defmethod deactivate ((this title-control))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (dotimes (s5-0 2)
+    (set-pending-file (-> this buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+    )
+  (dotimes (s5-1 2)
+    (update (-> this buffer s5-1))
+    )
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for function title-control-init
+(defbehavior title-control-init title-control ((arg0 symbol))
+  (stack-size-set! (-> self main-thread) 2048)
+  (logclear! (-> self mask) (process-mask freeze pause menu progress actor-pause))
+  (set-setting! 'allow-pause #f 0.0 0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (set-setting! 'allow-timeout #f 0.0 0)
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings! *setting-control*)
+  (dotimes (s5-0 2)
+    (set! (-> self buffer s5-0)
+          (new
+            'process
+            'external-art-buffer
+            s5-0
+            (lambda ((arg0 external-art-buffer))
+              (let ((gp-0 (-> arg0 heap)))
+                (set! (-> gp-0 base) (the-as pointer (dma-get-named-buffer 'title-control 0 0)))
+                (set! (-> gp-0 current) (-> gp-0 base))
+                (set! (-> gp-0 top-base) (&+ (-> gp-0 base) #xd0000))
+                (set! (-> gp-0 top) (-> gp-0 top-base))
+                )
+              0
+              (none)
+              )
+            #f
+            )
+          )
+    )
+  (dotimes (v1-19 2)
+    (set! (-> self want v1-19) -1)
+    (set! (-> self have v1-19) -1)
+    )
+  (set! (-> self draw) -1)
+  (set! (-> self active) #f)
+  (set! *title-control* (the-as title-control (process->ppointer self)))
+  (let ((v1-26 (process->handle self))
+        (a0-16 *game-info*)
+        )
+    (set! (-> a0-16 controller 0) (the-as handle v1-26))
+    (cond
+      ((= arg0 #t)
+       (go-virtual splash-screen)
+       )
+      ((= arg0 #f)
+       (go-virtual control-spec (the-as int a0-16))
+       )
+      ((= arg0 'thx-dolby)
+       (go-virtual thx-dolby)
+       )
+      ((= arg0 'scrap-book1)
+       (go-virtual scrap-book 1)
+       )
+      ((= arg0 'scrap-book2)
+       (go-virtual scrap-book 2)
+       )
+      ((= arg0 'scrap-book3)
+       (go-virtual scrap-book 3)
+       )
+      )
+    )
+  )
+
+;; definition for function title-control-spawn
+;; WARN: Return type mismatch int vs none.
+(defun title-control-spawn ((arg0 symbol))
+  (kill-by-type title-control *active-pool*)
+  (let ((s5-0 (get-process *default-dead-pool* title-control 4096 1)))
+    (ppointer->handle
+      (when s5-0
+        (let ((t9-2 (method-of-type title-control activate)))
+          (t9-2 (the-as title-control s5-0) *entity-pool* "title-control" (the-as pointer #x70004000))
+          )
+        (run-now-in-process s5-0 title-control-init arg0)
+        (-> s5-0 ppointer)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function title-screen-change
+(defbehavior title-screen-change title-control ((arg0 string) (arg1 int) (arg2 string) (arg3 int) (arg4 symbol) (arg5 symbol))
+  (when arg5
+    (let ((s1-0 (the-as int (-> *setting-control* user-current language))))
+      0
+      (if (and (= (the-as language-enum s1-0) (language-enum english)) (= (scf-get-territory) 1))
+          (set! s1-0 11)
+          )
+      (let ((v1-6 (cond
+                    ((zero? s1-0)
+                     0
+                     )
+                    ((= s1-0 1)
+                     1
+                     )
+                    ((= s1-0 2)
+                     2
+                     )
+                    ((= s1-0 3)
+                     3
+                     )
+                    ((= s1-0 4)
+                     4
+                     )
+                    ((= s1-0 11)
+                     5
+                     )
+                    (else
+                      0
+                      )
+                    )
+                  )
+            )
+        (if (>= arg1 0)
+            (+! arg1 (* 3 v1-6))
+            )
+        (if (>= arg3 0)
+            (+! arg3 (* 3 v1-6))
+            )
+        )
+      )
+    )
+  (set! (-> self want-name 0) arg0)
+  (set! (-> self want 0) arg1)
+  (set! (-> self want-name 1) (-> self draw-name))
+  (set! (-> self want 1) (-> self draw))
+  (when arg4
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (set! (-> *setting-control* user-current bg-a) 1.0)
+    (set-blackout-frames 0)
+    (apply-settings! *setting-control*)
+    )
+  (when (>= (-> self draw) 0)
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (apply-settings! *setting-control*)
+    (while (!= (-> *setting-control* user-current bg-a) 1.0)
+      (suspend)
+      )
+    )
+  (set! (-> self draw) arg1)
+  (set! (-> self draw-name) arg0)
+  (set! (-> self active) #f)
+  (while (and (>= (-> self draw) 0) (not (-> self active)))
+    (suspend)
+    )
+  (remove-setting! 'bg-a)
+  (set! (-> self want-name 1) arg2)
+  (set! (-> self want 1) arg3)
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate startup (title-control)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('scrap-book)
+       (go-virtual scrap-book (the-as int (-> block param 0)))
+       )
+      (('control-spec)
+       (go-virtual control-spec (the-as int (-> block param 0)))
+       )
+      )
+    )
+  :exit (behavior ()
+    (when (not (and (-> self next-state)
+                    (let ((v1-3 (-> self next-state name)))
+                      (or (= v1-3 'startup) (= v1-3 'wait) (= v1-3 'idle) (= v1-3 'scrap-book) (= v1-3 'control-spec))
+                      )
+                    )
+               )
+      (disable *screen-filter*)
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (local-vars (gp-4 external-art-buffer))
+    (dotimes (v1-0 2)
+      (set! (-> self buffer v1-0 frame-lock) #f)
+      (set! (-> self have v1-0) -1)
+      )
+    (dotimes (gp-0 2)
+      (let ((s5-0 (-> self want gp-0))
+            (s4-0 (-> self want-name gp-0))
+            )
+        (when (>= s5-0 0)
+          (dotimes (s3-0 2)
+            (case (file-status (-> self buffer s3-0) s4-0 s5-0)
+              (('locked 'active)
+               (set! (-> self buffer s3-0 frame-lock) #t)
+               (set! (-> self have gp-0) s3-0)
+               )
+              )
+            )
+          )
+        )
+      )
+    (dotimes (gp-1 2)
+      (let ((a2-1 (-> self want gp-1))
+            (a1-4 (-> self want-name gp-1))
+            )
+        (when (and (>= a2-1 0) (< (-> self have gp-1) 0))
+          (dotimes (v1-30 2)
+            (when (not (-> self buffer v1-30 frame-lock))
+              (set-pending-file (-> self buffer v1-30) a1-4 a2-1 (process->handle self) -1.0)
+              (goto cfg-33)
+              )
+            )
+          )
+        )
+      (label cfg-33)
+      )
+    (dotimes (gp-2 2)
+      (update (-> self buffer gp-2))
+      )
+    (set! (-> self active) #f)
+    (when (>= (-> self draw) 0)
+      (dotimes (gp-3 2)
+        (when (file-status (-> self buffer gp-3) (-> self draw-name) (-> self draw))
+          (set! gp-4 (-> self buffer gp-3))
+          (goto cfg-46)
+          )
+        )
+      (set! gp-4 (the-as external-art-buffer #f))
+      (label cfg-46)
+      (when (and gp-4 (-> gp-4 art-group))
+        (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id bucket785)
+                                     )
+          (dma-buffer-add-gs-set s4-1
+                                 (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                                 )
+          (let ((t1-0 (shl #x8000 16)))
+            (draw-sprite2d-xy
+              s4-1
+              -256
+              (- (-> *viewport-array* default screen-hy))
+              512
+              (-> *viewport-array* default screen-sy)
+              (the-as rgba t1-0)
+              #x3fffff
+              )
+            )
+          )
+        (let ((t9-6 draw-raw-image)
+              (a0-31 *blit-displays-work*)
+              (a1-15 785)
+              (a2-5 (-> gp-4 art-group))
+              (a3-7 (new 'static 'vector :x 512.0 :y 416.0 :w 1.0))
+              (t0-2 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> t0-2 x) (-> *video-params* relative-x-scale))
+          (set! (-> t0-2 y) 1.0)
+          (set! (-> t0-2 z) 0.0)
+          (set! (-> t0-2 w) 1.0)
+          (t9-6 a0-31 (the-as bucket-id a1-15) a2-5 a3-7 t0-2 (-> self level) 8)
+          )
+        (set! (-> self active) #t)
+        )
+      )
+    )
+  )
+
+;; definition for function title-progress
+(defun title-progress ((arg0 symbol))
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id bucket789)
+    #x3fffff
+    #x33001
+    (the-as symbol 0)
+    )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings! *setting-control*)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-0 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings! *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
+  )
+
+;; definition for function title-fade-out
+(defun title-fade-out ((arg0 float))
+  (setup
+    *screen-filter*
+    (new 'static 'vector)
+    (new 'static 'vector :w 128.0)
+    arg0
+    (bucket-id bucket789)
+    #x3fffff
+    #x33001
+    (the-as symbol 0)
+    )
+  (suspend-for (seconds 0.4)
+    )
+  (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+  (set! (-> *setting-control* user-current bg-a) 0.0)
+  (while (or (-> *setting-control* user-current movie)
+             (not (view-get-active-target))
+             (not (and (-> (view-get-active-target) next-state) (= (-> (view-get-active-target) next-state name) 'target-title))
+                  )
+             (!= (-> *setting-control* user-current bg-a) 0.0)
+             )
+    (suspend)
+    )
+  (set! (-> *game-info* blackout-time) 0)
+  (set! (-> *setting-control* user-current bg-a-force) 0.0)
+  (disable *screen-filter*)
+  0
+  )
+
+;; definition for function direction-press
+(defun direction-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
+  (let ((s2-0 (current-time))
+        (s3-0 #f)
+        )
+    (while (not (or (time-elapsed? s2-0 arg1) (and (time-elapsed? s2-0 arg0) s3-0)))
+      (if (cpad-pressed? 0 r1 confirm)
+          (set! s3-0 'forward)
+          )
+      (if (cpad-pressed? 0 l1)
+          (set! s3-0 'back)
+          )
+      (when (and arg2 (cpad-pressed? 0 triangle))
+        (set! s3-0 'abort)
+        (goto cfg-19)
+        )
+      (suspend)
+      )
+    (label cfg-19)
+    s3-0
+    )
+  )
+
+;; definition for symbol *scrap-book-3*, type (array int16)
+(define *scrap-book-3* (new 'static 'boxed-array :type int16
+                         82
+                         83
+                         84
+                         85
+                         86
+                         87
+                         88
+                         89
+                         90
+                         91
+                         92
+                         93
+                         94
+                         95
+                         97
+                         98
+                         99
+                         100
+                         #x65
+                         #x67
+                         #x68
+                         #x69
+                         #x6a
+                         #x6b
+                         #x6c
+                         #x6d
+                         #x6e
+                         #x70
+                         )
+        )
+
+;; definition for symbol *scrap-book-1*, type (array int16)
+(define *scrap-book-1* (new 'static 'boxed-array :type int16
+                         1
+                         2
+                         3
+                         4
+                         5
+                         6
+                         7
+                         8
+                         9
+                         10
+                         11
+                         12
+                         13
+                         14
+                         15
+                         16
+                         17
+                         18
+                         19
+                         20
+                         21
+                         22
+                         23
+                         24
+                         25
+                         26
+                         27
+                         28
+                         )
+        )
+
+;; definition for symbol *scrap-book-2*, type (array int16)
+(define *scrap-book-2* (new 'static 'boxed-array :type int16
+                         29
+                         30
+                         31
+                         32
+                         33
+                         34
+                         35
+                         36
+                         37
+                         38
+                         39
+                         40
+                         41
+                         42
+                         43
+                         44
+                         45
+                         46
+                         47
+                         48
+                         49
+                         50
+                         51
+                         52
+                         53
+                         54
+                         55
+                         56
+                         57
+                         58
+                         59
+                         60
+                         61
+                         62
+                         63
+                         64
+                         65
+                         66
+                         67
+                         68
+                         69
+                         70
+                         71
+                         72
+                         73
+                         74
+                         75
+                         76
+                         77
+                         78
+                         79
+                         80
+                         81
+                         )
+        )
+
+;; failed to figure out what this is:
+(defstate scrap-book (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ((arg0 int))
+    (set-blackout-frames (seconds 1000))
+    (let ((gp-1 (cond
+                  ((= arg0 3)
+                   *scrap-book-3*
+                   )
+                  ((= arg0 2)
+                   *scrap-book-2*
+                   )
+                  (else
+                    *scrap-book-1*
+                    )
+                  )
+                )
+          (s3-0 0)
+          )
+      0
+      (let ((s5-0 (length gp-1))
+            (s4-0 s3-0)
+            )
+        (+ s3-0 1)
+        (let ((v1-5 #f))
+          (while (not (or (>= s4-0 s5-0) (= v1-5 'abort)))
+            (title-screen-change "scrap-book" (-> gp-1 s4-0) "scrap-book" -1 #t #f)
+            (set! v1-5 (direction-press (seconds 1) (seconds 5) #t))
+            (case v1-5
+              (('back)
+               (set! s4-0 (max 0 (+ s4-0 -1)))
+               )
+              (else
+                (+! s4-0 1)
+                )
+              )
+            (+ s4-0 1)
+            )
+          )
+        )
+      )
+    (title-screen-change (the-as string #f) -1 (the-as string #f) -1 #f #f)
+    (set-blackout-frames (seconds 0.2))
+    (set! (-> *game-info* demo-state) (the-as uint 1))
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; failed to figure out what this is:
+(defstate control-spec (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ((arg0 int))
+    (let ((gp-0 (the-as int (-> *setting-control* user-current language))))
+      0
+      (if (and (= (the-as language-enum gp-0) (language-enum english)) (= (scf-get-territory) 1))
+          (set! gp-0 11)
+          )
+      (let ((gp-1 (* (cond
+                       ((zero? gp-0)
+                        0
+                        )
+                       ((= gp-0 1)
+                        1
+                        )
+                       ((= gp-0 2)
+                        2
+                        )
+                       ((= gp-0 3)
+                        3
+                        )
+                       ((= gp-0 4)
+                        4
+                        )
+                       ((= gp-0 11)
+                        5
+                        )
+                       (else
+                         0
+                         )
+                       )
+                     2
+                     )
+                  )
+            )
+        (if (= (get-aspect-ratio) 'aspect16x9)
+            (+! gp-1 1)
+            )
+        (title-screen-change "demo-screen" gp-1 (the-as string #f) -1 #t #f)
+        )
+      )
+    (suspend-for (seconds 0.6)
+      )
+    (setting-pers *setting-control* 'title-control-scene (seconds 1000000) 'render #f 0.0 0)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; failed to figure out what this is:
+(defstate splash-screen (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ()
+    (let ((gp-0 (the-as int (-> *setting-control* user-current language))))
+      0
+      (if (and (= (the-as language-enum gp-0) (language-enum english)) (= (scf-get-territory) 1))
+          (set! gp-0 11)
+          )
+      (let ((gp-1 (* (cond
+                       ((zero? gp-0)
+                        0
+                        )
+                       ((= gp-0 1)
+                        1
+                        )
+                       ((= gp-0 2)
+                        2
+                        )
+                       ((= gp-0 3)
+                        3
+                        )
+                       ((= gp-0 4)
+                        4
+                        )
+                       ((= gp-0 11)
+                        5
+                        )
+                       (else
+                         0
+                         )
+                       )
+                     2
+                     )
+                  )
+            )
+        (if (= (get-aspect-ratio) 'aspect16x9)
+            (+! gp-1 1)
+            )
+        (title-screen-change "demo-jakx" gp-1 (the-as string #f) -1 #t #f)
+        )
+      )
+    (suspend-for (seconds 0.6)
+      )
+    (setting-pers *setting-control* 'title-control-scene (seconds 1000000) 'render #f 0.0 0)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; failed to figure out what this is:
+(defstate thx-dolby (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ()
+    (-> *setting-control* user-current language)
+    (let ((gp-0 0))
+      (if (= (get-aspect-ratio) 'aspect16x9)
+          (+! gp-0 1)
+          )
+      (title-screen-change "dolby-screen" gp-0 (the-as string #f) -1 #t #f)
+      )
+    (suspend-for (seconds 5)
+      )
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; definition for symbol *progress-save-info*, type mc-slot-info
+(define *progress-save-info* (new 'global 'mc-slot-info))
+
+;; definition for function post-memcard
+(defun post-memcard ()
+  (mc-get-slot-info 0 *progress-save-info*)
+  (none)
+  )
+
+;; definition for symbol *game-name-entered*, type symbol
+(define *game-name-entered* (the-as symbol (new 'global 'string 16 (the-as string #f))))
+
+;; definition for function draw-language-select
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-language-select ((arg0 title-control))
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id bucket795)
+                               )
+    (let ((v1-6 (-> *viewport-array* default))
+          (s4-0 *font-context*)
+          )
+      (dma-buffer-add-gs-set s5-0
+                             (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                             (frame-1 (-> v1-6 frame))
+                             (zbuf-1 (-> v1-6 zbuf-on))
+                             (scissor-1 (-> v1-6 scissor))
+                             )
+      (set-width! s4-0 384)
+      (set-scale! s4-0 0.4)
+      (set! (-> s4-0 flags) (font-flags kerning middle middle-vert large ff12))
+      (let ((a0-7 s4-0))
+        (set! (-> a0-7 effect) (the-as uint 0))
+        )
+      (let ((a0-8 s4-0))
+        (set! (-> a0-8 color) (font-color white))
+        )
+      (let ((t1-0 #x60604020))
+        (draw-sprite2d-xy s5-0 64 163 384 90 (the-as rgba t1-0) #x3fffff)
+        )
+      (set-origin! s4-0 64 163)
+      (set-height! s4-0 30)
+      (print-game-text
+        (lookup-text! *common-text* (text-id text-id-11) #f)
+        *font-context*
+        #f
+        44
+        (bucket-id bucket787)
+        #f
+        s5-0
+        )
+      (set-origin! s4-0 64 193)
+      (set-height! s4-0 30)
+      (print-game-text
+        (lookup-text!
+          *common-text*
+          (cond
+            ((zero? arg0)
+             (text-id text-id-521)
+             )
+            ((= arg0 1)
+             (text-id text-id-19)
+             )
+            ((= arg0 2)
+             (text-id text-id-20)
+             )
+            ((= arg0 3)
+             (text-id text-id-21)
+             )
+            ((= arg0 4)
+             (text-id text-id-22)
+             )
+            ((= arg0 5)
+             (text-id text-id-4269)
+             )
+            ((= arg0 6)
+             (text-id text-id-4270)
+             )
+            (else
+              (text-id text-id-18)
+              )
+            )
+          #f
+          )
+        *font-context*
+        #f
+        44
+        (bucket-id bucket787)
+        #f
+        s5-0
+        )
+      (set-origin! s4-0 0 223)
+      (set-height! s4-0 30)
+      (print-game-text
+        (lookup-text! *common-text* (text-id text-id-1925) #f)
+        *font-context*
+        #f
+        44
+        (bucket-id bucket787)
+        #f
+        s5-0
+        )
+      (set-origin! s4-0 128 223)
+      (set! (-> s4-0 height) (the float 30))
+      )
+    (print-game-text
+      (lookup-text! *common-text* (text-id text-id-1934) #f)
+      *font-context*
+      #f
+      44
+      (bucket-id bucket787)
+      #f
+      s5-0
+      )
+    )
+  (none)
+  )
+
+;; definition for function check-language
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; WARN: Return type mismatch int vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defun check-language ()
+  (label cfg-0)
+  (let ((gp-0 (new 'stack-no-clear 'mc-slot-info)))
+    (mc-get-slot-info 0 gp-0)
+    (when (zero? (-> gp-0 known))
+      (set-blackout-frames (seconds 0.05))
+      (suspend)
+      (goto cfg-0)
+      )
+    (set! (-> *setting-control* user-default bg-a) 0.0)
+    (when (and (= (scf-get-territory) 1) (zero? (scf-get-language)))
+      (cond
+        ((or (zero? (-> gp-0 handle)) (zero? (-> gp-0 formatted)) (zero? (-> gp-0 inited)) (< (-> gp-0 last-file) 0))
+         (set-blackout-frames 0)
+         (let ((s5-2 0)
+               (gp-1 11)
+               )
+           (until #f
+             (when (cpad-pressed? 0 left)
+               (+! s5-2 -1)
+               (if (< s5-2 0)
+                   (set! s5-2 6)
+                   )
+               )
+             (when (cpad-pressed? 0 right)
+               (+! s5-2 1)
+               (if (< 6 s5-2)
+                   (set! s5-2 0)
+                   )
+               )
+             (if (cpad-pressed? 0 x)
+                 (goto cfg-25)
+                 )
+             (draw-language-select (the-as title-control s5-2))
+             (suspend)
+             )
+           #f
+           (label cfg-25)
+           (cond
+             ((zero? s5-2)
+              (set! gp-1 0)
+              )
+             ((= s5-2 1)
+              (set! gp-1 1)
+              )
+             ((= s5-2 2)
+              (set! gp-1 2)
+              )
+             ((= s5-2 3)
+              (set! gp-1 3)
+              )
+             ((= s5-2 4)
+              (set! gp-1 4)
+              )
+             ((= s5-2 5)
+              (set! gp-1 8)
+              )
+             ((= s5-2 6)
+              (set! gp-1 9)
+              )
+             )
+           (set! (-> *setting-control* user-default language) (the-as language-enum gp-1))
+           (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum gp-1))
+           (if (< (the-as uint gp-1) (the-as uint 5))
+               (set! (-> *setting-control* user-default audio-language) (the-as language-enum gp-1))
+               )
+           )
+         )
+        (else
+          (let ((v1-58 (-> gp-0 file (-> gp-0 last-file) language)))
+            (when (and (>= v1-58 0) (< v1-58 (the-as uint 11)))
+              (set! (-> *setting-control* user-default language) (the-as language-enum v1-58))
+              (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum v1-58))
+              (if (< v1-58 (the-as uint 5))
+                  (set! (-> *setting-control* user-default audio-language) (the-as language-enum v1-58))
+                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate target-title (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('change-mode)
+       (case (-> block param 0)
+         (('grab)
+          (if (not (-> block param 1))
+              #t
+              (go target-float)
+              )
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 symbol))
+    (let ((a0-1 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> a0-1 next0)))
+        (while (!= a0-1 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-1)))
+          (set! a0-1 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    (when arg0
+      (let ((v1-13 (-> self mask))
+            (a0-4 (-> *game-info* mode))
+            )
+        (set! (-> *game-info* mode) 'movie)
+        (logior! (-> self mask) (process-mask no-kill))
+        (set! (-> self mask) v1-13)
+        (set! (-> *game-info* mode) a0-4)
+        )
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      )
+    (lobby-start)
+    )
+  :exit (behavior ()
+    '()
+    )
+  :code (the-as (function symbol object) sleep-code)
+  :post post-memcard
+  )
+
+;; failed to figure out what this is:
+(defstate target-intro (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (target-generic-event-handler proc argc message block)
+    )
+  :enter (behavior ()
+    (let ((a0-0 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((gp-0 (-> a0-0 next0)))
+        (while (!= a0-0 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-0)))
+          (set! a0-0 gp-0)
+          *hud-engine*
+          (set! gp-0 (-> gp-0 next0))
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (check-language)
+    (until #f
+      (let ((v1-0 (new 'stack-no-clear 'vector)))
+        (when (dma-try-alloc
+                #xd2800
+                #xd2800
+                'title-control
+                0
+                (the-as (pointer int32) (&-> v1-0 x))
+                (the-as (pointer int32) (&-> v1-0 y))
+                #f
+                )
+          (suspend)
+          (suspend)
+          (goto cfg-5)
+          )
+        )
+      (suspend)
+      0
+      )
+    #f
+    (label cfg-5)
+    (suspend)
+    (suspend)
+    (title-control-spawn 'thx-dolby)
+    (while (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (= (-> arg0 type) title-control)))
+      (suspend)
+      )
+    (dma-release 'title-control)
+    (fmv-player-run "thx" *target-pool* #f)
+    (while *fmv-player*
+      (suspend)
+      )
+    (fmv-player-run "intro" *target-pool* #f)
+    (while *fmv-player*
+      (mc-get-slot-info 0 *progress-save-info*)
+      (suspend)
+      )
+    (cond
+      ((kiosk?)
+       (cond
+         ((= *game-mode* 'adventure)
+          (set! *game-mode* #f)
+          (auto-save-command 'restore 0 *profile-slot* self #f #f)
+          )
+         ((= *game-mode* 'online)
+          (set! *game-mode* #f)
+          (auto-save-command 'restore 0 *profile-slot* self #f #f)
+          )
+         (else
+           (let ((v1-16 (get-continue-by-name *game-info* "menu2-start-button")))
+             (send-event self 'continue v1-16)
+             )
+           )
+         )
+       )
+      (else
+        (let ((v1-19 (get-continue-by-name *game-info* "menu2-start")))
+          (send-event self 'continue v1-19)
+          )
+        )
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post target-no-move-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-introb (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (target-generic-event-handler proc argc message block)
+    )
+  :enter (behavior ()
+    (let ((a0-0 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((gp-0 (-> a0-0 next0)))
+        (while (!= a0-0 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-0)))
+          (set! a0-0 gp-0)
+          *hud-engine*
+          (set! gp-0 (-> gp-0 next0))
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (fmv-player-run "introb" *target-pool* #f)
+    (while *fmv-player*
+      (suspend)
+      )
+    (let ((v1-3 (get-continue-by-name *game-info* "menu2-start")))
+      (send-event self 'continue v1-3)
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post target-no-move-post
+  )
+
+;; definition for symbol *end-credits-proc*, type (pointer handle)
+(define *end-credits-proc* (the-as (pointer handle) L226))
+
+;; failed to figure out what this is:
+(set! (-> *end-credits-proc* 0) (the-as handle #f))
+
+;; definition for function end-end-credits
+;; WARN: Return type mismatch int vs none.
+(defun end-end-credits ()
+  (send-event (handle->process (-> *end-credits-proc* 0)) 'go-die)
+  0
+  (none)
+  )
+
+;; definition for function start-end-credits
+;; WARN: Return type mismatch int vs none.
+(defun start-end-credits ()
+  (send-event *lobby-menu-manager* 'start-credits)
+  0
+  (none)
+  )
+
+
+
+

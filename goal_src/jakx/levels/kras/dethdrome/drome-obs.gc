@@ -7,3 +7,67 @@
 
 ;; DECOMP BEGINS
 
+(deftype drome-tunnel-drum (process-drawable)
+  ((sound-id  uint32)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-drome-tunnel-drum drome-tunnel-drum drome-tunnel-drum-lod0-jg drome-tunnel-drum-idle-ja
+              ((drome-tunnel-drum-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 65)
+              :origin-joint-index 3
+              )
+
+(defmethod init-from-entity! ((this drome-tunnel-drum) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask actor-pause))
+  (stack-size-set! (-> this main-thread) 32)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-drome-tunnel-drum" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this sound-id) (the-as uint 0))
+  (go (method-of-object this idle))
+  )
+
+(defstate idle (drome-tunnel-drum)
+  :virtual #t
+  :code (behavior ()
+    (let* ((f30-0 65536.0)
+           (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-3 (the-as number (logior #x3f800000 v1-2)))
+           (f0-3 (* f30-0 (+ -1.0 (the-as float v1-3))))
+           )
+      (quaternion-rotate-z! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self root rot)) f0-3)
+      )
+    (until #f
+      (let* ((t9-2 make-sound-instance)
+             (a0-4 (-> *sound-info* 605))
+             (a1-1 (-> self sound-id))
+             (v1-9 (process->ppointer self))
+             (v1-11 (t9-2 a0-4 (the-as int a1-1) (ppointer->handle v1-9)))
+             )
+        (set! (-> self sound-id) (the-as uint (if v1-11
+                                                  (the-as int (-> v1-11 id))
+                                                  0
+                                                  )
+                                         )
+              )
+        )
+      (quaternion-rotate-z!
+        (the-as quaternion (-> self root rot))
+        (the-as quaternion (-> self root rot))
+        (* 5461.3335 (seconds-per-frame))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post ja-post
+  )

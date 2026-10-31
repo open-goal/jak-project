@@ -8,228 +8,858 @@
 ;; DECOMP BEGINS
 
 (deftype deathmatch-spawner (structure)
-  ((entity          basic   :offset-assert 0)
-   (next-spawn-time time-frame  :offset-assert 8)
+  ((entity           entity)
+   (next-spawn-time  time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
+
 
 (deftype deathmatch-spawner-array (inline-array-class)
-  (
-   (data             deathmatch-spawner :dynamic :offset-assert 16)
+  ((data  deathmatch-spawner  :dynamic)
    )
-  :method-count-assert 14
-  :size-assert         #x10
-  :flag-assert         #xe00000010
   )
 
+
+(set! (-> deathmatch-spawner-array heap-base) (the-as uint 16))
+
 (deftype net-player-deathmatch (net-player)
-  ((target-vehicle     uint64  :offset-assert 400)
-   (last-attack-time   uint64  :offset-assert 408)
-   (last-attacker      uint64  :offset-assert 416)
-   (dropdown-score     uint64  :offset-assert 424)
-   (next-spawn-seed    int32   :offset-assert 432)
-   (last-push-time     int32   :offset-assert 436)
-   (free-powerup-timer uint64  :offset-assert 440)
+  ((target-vehicle      uint64)
+   (last-attack-time    uint64)
+   (last-attacker       uint64)
+   (dropdown-score      uint64)
+   (next-spawn-seed     int32)
+   (last-push-time      int32)
+   (free-powerup-timer  uint64)
    )
-  :method-count-assert 100
-  :size-assert         #x1c0
-  :flag-assert         #x64013001c0
   (:methods
-    (net-player-deathmatch-method-98 () none) ;; 98
-    (net-player-deathmatch-method-99 () none) ;; 99
+    (net-player-deathmatch-method-98 () none)
+    (net-player-deathmatch-method-99 () none)
     )
+  )
+
+
+(defbehavior net-player-deathmatch-init-remote net-player-deathmatch ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-deathmatch) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-deathmatch
+                       :init net-player-deathmatch-init-remote
+                       arg0
+                       :name "net-player-deathmatch"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-deathmatch) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-deathmatch*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-player-deathmatch* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-deathmatch* msg-map) *msg-map-net-player-deathmatch*)
+
+(write-msg-map-rec net-player-deathmatch *net-process-class-info-net-player-deathmatch*)
+
+(set! (-> *net-process-class-info-net-player-deathmatch* owner-type) net-player-deathmatch)
+
+(net-process-class-register *net-process-class-info-net-player-deathmatch*)
+
+(defmethod process-nettable-method-40 ((this net-player-deathmatch))
+  *net-process-class-info-net-player-deathmatch*
   )
 
 (deftype net-game-mgr-deathmatch (net-game-mgr)
-  ((spawner-array basic  :offset-assert 304)
-   (spawner-count int8   :offset-assert 308)
+  ((spawner-array  deathmatch-spawner-array)
+   (spawner-count  int8)
    )
-  :method-count-assert 84
-  :size-assert         #x135
-  :flag-assert         #x5400b00135
   (:methods
-    (net-game-mgr-deathmatch-method-80 () none) ;; 80
-    (net-game-mgr-deathmatch-method-81 () none) ;; 81
-    (net-game-mgr-deathmatch-method-82 () none) ;; 82
-    (net-game-mgr-deathmatch-method-83 () none) ;; 83
+    (net-game-mgr-deathmatch-method-80 () none)
+    (net-game-mgr-deathmatch-method-81 () none)
+    (net-game-mgr-deathmatch-method-82 () none)
+    (net-game-mgr-deathmatch-method-83 () none)
     )
+  )
+
+
+(defbehavior net-game-mgr-deathmatch-init-remote net-game-mgr-deathmatch ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-deathmatch) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-deathmatch
+                       :init net-game-mgr-deathmatch-init-remote
+                       arg0
+                       :name "net-game-mgr-deathmatch"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-deathmatch) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawner-time-update)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-deathmatch*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-deathmatch* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-deathmatch* msg-map) *msg-map-net-game-mgr-deathmatch*)
+
+(write-msg-map-rec net-game-mgr-deathmatch *net-process-class-info-net-game-mgr-deathmatch*)
+
+(set! (-> *net-process-class-info-net-game-mgr-deathmatch* owner-type) net-game-mgr-deathmatch)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-deathmatch*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-deathmatch))
+  *net-process-class-info-net-game-mgr-deathmatch*
   )
 
 (deftype net-player-assassin (net-player-deathmatch)
   ()
-  :method-count-assert 100
-  :size-assert         #x1c0
-  :flag-assert         #x64013001c0
   )
 
-;; (deftype net-game-mgr-assassin (net-game-mgr-deathmatch)
-;;   ((mark    unknown 24 :offset-assert 305)
-;;    )
-;;   :method-count-assert 86
-;;   :size-assert         #x14d
-;;   :flag-assert         #x5600c0014d
-;;   (:methods
-;;     (net-game-mgr-assassin-method-84 () none) ;; 84
-;;     (net-game-mgr-assassin-method-85 () none) ;; 85
-;;     )
-;;   )
+
+(defbehavior net-player-assassin-init-remote net-player-assassin ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-assassin) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-assassin :init net-player-assassin-init-remote arg0 :name "net-player-assassin")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-assassin) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-assassin* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-assassin* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-assassin* msg-map) *msg-map-net-player-assassin*)
+
+(write-msg-map-rec net-player-assassin *net-process-class-info-net-player-assassin*)
+
+(set! (-> *net-process-class-info-net-player-assassin* owner-type) net-player-assassin)
+
+(net-process-class-register *net-process-class-info-net-player-assassin*)
+
+(defmethod process-nettable-method-40 ((this net-player-assassin))
+  *net-process-class-info-net-player-assassin*
+  )
+
+(deftype net-game-mgr-assassin (net-game-mgr-deathmatch)
+  ((mark  int8  24 :offset 309)
+   )
+  (:methods
+    (net-game-mgr-assassin-method-84 () none)
+    (net-game-mgr-assassin-method-85 () none)
+    )
+  )
+
+
+(defbehavior net-game-mgr-assassin-init-remote net-game-mgr-assassin ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-assassin) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-assassin
+                       :init net-game-mgr-assassin-init-remote
+                       arg0
+                       :name "net-game-mgr-assassin"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-assassin) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-assassin*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-assassin* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-assassin* msg-map) *msg-map-net-game-mgr-assassin*)
+
+(write-msg-map-rec net-game-mgr-assassin *net-process-class-info-net-game-mgr-assassin*)
+
+(set! (-> *net-process-class-info-net-game-mgr-assassin* owner-type) net-game-mgr-assassin)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-assassin*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-assassin))
+  *net-process-class-info-net-game-mgr-assassin*
+  )
 
 (deftype net-player-deathrace (net-player-race)
-  ((impact-death       basic   :offset-assert 496)
-   (focus-player-index int8    :offset-assert 500)
-   (combo-score        int32   :offset-assert 504)
-   (combo-count        int32   :offset-assert 508)
-   (last-score-time    int32   :offset-assert 512)
-   (combo-hud          uint64  :offset-assert 520)
+  ((impact-death        basic)
+   (focus-player-index  int8)
+   (combo-score         int32)
+   (combo-count         int32)
+   (last-score-time     int32)
+   (combo-hud           uint64)
    )
-  :method-count-assert 111
-  :size-assert         #x210
-  :flag-assert         #x6f01800210
   (:methods
-    (net-player-deathrace-method-108 () none) ;; 108
-    (net-player-deathrace-method-109 () none) ;; 109
-    (net-player-deathrace-method-110 () none) ;; 110
+    (net-player-deathrace-method-108 () none)
+    (net-player-deathrace-method-109 () none)
+    (net-player-deathrace-method-110 () none)
     )
+  )
+
+
+(defbehavior net-player-deathrace-init-remote net-player-deathrace ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-deathrace) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-deathrace :init net-player-deathrace-init-remote arg0 :name "net-player-deathrace")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-deathrace) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-deathrace* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-deathrace* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-deathrace* msg-map) *msg-map-net-player-deathrace*)
+
+(write-msg-map-rec net-player-deathrace *net-process-class-info-net-player-deathrace*)
+
+(set! (-> *net-process-class-info-net-player-deathrace* owner-type) net-player-deathrace)
+
+(net-process-class-register *net-process-class-info-net-player-deathrace*)
+
+(defmethod process-nettable-method-40 ((this net-player-deathrace))
+  *net-process-class-info-net-player-deathrace*
   )
 
 (deftype net-game-mgr-deathrace (net-game-mgr-race)
-  ((next-drone-spawn-time uint64  :offset-assert 368)
+  ((next-drone-spawn-time  uint64)
    )
-  :method-count-assert 88
-  :size-assert         #x178
-  :flag-assert         #x5800f00178
   )
 
+
+(defbehavior net-game-mgr-deathrace-init-remote net-game-mgr-deathrace ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-deathrace) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-deathrace
+                       :init net-game-mgr-deathrace-init-remote
+                       arg0
+                       :name "net-game-mgr-deathrace"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-deathrace) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-next-drone-spawn-time)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-deathrace*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-deathrace* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-deathrace* msg-map) *msg-map-net-game-mgr-deathrace*)
+
+(write-msg-map-rec net-game-mgr-deathrace *net-process-class-info-net-game-mgr-deathrace*)
+
+(set! (-> *net-process-class-info-net-game-mgr-deathrace* owner-type) net-game-mgr-deathrace)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-deathrace*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-deathrace))
+  *net-process-class-info-net-game-mgr-deathrace*
+  )
+
+(defskelgroup skel-fuel-cell fuel-cell fuel-cell-lod0-jg fuel-cell-idle-ja
+              ((fuel-cell-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :shadow fuel-cell-shadow-mg
+              )
+
 (deftype net-game-mgr-football (net-game-mgr-race)
-  ((borrow-level      basic     :offset-assert 364)
-   (intro-hud-manager handle 2 :offset-assert 368)
-   (intro-sfx         uint32 2 :offset-assert 384)
+  ((borrow-level       basic)
+   (intro-hud-manager  handle  2)
+   (intro-sfx          uint32  2)
    )
-  :method-count-assert 88
-  :size-assert         #x188
-  :flag-assert         #x5801000188
+  )
+
+
+(defbehavior net-game-mgr-football-init-remote net-game-mgr-football ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-football) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-football
+                       :init net-game-mgr-football-init-remote
+                       arg0
+                       :name "net-game-mgr-football"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-football) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-football*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-football* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-football* msg-map) *msg-map-net-game-mgr-football*)
+
+(write-msg-map-rec net-game-mgr-football *net-process-class-info-net-game-mgr-football*)
+
+(set! (-> *net-process-class-info-net-game-mgr-football* owner-type) net-game-mgr-football)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-football*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-football))
+  *net-process-class-info-net-game-mgr-football*
   )
 
 (deftype net-player-football (net-player-race)
-  ((my-potato             uint64    :offset-assert 496)
-   (slow-warning          uint64    :offset-assert 504)
-   (pt-multiplier-timeout uint64    :offset-assert 512)
-   (aux-hud               uint64    :offset-assert 520)
-   (turbo-part-tracker    uint64    :offset-assert 528)
-   (turbo-meter           float     :offset-assert 536)
-   (cheat-award-time      uint64    :offset-assert 544)
-   (cheat-turbo-fill      float     :offset-assert 552)
-   (bing                  uint32 2 :offset-assert 556)
+  ((my-potato              uint64)
+   (slow-warning           uint64)
+   (pt-multiplier-timeout  uint64)
+   (aux-hud                uint64)
+   (turbo-part-tracker     uint64)
+   (turbo-meter            float)
+   (cheat-award-time       uint64)
+   (cheat-turbo-fill       float)
+   (bing                   uint32  2)
    )
-  :method-count-assert 108
-  :size-assert         #x234
-  :flag-assert         #x6c01b00234
+  )
+
+
+(defbehavior net-player-football-init-remote net-player-football ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-football) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-football :init net-player-football-init-remote arg0 :name "net-player-football")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-football) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-football* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-football* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-football* msg-map) *msg-map-net-player-football*)
+
+(write-msg-map-rec net-player-football *net-process-class-info-net-player-football*)
+
+(set! (-> *net-process-class-info-net-player-football* owner-type) net-player-football)
+
+(net-process-class-register *net-process-class-info-net-player-football*)
+
+(defmethod process-nettable-method-40 ((this net-player-football))
+  *net-process-class-info-net-player-football*
   )
 
 (deftype powercell-dispenser (net-powerup)
-  ((original-owner int32  :offset-assert 244)
+  ((original-owner  int32)
    )
-  :method-count-assert 56
-  :size-assert         #xf8
-  :flag-assert         #x38007000f8
+  )
+
+
+(defbehavior powercell-dispenser-init-remote powercell-dispenser ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this powercell-dispenser) (arg0 int))
+  (ppointer->process
+    (process-spawn powercell-dispenser :init powercell-dispenser-init-remote arg0 :name "powercell-dispenser")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this powercell-dispenser) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-powercell-dispenser* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-powercell-dispenser* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-powercell-dispenser* msg-map) *msg-map-powercell-dispenser*)
+
+(write-msg-map-rec powercell-dispenser *net-process-class-info-powercell-dispenser*)
+
+(set! (-> *net-process-class-info-powercell-dispenser* owner-type) powercell-dispenser)
+
+(net-process-class-register *net-process-class-info-powercell-dispenser*)
+
+(defmethod process-nettable-method-40 ((this powercell-dispenser))
+  *net-process-class-info-powercell-dispenser*
   )
 
 (deftype powercell-dispenser-draw (powerup-draw)
-  ((subdraw uint64  :offset-assert 264)
+  ((subdraw  uint64)
    )
-  :method-count-assert 58
-  :size-assert         #x110
-  :flag-assert         #x3a00800110
   (:methods
-    (powercell-dispenser-draw-method-57 () none) ;; 57
+    (powercell-dispenser-draw-method-57 () none)
     )
+  )
+
+
+(defbehavior powercell-dispenser-draw-init-remote powercell-dispenser-draw ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this powercell-dispenser-draw) (arg0 int))
+  (ppointer->process (process-spawn
+                       powercell-dispenser-draw
+                       :init powercell-dispenser-draw-init-remote
+                       arg0
+                       :name "powercell-dispenser-draw"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this powercell-dispenser-draw) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-powercell-dispenser-draw*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-powercell-dispenser-draw* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-powercell-dispenser-draw* msg-map) *msg-map-powercell-dispenser-draw*)
+
+(write-msg-map-rec powercell-dispenser-draw *net-process-class-info-powercell-dispenser-draw*)
+
+(set! (-> *net-process-class-info-powercell-dispenser-draw* owner-type) powercell-dispenser-draw)
+
+(net-process-class-register *net-process-class-info-powercell-dispenser-draw*)
+
+(defmethod process-nettable-method-40 ((this powercell-dispenser-draw))
+  *net-process-class-info-powercell-dispenser-draw*
   )
 
 (deftype powercell-footie (rigid-body-object)
-  ((owner      uint64         :offset-assert 288)
-   (plyid      int8           :offset-assert 296)
-   (tip-vel    vector :inline :offset-assert 304)
-   (spring-pos vector :inline :offset-assert 320)
-   (spring-vel vector :inline :offset-assert 336)
-   (bolt       basic          :offset-assert 352)
-   (loose-part basic          :offset-assert 356)
+  ((owner       uint64)
+   (plyid       int8)
+   (tip-vel     vector  :inline)
+   (spring-pos  vector  :inline)
+   (spring-vel  vector  :inline)
+   (bolt        basic)
+   (loose-part  basic)
    )
-  :method-count-assert 91
-  :size-assert         #x168
-  :flag-assert         #x5b00e00168
   (:methods
-    (powercell-footie-method-89 () none) ;; 89
-    (powercell-footie-method-90 () none) ;; 90
+    (powercell-footie-method-89 () none)
+    (powercell-footie-method-90 () none)
     )
+  )
+
+
+(defbehavior powercell-footie-init-remote powercell-footie ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this powercell-footie) (arg0 int))
+  (ppointer->process
+    (process-spawn powercell-footie :init powercell-footie-init-remote arg0 :name "powercell-footie")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this powercell-footie) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-powercell-footie* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-powercell-footie* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-powercell-footie* msg-map) *msg-map-powercell-footie*)
+
+(write-msg-map-rec powercell-footie *net-process-class-info-powercell-footie*)
+
+(set! (-> *net-process-class-info-powercell-footie* owner-type) powercell-footie)
+
+(net-process-class-register *net-process-class-info-powercell-footie*)
+
+(defmethod process-nettable-method-40 ((this powercell-footie))
+  *net-process-class-info-powercell-footie*
   )
 
 (deftype net-player-artifact (net-player-deathmatch)
-  ((seek-after int32  :offset-assert 448)
+  ((seek-after  int32)
    )
-  :method-count-assert 100
-  :size-assert         #x1c4
-  :flag-assert         #x64014001c4
   )
 
-(deftype artifact-location-array (inline-array-class)
-  ((data             net-player-artifact :dynamic :offset-assert 16)
-   )
-  :method-count-assert 14
-  :size-assert         #x10
-  :flag-assert         #xe00000010
+
+(defbehavior net-player-artifact-init-remote net-player-artifact ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
   )
 
-(deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
-  ((artifact-location-array basic     :offset-assert 312)
-   (artifact-location-count int8      :offset-assert 316)
-   (artifact                handle 6 :offset-assert 320)
-   (num-artifacts           int32     :offset-assert 368)
-   (last-artifact-index     int32     :offset-assert 372)
-   (last-position-index     int32 6 :offset-assert 376)
-   (special-rule            basic     :offset-assert 400)
-   )
-  :method-count-assert 86
-  :size-assert         #x194
-  :flag-assert         #x5601100194
-  (:methods
-    (net-game-mgr-artifact-method-84 () none) ;; 84
-    (net-game-mgr-artifact-method-85 () none) ;; 85
+(defmethod process-nettable-method-41 ((this net-player-artifact) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-artifact :init net-player-artifact-init-remote arg0 :name "net-player-artifact")
     )
   )
 
-(deftype net-player-beasthunt (net-player-deathmatch)
-  ((prev-send-score      int32  :offset-assert 448)
-   (last-score-send-time int32  :offset-assert 452)
-   (big-air-launch-time  int32  :offset-assert 456)
-   (in-big-air           basic  :offset-assert 460)
-   (last-fly-time        int32  :offset-assert 464)
+(defmethod process-nettable-method-37 ((this net-player-artifact) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-artifact* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-artifact* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-artifact* msg-map) *msg-map-net-player-artifact*)
+
+(write-msg-map-rec net-player-artifact *net-process-class-info-net-player-artifact*)
+
+(set! (-> *net-process-class-info-net-player-artifact* owner-type) net-player-artifact)
+
+(net-process-class-register *net-process-class-info-net-player-artifact*)
+
+(defmethod process-nettable-method-40 ((this net-player-artifact))
+  *net-process-class-info-net-player-artifact*
+  )
+
+(deftype artifact-location-array (inline-array-class)
+  ((data  net-player-artifact  :dynamic)
    )
-  :method-count-assert 100
-  :size-assert         #x1d4
-  :flag-assert         #x64015001d4
+  )
+
+
+(set! (-> artifact-location-array heap-base) (the-as uint 16))
+
+(deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
+  ((artifact-location-array  basic)
+   (artifact-location-count  int8)
+   (artifact                 handle  6)
+   (num-artifacts            int32)
+   (last-artifact-index      int32)
+   (last-position-index      int32   6)
+   (special-rule             basic)
+   )
+  (:methods
+    (net-game-mgr-artifact-method-84 () none)
+    (net-game-mgr-artifact-method-85 () none)
+    )
+  )
+
+
+(defbehavior net-game-mgr-artifact-init-remote net-game-mgr-artifact ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-artifact) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-artifact
+                       :init net-game-mgr-artifact-init-remote
+                       arg0
+                       :name "net-game-mgr-artifact"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-artifact) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawn-new-artifact)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-artifact*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-artifact* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-artifact* msg-map) *msg-map-net-game-mgr-artifact*)
+
+(write-msg-map-rec net-game-mgr-artifact *net-process-class-info-net-game-mgr-artifact*)
+
+(set! (-> *net-process-class-info-net-game-mgr-artifact* owner-type) net-game-mgr-artifact)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-artifact*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-artifact))
+  *net-process-class-info-net-game-mgr-artifact*
+  )
+
+(deftype net-player-beasthunt (net-player-deathmatch)
+  ((prev-send-score       int32)
+   (last-score-send-time  int32)
+   (big-air-launch-time   int32)
+   (in-big-air            basic)
+   (last-fly-time         int32)
+   )
+  )
+
+
+(defbehavior net-player-beasthunt-init-remote net-player-beasthunt ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-beasthunt) (arg0 int))
+  (ppointer->process
+    (process-spawn net-player-beasthunt :init net-player-beasthunt-init-remote arg0 :name "net-player-beasthunt")
+    )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-beasthunt) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-beasthunt* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-player-beasthunt* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-beasthunt* msg-map) *msg-map-net-player-beasthunt*)
+
+(write-msg-map-rec net-player-beasthunt *net-process-class-info-net-player-beasthunt*)
+
+(set! (-> *net-process-class-info-net-player-beasthunt* owner-type) net-player-beasthunt)
+
+(net-process-class-register *net-process-class-info-net-player-beasthunt*)
+
+(defmethod process-nettable-method-40 ((this net-player-beasthunt))
+  *net-process-class-info-net-player-beasthunt*
   )
 
 (deftype net-game-mgr-beasthunt (net-game-mgr-deathmatch)
   ()
-  :method-count-assert 84
-  :size-assert         #x135
-  :flag-assert         #x5400b00135
+  )
+
+
+(defbehavior net-game-mgr-beasthunt-init-remote net-game-mgr-beasthunt ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-beasthunt) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-beasthunt
+                       :init net-game-mgr-beasthunt-init-remote
+                       arg0
+                       :name "net-game-mgr-beasthunt"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-beasthunt) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-beasthunt*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-beasthunt* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-beasthunt* msg-map) *msg-map-net-game-mgr-beasthunt*)
+
+(write-msg-map-rec net-game-mgr-beasthunt *net-process-class-info-net-game-mgr-beasthunt*)
+
+(set! (-> *net-process-class-info-net-game-mgr-beasthunt* owner-type) net-game-mgr-beasthunt)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-beasthunt*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-beasthunt))
+  *net-process-class-info-net-game-mgr-beasthunt*
   )
 
 (deftype net-player-collectable (net-player-deathmatch)
   ()
-  :method-count-assert 100
-  :size-assert         #x1c0
-  :flag-assert         #x64013001c0
+  )
+
+
+(defbehavior net-player-collectable-init-remote net-player-collectable ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-player-collectable) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-player-collectable
+                       :init net-player-collectable-init-remote
+                       arg0
+                       :name "net-player-collectable"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-player-collectable) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-player-collectable*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-player-collectable* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-player-collectable* msg-map) *msg-map-net-player-collectable*)
+
+(write-msg-map-rec net-player-collectable *net-process-class-info-net-player-collectable*)
+
+(set! (-> *net-process-class-info-net-player-collectable* owner-type) net-player-collectable)
+
+(net-process-class-register *net-process-class-info-net-player-collectable*)
+
+(defmethod process-nettable-method-40 ((this net-player-collectable))
+  *net-process-class-info-net-player-collectable*
   )
 
 (deftype net-game-mgr-collectable (net-game-mgr-deathmatch)
-  ((steal-mode basic  :offset-assert 312)
+  ((steal-mode  basic)
    )
-  :method-count-assert 84
-  :size-assert         #x13c
-  :flag-assert         #x5400b0013c
+  )
+
+
+(defbehavior net-game-mgr-collectable-init-remote net-game-mgr-collectable ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this net-game-mgr-collectable) (arg0 int))
+  (ppointer->process (process-spawn
+                       net-game-mgr-collectable
+                       :init net-game-mgr-collectable-init-remote
+                       arg0
+                       :name "net-game-mgr-collectable"
+                       )
+                     )
+  )
+
+(defmethod process-nettable-method-37 ((this net-game-mgr-collectable) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-game-mgr-collectable*
+  (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64)
+  )
+
+(define *net-process-class-info-net-game-mgr-collectable* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-game-mgr-collectable* msg-map) *msg-map-net-game-mgr-collectable*)
+
+(write-msg-map-rec net-game-mgr-collectable *net-process-class-info-net-game-mgr-collectable*)
+
+(set! (-> *net-process-class-info-net-game-mgr-collectable* owner-type) net-game-mgr-collectable)
+
+(net-process-class-register *net-process-class-info-net-game-mgr-collectable*)
+
+(defmethod process-nettable-method-40 ((this net-game-mgr-collectable))
+  *net-process-class-info-net-game-mgr-collectable*
   )

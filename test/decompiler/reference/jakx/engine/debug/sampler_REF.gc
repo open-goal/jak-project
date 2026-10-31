@@ -1,0 +1,130 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for symbol *sampler-mem*, type pointer
+(define *sampler-mem* (the-as pointer #f))
+
+;; definition for symbol *sampler-compare*, type uint
+(define *sampler-compare* (the-as uint 10))
+
+;; definition for symbol *sampler-count*, type int
+(define *sampler-count* 0)
+
+;; definition for symbol *sampler-above-range-count*, type int
+(define *sampler-above-range-count* 0)
+
+;; definition (debug) for function timer0-handler
+;; INFO: Interrupt handler
+;; ERROR: failed type prop at 8: Couldn't figure out logior: (logior v1 a0) (<integer 536870912> and <pointer + (value x 4)>)
+
+;; ERROR: Function may read a register that is not set: a2
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun-debug timer0-handler ()
+  (local-vars
+    (v0-0 none)
+    (v1-0 int)
+    (v1-1 int)
+    (v1-2 none)
+    (v1-3 none)
+    (v1-4 none)
+    (v1-5 none)
+    (v1-6 none)
+    (v1-7 none)
+    (v1-8 none)
+    (v1-9 none)
+    (v1-10 none)
+    (a0-0 none)
+    (a0-1 uint)
+    (a0-2 uint)
+    (a0-3 pointer)
+    (a0-4 none)
+    (a0-5 none)
+    (a0-6 none)
+    (a0-7 none)
+    (a1-0 pointer)
+    (a2-0 none)
+    )
+  (cond
+    ((begin (set! a0-0 a2-0) (set! v1-0 #x2000000) (<.ui a0-0 v1-0))
+     (set! v1-1 #x20000000)
+     (set! a1-0 *sampler-mem*)
+     (set! a0-1 (srl a0-0 3))
+     (set! a0-2 (sll a0-1 2))
+     (set! a0-3 (+ a1-0 a0-2))
+     (set! v1-2 (the-as none (logior v1-1 a0-3)))
+     (set! a0-4 (the-as none (l.wu v1-2)))
+     (set! a0-5 (the-as none (+ a0-4 1)))
+     (s.w! v1-2 a0-5)
+     (set! v1-3 (the-as none *sampler-count*))
+     (set! v1-4 (the-as none (+ v1-3 1)))
+     (set! *sampler-count* (the-as int v1-4))
+     )
+    (else
+      (set! v1-5 (the-as none *sampler-above-range-count*))
+      (set! v1-6 (the-as none (+ v1-5 1)))
+      (set! *sampler-above-range-count* (the-as int v1-6))
+      )
+    )
+  (.mfc0 v1-7 Count)
+  (set! v1-8 (the-as none (logand v1-7 1)))
+  (set! v1-9 (the-as none (+ v1-8 2)))
+  (set! *sampler-compare* (the-as uint v1-9))
+  (set! v1-10 (the-as none #x10000000))
+  (set! a0-6 (the-as none 1474))
+  (s.w! (+ v1-10 16) a0-6)
+  (s.w! v1-10 0)
+  (set! a0-7 (the-as none *sampler-compare*))
+  (s.w! (+ v1-10 32) a0-7)
+  (set! v0-0 (the-as none 0))
+  (ret-none)
+  )
+
+;; failed to figure out what this is:
+(set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+
+;; failed to figure out what this is:
+(install-handler 9 timer0-handler)
+
+;; definition (debug) for function sampler-start
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-start ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (set! (-> (the-as timer-bank #x10000000) count) (the-as uint 0))
+  (set! (-> (the-as timer-bank #x10000000) comp) *sampler-compare*)
+  (if (not *sampler-mem*)
+      (set! *sampler-mem* (malloc 'debug #x1000000))
+      )
+  (when (nonzero? *sampler-mem*)
+    (mem-set32! *sampler-mem* #x400000 0)
+    (set! (-> (the-as timer-bank #x10000000) mode)
+          (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+          )
+    (set! *sampler-count* 0)
+    (set! *sampler-above-range-count* 0)
+    0
+    )
+  (none)
+  )
+
+;; definition (debug) for function sampler-stop
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-stop ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (format
+    0
+    "samples: in-range ~d above-range ~d total ~d~%"
+    *sampler-count*
+    *sampler-above-range-count*
+    (+ *sampler-count* *sampler-above-range-count*)
+    )
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  0
+  (none)
+  )
+
+
+
+

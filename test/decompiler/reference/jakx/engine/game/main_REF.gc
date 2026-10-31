@@ -1,0 +1,2744 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function set-letterbox-frames
+;; WARN: Return type mismatch time-frame vs none.
+(defun set-letterbox-frames ((arg0 time-frame))
+  (with-pp
+    (set! (-> *game-info* letterbox-time)
+          (+ (-> *display* base-clock frame-counter)
+             (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
+             )
+          )
+    (none)
+    )
+  )
+
+;; definition for function letterbox
+;; WARN: Return type mismatch int vs none.
+(defun letterbox ((arg0 bucket-id) (arg1 float))
+  (let* ((s2-0 (-> *viewport-array* default screen-sy))
+         (s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+         (s5-0 (-> s4-0 base))
+         )
+    (draw-sprite2d-xy-absolute s4-0 0 0 512 (the int (* 46.0 arg1)) (new 'static 'rgba :a #x80) #x3fffff)
+    (draw-sprite2d-xy-absolute
+      s4-0
+      0
+      (- s2-0 (the int (* 46.0 arg1)))
+      512
+      (+ (the int (* 46.0 arg1)) 1)
+      (new 'static 'rgba :a #x80)
+      #x3fffff
+      )
+    (let ((a3-2 (-> s4-0 base)))
+      (when (!= s5-0 a3-2)
+        (let ((v1-14 (the-as object (-> s4-0 base))))
+          (set! (-> (the-as dma-packet v1-14) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet v1-14) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet v1-14) vif1) (new 'static 'vif-tag))
+          (set! (-> s4-0 base) (the-as pointer (&+ (the-as dma-packet v1-14) 16)))
+          )
+        (dma-bucket-insert-tag
+          (-> *display* frames (-> *display* on-screen) bucket-group)
+          arg0
+          s5-0
+          (the-as (pointer dma-tag) a3-2)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-blackout-frames
+;; WARN: Return type mismatch int vs none.
+(defun set-blackout-frames ((arg0 time-frame))
+  (with-pp
+    (if (zero? arg0)
+        (set! (-> *game-info* blackout-time) (-> *display* base-clock frame-counter))
+        (set! (-> *game-info* blackout-time)
+              (the-as
+                time-frame
+                (max
+                  (-> *game-info* blackout-time)
+                  (+ (-> *display* base-clock frame-counter)
+                     (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
+                     arg0
+                     )
+                  )
+                )
+              )
+        )
+    (none)
+    )
+  )
+
+;; definition for function blackout
+;; WARN: Return type mismatch int vs none.
+(defun blackout ((arg0 bucket-id))
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               arg0
+                               )
+    (draw-sprite2d-xy-absolute
+      s4-0
+      0
+      0
+      512
+      (-> *viewport-array* default screen-sy)
+      (new 'static 'rgba :a #x80)
+      #x3fffff
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function add-blackout
+(defun add-blackout ((arg0 time-frame) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((v1-0 *display*))
+    (let ((a0-1 (new 'static 'array time-frame 2 (seconds 0) (seconds 0))))
+      (set! (-> v1-0 bgcolor r) arg1)
+      (set! (-> v1-0 bgcolor g) arg2)
+      (set! (-> v1-0 bgcolor b) arg3)
+      (set! (-> v1-0 pmode alp) (- 255 arg4))
+      (set! (-> a0-1 0) 0)
+      (set! (-> a0-1 1) 0)
+      )
+    (if (nonzero? arg4)
+        (set! (-> v1-0 force-sync) (the-as uint (max 4 (the-as int (-> v1-0 force-sync)))))
+        )
+    )
+  0
+  )
+
+;; definition for function paused?
+(defun paused? ()
+  (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
+  )
+
+;; definition for function movie?
+(defun movie? ()
+  (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
+  )
+
+;; definition for function scene-select?
+(defun scene-select? ()
+  (and (>= (-> *game-info* demo-state) (the-as uint 100)) (< (-> *game-info* demo-state) (the-as uint 200)))
+  )
+
+;; definition for function demo?
+(defun demo? ()
+  (or (= *kernel-boot-message* 'demo) (= *kernel-boot-message* 'demo-shared))
+  )
+
+;; definition for function kiosk?
+(defun kiosk? ()
+  (= *kernel-boot-message* 'kiosk)
+  )
+
+;; definition for function beta?
+(defun beta? ()
+  (= *kernel-boot-message* 'beta)
+  )
+
+;; definition for symbol *last-master-mode*, type symbol
+(define *last-master-mode* 'game)
+
+;; definition for function set-master-mode
+;; WARN: Return type mismatch int vs none.
+(defun set-master-mode ((arg0 symbol))
+  (when (!= arg0 *master-mode*)
+    (set! *last-master-mode* *master-mode*)
+    (set! *master-mode* arg0)
+    (case *master-mode*
+      (('pause)
+       (when (not *lobby-menu-manager*)
+         (if (not *debug-pause*)
+             (logior! (-> *setting-control* user-default process-mask) (process-mask pause))
+             )
+         (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze menu))
+         (set! *pause-lock* #f)
+         (sound-group-pause (sound-group
+                              sfx
+                              music
+                              dialog
+                              sog3
+                              ambient
+                              dialog2
+                              special
+                              sog7
+                              sog8
+                              sog9
+                              sog10
+                              sog11
+                              sog12
+                              sog13
+                              sog14
+                              sog15
+                              sog16
+                              sog17
+                              sog18
+                              sog19
+                              sog20
+                              sog21
+                              sog22
+                              sog23
+                              sog24
+                              sog25
+                              sog26
+                              sog27
+                              sog28
+                              sog29
+                              sog30
+                              sog31
+                              )
+                            )
+         (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+         )
+       )
+      (('freeze)
+       (logior! (-> *setting-control* user-default process-mask) (process-mask freeze))
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask pause menu))
+       (sound-group-pause (sound-group sfx ambient))
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+       )
+      (('menu)
+       (logior! (-> *setting-control* user-default process-mask) (process-mask menu))
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause progress))
+       (sound-group-pause (sound-group
+                            sfx
+                            music
+                            dialog
+                            sog3
+                            ambient
+                            dialog2
+                            special
+                            sog7
+                            sog8
+                            sog9
+                            sog10
+                            sog11
+                            sog12
+                            sog13
+                            sog14
+                            sog15
+                            sog16
+                            sog17
+                            sog18
+                            sog19
+                            sog20
+                            sog21
+                            sog22
+                            sog23
+                            sog24
+                            sog25
+                            sog26
+                            sog27
+                            sog28
+                            sog29
+                            sog30
+                            sog31
+                            )
+                          )
+       (set! *pause-lock* #f)
+       )
+      (('progress)
+       (when (and (not *lobby-menu-manager*) (or (not net-mgr) (= (-> *net-mgr* game-type) 4)))
+         (if (not *debug-pause*)
+             (logior! (-> *setting-control* user-default process-mask) (process-mask pause))
+             )
+         )
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze menu))
+       (sound-group-pause (sound-group
+                            sfx
+                            music
+                            dialog
+                            sog3
+                            ambient
+                            dialog2
+                            special
+                            sog7
+                            sog8
+                            sog9
+                            sog10
+                            sog11
+                            sog12
+                            sog13
+                            sog15
+                            sog16
+                            sog17
+                            sog18
+                            sog19
+                            sog20
+                            sog21
+                            sog22
+                            sog23
+                            sog24
+                            sog25
+                            sog26
+                            sog27
+                            sog28
+                            sog29
+                            sog30
+                            sog31
+                            )
+                          )
+       (set! *pause-lock* #f)
+       (cond
+         ((not *in-game-menu-process*)
+          (in-game-menu-startup)
+          (if (not *in-game-menu-process*)
+              (set-master-mode 'game)
+              )
+          )
+         (else
+           (deactivate (-> *in-game-menu-process* 0))
+           (set! *in-game-menu-process* (the-as (pointer hud) #f))
+           (set-master-mode 'game)
+           )
+         )
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
+       )
+      (('game)
+       (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause menu))
+       (let ((a0-41 (the-as uint #xffffffff)))
+         (if *music-lock*
+             (set! a0-41 (logxor a0-41 2))
+             )
+         (sound-group-continue (the-as sound-group a0-41))
+         )
+       (if (handle->process (-> *game-info* pause-menu))
+           (send-event (-> *game-info* pause-menu process 0) 'die)
+           )
+       )
+      )
+    (apply-settings! *setting-control*)
+    )
+  (if *debug-segment*
+      (menu-respond-to-pause)
+      )
+  0
+  (none)
+  )
+
+;; definition for function pause-allowed?
+(defun pause-allowed? ()
+  (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+           (!= (-> *setting-control* user-current bg-a) 0.0)
+           (!= (-> *setting-control* user-current bg-a-force) 0.0)
+           (not (-> *setting-control* user-current allow-pause))
+           (-> *setting-control* user-current mpeg-mode?)
+           (handle->process (-> *game-info* auto-save-proc))
+           (= *master-mode* 'freeze)
+           (not (view-get-active-target))
+           *master-exit*
+           (not *common-text*)
+           (not *debug-segment*)
+           )
+       )
+  )
+
+;; definition for function toggle-pause
+(defun toggle-pause ()
+  (local-vars (v1-112 object))
+  (case *master-mode*
+    (('game)
+     (set-master-mode
+       (cond
+         ((and (logtest? (-> *cpad-list* cpads 0 valid) 128)
+               (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+               (= (-> *setting-control* user-current bg-a) 0.0)
+               (and (= (-> *setting-control* user-current bg-a-force) 0.0)
+                    (< (seconds 1003) (-> *display* real-clock frame-counter))
+                    )
+               )
+          (if (and (-> *setting-control* user-current allow-in-game-menu)
+                   (not (-> *setting-control* user-current mpeg-mode?))
+                   (not *in-game-menu-process*)
+                   )
+              'progress
+              *master-mode*
+              )
+          )
+         ((and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+          'menu
+          )
+         ((and (or (cpad-hold? 0 select) (cpad-hold? 0 r2))
+               (and *debug-segment* (not (-> *setting-control* user-current mpeg-mode?)))
+               )
+          'pause
+          )
+         ((and (not *debug-segment*) (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))))
+          (if (pause-allowed?)
+              'pause
+              *master-mode*
+              )
+          )
+         ((and (or (cpad-hold? 0 start) (cpad-hold? 1 start))
+               (and (not (-> *setting-control* user-current mpeg-mode?))
+                    (-> *setting-control* user-current allow-in-game-menu)
+                    )
+               )
+          'progress
+          )
+         (else
+           *master-mode*
+           )
+         )
+       )
+     )
+    (('menu)
+     (set-master-mode (cond
+                        ((and *debug-segment* (cpad-hold? 0 l3) (cpad-pressed? 0 select start))
+                         'menu
+                         )
+                        ((cpad-hold? 0 select r2)
+                         (if *debug-segment*
+                             'pause
+                             *master-mode*
+                             )
+                         )
+                        ((cpad-hold? 0 r3 r2 triangle circle)
+                         'game
+                         )
+                        ((cpad-hold? 0 start)
+                         'game
+                         )
+                        (else
+                          *master-mode*
+                          )
+                        )
+                      )
+     (set! *pause-lock* #f)
+     )
+    (('pause)
+     (set-master-mode (cond
+                        ((and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+                         'menu
+                         )
+                        ((and (or (not *debug-segment*) (not *cheat-mode*)) (cpad-hold? 0 select))
+                         'game
+                         )
+                        ((and *cheat-mode* (cpad-hold? 0 select r2))
+                         'game
+                         )
+                        ((cpad-hold? 0 start)
+                         'game
+                         )
+                        (else
+                          *master-mode*
+                          )
+                        )
+                      )
+     (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
+     )
+    (('freeze)
+     (set-master-mode (if (and (cpad-pressed? 0 select start) (cpad-hold? 0 l3) *debug-segment*)
+                          'menu
+                          *master-mode*
+                          )
+                      )
+     )
+    (('progress)
+     (when *debug-segment*
+       (when (and *in-game-menu-process* (begin
+                                           (let* ((v1-113 #t)
+                                                  (a0-49 (-> *in-game-menu-process* 0 view))
+                                                  (a0-55 (the-as pad-buttons (logand (-> *cpad-list*
+                                                                                         cpads
+                                                                                         (if a0-49
+                                                                                             (-> a0-49 index)
+                                                                                             -1
+                                                                                             )
+                                                                                         button0-abs
+                                                                                         0
+                                                                                         )
+                                                                                     (pad-buttons start)
+                                                                                     )
+                                                                 )
+                                                         )
+                                                  )
+                                             (cmove-#f-zero v1-112 a0-55 v1-113)
+                                             )
+                                           v1-112
+                                           )
+                  )
+         (deactivate (-> *in-game-menu-process* 0))
+         (set! *in-game-menu-process* (the-as (pointer hud) #f))
+         )
+       (set-master-mode 'game)
+       (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
+       )
+     )
+    )
+  0
+  )
+
+;; definition for symbol *screen-filter-array*, type (array screen-filter)
+(define *screen-filter-array* (new 'static 'boxed-array :type screen-filter
+                                (new 'static 'screen-filter :draw? #f :bucket (bucket-id bucket795))
+                                (new 'static 'screen-filter :draw? #f :bucket (bucket-id bucket795) :idx 1)
+                                (new 'static 'screen-filter :draw? #f :bucket (bucket-id bucket795) :idx 2)
+                                )
+        )
+
+;; definition for symbol *screen-filter*, type screen-filter
+(define *screen-filter* (-> *screen-filter-array* 2))
+
+;; definition for method 9 of type screen-filter
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 9 screen-filter) has a return type of none, but the expression builder found a return statement.
+(defmethod draw ((this screen-filter))
+  (local-vars (v1-1 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (when (not (paused?))
+      (.lvf vf4 (&-> this extra quad))
+      (.lvf vf1 (&-> this color-dest quad))
+      (.lvf vf2 (&-> this color quad))
+      (.sub.vf vf3 vf1 vf2)
+      (.add.x.vf.y vf4 vf4 vf4)
+      (.min.w.vf.y vf4 vf4 vf0)
+      (.max.y.vf.y vf4 vf4 vf0)
+      (.mul.y.vf vf3 vf3 vf4)
+      (.add.vf vf1 vf2 vf3)
+      (.svf (&-> this extra quad) vf4)
+      (.svf (&-> this color quad) vf1)
+      (.mov v1-1 vf1)
+      )
+    (when (nonzero? (-> this frames))
+      (+! (-> this frames) -1)
+      (when (<= (-> this frames) 0)
+        (disable this)
+        (return 0)
+        )
+      )
+    (let ((f0-0 0.1))
+      (when (and (>= f0-0 (fabs (- (-> this color-dest x) (-> this color x))))
+                 (>= f0-0 (fabs (- (-> this color-dest y) (-> this color y))))
+                 (>= f0-0 (fabs (- (-> this color-dest z) (-> this color z))))
+                 (>= f0-0 (fabs (- (-> this color-dest w) (-> this color w))))
+                 (>= f0-0 (-> this color w))
+                 )
+        (disable this)
+        (return 0)
+        )
+      )
+    (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (-> this bucket)
+                                 )
+      (let ((v1-29 (-> *viewport-array* data (-> this idx))))
+        (dma-buffer-add-gs-set s4-0
+                               (test-1 (-> this ztest))
+                               (frame-1 (-> v1-29 frame))
+                               (zbuf-1 (-> v1-29 zbuf-on))
+                               (scissor-1 (-> v1-29 scissor))
+                               )
+        )
+      (let ((t1-0
+              (logior (logior (logior (shr (shl (the int (-> this color w)) 56) 32) (shr (shl (the int (-> this color z)) 56) 40))
+                              (shr (shl (the int (-> this color y)) 56) 48)
+                              )
+                      (shr (shl (the int (-> this color x)) 56) 56)
+                      )
+              )
+            )
+        (draw-sprite2d-xy
+          s4-0
+          -256
+          (- (-> *viewport-array* default screen-hy))
+          512
+          (-> *viewport-array* default screen-sy)
+          (the-as rgba t1-0)
+          (-> this depth)
+          )
+        )
+      (let ((v1-43 (-> *viewport-array* default)))
+        (dma-buffer-add-gs-set s4-0
+                               (test-1 (-> this ztest))
+                               (frame-1 (-> v1-43 frame))
+                               (zbuf-1 (-> v1-43 zbuf-on))
+                               (scissor-1 (-> v1-43 scissor))
+                               )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 10 of type screen-filter
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod setup ((this screen-filter)
+                 (arg0 vector)
+                 (arg1 vector)
+                 (arg2 float)
+                 (arg3 bucket-id)
+                 (arg4 int)
+                 (arg5 int)
+                 (arg6 symbol)
+                 )
+  (set! (-> this draw?) #t)
+  (set! (-> this color quad) (-> arg0 quad))
+  (set! (-> this color-src quad) (-> arg0 quad))
+  (set! (-> this color-dest quad) (-> arg1 quad))
+  (set! (-> this extra x) arg2)
+  (set! (-> this extra y) 0.0)
+  (set! (-> this bucket) arg3)
+  (set! (-> this depth) arg4)
+  (set! (-> this ztest) (the-as uint arg5))
+  (set! (-> this lock-vsync?) #f)
+  (set! (-> this frames) (the-as int arg6))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type screen-filter
+;; WARN: Return type mismatch int vs none.
+(defmethod disable ((this screen-filter))
+  (set! (-> this draw?) #f)
+  0
+  (none)
+  )
+
+;; definition for symbol *master-exit*, type symbol
+(define *master-exit* #f)
+
+;; definition for symbol *progress-cheat*, type symbol
+(define *progress-cheat* #f)
+
+;; definition for symbol *first-boot*, type symbol
+(define *first-boot* #t)
+
+;; definition for function main-timeouts
+;; WARN: Return type mismatch int vs none.
+(defun main-timeouts ()
+  (when (demo?)
+    (let ((gp-0 (scf-get-timeout))
+          (v1-1 (scf-get-inactive-timeout))
+          )
+      (when (and (or (and (nonzero? gp-0)
+                          (>= (+ -300000 (-> *display* real-clock frame-counter)) (the int (* 300.0 (the float gp-0))))
+                          )
+                     (and (nonzero? v1-1)
+                          (or (and (>= (- (-> *display* base-clock frame-counter) (the-as int (-> *cpad-list* cpads 0 change-time)))
+                                       (the int (* 300.0 (the float v1-1)))
+                                       )
+                                   (>= (- (-> *display* game-clock frame-counter) (-> *game-info* kiosk-timeout))
+                                       (the int (* 300.0 (the float v1-1)))
+                                       )
+                                   )
+                              (and (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'freeze))
+                                   (>= (- (-> *display* real-clock frame-counter) (-> *game-info* pause-start-time))
+                                       (the int (* 300.0 (the float v1-1)))
+                                       )
+                                   )
+                              )
+                          )
+                     (or (= *master-exit* 'force) (= *master-exit* 'movie))
+                     )
+                 (or *master-exit* (-> *setting-control* user-current allow-timeout))
+                 (!= *master-exit* #t)
+                 )
+        (cond
+          ((and (= *kernel-boot-message* 'demo) (not *master-exit*))
+           (setting-pers *setting-control* 'sfx-volume (seconds 0.5) 'sfx-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'music-volume (seconds 0.5) 'music-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'dialog-volume (seconds 0.5) 'dialog-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'ambient-volume (seconds 0.5) 'ambient-volume 'abs 0.0 0)
+           (set! (-> *setting-control* user-current sfx-volume) 0.01)
+           (set! (-> *setting-control* user-current music-volume) 0.01)
+           (set! (-> *setting-control* user-current dialog-volume) 0.01)
+           (set! (-> *setting-control* user-current ambient-volume) 0.01)
+           (apply-settings! *setting-control*)
+           (set! (-> *game-info* mode) 'play)
+           (reset *game-info* 'game (the-as game-save #f) (the-as continue-point "fmv-intro") #f)
+           )
+          (else
+            (when (process-spawn-function
+                    process
+                    (lambda ((arg0 int))
+                      (set-blackout-frames (seconds 100))
+                      (set! (-> *setting-control* user-default allow-pause) #f)
+                      (set! (-> *setting-control* user-default allow-progress) #f)
+                      (apply-settings! *setting-control*)
+                      (set! (-> *setting-control* user-default sfx-volume) 0.0)
+                      (set! (-> *setting-control* user-default music-volume) 0.0)
+                      (set! (-> *setting-control* user-default dialog-volume) 0.0)
+                      (set! (-> *setting-control* user-default ambient-volume) 0.0)
+                      (suspend-for (seconds 0.1)
+                        )
+                      (kernel-shutdown arg0)
+                      (none)
+                      )
+                    (if (= *master-exit* 'movie)
+                        2
+                        1
+                        )
+                    :to *display-pool*
+                    )
+              (set! (-> *setting-control* user-default sfx-volume) 0.0)
+              (set! (-> *setting-control* user-default music-volume) 0.0)
+              (set! (-> *setting-control* user-default dialog-volume) 0.0)
+              (set! (-> *setting-control* user-default ambient-volume) 0.0)
+              (set! *master-exit* #t)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function main-cheats
+;; WARN: Return type mismatch int vs none.
+(defun main-cheats ()
+  (when (and (cpad-hold? 0 l2) (cpad-hold? 0 r1) (cpad-hold? 0 r3) (cpad-pressed? 0 l1) *cheat-mode*)
+    (let ((v1-19 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+      (cond
+        (v1-19
+          (set! (-> v1-19 fo-power) 0.0)
+          (logior! (-> v1-19 flags) 328)
+          (-> v1-19 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((v1-23 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+      (cond
+        (v1-23
+          (set! (-> v1-23 fo-power) 0.0)
+          (logior! (-> v1-23 flags) 328)
+          (-> v1-23 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (cheat-add-gold)
+    )
+  (when (and (= *cheat-mode* 'debug) (cpad-hold? 1 l1) (cpad-hold? 1 l2) (cpad-hold? 1 r1) (cpad-hold? 1 r2))
+    (when (nonzero? (-> *cpad-list* cpads 1 button0-rel 0))
+      (let ((v1-48 (-> *cheat-temp* 5)))
+        (cond
+          ((zero? v1-48)
+           (cond
+             ((cpad-pressed? 1 triangle)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 1)
+           (cond
+             ((cpad-pressed? 1 x)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 2)
+           (cond
+             ((cpad-pressed? 1 triangle)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 3)
+           (cond
+             ((cpad-pressed? 1 x)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 4)
+           (cond
+             ((cpad-pressed? 1 square)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 5)
+           (cond
+             ((cpad-pressed? 1 circle)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 6)
+           (cond
+             ((cpad-pressed? 1 square)
+              (+! (-> *cheat-temp* 5) 1)
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          ((= v1-48 7)
+           (cond
+             ((cpad-pressed? 1 circle)
+              (logclear! (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r1))
+              (logclear! (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons r1))
+              (let ((v1-122 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                (cond
+                  (v1-122
+                    (set! (-> v1-122 fo-power) 0.0)
+                    (logior! (-> v1-122 flags) 328)
+                    (-> v1-122 id)
+                    )
+                  (else
+                    0
+                    )
+                  )
+                )
+              (set! (-> *game-info* player-info 0 cash) 1000000.0)
+              (set! (-> *cheat-temp* 5) 0)
+              0
+              )
+             (else
+               (set! (-> *cheat-temp* 5) 0)
+               0
+               )
+             )
+           )
+          )
+        )
+      )
+    (format *stdebug* "~d~%" (-> *cheat-temp* 5))
+    )
+  (when (and (cpad-hold? 0 l3) (or *cheat-mode* (not (demo?))))
+    ((lambda ()
+       (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
+         (let ((v1-5 (-> *cheat-temp* 0)))
+           (cond
+             ((zero? v1-5)
+              (cond
+                ((cpad-pressed? 0 up)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 1)
+              (cond
+                ((cpad-pressed? 0 up)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 2)
+              (cond
+                ((cpad-pressed? 0 down)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 3)
+              (cond
+                ((cpad-pressed? 0 down)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 4)
+              (cond
+                ((cpad-pressed? 0 left)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 5)
+              (cond
+                ((cpad-pressed? 0 right)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 6)
+              (cond
+                ((cpad-pressed? 0 left)
+                 (+! (-> *cheat-temp* 0) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-5 7)
+              (cond
+                ((cpad-pressed? 0 right)
+                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+                 (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+                 (set! *cheat-mode* (not *cheat-mode*))
+                 (cond
+                   (*cheat-mode*
+                     (let ((v1-82 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (cond
+                         (v1-82
+                           (set! (-> v1-82 fo-power) 0.0)
+                           (logior! (-> v1-82 flags) 328)
+                           (-> v1-82 id)
+                           )
+                         (else
+                           0
+                           )
+                         )
+                       )
+                     )
+                   (else
+                     (let ((v1-86 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (cond
+                         (v1-86
+                           (set! (-> v1-86 fo-power) 0.0)
+                           (logior! (-> v1-86 flags) 328)
+                           (-> v1-86 id)
+                           )
+                         (else
+                           0
+                           )
+                         )
+                       )
+                     )
+                   )
+                 (set! (-> *cheat-temp* 0) 0)
+                 0
+                 )
+                (else
+                  (set! (-> *cheat-temp* 0) 0)
+                  0
+                  )
+                )
+              )
+             )
+           )
+         )
+       (when *cheat-mode*
+         (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
+           (let ((v1-98 (-> *cheat-temp* 1)))
+             (cond
+               ((zero? v1-98)
+                (cond
+                  ((cpad-pressed? 0 circle)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 1)
+                (cond
+                  ((cpad-pressed? 0 square)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 2)
+                (cond
+                  ((cpad-pressed? 0 circle)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 3)
+                (cond
+                  ((cpad-pressed? 0 square)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 4)
+                (cond
+                  ((cpad-pressed? 0 x)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 5)
+                (cond
+                  ((cpad-pressed? 0 x)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 6)
+                (cond
+                  ((cpad-pressed? 0 right)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 7)
+                (cond
+                  ((cpad-pressed? 0 left)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 8)
+                (cond
+                  ((cpad-pressed? 0 right)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 9)
+                (cond
+                  ((cpad-pressed? 0 left)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 10)
+                (cond
+                  ((cpad-pressed? 0 down)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 11)
+                (cond
+                  ((cpad-pressed? 0 down)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 12)
+                (cond
+                  ((cpad-pressed? 0 up)
+                   (+! (-> *cheat-temp* 1) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-98 13)
+                (cond
+                  ((cpad-pressed? 0 up)
+                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+                   (set! *cheat-mode* (if (= *cheat-mode* 'debug)
+                                          #t
+                                          'debug
+                                          )
+                         )
+                   (cond
+                     ((= *cheat-mode* 'debug)
+                      (let ((v1-215 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                        (cond
+                          (v1-215
+                            (set! (-> v1-215 fo-power) 0.0)
+                            (logior! (-> v1-215 flags) 328)
+                            (-> v1-215 id)
+                            )
+                          (else
+                            0
+                            )
+                          )
+                        )
+                      )
+                     (else
+                       (let ((v1-219 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                         (cond
+                           (v1-219
+                             (set! (-> v1-219 fo-power) 0.0)
+                             (logior! (-> v1-219 flags) 328)
+                             (-> v1-219 id)
+                             )
+                           (else
+                             0
+                             )
+                           )
+                         )
+                       )
+                     )
+                   (set! (-> *cheat-temp* 1) 0)
+                   0
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 1) 0)
+                    0
+                    )
+                  )
+                )
+               )
+             )
+           )
+         )
+       (none)
+       )
+     )
+    ((lambda ()
+       (scf-get-territory)
+       (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
+         (let ((v1-6 (-> *cheat-temp* 2)))
+           (cond
+             ((zero? v1-6)
+              (cond
+                ((cpad-pressed? 0 l1)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 1)
+              (cond
+                ((cpad-pressed? 0 r1)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 2)
+              (cond
+                ((cpad-pressed? 0 l1)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 3)
+              (cond
+                ((cpad-pressed? 0 r1)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 4)
+              (cond
+                ((cpad-pressed? 0 triangle)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 5)
+              (cond
+                ((cpad-pressed? 0 circle)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 6)
+              (cond
+                ((cpad-pressed? 0 x)
+                 (+! (-> *cheat-temp* 2) 1)
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             ((= v1-6 7)
+              (cond
+                ((cpad-pressed? 0 square)
+                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+                 (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+                 (set! *progress-cheat* (if *progress-cheat*
+                                            #f
+                                            'language
+                                            )
+                       )
+                 (cond
+                   (*progress-cheat*
+                     (let ((v1-83 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (cond
+                         (v1-83
+                           (set! (-> v1-83 fo-power) 0.0)
+                           (logior! (-> v1-83 flags) 328)
+                           (-> v1-83 id)
+                           )
+                         (else
+                           0
+                           )
+                         )
+                       )
+                     )
+                   (else
+                     (let ((v1-87 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (cond
+                         (v1-87
+                           (set! (-> v1-87 fo-power) 0.0)
+                           (logior! (-> v1-87 flags) 328)
+                           (-> v1-87 id)
+                           )
+                         (else
+                           0
+                           )
+                         )
+                       )
+                     )
+                   )
+                 (set! (-> *cheat-temp* 2) 0)
+                 0
+                 )
+                (else
+                  (set! (-> *cheat-temp* 2) 0)
+                  0
+                  )
+                )
+              )
+             )
+           )
+         )
+       (when *debug-segment*
+         (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
+           (let ((v1-100 (-> *cheat-temp* 3)))
+             (cond
+               ((zero? v1-100)
+                (cond
+                  ((cpad-pressed? 0 x)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 1)
+                (cond
+                  ((cpad-pressed? 0 square)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 2)
+                (cond
+                  ((cpad-pressed? 0 triangle)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 3)
+                (cond
+                  ((cpad-pressed? 0 circle)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 4)
+                (cond
+                  ((cpad-pressed? 0 x)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 5)
+                (cond
+                  ((cpad-pressed? 0 square)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 6)
+                (cond
+                  ((cpad-pressed? 0 triangle)
+                   (+! (-> *cheat-temp* 3) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-100 7)
+                (cond
+                  ((cpad-pressed? 0 circle)
+                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+                   (set! *progress-cheat* (if *progress-cheat*
+                                              #f
+                                              'pal
+                                              )
+                         )
+                   (cond
+                     (*progress-cheat*
+                       (let ((v1-177 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                         (cond
+                           (v1-177
+                             (set! (-> v1-177 fo-power) 0.0)
+                             (logior! (-> v1-177 flags) 328)
+                             (-> v1-177 id)
+                             )
+                           (else
+                             0
+                             )
+                           )
+                         )
+                       )
+                     (else
+                       (let ((v1-181 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                         (cond
+                           (v1-181
+                             (set! (-> v1-181 fo-power) 0.0)
+                             (logior! (-> v1-181 flags) 328)
+                             (-> v1-181 id)
+                             )
+                           (else
+                             0
+                             )
+                           )
+                         )
+                       )
+                     )
+                   (set! (-> *cheat-temp* 3) 0)
+                   0
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 3) 0)
+                    0
+                    )
+                  )
+                )
+               )
+             )
+           )
+         (when (nonzero? (-> *cpad-list* cpads 1 button0-rel 0))
+           (let ((v1-192 (-> *cheat-temp* 4)))
+             (cond
+               ((zero? v1-192)
+                (cond
+                  ((cpad-pressed? 1 triangle)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 1)
+                (cond
+                  ((cpad-pressed? 1 x)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 2)
+                (cond
+                  ((cpad-pressed? 1 circle)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 3)
+                (cond
+                  ((cpad-pressed? 1 square)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 4)
+                (cond
+                  ((cpad-pressed? 1 triangle)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 5)
+                (cond
+                  ((cpad-pressed? 1 x)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 6)
+                (cond
+                  ((cpad-pressed? 1 circle)
+                   (+! (-> *cheat-temp* 4) 1)
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               ((= v1-192 7)
+                (cond
+                  ((cpad-pressed? 1 square)
+                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
+                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+                   (set! *cheat-mode* (if (= *cheat-mode* 'camera)
+                                          #f
+                                          'camera
+                                          )
+                         )
+                   (cond
+                     (*cheat-mode*
+                       (if (not *external-cam-mode*)
+                           (external-cam-reset!)
+                           )
+                       (set! *external-cam-mode* 'pad-1)
+                       (let ((v1-265 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                         (cond
+                           (v1-265
+                             (set! (-> v1-265 fo-power) 0.0)
+                             (logior! (-> v1-265 flags) 328)
+                             (-> v1-265 id)
+                             )
+                           (else
+                             0
+                             )
+                           )
+                         )
+                       )
+                     (else
+                       (set! *external-cam-mode* #f)
+                       (let ((v1-269 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                         (cond
+                           (v1-269
+                             (set! (-> v1-269 fo-power) 0.0)
+                             (logior! (-> v1-269 flags) 328)
+                             (-> v1-269 id)
+                             )
+                           (else
+                             0
+                             )
+                           )
+                         )
+                       )
+                     )
+                   (set! (-> *cheat-temp* 4) 0)
+                   0
+                   )
+                  (else
+                    (set! (-> *cheat-temp* 4) 0)
+                    0
+                    )
+                  )
+                )
+               )
+             )
+           )
+         )
+       (none)
+       )
+     )
+    )
+  (if (and *cheat-mode* (not *debug-segment*) (cpad-hold? 0 l3))
+      ((lambda ()
+         (cond
+           ((and (cpad-pressed? 0 triangle) (!= *cheat-mode* 'debug))
+            (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-yellow) 1000.0)
+            (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-red) 1000.0)
+            (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-blue) 1000.0)
+            (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-dark) 1000.0)
+            (let ((v1-32 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+              (cond
+                (v1-32
+                  (set! (-> v1-32 fo-power) 0.0)
+                  (logior! (-> v1-32 flags) 328)
+                  (-> v1-32 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            )
+           ((cpad-pressed? 0 square)
+            (set! (-> *level* disk-load-timing?) (not (-> *level* disk-load-timing?)))
+            (cond
+              ((-> *level* disk-load-timing?)
+               (let ((v1-44 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                 (cond
+                   (v1-44
+                     (set! (-> v1-44 fo-power) 0.0)
+                     (logior! (-> v1-44 flags) 328)
+                     (-> v1-44 id)
+                     )
+                   (else
+                     0
+                     )
+                   )
+                 )
+               )
+              (else
+                (let ((v1-46 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                  (cond
+                    (v1-46
+                      (set! (-> v1-46 fo-power) 0.0)
+                      (logior! (-> v1-46 flags) 328)
+                      (-> v1-46 id)
+                      )
+                    (else
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+           ((cpad-pressed? 0 r1)
+            (set! *display-scene-control* (logxor *display-scene-control* (scene-controls bounds-spheres)))
+            (cond
+              ((logtest? *display-scene-control* (scene-controls bounds-spheres))
+               (let ((v1-57 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                 (cond
+                   (v1-57
+                     (set! (-> v1-57 fo-power) 0.0)
+                     (logior! (-> v1-57 flags) 328)
+                     (-> v1-57 id)
+                     )
+                   (else
+                     0
+                     )
+                   )
+                 )
+               )
+              (else
+                (let ((v1-59 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                  (cond
+                    (v1-59
+                      (set! (-> v1-59 fo-power) 0.0)
+                      (logior! (-> v1-59 flags) 328)
+                      (-> v1-59 id)
+                      )
+                    (else
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+           ((cpad-pressed? 0 circle)
+            (set! *display-bug-report* (not *display-bug-report*))
+            (cond
+              (*display-bug-report*
+                (let ((v1-68 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                  (cond
+                    (v1-68
+                      (set! (-> v1-68 fo-power) 0.0)
+                      (logior! (-> v1-68 flags) 328)
+                      (-> v1-68 id)
+                      )
+                    (else
+                      0
+                      )
+                    )
+                  )
+                )
+              (else
+                (let ((v1-70 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                  (cond
+                    (v1-70
+                      (set! (-> v1-70 fo-power) 0.0)
+                      (logior! (-> v1-70 flags) 328)
+                      (-> v1-70 id)
+                      )
+                    (else
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+           )
+         (none)
+         )
+       )
+      )
+  (if (and *display-bug-report* (not *progress-process*))
+      (position->stream *stdcon* '*stdcon* #t)
+      )
+  (when (and (= *cheat-mode* 'debug) (not *debug-segment*))
+    (when (and (cpad-hold? 0 l1) (cpad-hold? 0 l2) (cpad-hold? 0 r1) (cpad-pressed? 0 r2))
+      (if (view-get-active-target)
+          (stop 'debug 0)
+          (start 'play (the-as continue-point #f) 0)
+          )
+      )
+    (if (cpad-pressed? 1 r3)
+        (inspect global)
+        )
+    (when (cpad-hold? 1 r3)
+      (with-dma-buffer-add-bucket ((s5-0 (if *debug-segment*
+                                             (-> *display* frames (-> *display* on-screen) debug-buf)
+                                             (-> *display* frames (-> *display* on-screen) global-buf)
+                                             )
+                                         )
+                                   (bucket-id bucket793)
+                                   )
+        (show-iop-memory s5-0)
+        )
+      )
+    (if (cpad-pressed? 1 triangle)
+        (set! *display-level-border* (not *display-level-border*))
+        )
+    )
+  (main-timeouts)
+  0
+  (none)
+  )
+
+;; definition for function end-display
+;; WARN: Return type mismatch int vs none.
+(defun end-display ((arg0 display))
+  (let ((s5-0 (-> (if *debug-segment*
+                      (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                      (-> arg0 frames (-> arg0 on-screen) global-buf)
+                      )
+                  base
+                  )
+              )
+        )
+    (when *debug-segment*
+      'debug
+      (let ((s4-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-18 'debug)
+            (s3-0 *profile-debug-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s2-0 (-> s4-0 data (-> s4-0 count))))
+            (let ((s1-0 (-> s4-0 base-time)))
+              (set! (-> s2-0 name) v1-18)
+              (set! (-> s2-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-0))))
+              )
+            (set! (-> s2-0 depth) (the-as uint (-> s4-0 depth)))
+            (set! (-> s2-0 color) s3-0)
+            (set! (-> s4-0 segment (-> s4-0 depth)) s2-0)
+            )
+          (set! (-> s4-0 count) (min 2099 (+ (-> s4-0 count) 1)))
+          (+! (-> s4-0 depth) 1)
+          (set! (-> s4-0 max-depth) (max (-> s4-0 max-depth) (-> s4-0 depth)))
+          )
+        )
+      0
+      )
+    (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment*
+                                           (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                                           (-> arg0 frames (-> arg0 on-screen) global-buf)
+                                           )
+                                       )
+                                 (bucket-id bucket794)
+                                 )
+      (if (and (= *master-mode* 'pause)
+               (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
+               )
+          (draw-string-xy
+            (lookup-text! *common-text* (text-id text-id-2) #f)
+            s3-1
+            0
+            (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+                352
+                320
+                )
+            (font-color red)
+            (font-flags shadow kerning middle large)
+            )
+          )
+      (let ((s2-2 (the int (-> *font-context* origin y))))
+        (cond
+          ((or (!= (-> *setting-control* user-current letterbox) 0.0)
+               (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+               )
+           (+! s2-2 56)
+           )
+          ((and *display-profile* (not *display-capture-mode*))
+           (+! s2-2 48)
+           )
+          )
+        (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (-> *screen-shot-work* debug-enable))
+          (let* ((v1-74
+                   (draw-string-xy
+                     *stdcon0*
+                     s3-1
+                     (the int (-> *font-context* origin x))
+                     s2-2
+                     (font-color default)
+                     (font-flags shadow kerning)
+                     )
+                   )
+                 (a3-4 (+ s2-2 (the int (* 2.0 (-> v1-74 b)))))
+                 )
+            (draw-string-xy
+              *stdcon1*
+              s3-1
+              (the int (-> *font-context* origin x))
+              a3-4
+              (font-color default)
+              (font-flags shadow kerning)
+              )
+            )
+          )
+        )
+      (if (or (not *debug-segment*) *display-capture-mode* (paused?))
+          (set! *stdebug* *null*)
+          (set! *stdebug* *stdcon1*)
+          )
+      (when *display-iop-info*
+        (show-iop-info s3-1)
+        (show-iop-memory s3-1)
+        )
+      (when *debug-reverb*
+        (let ((s2-3 draw-string-xy))
+          (let ((s1-1 format)
+                (a0-27 (clear *temp-string*))
+                (a1-6 "Reverb: ~0,,2f (~S)  Fade: ~0,,2f units/seconds~%")
+                (a2-4 (-> *setting-control* user-current sound-reverb))
+                (v1-92 (-> *setting-control* user-current sound-reverb-mode))
+                )
+            (s1-1
+              a0-27
+              a1-6
+              a2-4
+              (cond
+                ((= v1-92 2)
+                 "studio-a"
+                 )
+                ((= v1-92 5)
+                 "hall"
+                 )
+                ((= v1-92 9)
+                 "pipe"
+                 )
+                ((zero? v1-92)
+                 "off"
+                 )
+                ((= v1-92 3)
+                 "studio-b"
+                 )
+                ((= v1-92 1)
+                 "room"
+                 )
+                ((= v1-92 7)
+                 "echo"
+                 )
+                ((= v1-92 4)
+                 "studio-c"
+                 )
+                ((= v1-92 8)
+                 "delay"
+                 )
+                ((= v1-92 6)
+                 "space"
+                 )
+                (else
+                  "*unknown*"
+                  )
+                )
+              (-> *setting-control* user-current sound-reverb-seek-speed)
+              )
+            )
+          (s2-3 *temp-string* s3-1 0 380 (font-color default) (font-flags shadow kerning))
+          )
+        )
+      (if *display-memcard-info*
+          (show-mc-info s3-1)
+          )
+      )
+    (set! *stdcon* (clear *stdcon0*))
+    (when *debug-segment*
+      (let ((s4-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-117 (+ (-> s4-2 depth) -1))
+                 (s3-2 (-> s4-2 segment v1-117))
+                 (s2-4 (-> s4-2 base-time))
+                 )
+            (when (>= v1-117 0)
+              (set! (-> s3-2 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-4))))
+              (+! (-> s4-2 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (let ((v1-122 *dma-mem-usage*))
+      (when (nonzero? v1-122)
+        (set! (-> v1-122 length) (max 88 (-> v1-122 length)))
+        (set! (-> v1-122 data 87 name) "debug")
+        (+! (-> v1-122 data 87 count) 1)
+        (+! (-> v1-122 data 87 used) (&-
+                                       (-> (if *debug-segment*
+                                               (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                                               (-> arg0 frames (-> arg0 on-screen) global-buf)
+                                               )
+                                           base
+                                           )
+                                       (the-as uint s5-0)
+                                       )
+            )
+        (set! (-> v1-122 data 87 total) (-> v1-122 data 87 used))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type disc-error-proc
+(deftype disc-error-proc (process-drawable)
+  ((error  basic)
+   (bmask  uint32)
+   )
+  (:states
+    disc-idle
+    )
+  )
+
+;; definition for method 3 of type disc-error-proc
+(defmethod inspect ((this disc-error-proc))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Terror: ~A~%" (-> this error))
+  (format #t "~2Tbmask: ~D~%" (-> this bmask))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate disc-idle (disc-error-proc)
+  :enter (behavior ()
+    (set! (-> self bmask) (the-as uint (-> *setting-control* user-default process-mask)))
+    (when (not (and *net-mgr* (or (nonzero? (-> *net-mgr* lobby-state connect-handle))
+                                  (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'hosting-game))
+                                  (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'connecting-to-game))
+                                  (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'joining-game))
+                                  (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-game))
+                                  (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'leaving-game))
+                                  )
+                    )
+               )
+      (sound-group-pause (sound-group
+                           sfx
+                           music
+                           dialog
+                           sog3
+                           ambient
+                           dialog2
+                           special
+                           sog7
+                           sog8
+                           sog9
+                           sog10
+                           sog11
+                           sog12
+                           sog13
+                           sog14
+                           sog15
+                           sog16
+                           sog17
+                           sog18
+                           sog19
+                           sog20
+                           sog21
+                           sog22
+                           sog23
+                           sog24
+                           sog25
+                           sog26
+                           sog27
+                           sog28
+                           sog29
+                           sog30
+                           sog31
+                           )
+                         )
+      (add-setting! 'process-mask 'set 0.0 (process-mask freeze pause menu))
+      )
+    )
+  :exit (behavior ()
+    (sound-group-continue (sound-group
+                            sfx
+                            music
+                            dialog
+                            sog3
+                            ambient
+                            dialog2
+                            special
+                            sog7
+                            sog8
+                            sog9
+                            sog10
+                            sog11
+                            sog12
+                            sog13
+                            sog14
+                            sog15
+                            sog16
+                            sog17
+                            sog18
+                            sog19
+                            sog20
+                            sog21
+                            sog22
+                            sog23
+                            sog24
+                            sog25
+                            sog26
+                            sog27
+                            sog28
+                            sog29
+                            sog30
+                            sog31
+                            )
+                          )
+    )
+  :trans (behavior ()
+    (buzz-stop! 0)
+    (buzz-stop! 1)
+    )
+  :code (behavior ()
+    (set-time! (-> self state-time))
+    (while (not (is-cd-in?))
+      (suspend)
+      )
+    )
+  )
+
+;; definition for function disc-error-proc-init-by-other
+;; WARN: Return type mismatch object vs none.
+(defbehavior disc-error-proc-init-by-other disc-error-proc ((arg0 symbol))
+  (set! (-> self error) (the-as basic arg0))
+  (logclear! (-> self mask) (process-mask freeze pause menu))
+  (go disc-idle)
+  (none)
+  )
+
+;; definition for function display-loop-main
+;; WARN: Return type mismatch int vs none.
+(defun display-loop-main ((arg0 display))
+  (with-pp
+    (when (not (-> *setting-control* user-current mpeg-mode?))
+      (cond
+        ((and (-> *setting-control* user-current allow-in-game-menu) (logtest? (-> *cpad-list* cpads 0 valid) 128))
+         (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                      (bucket-id bucket795)
+                                      )
+           (let ((v1-14 (-> *viewport-array* default))
+                 (s3-0 *font-context*)
+                 )
+             (dma-buffer-add-gs-set s4-0
+                                    (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                                    (frame-1 (-> v1-14 frame))
+                                    (zbuf-1 (-> v1-14 zbuf-on))
+                                    (scissor-1 (-> v1-14 scissor))
+                                    )
+             (let ((t1-0 #x64000000))
+               (draw-sprite2d-xy s4-0 32 158 448 100 (the-as rgba t1-0) #x3fffff)
+               )
+             (set! (-> s3-0 scale) 0.55)
+             (set! (-> s3-0 flags) (font-flags kerning middle middle-vert large ff12))
+             (set-origin! s3-0 32 158)
+             (set-width! s3-0 448)
+             (set! (-> s3-0 height) (the float 100))
+             )
+           (print-game-text
+             (lookup-text! *common-text* (text-id text-id-4252) #f)
+             *font-context*
+             #f
+             44
+             (bucket-id bucket787)
+             #f
+             s4-0
+             )
+           )
+         )
+        ((not (is-cd-in?))
+         (when (or (not *fmv-player*) (and (-> *fmv-player* state) (!= (-> *fmv-player* state name) 'idle)))
+           (if (not (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (= (-> arg0 type) disc-error-proc))))
+               (process-spawn disc-error-proc 'disc-removed :name "disc-error-proc" :from *nk-dead-pool*)
+               )
+           (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                        (bucket-id bucket795)
+                                        )
+             (let ((v1-55 (-> *viewport-array* default))
+                   (s3-2 *font-context*)
+                   )
+               (dma-buffer-add-gs-set s4-1
+                                      (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                                      (frame-1 (-> v1-55 frame))
+                                      (zbuf-1 (-> v1-55 zbuf-on))
+                                      (scissor-1 (-> v1-55 scissor))
+                                      )
+               (let ((t1-2 #x28000000))
+                 (draw-sprite2d-xy s4-1 0 0 512 416 (the-as rgba t1-2) #x3fffff)
+                 )
+               (let ((t1-3 #x60604020))
+                 (draw-sprite2d-xy s4-1 64 158 384 100 (the-as rgba t1-3) #x3fffff)
+                 )
+               (set-width! s3-2 384)
+               (set-height! s3-2 50)
+               (set-scale! s3-2 0.4)
+               (set! (-> s3-2 flags) (font-flags kerning middle middle-vert large ff12))
+               (let ((a0-31 s3-2))
+                 (set! (-> a0-31 effect) (the-as uint 0))
+                 )
+               (let ((a0-32 s3-2))
+                 (set! (-> a0-32 color) (font-color font-color-51))
+                 )
+               (set-origin! s3-2 64 158)
+               (print-game-text
+                 (lookup-text! *common-text* (text-id text-id-147) #f)
+                 *font-context*
+                 #f
+                 44
+                 (bucket-id bucket787)
+                 #f
+                 s4-1
+                 )
+               (let ((a0-36 64)
+                     (v1-69 208)
+                     )
+                 (set! (-> s3-2 origin x) (the float a0-36))
+                 (set! (-> s3-2 origin y) (the float v1-69))
+                 )
+               )
+             (print-game-text
+               (lookup-text! *common-text* (text-id text-id-148) #f)
+               *font-context*
+               #f
+               44
+               (bucket-id bucket787)
+               #f
+               s4-1
+               )
+             )
+           )
+         )
+        )
+      (if (-> *level* loading-level)
+          (load-continue (-> *level* loading-level))
+          )
+      (when *debug-segment*
+        'merc
+        (let ((s5-3 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-95 'merc)
+              (s4-2 *profile-merc-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-4 (-> s5-3 data (-> s5-3 count))))
+              (let ((s2-1 (-> s5-3 base-time)))
+                (set! (-> s3-4 name) v1-95)
+                (set! (-> s3-4 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-1))))
+                )
+              (set! (-> s3-4 depth) (the-as uint (-> s5-3 depth)))
+              (set! (-> s3-4 color) s4-2)
+              (set! (-> s5-3 segment (-> s5-3 depth)) s3-4)
+              )
+            (set! (-> s5-3 count) (min 2099 (+ (-> s5-3 count) 1)))
+            (+! (-> s5-3 depth) 1)
+            (set! (-> s5-3 max-depth) (max (-> s5-3 max-depth) (-> s5-3 depth)))
+            )
+          )
+        0
+        )
+      (blerc-execute)
+      (blerc-init)
+      (when *debug-segment*
+        (let ((s5-4 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-119 (+ (-> s5-4 depth) -1))
+                   (s4-3 (-> s5-4 segment v1-119))
+                   (s3-5 (-> s5-4 base-time))
+                   )
+              (when (>= v1-119 0)
+                (set! (-> s4-3 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-5))))
+                (+! (-> s5-4 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (hud-string-draw-all)
+      (texscroll-execute)
+      (ripple-execute)
+      (region-execute)
+      (when *debug-segment*
+        'joints
+        (let ((s5-5 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-133 'joints)
+              (s4-4 *profile-joints-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-6 (-> s5-5 data (-> s5-5 count))))
+              (let ((s2-2 (-> s5-5 base-time)))
+                (set! (-> s3-6 name) v1-133)
+                (set! (-> s3-6 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-2))))
+                )
+              (set! (-> s3-6 depth) (the-as uint (-> s5-5 depth)))
+              (set! (-> s3-6 color) s4-4)
+              (set! (-> s5-5 segment (-> s5-5 depth)) s3-6)
+              )
+            (set! (-> s5-5 count) (min 2099 (+ (-> s5-5 count) 1)))
+            (+! (-> s5-5 depth) 1)
+            (set! (-> s5-5 max-depth) (max (-> s5-5 max-depth) (-> s5-5 depth)))
+            )
+          )
+        0
+        )
+      (execute-math-engine)
+      (when *debug-segment*
+        (let ((s5-6 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-157 (+ (-> s5-6 depth) -1))
+                   (s4-5 (-> s5-6 segment v1-157))
+                   (s3-7 (-> s5-6 base-time))
+                   )
+              (when (>= v1-157 0)
+                (set! (-> s4-5 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-7))))
+                (+! (-> s5-6 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (execute-cloth-engine)
+      (when *debug-segment*
+        'debug
+        (let ((s5-7 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-171 'debug)
+              (s4-6 *profile-debug-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-8 (-> s5-7 data (-> s5-7 count))))
+              (let ((s2-3 (-> s5-7 base-time)))
+                (set! (-> s3-8 name) v1-171)
+                (set! (-> s3-8 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-3))))
+                )
+              (set! (-> s3-8 depth) (the-as uint (-> s5-7 depth)))
+              (set! (-> s3-8 color) s4-6)
+              (set! (-> s5-7 segment (-> s5-7 depth)) s3-8)
+              )
+            (set! (-> s5-7 count) (min 2099 (+ (-> s5-7 count) 1)))
+            (+! (-> s5-7 depth) 1)
+            (set! (-> s5-7 max-depth) (max (-> s5-7 max-depth) (-> s5-7 depth)))
+            )
+          )
+        0
+        )
+      (let* ((s5-8 *debug-hook*)
+             (t9-30 (car s5-8))
+             )
+        (while (not (null? s5-8))
+          ((the-as (function none) t9-30))
+          (set! s5-8 (cdr s5-8))
+          (set! t9-30 (car s5-8))
+          )
+        )
+      (when *debug-segment*
+        (let ((s5-9 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-199 (+ (-> s5-9 depth) -1))
+                   (s4-7 (-> s5-9 segment v1-199))
+                   (s3-9 (-> s5-9 base-time))
+                   )
+              (when (>= v1-199 0)
+                (set! (-> s4-7 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-9))))
+                (+! (-> s5-9 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (when *debug-segment*
+        'camera
+        (let ((s5-10 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-213 'camera)
+              (s4-8 *profile-camera-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-10 (-> s5-10 data (-> s5-10 count))))
+              (let ((s2-4 (-> s5-10 base-time)))
+                (set! (-> s3-10 name) v1-213)
+                (set! (-> s3-10 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-4))))
+                )
+              (set! (-> s3-10 depth) (the-as uint (-> s5-10 depth)))
+              (set! (-> s3-10 color) s4-8)
+              (set! (-> s5-10 segment (-> s5-10 depth)) s3-10)
+              )
+            (set! (-> s5-10 count) (min 2099 (+ (-> s5-10 count) 1)))
+            (+! (-> s5-10 depth) 1)
+            (set! (-> s5-10 max-depth) (max (-> s5-10 max-depth) (-> s5-10 depth)))
+            )
+          )
+        0
+        )
+      (let ((s5-11 *viewport-array*))
+        (dotimes (s4-9 *view-count*)
+          (view-push-context s4-9)
+          (when (view-get-active-camera)
+            (let ((v1-226 s5-11)
+                  (a0-96 s4-9)
+                  )
+              (-> v1-226 data (the-as uint a0-96))
+              (set! (-> v1-226 current-viewport-index) (the-as uint a0-96))
+              )
+            (update-camera)
+            (execute-cam-post-hook-engine)
+            )
+          (view-pop-context)
+          )
+        )
+      (when *debug-segment*
+        (let ((s5-12 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-241 (+ (-> s5-12 depth) -1))
+                   (s4-10 (-> s5-12 segment v1-241))
+                   (s3-13 (-> s5-12 base-time))
+                   )
+              (when (>= v1-241 0)
+                (set! (-> s4-10 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-13))))
+                (+! (-> s5-12 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (temp-render-chat-messages)
+      (if (-> *level* loading-level)
+          (load-continue (-> *level* loading-level))
+          )
+      (when *debug-segment*
+        'draw-hook
+        (let ((s5-13 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-261 'draw-hook)
+              (s4-11 *profile-draw-hook-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-14 (-> s5-13 data (-> s5-13 count))))
+              (let ((s2-5 (-> s5-13 base-time)))
+                (set! (-> s3-14 name) v1-261)
+                (set! (-> s3-14 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-5))))
+                )
+              (set! (-> s3-14 depth) (the-as uint (-> s5-13 depth)))
+              (set! (-> s3-14 color) s4-11)
+              (set! (-> s5-13 segment (-> s5-13 depth)) s3-14)
+              )
+            (set! (-> s5-13 count) (min 2099 (+ (-> s5-13 count) 1)))
+            (+! (-> s5-13 depth) 1)
+            (set! (-> s5-13 max-depth) (max (-> s5-13 max-depth) (-> s5-13 depth)))
+            )
+          )
+        0
+        )
+      (*draw-hook*)
+      (when *debug-segment*
+        (let ((s5-14 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-285 (+ (-> s5-14 depth) -1))
+                   (s4-12 (-> s5-14 segment v1-285))
+                   (s3-15 (-> s5-14 base-time))
+                   )
+              (when (>= v1-285 0)
+                (set! (-> s4-12 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-15))))
+                (+! (-> s5-14 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (if (-> *level* loading-level)
+          (load-continue (-> *level* loading-level))
+          )
+      (if *display-color-bars*
+          (draw-color-bars *blit-displays-work*)
+          )
+      (*menu-hook*)
+      (load-level-text-files -1)
+      (dotimes (s5-15 3)
+        (when (-> *screen-filter-array* s5-15 draw?)
+          (if (-> *screen-filter-array* s5-15 lock-vsync?)
+              (set! (-> arg0 force-sync) (the-as uint (max 4 (the-as int (-> arg0 force-sync)))))
+              )
+          (draw (-> *screen-filter-array* s5-15))
+          )
+        )
+      (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
+                (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+                )
+        (if (< (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
+            (set! (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
+            )
+        (if (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
+                 (and (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (-> *screen-shot-work* letterbox-enable))
+                      (or (zero? *editable*) (not *editable*))
+                      )
+                 )
+            (letterbox
+              (bucket-id bucket789)
+              (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+                  1.0
+                  (-> *setting-control* user-current letterbox)
+                  )
+              )
+            )
+        )
+      (when (-> *setting-control* user-current render)
+        (if (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+            (set! (-> *setting-control* user-default bg-a-force) 1.0)
+            (seek! (-> *setting-control* user-default bg-a-force) 0.0 (* 16.0 (seconds-per-frame)))
+            )
+        )
+      (when *debug-segment*
+        'blit-displays
+        (let ((s5-16 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-369 'blit-displays)
+              (s4-13 *profile-blit-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-16 (-> s5-16 data (-> s5-16 count))))
+              (let ((s2-6 (-> s5-16 base-time)))
+                (set! (-> s3-16 name) v1-369)
+                (set! (-> s3-16 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-6))))
+                )
+              (set! (-> s3-16 depth) (the-as uint (-> s5-16 depth)))
+              (set! (-> s3-16 color) s4-13)
+              (set! (-> s5-16 segment (-> s5-16 depth)) s3-16)
+              )
+            (set! (-> s5-16 count) (min 2099 (+ (-> s5-16 count) 1)))
+            (+! (-> s5-16 depth) 1)
+            (set! (-> s5-16 max-depth) (max (-> s5-16 max-depth) (-> s5-16 depth)))
+            )
+          )
+        0
+        )
+      (do-blit-displays *blit-displays-work*)
+      (when *debug-segment*
+        (let ((s5-17 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-395 (+ (-> s5-17 depth) -1))
+                   (s4-14 (-> s5-17 segment v1-395))
+                   (s3-17 (-> s5-17 base-time))
+                   )
+              (when (>= v1-395 0)
+                (set! (-> s4-14 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-17))))
+                (+! (-> s5-17 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      (end-display arg0)
+      (display-frame-finish arg0)
+      )
+    (display-sync arg0)
+    (when (not (-> *setting-control* user-current mpeg-mode?))
+      (when *debug-segment*
+        (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
+        (-> *perf-stats* data)
+        0
+        )
+      (set! (-> *time-of-day-context* title-updated) #f)
+      (if (not (paused?))
+          (set! *teleport* #f)
+          )
+      (when (nonzero? *teleport-count*)
+        (set! *teleport* #t)
+        (set! *teleport-count* (+ *teleport-count* -1))
+        )
+      (execute-particle-local-space-engine 0)
+      (let ((gp-1 (-> pp clock)))
+        (set! (-> pp clock) (-> *display* part-clock))
+        (process-particles)
+        (set! (-> pp clock) gp-1)
+        )
+      (execute-particle-local-space-engine 1)
+      (dma-send
+        (the-as dma-bank #x10008000)
+        (the-as uint (-> *collide-vif0-init* data))
+        (the-as uint (/ (-> *collide-vif0-init* length) 4))
+        )
+      0
+      )
+    (swap-sound-buffers
+      (ear-trans 0 0)
+      (ear-trans 1 0)
+      (if (-> *setting-control* user-current unknown-usd-4)
+          (ear-trans 1 0)
+          (camera-pos)
+          )
+      (-> (math-camera-matrix) fvec)
+      (-> (math-camera-matrix) rvec)
+      (-> *setting-control* user-current sound-ear-scale)
+      )
+    (update-jukebox-music)
+    (str-play-kick)
+    ((method-of-object *level* level-group-method-19))
+    (mc-run)
+    (auto-save-check)
+    0
+    (none)
+    )
+  )
+
+;; definition for function display-loop
+(defbehavior display-loop process ()
+  (stack-size-set! (-> self main-thread) 512)
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ()
+      (logclear! (-> self mask) (process-mask freeze pause menu progress entity))
+      (until #f
+        (when *debug-segment*
+          'joints
+          (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+                (v1-10 'joints)
+                (s5-0 *profile-joints-color*)
+                )
+            (when (and *dproc* *debug-segment*)
+              (let ((s4-0 (-> gp-0 data (-> gp-0 count))))
+                (let ((s3-0 (-> gp-0 base-time)))
+                  (set! (-> s4-0 name) v1-10)
+                  (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+                  )
+                (set! (-> s4-0 depth) (the-as uint (-> gp-0 depth)))
+                (set! (-> s4-0 color) s5-0)
+                (set! (-> gp-0 segment (-> gp-0 depth)) s4-0)
+                )
+              (set! (-> gp-0 count) (min 2099 (+ (-> gp-0 count) 1)))
+              (+! (-> gp-0 depth) 1)
+              (set! (-> gp-0 max-depth) (max (-> gp-0 max-depth) (-> gp-0 depth)))
+              )
+            )
+          0
+          )
+        (execute-math-engine)
+        (when *debug-segment*
+          (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+            (when (and *dproc* *debug-segment*)
+              (let* ((v1-34 (+ (-> gp-1 depth) -1))
+                     (s5-1 (-> gp-1 segment v1-34))
+                     (s4-1 (-> gp-1 base-time))
+                     )
+                (when (>= v1-34 0)
+                  (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
+                  (+! (-> gp-1 depth) -1)
+                  )
+                )
+              )
+            )
+          0
+          )
+        (suspend)
+        )
+      #f
+      )
+    :name "matrix"
+    :from *4k-dead-pool*
+    :to *mid-pool*
+    )
+  (let ((gp-1 *display*))
+    (viewport-array-method-9 *viewport-array* (the-as viewport 0))
+    (set! *teleport* #t)
+    (update! *setting-control*)
+    (init-time-of-day-context *time-of-day-context*)
+    (display-sync gp-1)
+    (display-frame-finish gp-1)
+    (display-sync gp-1)
+    (install-handler 3 vblank-handler)
+    (free-nodes *touching-list*)
+    (prepare *collide-rider-pool*)
+    (update-actor-hash)
+    (hud-string-init)
+    (blerc-init)
+    (dma-send
+      (the-as dma-bank #x10008000)
+      (the-as uint (-> *collide-vif0-init* data))
+      (the-as uint (/ (-> *collide-vif0-init* length) 4))
+      )
+    (suspend)
+    (set! (-> *setting-control* user-default bg-a) 0.0)
+    (set! (-> gp-1 frames 0 start-time) (timer-count (the-as timer-bank #x10000800)))
+    (set! (-> gp-1 frames 1 start-time) (timer-count (the-as timer-bank #x10000800)))
+    (set! (-> gp-1 dog-ratio) 1.0)
+    (while *run*
+      (display-loop-main gp-1)
+      (when *debug-segment*
+        'actors
+        (let ((s5-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-30 'actors)
+              (s4-0 *profile-actors-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-0 (-> s5-0 data (-> s5-0 count))))
+              (let ((s2-0 (-> s5-0 base-time)))
+                (set! (-> s3-0 name) v1-30)
+                (set! (-> s3-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-0))))
+                )
+              (set! (-> s3-0 depth) (the-as uint (-> s5-0 depth)))
+              (set! (-> s3-0 color) s4-0)
+              (set! (-> s5-0 segment (-> s5-0 depth)) s3-0)
+              )
+            (set! (-> s5-0 count) (min 2099 (+ (-> s5-0 count) 1)))
+            (+! (-> s5-0 depth) 1)
+            (set! (-> s5-0 max-depth) (max (-> s5-0 max-depth) (-> s5-0 depth)))
+            )
+          )
+        0
+        )
+      (suspend)
+      (when *debug-segment*
+        (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-54 (+ (-> s5-1 depth) -1))
+                   (s4-1 (-> s5-1 segment v1-54))
+                   (s3-1 (-> s5-1 base-time))
+                   )
+              (when (>= v1-54 0)
+                (set! (-> s4-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-1))))
+                (+! (-> s5-1 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      )
+    )
+  (set! *dproc* #f)
+  (format 0 "display is off #<#x~X>.~%" self)
+  0
+  )
+
+;; definition for function on
+(defun on ((arg0 symbol))
+  (when (not *dproc*)
+    (when (not arg0)
+      (if (= (-> *level* level0 status) 'inactive)
+          (bg 'halfpipe)
+          )
+      )
+    (set! *run* #t)
+    (set! *dproc* (ppointer->process (process-spawn-function
+                                       process
+                                       display-loop
+                                       :name "display"
+                                       :from *4k-dead-pool*
+                                       :to *display-pool*
+                                       :stack *kernel-dram-stack*
+                                       )
+                                     )
+          )
+    (cond
+      ((or (level-get-with-status *level* 'loaded)
+           (level-get-with-status *level* 'alive)
+           (level-get-with-status *level* 'active)
+           )
+       ((method-of-object *level* level-group-method-13))
+       (when (not arg0)
+         (let ((gp-1 (entity-by-type camera-start)))
+           (when (and gp-1 (type? gp-1 entity-actor))
+             (while (not (camera-teleport-to-entity gp-1))
+               (suspend)
+               )
+             )
+           )
+         )
+       (if (and (= *kernel-boot-message* 'art-group) *kernel-boot-art-group*)
+           (anim-tester-add-object *kernel-boot-art-group*)
+           )
+       )
+      (else
+        (kill-by-name "display" *active-pool*)
+        (set! *dproc* #f)
+        )
+      )
+    )
+  *dproc*
+  )
+
+;; definition for function off
+;; WARN: Return type mismatch int vs none.
+(defun off ()
+  (stop 'debug 0)
+  (dotimes (gp-0 (-> *level* length))
+    (let ((a0-2 (-> *level* level gp-0)))
+      (if (= (-> a0-2 status) 'active)
+          (deactivate a0-2)
+          )
+      )
+    )
+  (set! *run* #f)
+  0
+  (none)
+  )
+
+
+
+

@@ -1073,6 +1073,8 @@ const std::unordered_map<
          }},
         {GameVersion::JakX,
          {
+             {"actor-hash-bucket",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"), 16)}}},
              {"ocean-near-indices",
               {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},

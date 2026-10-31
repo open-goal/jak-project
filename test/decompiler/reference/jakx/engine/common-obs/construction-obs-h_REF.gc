@@ -1,0 +1,357 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type construction-object
+(deftype construction-object (rigid-body-object)
+  ((splash            basic)
+   (pad               uint32)
+   (blink-start-time  int32)
+   (hit-time          int32)
+   )
+  (:methods
+    (construction-object-method-90 (_type_) none)
+    (construction-object-method-91 (_type_) none)
+    (construction-object-method-92 (_type_ object) none)
+    (construction-object-method-93 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type construction-object
+(defmethod inspect ((this construction-object))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rigid-body-object inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tsplash: ~A~%" (-> this splash))
+  (format #t "~2Tdisturbed-time: ~D~%" (-> this disturbed-time))
+  (format #t "~2Tblink-start-time: ~D~%" (-> this blink-start-time))
+  (format #t "~2Thit-time: ~D~%" (-> this hit-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *construction-glow-template*, type sprite-glow-data
+(define *construction-glow-template* (new 'static 'sprite-glow-data
+                                       :position (new 'static 'vector :w 2867.2)
+                                       :size-probe 163.84
+                                       :z-offset 4096.0
+                                       :size-y 2867.2
+                                       :color (new 'static 'rgbaf :x 128.0 :y 100.0 :w 35.0)
+                                       :fade-a -0.0000122044
+                                       :fade-b 8.997864
+                                       :tex-id (new 'static 'texture-id :index #x15 :page #x4)
+                                       )
+        )
+
+;; failed to figure out what this is:
+(defstate idle (construction-object)
+  :virtual #t
+  :event rigid-body-object-event-handler
+  :enter (behavior ()
+    (ja-post)
+    (set! (-> self splash) #f)
+    (let* ((gp-0 (current-time))
+           (f30-0 150.0)
+           (v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-4 (the-as number (logior #x3f800000 v1-3)))
+           )
+      (set! (-> self blink-start-time) (the-as int (+ gp-0 (the int (* f30-0 (+ -1.0 (the-as float v1-4)))))))
+      )
+    (logclear! (-> self root penetrated-by) (penetrate vehicle))
+    )
+  :exit (behavior ()
+    (set! (-> self disturbed-time) (the-as uint (current-time)))
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate active (construction-object)
+  :virtual #t
+  :enter (behavior ()
+    (call-parent-state-handler enter)
+    (set! (-> self rbody max-ang-momentum) (* 500000000.0 (-> self info info mass)))
+    )
+  :trans (behavior ()
+    (construction-object-method-90 self)
+    )
+  )
+
+;; definition for method 92 of type construction-object
+;; INFO: Used lq/sq
+(defmethod construction-object-method-93 ((this construction-object))
+  (let ((gp-0 (new 'stack-no-clear 'sprite-glow-data)))
+    (quad-copy! (the-as pointer (-> gp-0 position)) (the-as pointer *construction-glow-template*) 4)
+    (vector-matrix*!
+      (-> (&+ gp-0 64) position)
+      (new 'static 'vector :y 20480.0 :w 1.0)
+      (-> this node-list data 0 bone transform)
+      )
+    (let* ((v1-2 (-> gp-0 position))
+           (a1-2 (&+ gp-0 64))
+           (f0-0 (-> v1-2 w))
+           )
+      (set! (-> (the-as vector (&-> v1-2 x)) quad) (-> a1-2 position quad))
+      (set! (-> v1-2 w) f0-0)
+      )
+    0
+    (set! (-> gp-0 rot-angle) (* 182.04445 (rand-vu-float-range -17.0 -13.0)))
+    (set! (-> gp-0 position w) (rand-vu-float-range 10240.0 12288.0))
+    (set! (-> gp-0 size-y) (-> gp-0 position w))
+    (add! *simple-sprite-system* (the-as sprite-glow-data (-> gp-0 position)))
+    )
+  (none)
+  )
+
+;; definition for method 80 of type construction-object
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs symbol.
+(defmethod rigid-body-object-method-80 ((this construction-object) (arg0 rigid-body-impact))
+  (the-as
+    symbol
+    (cond
+      ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
+       (let ((s4-0 (new 'stack-no-clear 'vector)))
+         (let* ((v1-3 (-> arg0 process))
+                (f30-0 (fmin 286720.0 (vector-length (-> (the-as process-drawable v1-3) root transv))))
+                )
+           (set! (-> s4-0 quad) (-> arg0 normal quad))
+           (vector-normalize! s4-0 (* 0.0012 f30-0))
+           (+! (-> s4-0 y) (/ f30-0 1000))
+           )
+         (set! (-> arg0 point quad) (-> (the-as process-drawable (-> arg0 process)) root trans quad))
+         (+! (-> arg0 point y) -20.48)
+         (apply-impact! (-> this rbody) (-> arg0 point) s4-0)
+         )
+       (rigid-body-control-method-12 (-> this rbody) 1.0)
+       (rigid-body-control-method-13 (-> this rbody))
+       (logior! (-> this root penetrated-by) (penetrate vehicle))
+       (let ((v0-4 (the-as object (+ (current-time) (seconds 0.1)))))
+         (set! (-> this hit-time) (the-as int v0-4))
+         v0-4
+         )
+       )
+      (else
+        ((method-of-type rigid-body-object rigid-body-object-method-80) this arg0)
+        )
+      )
+    )
+  )
+
+;; definition for method 82 of type construction-object
+(defmethod rigid-body-object-method-82 ((this construction-object)
+                                       (arg0 process-drawable)
+                                       (arg1 rigid-body-object-constants)
+                                       (arg2 object)
+                                       (arg3 object)
+                                       )
+  (set! (-> arg1 info inertial-tensor fvec x) (/ (-> arg1 info inertial-tensor fvec x) 1000))
+  ((method-of-type rigid-body-object rigid-body-object-method-82) this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 89 of type construction-object
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod construction-object-method-90 ((this construction-object))
+  (local-vars (v1-9 float) (v1-14 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (when (>= (the-as uint (- (current-time) (the-as int (-> this disturbed-time)))) (the-as uint 600))
+      (let ((f0-1 (* (vector-vector-distance-squared (-> this root trans) (camera-pos)) (square 0.000054253473))))
+        (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
+        (.add.w.vf.x vf2 vf0 vf0)
+        (.mul.vf vf1 vf1 vf1)
+        (.mul.x.vf.x acc vf2 vf1)
+        (.add.mul.y.vf.x acc vf2 vf1 acc)
+        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
+        (.mov v1-9 vf1)
+        (cond
+          ((and (< v1-9 f0-1) (begin
+                                (.lvf vf1 (&-> (-> this rbody lin-velocity) quad))
+                                (.add.w.vf.x vf2 vf0 vf0)
+                                (.mul.vf vf1 vf1 vf1)
+                                (.mul.x.vf.x acc vf2 vf1)
+                                (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                (.add.mul.z.vf.x vf1 vf2 vf1 acc)
+                                (.mov v1-14 vf1)
+                                (< v1-14 (* f0-1 (square 614.4)))
+                                )
+                )
+           (set! (-> this rbody lin-momentum quad) (the-as uint128 0))
+           (set! (-> this rbody ang-momentum quad) (the-as uint128 0))
+           (construction-object-method-92 this #f)
+           (go (method-of-object this idle))
+           )
+          (else
+            (set! (-> this disturbed-time) (the-as uint (current-time)))
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 71 of type construction-object
+;; INFO: Used lq/sq
+(defmethod rigid-body-object-method-71 ((this construction-object))
+  (when (not (-> this splash))
+    (let ((s5-0 (new 'stack-no-clear 'water-info)))
+      (water-info-init! (-> this root) s5-0 (collide-action solid semi-solid))
+      (when (logtest? (-> s5-0 flags) (water-flag dark-eco))
+        (let ((v1-8 (make-sound-instance (-> *sound-info* 568) 0 (the-as handle #f))))
+          (cond
+            (v1-8
+              (set! (-> v1-8 trans quad) (-> this root trans quad))
+              (logior! (-> v1-8 flags) 96)
+              (-> v1-8 id)
+              )
+            (else
+              0
+              )
+            )
+          )
+        (set! (-> this splash) (the-as basic #t))
+        )
+      )
+    )
+  (if (and (< (-> this hit-time) (current-time)) (< 20480.0 (vector-length (-> this rbody lin-velocity))))
+      (logclear! (-> this root penetrated-by) (penetrate vehicle))
+      )
+  (when (< (-> this root trans y) -614400.0)
+    (construction-object-method-92 this #t)
+    (go empty-state)
+    )
+  (let ((v1-28 (new 'stack-no-clear 'cquery-with-pad)))
+    (set! (-> v1-28 cquery start-pos quad) (-> this rbody position quad))
+    (vector-float*! (-> v1-28 cquery move-dist) (-> this rbody lin-velocity) (seconds-per-frame))
+    (let ((a0-16 (-> v1-28 cquery)))
+      (set! (-> a0-16 radius) (+ 24576.0 (-> this root root-prim local-sphere w)))
+      (set! (-> a0-16 collide-with) (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list))
+      (set! (-> a0-16 ignore-process0) this)
+      (set! (-> a0-16 ignore-process1) #f)
+      (set! (-> a0-16 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> a0-16 action-mask) (collide-action solid))
+      (set! (-> a0-16 nav-mesh) #f)
+      )
+    (OK-fill-using-line-sphere *collide-cache* (-> v1-28 cquery))
+    )
+  ((method-of-type rigid-body-object rigid-body-object-method-71) this)
+  (none)
+  )
+
+;; definition for method 91 of type construction-object
+;; WARN: Return type mismatch int vs none.
+(defmethod construction-object-method-92 ((this construction-object) (arg0 object))
+  (let ((gp-0 (entity-more-perm-hash-method-12
+                *entity-more-perm*
+                (-> this entity extra perm aid)
+                (the-as (pointer symbol) #f)
+                )
+              )
+        )
+    (cond
+      (arg0
+        (logior! (-> gp-0 user-uint64) 1)
+        (logior! (-> this entity extra perm status) (entity-perm-status dead))
+        )
+      (else
+        (set! (-> gp-0 user-uint64) (the-as uint 0))
+        (if (< (-> this root rot w) 0.0)
+            (quaternion-negate! (the-as quaternion (-> this root rot)) (the-as quaternion (-> this root rot)))
+            )
+        (set! (-> gp-0 user-int8 5) (the int (* 127.0 (-> this root rot x))))
+        (set! (-> gp-0 user-int8 6) (the int (* 127.0 (-> this root rot y))))
+        (set! (-> gp-0 user-int8 7) (the int (* 127.0 (-> this root rot z))))
+        (let ((v1-23 (new 'stack-no-clear 'vector)))
+          (vector-! (the-as vector (&-> v1-23 x)) (-> this root trans) (-> this entity trans))
+          (when (or (< 2457600.0 (fabs (-> v1-23 x))) (< 2457600.0 (fabs (-> v1-23 y))) (< 2457600.0 (fabs (-> v1-23 z))))
+            (logior! (-> gp-0 user-uint64) 1)
+            (logior! (-> this entity extra perm status) (entity-perm-status dead))
+            )
+          (let ((a0-20 (-> gp-0 user-uint64))
+                (a1-9 (logand (the int (* 0.0016662598 (-> v1-23 x))) 8191))
+                (a2-5 (logand (the int (* 0.0016662598 (-> v1-23 y))) 8191))
+                (v1-25 (logand (the int (* 0.0016662598 (-> v1-23 z))) 8191))
+                )
+            (set! (-> gp-0 user-uint64) (logior a0-20 (logior (logior (* a1-9 2) (shl a2-5 14)) (shl v1-25 27))))
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *was-allocated*, type symbol
+(define *was-allocated* #f)
+
+;; definition for method 90 of type construction-object
+;; WARN: Return type mismatch int vs none.
+(defmethod construction-object-method-91 ((this construction-object))
+  (local-vars (v1-25 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (entity-more-perm-hash-method-11 *entity-more-perm* (-> this entity extra perm aid))))
+      (when s5-0
+        (when (logtest? (-> s5-0 user-uint64) 1)
+          (logior! (-> this entity extra perm status) (entity-perm-status dead))
+          (go empty-state)
+          )
+        (set! (-> this root rot x) (* 0.007874016 (the float (-> s5-0 user-int8 5))))
+        (set! (-> this root rot y) (* 0.007874016 (the float (-> s5-0 user-int8 6))))
+        (set! (-> this root rot z) (* 0.007874016 (the float (-> s5-0 user-int8 7))))
+        (let ((f0-6 1.0))
+          (.lvf vf1 (&-> (-> this root rot) quad))
+          (.add.w.vf.x vf2 vf0 vf0)
+          (.mul.vf vf1 vf1 vf1)
+          (.mul.x.vf.x acc vf2 vf1)
+          (.add.mul.y.vf.x acc vf2 vf1 acc)
+          (.add.mul.z.vf.x vf1 vf2 vf1 acc)
+          (.mov v1-25 vf1)
+          (set! (-> this root rot w) (sqrtf (- f0-6 v1-25)))
+          )
+        (let* ((v1-27 (-> s5-0 user-uint64))
+               (a1-1 (logand (shr v1-27 1) 8191))
+               (a0-6 (logand (shr v1-27 14) 8191))
+               (v1-29 (logand (shr v1-27 27) 8191))
+               )
+          (if (logtest? a1-1 4096)
+              (set! a1-1 (logior (the-as uint #xffffe000) a1-1))
+              )
+          (if (logtest? a0-6 4096)
+              (set! a0-6 (logior (the-as uint #xffffe000) a0-6))
+              )
+          (if (logtest? v1-29 4096)
+              (set! v1-29 (logior (the-as uint #xffffe000) v1-29))
+              )
+          (set! (-> this root trans x) (* 0.00024420026 (the float a1-1)))
+          (set! (-> this root trans y) (* 0.00024420026 (the float a0-6)))
+          (set! (-> this root trans z) (* 0.00024420026 (the float v1-29)))
+          )
+        (vector+float*! (-> this root trans) (-> this entity trans) (-> this root trans) 2457600.0)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+
+
+
