@@ -1,0 +1,900 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defpartgroup group-collectoid-glow-steady
+  :id 301
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 10)
+  :parts ((sp-item 1089 :flags (sp5 sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 1089
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10) (meters 0.1))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 20.0 5.0)
+    (:omega (degrees 22511.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3 use-global-acc))
+    (:userdata 12288.0)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; definition of type collectoid-draw
+(deftype collectoid-draw (powerup-draw)
+  ((base-y  float)
+   )
+  )
+
+;; definition for method 3 of type collectoid-draw
+(defmethod inspect ((this collectoid-draw))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type powerup-draw inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tbase-y: ~f~%" (-> this base-y))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function collectoid-draw-init-remote
+;; WARN: Return type mismatch int vs collectoid-draw.
+(defbehavior collectoid-draw-init-remote collectoid-draw ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  (the-as collectoid-draw 0)
+  )
+
+;; definition for method 41 of type collectoid-draw
+(defmethod process-nettable-method-41 ((this collectoid-draw) (arg0 int))
+  (ppointer->process
+    (process-spawn collectoid-draw :init collectoid-draw-init-remote arg0 :name "collectoid-draw")
+    )
+  )
+
+;; definition for method 37 of type collectoid-draw
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this collectoid-draw) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-collectoid-draw*, type (array symbol)
+(define *msg-map-collectoid-draw* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-collectoid-draw*, type net-process-class-info
+(define *net-process-class-info-collectoid-draw* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-collectoid-draw* msg-map) *msg-map-collectoid-draw*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec collectoid-draw *net-process-class-info-collectoid-draw*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-collectoid-draw* owner-type) collectoid-draw)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-collectoid-draw*)
+
+;; definition for method 40 of type collectoid-draw
+(defmethod process-nettable-method-40 ((this collectoid-draw))
+  *net-process-class-info-collectoid-draw*
+  )
+
+;; definition for symbol *steal-mode*, type symbol
+(define *steal-mode* #f)
+
+;; definition for method 56 of type net-game-mgr-collectable
+(defmethod net-game-mgr-method-56 ((this net-game-mgr-collectable))
+  (set! (-> this steal-mode) *steal-mode*)
+  ((method-of-type net-game-mgr-deathmatch net-game-mgr-method-56) this)
+  (none)
+  )
+
+;; definition for method 15 of type net-game-mgr-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-15 ((this net-game-mgr-collectable) (arg0 mem-buffer))
+  (mem-buffer-method-29 arg0 (-> this steal-mode))
+  ((method-of-type net-game-mgr-deathmatch process-nettable-method-15) this arg0)
+  0
+  (none)
+  )
+
+;; definition for method 35 of type net-game-mgr-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-35 ((this net-game-mgr-collectable) (arg0 mem-buffer))
+  (set! (-> this steal-mode) (mem-buffer-method-46 arg0))
+  ((method-of-type net-game-mgr-deathmatch process-nettable-method-35) this arg0)
+  0
+  (none)
+  )
+
+;; definition for method 52 of type net-game-mgr-collectable
+;; WARN: Return type mismatch process vs none.
+(defmethod net-game-mgr-method-52 ((this net-game-mgr-collectable) (arg0 object))
+  (let ((v1-1 (process-spawn net-player-collectable :init net-player-init-local arg0 :name "net-player-collectable"))
+        )
+    (if v1-1
+        (-> v1-1 0 self)
+        )
+    )
+  (none)
+  )
+
+;; definition for function drop-collectoids
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun drop-collectoids ((arg0 object) (arg1 int) (arg2 int))
+  (let ((s3-0 (new 'stack-no-clear 'net-powerup-spawn-params)))
+    (set! (-> s3-0 pos quad) (-> (the-as vector #f) quad))
+    (set! (-> s3-0 tp) collectoid)
+    (set! (-> s3-0 motion-info) #f)
+    (set! (-> s3-0 lifetime) 3000)
+    (set! (-> s3-0 initial-owner) 8)
+    (set! (-> s3-0 motion-info) #f)
+    (let ((f30-0 0.0))
+      (dotimes (s2-0 arg1)
+        (eject-powerup (the-as vector (&-> s3-0 tp)) arg0 arg2 f30-0)
+        (+! f30-0 (/ 65536.0 (the float arg1)))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 96 of type net-player-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-96 () 0
+  (none)
+  )
+
+;; definition for method 48 of type net-player-collectable
+(defmethod net-player-method-48 ((this net-player-collectable) (arg0 object) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('collectoid-pickup)
+     (when (or (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                    (= (if *net-mgr*
+                           (-> *net-mgr* game-state local-machine-idx)
+                           0
+                           )
+                       (-> *net-mgr* game-state session-master-idx)
+                       )
+                    )
+               )
+       (when (not (current-finish-mode))
+         (+! (-> this score) 1)
+         ((method-of-object this net-player-method-63))
+         )
+       )
+     )
+    (('add-to-score)
+     (+! (-> this score) (-> arg3 param 0))
+     (if (or (process-nettable-method-22 this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                                    (= (if *net-mgr*
+                                                           (-> *net-mgr* game-state local-machine-idx)
+                                                           0
+                                                           )
+                                                       (-> *net-mgr* game-state session-master-idx)
+                                                       )
+                                                    )
+             )
+         ((method-of-object this net-player-method-63))
+         )
+     )
+    (('vehicle-died)
+     (when (not (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode))
+       (when (or (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                  0
+                                                  )
+                    )
+                 (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                      (= (if *net-mgr*
+                             (-> *net-mgr* game-state local-machine-idx)
+                             0
+                             )
+                         (-> *net-mgr* game-state session-master-idx)
+                         )
+                      )
+                 )
+         (let ((s4-0 (-> arg3 param 0))
+               (v1-37 (net-player-method-49 this))
+               (s5-1 (min 3 (-> this score)))
+               )
+           (when (and v1-37 (>= (the-as int s4-0) 0) (!= s4-0 (-> this player-id)) (> s5-1 0))
+             (drop-collectoids (-> v1-37 root trans) s5-1 #x47200000)
+             (set! (-> this score) (- (-> this score) s5-1))
+             ((method-of-object this net-player-method-63))
+             )
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type net-player-deathmatch net-player-method-48) this arg0 arg1 arg2 arg3)
+      )
+    )
+  (none)
+  )
+
+;; definition for method 71 of type net-game-mgr-collectable
+;; WARN: Return type mismatch texture vs none.
+(defmethod net-game-mgr-method-71 () (get-texture hud-collectable-counter-01 level-default-minimap)
+  (none)
+  )
+
+;; definition for method 17 of type net-player-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-17 ((this net-player-collectable) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+  ((method-of-type net-player-deathmatch process-nettable-method-17) this arg0 arg1 arg2)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-collectoid collectoid collectoid-lod0-jg collectoid-idle-ja
+              ((collectoid-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-collectoid-debris-a collectoid-debris collectoid-debris-a-lod0-jg -1
+              ((collectoid-debris-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-collectoid-debris-b collectoid-debris collectoid-debris-b-lod0-jg -1
+              ((collectoid-debris-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-collectoid-debris-c collectoid-debris collectoid-debris-c-lod0-jg -1
+              ((collectoid-debris-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-collectoid-debris-d collectoid-debris collectoid-debris-d-lod0-jg -1
+              ((collectoid-debris-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; definition for symbol *collectoid-debris-params*, type debris-static-params
+(define *collectoid-debris-params* (new 'static 'debris-static-params
+                                     :joints (new 'static 'boxed-array :type debris-static-joint-params
+                                       (new 'static 'debris-static-joint-params
+                                         :parent-joint-index 3
+                                         :group "skel-collectoid-debris-a"
+                                         :color-tint (new 'static 'rgbaf :x 0.7 :y 0.7 :z 0.7 :w 1.0)
+                                         )
+                                       (new 'static 'debris-static-joint-params
+                                         :parent-joint-index 3
+                                         :group "skel-collectoid-debris-b"
+                                         :color-tint (new 'static 'rgbaf :x 0.7 :y 0.7 :z 0.7 :w 1.0)
+                                         )
+                                       (new 'static 'debris-static-joint-params
+                                         :parent-joint-index 3
+                                         :group "skel-collectoid-debris-c"
+                                         :color-tint (new 'static 'rgbaf :x 0.7 :y 0.7 :z 0.7 :w 1.0)
+                                         )
+                                       (new 'static 'debris-static-joint-params
+                                         :parent-joint-index 3
+                                         :group "skel-collectoid-debris-d"
+                                         :color-tint (new 'static 'rgbaf :x 0.7 :y 0.7 :z 0.7 :w 1.0)
+                                         )
+                                       )
+                                     :collide-spec (collide-spec backgnd)
+                                     )
+        )
+
+;; definition of type collectoid
+(deftype collectoid (net-powerup)
+  ((controlled-by  int8)
+   (part-time      int32)
+   )
+  (:methods
+    (collectoid-method-56 (_type_ int int) none)
+    )
+  )
+
+;; definition for method 3 of type collectoid
+(defmethod inspect ((this collectoid))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type net-powerup inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcontrolled-by: ~D~%" (-> this controlled-by))
+  (format #t "~2Tpart-time: ~D~%" (-> this part-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function collectoid-init-remote
+;; WARN: Return type mismatch int vs collectoid.
+(defbehavior collectoid-init-remote collectoid ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
+  (process-nettable-method-36 self)
+  (the-as collectoid 0)
+  )
+
+;; definition for method 41 of type collectoid
+(defmethod process-nettable-method-41 ((this collectoid) (arg0 int))
+  (ppointer->process (process-spawn collectoid :init collectoid-init-remote arg0 :name "collectoid"))
+  )
+
+;; definition for method 37 of type collectoid
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this collectoid) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'converted)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-collectoid*, type (array symbol)
+(define *msg-map-collectoid* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-collectoid*, type net-process-class-info
+(define *net-process-class-info-collectoid* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-collectoid* msg-map) *msg-map-collectoid*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec collectoid *net-process-class-info-collectoid*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-collectoid* owner-type) collectoid)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-collectoid*)
+
+;; definition for method 40 of type collectoid
+(defmethod process-nettable-method-40 ((this collectoid))
+  *net-process-class-info-collectoid*
+  )
+
+;; definition for method 15 of type collectoid
+(defmethod process-nettable-method-15 ((this collectoid) (arg0 mem-buffer))
+  (mem-buffer-method-14 arg0 (-> this controlled-by))
+  ((method-of-type net-powerup process-nettable-method-15) this arg0)
+  (none)
+  )
+
+;; definition for method 35 of type collectoid
+(defmethod process-nettable-method-35 ((this collectoid) (arg0 mem-buffer))
+  (set! (-> this controlled-by) (mem-buffer-method-32 arg0))
+  ((method-of-type net-powerup process-nettable-method-35) this arg0)
+  (none)
+  )
+
+;; definition for method 11 of type collectoid
+(defmethod init-from-entity! ((this collectoid) (arg0 entity-actor))
+  (set! (-> this part-time) (mod (the-as int (rand-uint31-gen *random-generator*)) 3001))
+  (set! (-> this controlled-by) -1)
+  ((method-of-type net-powerup init-from-entity!) this arg0)
+  )
+
+;; definition for method 46 of type collectoid
+;; WARN: Return type mismatch int vs none.
+(defmethod net-powerup-method-46 ((this collectoid) (arg0 object) (arg1 object))
+  (set! (-> this child-proc) (process->handle (ppointer->process (process-spawn
+                                                                   collectoid-draw
+                                                                   :init powerup-draw-init-by-other
+                                                                   this
+                                                                   arg0
+                                                                   arg1
+                                                                   :name "collectoid-draw"
+                                                                   :to *entity-pool*
+                                                                   )
+                                                                 )
+                                              )
+        )
+  (none)
+  )
+
+;; definition for method 52 of type collectoid
+;; WARN: Return type mismatch int vs none.
+(defmethod net-powerup-method-52 ((this collectoid) (arg0 process))
+  (let ((v1-0 (as-type arg0 vehicle)))
+    (when v1-0
+      (let ((a0-4 (-> *net-players* (-> (the-as vehicle v1-0) player-id))))
+        (send-event a0-4 'collectoid-pickup)
+        )
+      )
+    )
+  (send-event arg0 'collectoid-pickup)
+  0
+  (none)
+  )
+
+;; definition for method 53 of type collectoid-draw
+;; WARN: Return type mismatch int vs none.
+(defmethod powerup-draw-method-53 ((this collectoid-draw) (arg0 object) (arg1 vector))
+  (+! (-> arg1 y) 24576.0)
+  (powerup-draw-method-52 this 4.0)
+  (let ((t9-1 (method-of-type powerup-draw powerup-draw-method-53)))
+    (t9-1 this arg0 arg1)
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-collectoid" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this base-y) (-> this root trans y))
+  (vector-float*! (-> this root scale) (-> this root scale) 0.65)
+  (if (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 301) this))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 54 of type collectoid-draw
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod powerup-draw-method-54 ((this collectoid-draw) (arg0 process-drawable))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+      (let ((v1-0 arg0))
+        (cond
+          (v1-0
+            (vector-float*! (-> s5-0 0) (-> v1-0 root transv) 0.9)
+            (set! (-> s5-0 1 x) (* 0.0055555557 (vector-length (-> s5-0 0))))
+            (set! (-> *part-id-table* 752 init-specs 9 initial-valuef) (-> s5-0 1 x))
+            (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+            (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 216))
+            (vector-reset! (-> *part-tracker-params-default* local-offset))
+            (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+            (set! (-> *part-tracker-params-default* callback) #f)
+            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+            (set! (-> *part-tracker-params-default* target) v1-0)
+            (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+            (set! (-> *part-tracker-params-default* local-space-param) 0)
+            (set! (-> *part-tracker-params-default* local-space-callback) #f)
+            (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+            *part-tracker-params-default*
+            (if (logtest? (-> *part-group-id-table* 216 flags) (sp-group-flag sp13))
+                (process-spawn
+                  part-tracker-subsampler
+                  :init part-tracker-subsampler-init
+                  *part-tracker-params-default*
+                  :name "part-tracker-subsampler"
+                  :to *entity-pool*
+                  :unk 0
+                  )
+                (process-spawn
+                  part-tracker
+                  :init part-tracker-init
+                  *part-tracker-params-default*
+                  :name "part-tracker"
+                  :to *entity-pool*
+                  :unk 0
+                  )
+                )
+            (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+            (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
+            (vector-reset! (-> *part-tracker-params-default* local-offset))
+            (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+            (set! (-> *part-tracker-params-default* callback) #f)
+            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+            (set! (-> *part-tracker-params-default* target) this)
+            (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+            (set! (-> *part-tracker-params-default* local-space-param) 0)
+            (set! (-> *part-tracker-params-default* local-space-callback) #f)
+            (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+            *part-tracker-params-default*
+            (if (logtest? (-> *part-group-id-table* 215 flags) (sp-group-flag sp13))
+                (process-spawn
+                  part-tracker-subsampler
+                  :init part-tracker-subsampler-init
+                  *part-tracker-params-default*
+                  :name "part-tracker-subsampler"
+                  :to *entity-pool*
+                  :unk 0
+                  )
+                (process-spawn
+                  part-tracker
+                  :init part-tracker-init
+                  *part-tracker-params-default*
+                  :name "part-tracker"
+                  :to *entity-pool*
+                  :unk 0
+                  )
+                )
+            )
+          (else
+            (set-vector! (-> s5-0 0) 0.0 0.0 0.0 1.0)
+            )
+          )
+        )
+      (let ((a1-21 (new 'stack 'debris-tuning (the-as uint 0))))
+        (set! (-> a1-21 scale-rand-lo) 1.0)
+        (set! (-> a1-21 scale-rand-hi) 1.0)
+        (set-vector! (-> a1-21 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+        (let ((a2-14 (-> a1-21 fountain-rand-transv-lo)))
+          (let ((v1-52 (-> a1-21 fountain-rand-transv-lo))
+                (a0-42 (-> s5-0 0))
+                )
+            (.lvf vf4 (&-> v1-52 quad))
+            (.lvf vf5 (&-> a0-42 quad))
+            )
+          (.mov.vf.w vf6 vf0)
+          (.add.vf.xyz vf6 vf4 vf5)
+          (.svf (&-> a2-14 quad) vf6)
+          )
+        (set-vector! (-> a1-21 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+        (let ((a0-47 (-> a1-21 fountain-rand-transv-hi)))
+          (let ((v1-54 (-> a1-21 fountain-rand-transv-hi))
+                (a2-15 (-> s5-0 0))
+                )
+            (.lvf vf4 (&-> v1-54 quad))
+            (.lvf vf5 (&-> a2-15 quad))
+            )
+          (.mov.vf.w vf6 vf0)
+          (.add.vf.xyz vf6 vf4 vf5)
+          (.svf (&-> a0-47 quad) vf6)
+          )
+        (set! (-> a1-21 fountain-rand-transv-hi w) 16384.0)
+        (set! (-> a1-21 duration) (the-as uint 1200))
+        (set! (-> this base-y) (-> this root trans y))
+        (debris-spawn this a1-21 *collectoid-debris-params* (the-as process-drawable #f))
+        )
+      )
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-61 (-> (the-as collide-shape (-> this root)) root-prim)))
+        (set! (-> v1-61 prim-core collide-as) (collide-spec))
+        (set! (-> v1-61 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (let ((v1-69 (make-sound-instance (-> *sound-info* 310) 0 (the-as handle #f))))
+      (cond
+        (v1-69
+          (set! (-> v1-69 trans quad) (-> this root trans quad))
+          (logior! (-> v1-69 flags) 96)
+          (-> v1-69 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (collectoid-draw)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-0 (-> self parent)))
+      (set! (-> self part-time) (-> (the-as collectoid (if v1-0
+                                                           (the-as collectoid (-> v1-0 0 self))
+                                                           )
+                                            )
+                                    part-time
+                                    )
+            )
+      )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (powerup-draw-method-55 self)
+    (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
+      (let ((v1-5 (handle->process (-> self parent-proc))))
+        (when v1-5
+          (let ((v1-7 (-> (the-as collectoid v1-5) controlled-by)))
+            (if (>= v1-7 0)
+                (set! v1-7 (if (-> *net-players* v1-7)
+                               (the-as int (-> *net-players* v1-7 team))
+                               -1
+                               )
+                      )
+                )
+            (case v1-7
+              ((-1)
+               (set! (-> *part-id-table* 1089 init-specs 5 initial-valuef) 16.0)
+               (set! (-> *part-id-table* 1089 init-specs 6 initial-valuef) 16.0)
+               (set! (-> *part-id-table* 1089 init-specs 7 initial-valuef) 16.0)
+               (set! (-> *part-id-table* 1089 init-specs 8 initial-valuef) 0.0)
+               )
+              (else
+                (set! (-> *part-id-table* 1089 init-specs 5 initial-valuef)
+                      (the float (shr (shl (-> (the-as (pointer uint32) (&+ *team-colors* (* v1-7 4)))) 56) 56))
+                      )
+                (set! (-> *part-id-table* 1089 init-specs 6 initial-valuef)
+                      (the float (shr (shl (-> (the-as (pointer uint32) (&+ *team-colors* (* v1-7 4)))) 48) 56))
+                      )
+                (set! (-> *part-id-table* 1089 init-specs 7 initial-valuef)
+                      (the float (shr (shl (-> (the-as (pointer uint32) (&+ *team-colors* (* v1-7 4)))) 40) 56))
+                      )
+                (set! (-> *part-id-table* 1089 init-specs 8 initial-valuef)
+                      (the float (shr (-> (the-as (pointer uint32) (&+ *team-colors* (* v1-7 4)))) 24))
+                      )
+                )
+              )
+            )
+          (set! (-> *part-id-table* 1089 init-specs 8 initial-valuef) 48.0)
+          (if (nonzero? (-> self part))
+              (sparticle-launch-control-method-16 (-> self part) (-> self root trans))
+              )
+          )
+        )
+      )
+    )
+  :post ja-post
+  )
+
+;; definition for method 55 of type collectoid-draw
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod powerup-draw-method-55 ((this collectoid-draw))
+  (let ((v1-1 (handle->process (-> this parent-proc))))
+    (set! (-> this root trans quad) (-> (the-as collectoid v1-1) pos quad))
+    )
+  (let ((f30-0 (the float (logand (+ (- (- (if *net-mgr*
+                                               (-> *net-mgr* game-state time)
+                                               0
+                                               )
+                                           (if *net-world*
+                                               (-> *net-world* net-state game-start-time)
+                                               0
+                                               )
+                                           )
+                                        (if *net-world*
+                                            (-> *net-world* net-state total-pause-time)
+                                            0
+                                            )
+                                        )
+                                     (the-as int (-> this parent-proc))
+                                     )
+                                  #xffff
+                                  )
+                    )
+               )
+        )
+    (+! (-> this root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
+    (quaternion-axis-angle! (the-as quaternion (-> this root rot)) 0.0 1.0 0.0 (* 20.0 f30-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 56 of type collectoid
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod collectoid-method-56 ((this collectoid) (arg0 int) (arg1 int))
+  (if (>= arg0 0)
+      (send-event (-> *net-game-mgr* net-players arg0) 'add-to-score -1)
+      )
+  (if (>= arg1 0)
+      (send-event (-> *net-game-mgr* net-players arg1) 'add-to-score 1)
+      )
+  (set! (-> this controlled-by) arg1)
+  (send-event (handle->process (-> this child-proc)) 'go-die)
+  (let ((v1-23 (-> *net-players* (* (if *net-mgr*
+                                        (-> *net-mgr* game-state local-machine-idx)
+                                        0
+                                        )
+                                    2
+                                    )
+                   )
+               )
+        (a0-20 (-> *net-players* arg1))
+        )
+    (set! arg1 (and v1-23 arg1))
+    (when (the-as object arg1)
+      (cond
+        ((= (-> v1-23 team) (-> a0-20 team))
+         (let ((v1-26 (make-sound-instance (-> *sound-info* 564) 0 (the-as handle #f))))
+           (cond
+             (v1-26
+               (set! (-> v1-26 trans quad) (-> this pos quad))
+               (logior! (-> v1-26 flags) 96)
+               (-> v1-26 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        (else
+          (let ((v1-28 (make-sound-instance (-> *sound-info* 566) 0 (the-as handle #f))))
+            (cond
+              (v1-28
+                (set! (-> v1-28 trans quad) (-> this pos quad))
+                (logior! (-> v1-28 flags) 96)
+                (-> v1-28 id)
+                )
+              (else
+                0
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type collectoid
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-17 ((this collectoid) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+  (cond
+    ((= arg0 'converted)
+     (let ((s4-0 (mem-buffer-method-32 arg1))
+           (a2-1 (mem-buffer-method-32 arg1))
+           )
+       (collectoid-method-56 this s4-0 a2-1)
+       )
+     )
+    (else
+      ((method-of-type net-powerup process-nettable-method-17) this arg0 arg1 arg2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 54 of type collectoid
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 54 collectoid) has a return type of none, but the expression builder found a return statement.
+(defmethod net-powerup-method-54 ((this collectoid))
+  (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
+    (when (!= (-> this touched-by) (-> this controlled-by))
+      (let ((s5-0 (process-nettable-method-27 this 'converted)))
+        (mem-buffer-method-14 s5-0 (-> this controlled-by))
+        (mem-buffer-method-14 s5-0 (-> this touched-by))
+        (process-nettable-method-29 this s5-0 -2 80)
+        (process-nettable-method-28 this s5-0)
+        )
+      (collectoid-method-56 this (-> this controlled-by) (-> this touched-by))
+      (let ((v1-17 (handle->process (-> this child-proc))))
+        (when v1-17
+          (set! (-> *launch-matrix* trans quad) (-> (the-as process-drawable v1-17) root trans quad))
+          (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
+          (vector-reset! (-> *part-tracker-params-default* local-offset))
+          (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+          (set! (-> *part-tracker-params-default* callback) #f)
+          (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+          (set! (-> *part-tracker-params-default* target) (the-as process-drawable v1-17))
+          (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+          (set! (-> *part-tracker-params-default* local-space-param) 0)
+          (set! (-> *part-tracker-params-default* local-space-callback) #f)
+          (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+          *part-tracker-params-default*
+          (if (logtest? (-> *part-group-id-table* 215 flags) (sp-group-flag sp13))
+              (process-spawn
+                part-tracker-subsampler
+                :init part-tracker-subsampler-init
+                *part-tracker-params-default*
+                :name "part-tracker-subsampler"
+                :to *entity-pool*
+                :unk 0
+                )
+              (process-spawn
+                part-tracker
+                :init part-tracker-init
+                *part-tracker-params-default*
+                :name "part-tracker"
+                :to *entity-pool*
+                :unk 0
+                )
+              )
+          )
+        )
+      )
+    (set! (-> this touched-time) -1)
+    (return #f)
+    )
+  (set! (-> this die-or-respawn-time) -1)
+  (let ((s5-3 (process-nettable-method-27 this 'picked-up)))
+    (mem-buffer-method-16 s5-3 (-> this die-or-respawn-time))
+    (mem-buffer-method-14 s5-3 (-> this touched-by))
+    (process-nettable-method-29 this s5-3 -2 80)
+    (process-nettable-method-28 this s5-3)
+    )
+  (set! (-> this touched-time) -1)
+  (go (method-of-object this net-powerup-s2))
+  0
+  (none)
+  )
+
+;; definition for method 52 of type collectoid-draw
+;; WARN: Return type mismatch trsqv vs none.
+(defmethod powerup-draw-method-52 ((this collectoid-draw) (arg0 float))
+  (set! (-> this root) (new 'process 'trsqv))
+  (none)
+  )
+
+;; definition for symbol *desclct-pris-texture-anim-array*, type texture-anim-array
+(define *desclct-pris-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x1
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "collectoid-eye-01-dest"
+      :extra (new 'static 'vector :x 64.0 :y 16.0 :z 1.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 225.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x4
+      :data (new 'static 'array texture-anim-layer 2
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 225.0
+          :tex-name "collectoid-eye-01"
+          :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0 0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.0 0.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    )
+  )
+
+
+
+

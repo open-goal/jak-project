@@ -1,0 +1,810 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type garage-tool-arm
+(deftype garage-tool-arm (process-drawable)
+  ((track         joint-mod-rotate-world  :inline)
+   (elbow         joint-mod-rotate-local  4 :inline)
+   (dest          vector                  :inline)
+   (arm-lengths   float                   4)
+   (dest-angles   float                   4)
+   (elbow-quat    quaternion              4 :inline)
+   (total-length  float)
+   (flags         uint64)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (garage-tool-arm-method-51 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type garage-tool-arm
+(defmethod inspect ((this garage-tool-arm))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttrack: #<joint-mod-rotate-world @ #x~X>~%" (-> this track))
+  (format #t "~2Telbow[4] @ #x~X~%" (-> this elbow))
+  (format #t "~2Tdest: #<vector @ #x~X>~%" (-> this dest))
+  (format #t "~2Tarm-lengths[4] @ #x~X~%" (-> this arm-lengths))
+  (format #t "~2Tdest-angles[4] @ #x~X~%" (-> this dest-angles))
+  (format #t "~2Telbow-quat[4] @ #x~X~%" (-> this elbow-quat))
+  (format #t "~2Ttotal-length: ~f~%" (-> this total-length))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(let ((a0-2 (new 'static 'skeleton-group
+              :name "skel-garage-tool-arm"
+              :extra #f
+              :info #f
+              :art-group-name "garage-tool-arm"
+              :bounds (new 'static 'vector :y -40960.0 :w 61440.0)
+              :version 8
+              :origin-joint-index 5
+              :clothing #f
+              )
+            )
+      )
+  (when #f
+    (set! (-> a0-2 clothing) (new 'static 'boxed-array :type cloth-params))
+    (set! (-> a0-2 clothing length) (-> a0-2 clothing allocated-length))
+    )
+  (set! (-> a0-2 jgeo) 0)
+  (set! (-> a0-2 janim) 2)
+  (set! (-> a0-2 mgeo 0) 1)
+  (set! (-> a0-2 lod-dist 0) 4095996000.0)
+  (add-to-loading-level a0-2)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (garage-tool-arm)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (rlet ((vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           )
+      (init-vf0-vector)
+      (case message
+        (('set-dest-local)
+         (when (= argc 1)
+           (let ((v1-2 (the-as object (-> block param 0)))
+                 (a0-2 (-> self dest))
+                 )
+             (.lvf vf4 (&-> (-> self root trans) quad))
+             (.lvf vf5 (&-> (the-as vector v1-2) quad))
+             (.mov.vf.w vf6 vf0)
+             (.add.vf.xyz vf6 vf4 vf5)
+             (.svf (&-> a0-2 quad) vf6)
+             )
+           (let ((v0-0 (logand -4 (-> self flags))))
+             (set! (-> self flags) v0-0)
+             v0-0
+             )
+           )
+         )
+        )
+      )
+    )
+  :trans (behavior ()
+    (garage-tool-arm-method-51 self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+;; definition for method 51 of type garage-tool-arm
+;; WARN: Return type mismatch int vs none.
+(defmethod garage-tool-arm-method-51 ((this garage-tool-arm))
+  (cond
+    ((logtest? (-> this flags) 1)
+     (when (not (logtest? (-> this flags) 2))
+       (let* ((f30-0 (-> this arm-lengths 0))
+              (f28-0 (+ (-> this arm-lengths 1) (-> this arm-lengths 2) (-> this arm-lengths 3)))
+              (f22-0 (square f30-0))
+              (f20-0 (square f28-0))
+              (s5-0 (new 'stack-no-clear 'vector))
+              )
+         0.0
+         0.0
+         0.0
+         (let* ((s4-0 (-> this node-list data 6 bone))
+                (a3-0 (matrix->quaternion (new 'stack-no-clear 'quaternion) (-> s4-0 transform)))
+                )
+           (vector-world-to-local! s5-0 (-> this dest) (-> s4-0 transform trans) a3-0)
+           )
+         (let* ((f26-0 (-> s5-0 x))
+                (f24-0 (-> s5-0 y))
+                (f22-1 (acos (/ (- (- (+ (square f26-0) (square f24-0)) f22-0) f20-0) (* 2.0 f28-0 f30-0))))
+                )
+           (set! (-> this dest-angles 1) f22-1)
+           (let ((f28-1 (+ (* f28-0 (cos f22-1)) f30-0))
+                 (f0-19 (* f30-0 (sin f22-1)))
+                 )
+             (set! (-> this dest-angles 0) (atan (- (* f24-0 f28-1) (* f26-0 f0-19)) (+ (* f26-0 f28-1) (* f24-0 f0-19))))
+             )
+           )
+         )
+       (logior! (-> this flags) 2)
+       )
+     (let ((s5-1 (new 'stack-no-clear 'quaternion)))
+       (quaternion-rotate-local-z! s5-1 (new 'static 'quaternion :w 1.0) (-> this dest-angles 0))
+       (quaternion-smooth-seek!
+         (-> this elbow 0 rotation)
+         (-> this elbow 0 rotation)
+         s5-1
+         (* 0.75 (seconds-per-frame))
+         )
+       (quaternion-rotate-local-z! s5-1 (new 'static 'quaternion :w 1.0) (-> this dest-angles 1))
+       (quaternion-smooth-seek!
+         (-> this elbow 1 rotation)
+         (-> this elbow 1 rotation)
+         s5-1
+         (* 0.75 (seconds-per-frame))
+         )
+       )
+     )
+    (else
+      (let ((s5-2 (new 'stack-no-clear 'quaternion)))
+        (let ((s4-1 (new 'stack-no-clear 'vector)))
+          (vector-xz-! s4-1 (-> this dest) (-> this root trans))
+          (vector-normalize! s4-1 1.0)
+          (quaternion-look-at! s5-2 s4-1 *up-vector*)
+          )
+        (quaternion-smooth-seek! (-> this track rotation) (-> this track rotation) s5-2 (* 0.75 (seconds-per-frame)))
+        (quaternion-smooth-seek!
+          (-> this elbow 0 rotation)
+          (-> this elbow 0 rotation)
+          *unity-quaternion*
+          (* 0.75 (seconds-per-frame))
+          )
+        (quaternion-smooth-seek!
+          (-> this elbow 1 rotation)
+          (-> this elbow 1 rotation)
+          *unity-quaternion*
+          (* 0.75 (seconds-per-frame))
+          )
+        (when (and (< 0.9990487 (fabs (-> (quaternion*!
+                                            (new 'stack-no-clear 'quaternion)
+                                            (quaternion-inverse! (new 'stack-no-clear 'quaternion) (-> this track rotation))
+                                            s5-2
+                                            )
+                                          w
+                                          )
+                                      )
+                      )
+                   (< 0.9990487 (fabs (-> (quaternion*!
+                                            (new 'stack-no-clear 'quaternion)
+                                            (quaternion-inverse! (new 'stack-no-clear 'quaternion) (-> this elbow 0 rotation))
+                                            *unity-quaternion*
+                                            )
+                                          w
+                                          )
+                                      )
+                      )
+                   (< 0.9990487 (fabs (-> (quaternion*!
+                                            (new 'stack-no-clear 'quaternion)
+                                            (quaternion-inverse! (new 'stack-no-clear 'quaternion) (-> this elbow 1 rotation))
+                                            *unity-quaternion*
+                                            )
+                                          w
+                                          )
+                                      )
+                      )
+                   )
+          (quaternion-copy! (-> this track rotation) s5-2)
+          (quaternion-copy! (-> this elbow 0 rotation) *unity-quaternion*)
+          (quaternion-copy! (-> this elbow 1 rotation) *unity-quaternion*)
+          (logior! (-> this flags) 1)
+          )
+        (add-debug-quaternion #t (bucket-id bucket793) (-> this root trans) s5-2)
+        )
+      )
+    )
+  (add-debug-quaternion #t (bucket-id bucket793) (-> this root trans) (-> this track rotation))
+  (add-debug-sphere #t (bucket-id bucket793) (-> this dest) (meters 0.5) *color-blue*)
+  (let* ((s5-3 (-> this node-list data 5 bone))
+         (a3-9 (matrix->quaternion (new 'stack-no-clear 'quaternion) (-> s5-3 transform)))
+         )
+    (add-debug-quaternion #t (bucket-id bucket793) (-> s5-3 transform trans) a3-9)
+    )
+  (let* ((s5-4 (-> this node-list data 6 bone))
+         (a3-10 (matrix->quaternion (new 'stack-no-clear 'quaternion) (-> s5-4 transform)))
+         )
+    (add-debug-quaternion #t (bucket-id bucket793) (-> s5-4 transform trans) a3-10)
+    )
+  (let* ((gp-1 (-> this node-list data 7 bone))
+         (a3-11 (matrix->quaternion (new 'stack-no-clear 'quaternion) (-> gp-1 transform)))
+         )
+    (add-debug-quaternion #t (bucket-id bucket793) (-> gp-1 transform trans) a3-11)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type garage-tool-arm
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition of type garage-turntable
+(deftype garage-turntable (process-drawable)
+  ((dest-trans       vector         :inline)
+   (dest-quat        quaternion     :inline)
+   (rotv             float)
+   (flags            uint64)
+   (plat-sound-id    uint32)
+   (room-sound-id    uint32)
+   (speed            float)
+   (vehicle-pos      vector         :inline)
+   (smush            smush-control  :inline)
+   (auto-rotate?     basic)
+   (no-pad           basic)
+   (lift-sound-id    uint32)
+   (turn-start-time  uint64)
+   )
+  (:state-methods
+    up
+    down
+    )
+  (:methods
+    (garage-turntable-method-52 (_type_) none)
+    (garage-turntable-method-53 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type garage-turntable
+(defmethod inspect ((this garage-turntable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tdest-trans: #<vector @ #x~X>~%" (-> this dest-trans))
+  (format #t "~2Tdest-quat: #<quaternion @ #x~X>~%" (-> this dest-quat))
+  (format #t "~2Trotv: ~f~%" (-> this rotv))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tplat-sound-id: ~D~%" (-> this plat-sound-id))
+  (format #t "~2Troom-sound-id: ~D~%" (-> this room-sound-id))
+  (format #t "~2Tspeed: ~f~%" (-> this speed))
+  (format #t "~2Tvehicle-pos: #<vector @ #x~X>~%" (-> this vehicle-pos))
+  (format #t "~2Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~2Tauto-rotate?: ~A~%" (-> this auto-rotate?))
+  (format #t "~2Tno-pad: ~A~%" (-> this no-pad))
+  (format #t "~2Tlift-sound-id: ~D~%" (-> this lift-sound-id))
+  (format #t "~2Tturn-start-time: ~D~%" (-> this turn-start-time))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(let ((a0-8 (new 'static 'skeleton-group
+              :name "skel-garage-turntable"
+              :extra #f
+              :info #f
+              :art-group-name "garage-turntable"
+              :bounds (new 'static 'vector :w 20480.0)
+              :version 8
+              :origin-joint-index 3
+              :clothing #f
+              )
+            )
+      )
+  (when #f
+    (set! (-> a0-8 clothing) (new 'static 'boxed-array :type cloth-params))
+    (set! (-> a0-8 clothing length) (-> a0-8 clothing allocated-length))
+    )
+  (set! (-> a0-8 jgeo) 0)
+  (set! (-> a0-8 janim) 2)
+  (set! (-> a0-8 mgeo 0) 1)
+  (set! (-> a0-8 lod-dist 0) 4095996000.0)
+  (add-to-loading-level a0-8)
+  )
+
+;; failed to figure out what this is:
+(let ((gp-1
+        (new 'static 'state :name 'up :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
+        )
+      )
+  (method-set! garage-turntable 51 gp-1)
+  (set! (-> gp-1 event) (the-as (function process int symbol event-message-block object) L72))
+  (set! (-> gp-1 enter) L80)
+  (set! (-> gp-1 trans) (the-as (function object) L71))
+  (set! (-> gp-1 code) L69)
+  (set! (-> gp-1 post) ja-post)
+  )
+
+;; failed to figure out what this is:
+(let ((gp-2
+        (new 'static 'state :name 'down :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
+        )
+      )
+  (method-set! garage-turntable 50 gp-2)
+  (set! (-> gp-2 event) (the-as (function process int symbol event-message-block object) L62))
+  (set! (-> gp-2 enter) L68)
+  (set! (-> gp-2 trans) (the-as (function object) L61))
+  (set! (-> gp-2 code) L59)
+  (set! (-> gp-2 post) ja-post)
+  )
+
+;; definition for method 53 of type garage-turntable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod garage-turntable-method-53 ((this garage-turntable))
+  (when (logtest? (-> this flags) 1)
+    (if (< (-> this dest-trans y) (-> this root trans y))
+        (vector-smooth-seek! (-> this root trans) (-> this dest-trans) (* 4.0 (seconds-per-frame) (-> this speed)))
+        (vector-smooth-seek! (-> this root trans) (-> this dest-trans) (* 3.0 (seconds-per-frame) (-> this speed)))
+        )
+    (cond
+      ((not (logtest? (-> this flags) 2))
+       (when (logtest? (-> this draw status) (draw-control-status on-screen))
+         (let ((v1-19 (make-sound-instance (-> *sound-info* 634) (the-as int (-> this lift-sound-id)) (the-as handle #f))))
+           (set! (-> this lift-sound-id) (the-as uint (if v1-19
+                                                          (the-as int (-> v1-19 id))
+                                                          0
+                                                          )
+                                                 )
+                 )
+           )
+         )
+       (when (< (fabs (- (-> this root trans y) (-> this dest-trans y))) 2048.0)
+         (logior! (-> this flags) 2)
+         (when (logtest? (-> this draw status) (draw-control-status on-screen))
+           (let ((v1-31 (make-sound-instance (-> *sound-info* 635) 0 (the-as handle #f))))
+             (if v1-31
+                 (-> v1-31 id)
+                 0
+                 )
+             )
+           )
+         )
+       )
+      (else
+        (sound-stop (the-as sound-id (-> this lift-sound-id)) #t)
+        (set! (-> this lift-sound-id) (the-as uint 0))
+        0
+        )
+      )
+    (set! (-> this vehicle-pos quad) (-> this root trans quad))
+    (when (< (fabs (- (-> this root trans y) (-> this dest-trans y))) 40.96)
+      (logand! (-> this flags) -2)
+      (set! (-> this speed) 1.0)
+      )
+    )
+  (when (nonzero? (-> this room-sound-id))
+    (let ((v1-46 (make-sound-instance (-> *sound-info* 356) (the-as int (-> this room-sound-id)) (the-as handle #f))))
+      (cond
+        (v1-46
+          (logior! (-> v1-46 flags) 320)
+          (-> v1-46 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 52 of type garage-turntable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod garage-turntable-method-52 ((this garage-turntable))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (-> this root rot)))
+      (when (not (-> this no-pad))
+        (let* ((f30-1 (* 3.0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0)))
+               (f1-0 (* 3.0 (analog-input (the-as int (-> *cpad-list* cpads 1 rightx)) 128.0 48.0 110.0 -1.0)))
+               (f28-1 (fmax -3.0 (fmin 3.0 (+ f30-1 f1-0))))
+               )
+          (if (and (logtest? (-> this flags) 1) (= f28-1 0.0))
+              (set! f28-1 (* -1.5 (-> this speed)))
+              )
+          (cond
+            ((and (-> this auto-rotate?) (and (= f28-1 0.0) (time-elapsed? (-> this state-time) (seconds 5))))
+             (set! f28-1 (* -0.3 (-> this speed)))
+             #t
+             )
+            ((!= f28-1 0.0)
+             (set-time! (-> this state-time))
+             )
+            )
+          (cond
+            ((= f28-1 0.0)
+             (when (and (logtest? (-> this draw status) (draw-control-status on-screen))
+                        (not (logtest? (-> this flags) 8))
+                        (< 2.0 (fabs (-> this rotv)))
+                        )
+               (logior! (-> this flags) 8)
+               (let ((v0-2 (make-sound-instance (-> *sound-info* 642) 0 (the-as handle #f))))
+                 (if v0-2
+                     (-> v0-2 id)
+                     0
+                     )
+                 )
+               )
+             (+! (-> this rotv) (* (- f28-1 (-> this rotv)) (fmin 1.0 (* 5.0 (seconds-per-frame)))))
+             )
+            (else
+              (logand! (-> this flags) -9)
+              (+! (-> this rotv) (* (- f28-1 (-> this rotv)) (fmin 1.0 (* 3.0 (seconds-per-frame)))))
+              )
+            )
+          (let ((f30-2 (fabs (-> this rotv))))
+            (when (= f28-1 0.0)
+              (let* ((f28-2 (* 0.33333334 (fabs (-> this rotv))))
+                     (f26-0 10.0)
+                     (f24-0 5.0)
+                     (v1-57 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                     (v1-58 (the-as number (logior #x3f800000 v1-57)))
+                     (s4-0 (the int (* f28-2 (+ f26-0 (* f24-0 (+ -1.0 (the-as float v1-58)))))))
+                     )
+                (dotimes (s3-0 s4-0)
+                  (let* ((f28-3 10.0)
+                         (f26-1 40.0)
+                         (v1-62 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                         (v1-63 (the-as number (logior #x3f800000 v1-62)))
+                         (f28-4 (the float (the int (+ f28-3 (* f26-1 (+ -1.0 (the-as float v1-63)))))))
+                         (sv-336 (quaternion-copy! (new 'stack-no-clear 'quaternion) (the-as quaternion s5-0)))
+                         (s2-0 (new 'stack-no-clear 'vector))
+                         (s0-0 (new 'stack-no-clear 'vector))
+                         (s1-0 (new 'stack-no-clear 'vector))
+                         )
+                    (let ((f26-2 (- (sign (-> this rotv)))))
+                      (let* ((sv-160 quaternion-rotate-local-y!)
+                             (sv-176 sv-336)
+                             (sv-192 sv-336)
+                             (f24-1 182.04445)
+                             (f22-0 360.0)
+                             (v1-70 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                             (v1-71 (the-as number (logior #x3f800000 v1-70)))
+                             )
+                        (sv-160 sv-176 sv-192 (* f24-1 (* f22-0 (+ -1.0 (the-as float v1-71)))))
+                        )
+                      (vector-normalize! (vector-z-quaternion! s2-0 sv-336) 29696.0)
+                      (let ((a0-20 s2-0))
+                        (let ((v1-74 s2-0)
+                              (a1-8 (-> this root trans))
+                              )
+                          (.lvf vf4 (&-> v1-74 quad))
+                          (.lvf vf5 (&-> a1-8 quad))
+                          )
+                        (.mov.vf.w vf6 vf0)
+                        (.add.vf.xyz vf6 vf4 vf5)
+                        (.svf (&-> a0-20 quad) vf6)
+                        )
+                      (let* ((sv-224 quaternion-rotate-local-x!)
+                             (sv-240 sv-336)
+                             (sv-256 sv-336)
+                             (f24-2 182.04445)
+                             (f22-1 20.0)
+                             (v1-80 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                             (v1-81 (the-as number (logior #x3f800000 v1-80)))
+                             )
+                        (sv-224 sv-240 sv-256 (* f24-2 (* f22-1 (+ -1.0 (the-as float v1-81)))))
+                        )
+                      (let* ((sv-272 quaternion-rotate-local-z!)
+                             (sv-288 sv-336)
+                             (sv-304 sv-336)
+                             (f24-3 182.04445)
+                             (f22-2 60.0)
+                             (f20-0 10.0)
+                             (v1-89 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                             (v1-90 (the-as number (logior #x3f800000 v1-89)))
+                             )
+                        (sv-272 sv-288 sv-304 (* f24-3 (* f26-2 (+ f22-2 (* f20-0 (+ -1.0 (the-as float v1-90)))))))
+                        )
+                      )
+                    (vector-normalize! (vector-y-quaternion! s0-0 sv-336) (* 4096.0 (fmax 15.0 (* 8.0 f30-2))))
+                    (let ((t9-17 vector-normalize!)
+                          (a0-31 s1-0)
+                          )
+                      (set! (-> a0-31 quad) (-> s0-0 quad))
+                      (t9-17 a0-31 -819.2)
+                      )
+                    (let* ((f26-3 4096.0)
+                           (f24-4 0.35)
+                           (f22-3 0.15)
+                           (v1-101 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                           (v1-102 (the-as number (logior #x3f800000 v1-101)))
+                           )
+                      (set! (-> s1-0 y) (* f26-3 (- (+ f24-4 (* f22-3 (+ -1.0 (the-as float v1-102)))))))
+                      )
+                    (let ((sv-352 (new 'stack-no-clear 'inline-array 'vector 18)))
+                      (set! (-> sv-352 0 quad) (-> s2-0 quad))
+                      (set! (-> sv-352 1 quad) (-> s0-0 quad))
+                      (set! (-> sv-352 2 quad) (-> s1-0 quad))
+                      (set! (-> sv-352 3 x) f28-4)
+                      (let* ((v1-112 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                             (v1-113 (the-as number (logior #x3f800000 v1-112)))
+                             )
+                        (set! (-> sv-352 3 y) (+ -1.0 (the-as float v1-113)))
+                        )
+                      (set! (-> sv-352 3 z) (-> s2-0 y))
+                      (set! (-> sv-352 3 w) 1.0)
+                      (set! (-> sv-352 4 x) 0.0)
+                      (sparks-work-method-10 *sparks-work* sv-352)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (let ((f30-3 (* 0.33333334 (fabs (-> this rotv)))))
+          (cond
+            ((logtest? (-> this draw status) (draw-control-status on-screen))
+             (let ((v0-21 (make-sound-instance (-> *sound-info* 357) (the-as int (-> this plat-sound-id)) (the-as handle #f))))
+               (cond
+                 (v0-21
+                   (set! (-> v0-21 volume) (the int (* 1024.0 (if (< 0.1 (fabs (-> this rotv)))
+                                                                  (fmax 0.45 f30-3)
+                                                                  0.0
+                                                                  )
+                                                       )
+                                                )
+                         )
+                   (set! (-> v0-21 pitch-mod) (the int (* 1524.0 (+ -0.1 (/ f30-3 10)))))
+                   (logior! (-> v0-21 flags) 64)
+                   (logior! (-> v0-21 mask) 1)
+                   (the-as int (-> v0-21 id))
+                   )
+                 (else
+                   0
+                   )
+                 )
+               )
+             )
+            (else
+              (sound-stop (the-as sound-id (-> this plat-sound-id)) #t)
+              )
+            )
+          )
+        (quaternion-rotate-local-y!
+          (the-as quaternion s5-0)
+          (the-as quaternion s5-0)
+          (* 10922.667 (-> this rotv) (seconds-per-frame))
+          )
+        )
+      (when *lobby-menu-manager*
+        (let ((s4-1 (get-vehicle *lobby-menu-manager*)))
+          (cond
+            (s4-1
+              (vehicle-method-111 s4-1 (-> this vehicle-pos) (the-as quaternion s5-0))
+              (set! (-> s4-1 rbody ang-velocity y) (* 1.0471667 (-> this rotv)))
+              )
+            (else
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 10 of type garage-turntable
+(defmethod deactivate ((this garage-turntable))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (sound-stop (the-as sound-id (-> this plat-sound-id)) #t)
+  (sound-stop (the-as sound-id (-> this room-sound-id)) #t)
+  (sound-stop (the-as sound-id (-> this lift-sound-id)) #t)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 11 of type garage-turntable
+(defmethod init-from-entity! ((this garage-turntable) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-garage-turntable" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this plat-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> this room-sound-id) (the-as uint (new-sound-id)))
+  (set! (-> this speed) 1.0)
+  (set! (-> this auto-rotate?) (the-as basic #t))
+  (set! (-> this no-pad) #f)
+  (+! (-> this root trans y) -57344.0)
+  (go (method-of-object this up))
+  )
+
+;; definition of type garage-car-arm
+(deftype garage-car-arm (process-drawable)
+  ((arm-rot  joint-mod-rotate-local  :inline)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (garage-car-arm-method-51 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type garage-car-arm
+(defmethod inspect ((this garage-car-arm))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tarm-rot: #<joint-mod-rotate-local @ #x~X>~%" (-> this arm-rot))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(let ((a0-17 (new 'static 'skeleton-group
+               :name "skel-garage-car-arm"
+               :extra #f
+               :info #f
+               :art-group-name "garage-car-arm"
+               :bounds (new 'static 'vector :y -26624.0 :w 34816.0)
+               :version 8
+               :clothing #f
+               )
+             )
+      )
+  (when #f
+    (set! (-> a0-17 clothing) (new 'static 'boxed-array :type cloth-params))
+    (set! (-> a0-17 clothing length) (-> a0-17 clothing allocated-length))
+    )
+  (set! (-> a0-17 jgeo) 0)
+  (set! (-> a0-17 janim) 2)
+  (set! (-> a0-17 mgeo 0) 1)
+  (set! (-> a0-17 lod-dist 0) 4095996000.0)
+  (add-to-loading-level a0-17)
+  )
+
+;; definition for function set-mult
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint128 vs none.
+(defun set-mult ((arg0 process-drawable))
+  (let ((v0-0 (-> (new 'static 'vector :x 0.4 :y 0.4 :z 0.4 :w 1.0) quad)))
+    (set! (-> arg0 draw color-mult quad) v0-0)
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(let ((gp-3
+        (new 'static 'state :name 'idle :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
+        )
+      )
+  (method-set! garage-car-arm 50 gp-3)
+  (set! (-> gp-3 enter) L18)
+  (set! (-> gp-3 trans) (the-as (function object) L17))
+  (set! (-> gp-3 code) L15)
+  (set! (-> gp-3 post) ja-post)
+  )
+
+;; definition for method 51 of type garage-car-arm
+;; WARN: Return type mismatch int vs none.
+(defmethod garage-car-arm-method-51 ((this garage-car-arm))
+  (quaternion-identity! (-> this arm-rot rotation))
+  (let* ((f0-2 (sin (* 100.0 (the float (current-time)))))
+         (f0-3 (lerp-scale -2.0 2.0 f0-2 -1.0 1.0))
+         )
+    (quaternion-rotate-x! (-> this arm-rot rotation) (-> this arm-rot rotation) (* 182.04445 f0-3))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type garage-car-arm
+(defmethod init-from-entity! ((this garage-car-arm) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-garage-car-arm" (the-as (pointer level) #f))
+    0
+    )
+  (+! (-> this root trans y) 8192.0)
+  (quaternion-rotate-local-y!
+    (the-as quaternion (-> this root rot))
+    (the-as quaternion (-> this root rot))
+    5461.3335
+    )
+  (init (-> this arm-rot) this (the-as uint 8) (joint-mod-base-flags attached))
+  (go (method-of-object this idle))
+  )
+
+;; definition of type garage-sliding-door
+(deftype garage-sliding-door (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type garage-sliding-door
+(defmethod inspect ((this garage-sliding-door))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(let ((a0-23 (new 'static 'skeleton-group
+               :name "skel-garage-sliding-door"
+               :extra #f
+               :info #f
+               :art-group-name "garage-sliding-door"
+               :bounds (new 'static 'vector :w 122880.0)
+               :version 8
+               :clothing #f
+               )
+             )
+      )
+  (when #f
+    (set! (-> a0-23 clothing) (new 'static 'boxed-array :type cloth-params))
+    (set! (-> a0-23 clothing length) (-> a0-23 clothing allocated-length))
+    )
+  (set! (-> a0-23 jgeo) 0)
+  (set! (-> a0-23 janim) 2)
+  (set! (-> a0-23 mgeo 0) 1)
+  (set! (-> a0-23 lod-dist 0) 4095996000.0)
+  (add-to-loading-level a0-23)
+  )
+
+;; failed to figure out what this is:
+(let ((gp-4
+        (new 'static 'state :name 'idle :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
+        )
+      )
+  (method-set! garage-sliding-door 50 gp-4)
+  (set! (-> gp-4 event) (the-as (function process int symbol event-message-block object) L9))
+  (set! (-> gp-4 code) L3)
+  (set! (-> gp-4 post) ja-post)
+  )
+
+;; definition for method 11 of type garage-sliding-door
+(defmethod init-from-entity! ((this garage-sliding-door) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-garage-sliding-door" (the-as (pointer level) #f))
+    0
+    )
+  (if (nonzero? (-> this draw))
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      )
+  (go (method-of-object this idle))
+  )
+
+
+
+
