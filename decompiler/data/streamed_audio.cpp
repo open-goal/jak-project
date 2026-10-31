@@ -394,11 +394,10 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
   }
 }
 
-void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
+void process_sfx(const Config& config, const fs::path& output_path, const fs::path& input_dir) {
   auto dir = input_dir / "SBK";
   std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
   double audio_len = 0.f;
-
   // Create a fake player that will generate the samples to play the sounds exactly as they are in
   // the games :)
   snd::FakePlayer fakeplayer;
@@ -406,25 +405,41 @@ void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
   const s64 TEN_SECONDS = snd::SAMPLE_RATE * 10;
   left_samples.reserve(TEN_SECONDS);
   right_samples.reserve(TEN_SECONDS);
+
+  // Load JakX's common block if the game is JakX
+  // Some JakX SFX blocks need sound effects from the common block
+  // We will keep this and only unload it at the end.
+  snd::SFXBlock* jakxCommonBlock = nullptr;
+  if (config.game_version == GameVersion::JakX) {
+    auto data = file_util::read_binary_file(dir / "COMMON.SBK");
+    // No need to check for bank_offset within file as this file isn't from jak 1
+    jakxCommonBlock = (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data));
+  }
+
   for (auto& sbk : sbkFiles) {
     auto sbk_name = sbk.filename().replace_extension("");
-    auto data = file_util::read_binary_file(sbk);
-
-    const size_t bank_offset = find_bank_offset(data);  // Find where the sfx bank starts
+    snd::SFXBlock* block;
     std::vector<std::string> sfx_names;
-    if (bank_offset == SIZE_MAX) {
-      lg::error("'{}' is not a valid .SBK bank.", sbk_name.string());
-      return;
-    }
-    if (bank_offset > 0) {
-      std::string bank_name;
-      parse_jak1_name_table(data, bank_offset, bank_name, sfx_names);
+    // If looking for a common block and this is JakX, use the common block we already loaded!
+    if (config.game_version == GameVersion::JakX && sbk_name.string() == "COMMON") {
+      block = jakxCommonBlock;
+    } else {
+      auto data = file_util::read_binary_file(sbk);
+      const size_t bank_offset = find_bank_offset(data);  // Find where the sfx bank starts
+      if (bank_offset == SIZE_MAX) {
+        lg::error("'{}' is not a valid .SBK bank.", sbk_name.string());
+        return;
+      }
+      if (bank_offset > 0) {
+        std::string bank_name;
+        parse_jak1_name_table(data, bank_offset, bank_name, sfx_names);
+      }
+
+      block = (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
     }
 
     auto output_folder = output_path / sbk_name;
     file_util::create_dir_if_needed(output_folder);
-    snd::SFXBlock* block =
-        (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
     std::map<u32, std::string> names_by_index;
     for (const auto& [name, index] : block->Names) {
@@ -450,10 +465,14 @@ void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
       left_samples.clear();
       right_samples.clear();
     }
-
-    fakeplayer.UnloadBank(block);
+    // Only unload blocks that aren't Jak X's common block
+    if (config.game_version != GameVersion::JakX || sbk_name.string() != "COMMON")
+      fakeplayer.UnloadBank(block);
     lg::info("File {}, total {:.2f} minutes", sbk.filename().string(), audio_len / 60.0);
   }
+  // Now that we've finished, we can unload Jak X's common block.
+  if (config.game_version == GameVersion::JakX)
+    fakeplayer.UnloadBank(jakxCommonBlock);
 }
 
 void process_streamed_audio(const decompiler::Config& config,

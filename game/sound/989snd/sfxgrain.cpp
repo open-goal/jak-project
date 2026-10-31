@@ -2,6 +2,7 @@
 
 #include "blocksound_handler.h"
 #include "lfo.h"
+#include "loader.h"
 #include "plugin.h"
 
 #include "common/log/log.h"
@@ -204,10 +205,25 @@ s32 Grain::snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(BlockSoundHandler& handler) {
 s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {
   auto psp = std::get<PlaySoundParams>(data);
   s32 index = psp.sound_id;
+  auto block = static_cast<SFXBlock*>(&handler.Bank());
   if (index <= -1) {
-    lg::error("Unsupported BRANCH sound not specified by ID");
-    // unsure exactly how this case worked
-    return 0;
+    // Need to look up the sound by name in another loaded sound bank
+    // This is likely COMMON.SBK in the case of Jak X
+    // This is the only game where this happens. COMMON.SBK is also likely
+    // the only soundbank used by others.
+    std::optional<u32> result = std::nullopt;
+    if (block->m_loader) {
+      block = static_cast<snd::SFXBlock*>(block->m_loader->GetBankWithSound(psp.snd_name));
+      if (block)
+        result = block->GetSoundByName(psp.snd_name);
+    }
+
+    if (result.has_value()) {
+      index = result.value();
+    } else {
+      lg::error("Could not find {} ", psp.snd_name);
+      return 0;
+    }
   }
 
   // kill voices
@@ -222,8 +238,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {
     v->SetVolumeR(0);
   }
 
-  auto& block = static_cast<SFXBlock&>(handler.m_bank);
-  auto* new_sfx = &block.Sounds[index];
+  auto* new_sfx = &block->Sounds[index];
   if (new_sfx->Flags.has_instlimit()) {
     // TODO: not entirely straightforward.
   }
