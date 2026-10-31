@@ -1258,7 +1258,8 @@ void types2_for_add(types2::Type& type_out,
   }
 
   // get addr of field with a constant: obj + C1
-  if (arg1.is_int() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+  if (arg1.is_int() &&
+      (arg0_type.kind == TP_Type::Kind::TYPESPEC || arg0_type.is_constant_string())) {
     // access a field.
     FieldReverseLookupInput rd_in;
     rd_in.deref = std::nullopt;
