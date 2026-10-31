@@ -7,3 +7,52 @@
 
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(define *sampler-mem* (the-as pointer #f))
+
+(define *sampler-compare* (the-as uint 10))
+
+(define *sampler-count* 0)
+
+(define *sampler-above-range-count* 0)
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+(set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+
+(install-handler 9 timer0-handler)
+
+(defun-debug sampler-start ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (set! (-> (the-as timer-bank #x10000000) count) (the-as uint 0))
+  (set! (-> (the-as timer-bank #x10000000) comp) *sampler-compare*)
+  (if (not *sampler-mem*)
+      (set! *sampler-mem* (malloc 'debug #x1000000))
+      )
+  (when (nonzero? *sampler-mem*)
+    (mem-set32! *sampler-mem* #x400000 0)
+    (set! (-> (the-as timer-bank #x10000000) mode)
+          (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+          )
+    (set! *sampler-count* 0)
+    (set! *sampler-above-range-count* 0)
+    0
+    )
+  (none)
+  )
+
+(defun-debug sampler-stop ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (format
+    0
+    "samples: in-range ~d above-range ~d total ~d~%"
+    *sampler-count*
+    *sampler-above-range-count*
+    (+ *sampler-count* *sampler-above-range-count*)
+    )
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  0
+  (none)
+  )

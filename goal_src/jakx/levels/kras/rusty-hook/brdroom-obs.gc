@@ -7,3 +7,37 @@
 
 ;; DECOMP BEGINS
 
+(deftype brd-pool-water (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-brd-pool-water brd-pool-water brd-pool-water-lod0-jg brd-pool-water-idle-ja
+              ((brd-pool-water-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              )
+
+(defstate idle (brd-pool-water)
+  :virtual #t
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this brd-pool-water) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-brd-pool-water" (the-as (pointer level) #f))
+    0
+    )
+  (go (method-of-object this idle))
+  )

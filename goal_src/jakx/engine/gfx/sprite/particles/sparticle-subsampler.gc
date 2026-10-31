@@ -7,3 +7,86 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch int vs vector.
+(defmethod init-with-vec! ((this sparticle-subsampler) (arg0 vector))
+  (when (not (-> this inited?))
+    (set! (-> this spawn-mat trans quad) (-> arg0 quad))
+    (set! (-> this accum) 0.0)
+    (set! (-> this inited?) #t)
+    )
+  (let ((f30-0 (-> this spt-num)))
+    (when (-> this per-meter-method?)
+      (let ((f1-0 (vector-vector-distance arg0 (-> this spawn-mat trans))))
+        (set! f30-0 (fmax
+                      (fmin 8.0 (+ (* (/ f1-0 METER_LENGTH) (-> this spt-num)) (-> this accum)))
+                      (* (-> this min-emit) (seconds-per-frame))
+                      )
+              )
+        )
+      0
+      )
+    (set! (-> *part-id-table* (-> this part-id) birthaccum) 0.0)
+    (let ((f28-0 (/ 1.0 f30-0)))
+      0.0
+      (let ((s4-0 (new 'stack-no-clear 'matrix)))
+        (matrix-copy! s4-0 (-> this spawn-mat))
+        (dotimes (s3-0 (the int f30-0))
+          (let ((f0-8 (* f28-0 (the float s3-0))))
+            (vector-lerp! (-> s4-0 trans) arg0 (-> this spawn-mat trans) f0-8)
+            )
+          (launch-particles
+            :system (-> this sp-system)
+            (-> *part-id-table* (-> this part-id))
+            s4-0
+            :origin-is-matrix #t
+            )
+          )
+        )
+      )
+    (set! (-> this accum) (- f30-0 (the float (the int f30-0))))
+    )
+  (set! (-> this spawn-mat trans quad) (-> arg0 quad))
+  (the-as vector 0)
+  )
+
+;; WARN: Return type mismatch int vs matrix.
+(defmethod init-with-mat! ((this sparticle-subsampler) (arg0 matrix))
+  (when (not (-> this inited?))
+    (matrix-copy! (-> this spawn-mat) arg0)
+    (set! (-> this accum) 0.0)
+    (set! (-> this inited?) #t)
+    )
+  (let ((f30-0 (-> this spt-num)))
+    (when (-> this per-meter-method?)
+      (let ((f1-0 (vector-vector-distance (-> arg0 trans) (-> this spawn-mat trans))))
+        (set! f30-0 (fmax
+                      (fmin 8.0 (+ (* (/ f1-0 METER_LENGTH) (-> this spt-num)) (-> this accum)))
+                      (* (-> this min-emit) (seconds-per-frame))
+                      )
+              )
+        )
+      0
+      )
+    (set! (-> *part-id-table* (-> this part-id) birthaccum) 0.0)
+    (let ((f28-0 (/ 1.0 (-> this spt-num))))
+      0.0
+      (let ((s4-0 (new 'stack-no-clear 'matrix)))
+        (matrix-copy! s4-0 arg0)
+        (dotimes (s3-0 (the int f30-0))
+          (let ((f0-8 (* f28-0 (the float s3-0))))
+            (vector-lerp! (-> s4-0 trans) (-> arg0 trans) (-> this spawn-mat trans) f0-8)
+            )
+          (launch-particles
+            :system (-> this sp-system)
+            (-> *part-id-table* (-> this part-id))
+            s4-0
+            :origin-is-matrix #t
+            )
+          )
+        )
+      )
+    (set! (-> this accum) (- f30-0 (the float (the int f30-0))))
+    )
+  (matrix-copy! (-> this spawn-mat) arg0)
+  (the-as matrix 0)
+  )

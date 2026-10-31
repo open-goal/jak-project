@@ -7,3 +7,256 @@
 
 ;; DECOMP BEGINS
 
+(defbehavior vehicle-idle-post vehicle ()
+  ((method-of-object (-> self rbody) rigid-body-control-method-28))
+  (rigid-body-control-method-11 (-> self rbody) (the-as vector (-> self root)))
+  (matrix-copy! (-> self node-list data 0 bone transform) (-> self rbody matrix))
+  (set! (-> self node-list data 0 bone transform trans quad) (-> self root trans quad))
+  (vehicle-method-112 self)
+  (rigid-body-object-method-61 self)
+  (update-transforms (-> self root))
+  (none)
+  )
+
+(defstate idle (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self water-height) -40960000.0)
+    (logior! (-> self v-flags) (vehicle-flag joints))
+    )
+  :code sleep-code
+  :post vehicle-idle-post
+  )
+
+(defstate inactive (vehicle)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('nav-mesh-kill 'traffic-activate 'traffic-off-force 'traffic-off 'rider-on 'rider-off)
+       (rigid-body-object-method-81 self)
+       )
+      )
+    )
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status disable inactive))
+    (rigid-body-object-method-73 self)
+    (rigid-body-object-method-75 self)
+    (vehicle-method-126 self)
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    )
+  :exit (behavior ()
+    (rigid-body-object-method-74 self)
+    (logclear! (-> self focus-status) (focus-status disable inactive))
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    )
+  :code sleep-code
+  )
+
+(defstate waiting (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (vehicle-method-170 self)
+    (logclear! (-> self v-flags) (vehicle-flag riding player-driving player-owned))
+    (update-transforms (-> self root))
+    (vehicle-method-172 self)
+    )
+  :trans #f
+  :code sleep-code
+  :post (behavior ()
+    (rigid-body-object-method-61 self)
+    )
+  )
+
+(defun player-wait-control-hook ((arg0 vehicle))
+  (let ((gp-0 (new 'stack-no-clear 'vehicle-controls)))
+    (mem-set32! (-> gp-0 dataf) 6 0)
+    (vehicle-method-129 arg0 (the-as vehicle-controls (-> gp-0 dataf)))
+    (set! (-> gp-0 handbrake) 1.0)
+    (logand! (-> gp-0 flags) -16)
+    (vehicle-method-133 arg0 (the-as vehicle-controls (-> gp-0 dataf)))
+    )
+  0
+  (none)
+  )
+
+(defstate player-control (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (set! (-> self focus-status) (the-as focus-status (logior (focus-status fs35) (-> self focus-status))))
+    (set! (-> self control-hook)
+          (the-as (function vehicle vehicle-controls) (method-of-object self vehicle-method-132))
+          )
+    (set-time! (-> self state-time))
+    (vehicle-method-169 self)
+    (logior! (-> self v-flags) (vehicle-flag riding player-driving player-owned nav-spheres))
+    (logclear! (-> self v-flags) (vehicle-flag reverse-gear camera-look-mode))
+    (logand!
+      (-> self vehicle-unk-handle)
+      (new 'static 'handle :process #xfffbffff :pid #xffffffff :u64 #xfffffffffffbffff)
+      )
+    (set! (-> self controls flags) (the-as uint 0))
+    (set! (-> self controls prev-flags) (the-as uint 0))
+    (set! (-> self max-time-step) 0.02631579)
+    (rigid-body-object-method-72 self)
+    (vehicle-method-121 self)
+    (let ((gp-1 (logtest? (vehicle-flag camera) (-> self v-flags))))
+      (vehicle-method-125 self)
+      (setting-control-method-15 *setting-control* self 'blur-enabled? #t 0 0)
+      (when (not gp-1)
+        (send-event (view-get-active-camera) 'change-target self)
+        (send-event (view-get-active-camera) 'teleport self)
+        )
+      )
+    (set! (-> *setting-control* user-default unknown-usd-uint64) (the-as uint (process->handle self)))
+    )
+  :exit (behavior ()
+    (set! (-> self max-time-step) 0.05)
+    (setting-control-method-16 *setting-control* self 'blur-enabled?)
+    (vehicle-method-126 self)
+    (rigid-body-object-method-76 self)
+    (logclear! (-> self v-flags) (vehicle-flag player-driving reverse-gear camera-look-mode))
+    (set! (-> self controls flags) (the-as uint 0))
+    (set! (-> self controls prev-flags) (the-as uint 0))
+    0
+    )
+  :code sleep-code
+  :post (behavior ()
+    (vehicle-method-157 self)
+    )
+  )
+
+(defstate crash (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (go-virtual explode)
+    )
+  :code sleep-code
+  )
+
+(defstate explode (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (set! (-> self stack 1984) (the-as uint 0))
+    (vehicle-method-199 self)
+    (logclear! (-> self v-flags) (vehicle-flag riding remote-control))
+    (set-time! (-> self state-time))
+    (vehicle-method-162 self)
+    (vehicle-method-126 self)
+    (vehicle-method-154 self 'big-explosion)
+    (logior! (-> self v-flags) (vehicle-flag dead lights-dead))
+    (vehicle-method-164 self)
+    (vehicle-method-144 self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (vehicle-method-156 self)
+    )
+  )
+
+(defstate restart (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (vehicle-method-162 self)
+    (set! (-> self stack 1984) (the-as uint 1))
+    (set! (-> self killed-by) -1)
+    (set! (-> self killed-with) 0)
+    (set! (-> self vehicle-int32-1) (- (- (if *net-mgr*
+                                              (-> *net-mgr* game-state time)
+                                              0
+                                              )
+                                          (if *net-world*
+                                              (-> *net-world* net-state game-start-time)
+                                              0
+                                              )
+                                          )
+                                       (if *net-world*
+                                           (-> *net-world* net-state total-pause-time)
+                                           0
+                                           )
+                                       )
+          )
+    (vehicle-method-199 self)
+    (rigid-body-object-method-73 self)
+    (rigid-body-object-method-75 self)
+    (vehicle-method-126 self)
+    (vehicle-method-118 self)
+    (vehicle-method-144 self)
+    (if (and (logtest? (-> self v-flags) (vehicle-flag player-owned))
+             (if (= (/ (-> self player-id) 2) (if *net-mgr*
+                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                  0
+                                                  )
+                    )
+                 #t
+                 #f
+                 )
+             )
+        (setup
+          (-> *screen-filter-array* (logand (-> self player-id) 1))
+          (new 'static 'vector)
+          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 127.0))
+          30.0
+          (bucket-id bucket786)
+          #xfffffe
+          #x33001
+          (the-as symbol 0)
+          )
+        )
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 0.1))
+        (go-virtual die)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate die (vehicle)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self stack 1984) (the-as uint 1))
+    (vehicle-method-199 self)
+    )
+  :code (behavior ()
+    '()
+    )
+  )
+
+(defstate net-remote-control (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (vehicle-method-186 self)
+    )
+  :exit (behavior ()
+    (vehicle-method-188 self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (vehicle-method-187 self)
+    )
+  )
+
+(defstate ghost (vehicle)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (vehicle-method-189 self)
+    )
+  :exit (behavior ()
+    (vehicle-method-192 self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (vehicle-method-191 self)
+    )
+  )
