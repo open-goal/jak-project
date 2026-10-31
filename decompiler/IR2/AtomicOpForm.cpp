@@ -5,6 +5,7 @@
 
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/types2/types2.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
 
@@ -745,7 +746,15 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           tokens.push_back(to_token(x));
         }
 
-        return pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+        // cast to art-joint-anim if needed (will be dropped in later passes if it resolves to an
+        // art constant)
+        auto deref =
+            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+        if (auto elt_type = types2::self_art_element_load_type(env, *env.dts, m_my_idx, ro.reg,
+                                                               rd_in.base_type, rd.tokens)) {
+          return pool.alloc_single_element_form<CastElement>(nullptr, *elt_type, deref);
+        }
+        return deref;
       }
 
       if (ro.offset == 0 && input_type.kind == TP_Type::Kind::LABEL_ADDR) {

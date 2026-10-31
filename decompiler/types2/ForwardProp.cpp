@@ -4,6 +4,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/types2/types2.h"
 #include "decompiler/util/type_utils.h"
 
@@ -35,6 +36,100 @@ TypeSpec bitfield_field_type(const TypeSpec& bitfield_type, const BitField& fiel
   }
   return field.type();
 }
+
+/*!
+ * Find the op that last wrote reg before op_idx, without leaving op_idx's basic block.
+ */
+const AtomicOp* find_def_in_block(const FunctionAtomicOps& ops, int op_idx, Register reg) {
+  int block_start = -1;
+  for (size_t i = 0; i < ops.block_id_to_first_atomic_op.size(); i++) {
+    if (op_idx >= ops.block_id_to_first_atomic_op[i] && op_idx < ops.block_id_to_end_atomic_op[i]) {
+      block_start = ops.block_id_to_first_atomic_op[i];
+      break;
+    }
+  }
+  if (block_start == -1) {
+    return nullptr;
+  }
+
+  for (int i = op_idx - 1; i >= block_start; i--) {
+    const auto& op = ops.ops.at(i);
+    for (auto& w : op->write_regs()) {
+      if (w == reg) {
+        return op.get();
+      }
+    }
+  }
+  return nullptr;
+}
+
+/*!
+ * If def is a 4 byte unsigned load from base_reg + offset, return base_reg.
+ */
+std::optional<Register> pointer_load_base(const AtomicOp* def, int offset) {
+  auto load = dynamic_cast<const LoadVarOp*>(def);
+  if (!load || load->kind() != LoadVarOp::Kind::UNSIGNED || load->size() != 4) {
+    return {};
+  }
+  IR2_RegOffset ro;
+  if (!get_as_reg_offset(load->src(), &ro) || ro.offset != offset) {
+    return {};
+  }
+  return ro.reg;
+}
+
+int basic_field_offset(const DecompilerTypeSystem& dts,
+                       const std::string& type_name,
+                       const std::string& field_name) {
+  auto info = dts.ts.lookup_field_info(type_name, field_name);
+  return info.field.offset() - dts.ts.lookup_type(type_name)->get_offset();
+}
+
+/*!
+ * Is reg at op_idx (-> self draw art-group)?
+ */
+bool is_self_art_group(const Env& env, const DecompilerTypeSystem& dts, int op_idx, Register reg) {
+  if (!env.func->ir2.atomic_ops) {
+    return false;
+  }
+  const auto& ops = *env.func->ir2.atomic_ops;
+
+  auto art_group_def = find_def_in_block(ops, op_idx, reg);
+  auto draw_reg =
+      pointer_load_base(art_group_def, basic_field_offset(dts, "draw-control", "art-group"));
+  if (!draw_reg) {
+    return false;
+  }
+
+  auto draw_def = find_def_in_block(ops, art_group_def->op_id(), *draw_reg);
+  auto self_reg = pointer_load_base(draw_def, basic_field_offset(dts, "process-drawable", "draw"));
+  return self_reg && *self_reg == Register(Reg::GPR, Reg::S6);
+}
+
+namespace types2 {
+std::optional<TypeSpec> self_art_element_load_type(
+    const Env& env,
+    const DecompilerTypeSystem& dts,
+    int op_idx,
+    Register base_reg,
+    const TypeSpec& base_type,
+    const std::vector<FieldReverseLookupOutput::Token>& tokens) {
+  if (base_type != TypeSpec("art-group") || tokens.size() != 2 ||
+      tokens[0].kind != FieldReverseLookupOutput::Token::Kind::FIELD || tokens[0].name != "data" ||
+      tokens[1].kind != FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX) {
+    return {};
+  }
+  if (!is_self_art_group(env, dts, op_idx, base_reg)) {
+    return {};
+  }
+  auto name = env.get_art_elt_name(tokens[1].idx);
+  if (name && name->ends_with("-ja")) {
+    return TypeSpec("art-joint-anim");
+  }
+  return {};
+}
+}  // namespace types2
+
 /*!
  * Set up an instruction which sets its result to an ambiguous deref.
  * The possibilities are specified in FieldReverseMultiLookupOutput.
@@ -2224,6 +2319,11 @@ bool load_var_op_determine_type(types2::Type& type_out,
                 TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
             return true;
           } else {
+            if (auto elt_type = types2::self_art_element_load_type(
+                    env, dts, op.op_id(), ro.reg, rd_in.base_type, rd.results.front().tokens)) {
+              type_out.type = TP_Type::make_from_ts(*elt_type);
+              return true;
+            }
             type_out.type =
                 TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
             return true;

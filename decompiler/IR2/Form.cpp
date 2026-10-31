@@ -2001,6 +2001,14 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
   // ASSERT(m_source->parent_element == this);
+
+  // drop redundant art-joint-anim casts on art constants
+  if (m_type == TypeSpec("art-joint-anim")) {
+    auto art_const = m_source->try_as_element<ConstantTokenElement>();
+    if (art_const && art_const->value().ends_with("-ja")) {
+      return m_source->to_form(env);
+    }
+  }
   auto atom = form_as_atom(m_source);
   if (atom && atom->is_var()) {
     return pretty_print::build_list(
