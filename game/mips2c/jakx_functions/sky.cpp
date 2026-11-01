@@ -342,153 +342,9 @@ void link() {
 
 } // namespace method_32_sky_work
 } // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jakx/kscheme.h"
-using ::jakx::intern_from_c;
-namespace Mips2C::jakx {
-namespace method_31_sky_work {
-struct Cache {
-  void* z_vector; // *z-vector*
-  void* vector_normalize; // vector-normalize!
-} cache;
-
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  c->daddiu(sp, sp, -80);                           // daddiu sp, sp, -80
-  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
-  c->sq(s4, 32, sp);                                // sq s4, 32(sp)
-  c->sq(s5, 48, sp);                                // sq s5, 48(sp)
-  c->sq(gp, 64, sp);                                // sq gp, 64(sp)
-  c->mov64(gp, a0);                                 // or gp, a0, r0
-  c->mov64(s4, a1);                                 // or s4, a1, r0
-  c->mov64(s5, a2);                                 // or s5, a2, r0
-  c->daddiu(v1, s4, 32);                            // daddiu v1, s4, 32
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  c->lq(a0, 0, a0);                                 // lq a0, 0(a0)
-  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->daddiu(a0, s4, 32);                            // daddiu a0, s4, 32
-  c->lui(a1, 16256);                                // lui a1, 16256
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->daddu(a1, r0, s4);                             // daddu a1, r0, s4
-  c->load_symbol2(v1, cache.z_vector);              // lw v1, *z-vector*(s7)
-  c->daddiu(a0, s4, 32);                            // daddiu a0, s4, 32
-  c->lqc2(vf1, 0, v1);                              // lqc2 vf1, 0(v1)
-  c->lqc2(vf2, 0, a0);                              // lqc2 vf2, 0(a0)
-  c->vopmula(vf1, vf2);                             // vopmula.xyz acc, vf1, vf2
-  c->vopmsub(vf3, vf2, vf1);                        // vopmsub.xyz vf3, vf2, vf1
-  c->sqc2(vf3, 0, a1);                              // sqc2 vf3, 0(a1)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
-  c->lui(a1, 16256);                                // lui a1, 16256
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->daddiu(a1, s4, 16);                            // daddiu a1, s4, 16
-  c->daddiu(v1, s4, 32);                            // daddiu v1, s4, 32
-  c->daddu(a0, r0, s4);                             // daddu a0, r0, s4
-  c->lqc2(vf1, 0, v1);                              // lqc2 vf1, 0(v1)
-  c->lqc2(vf2, 0, a0);                              // lqc2 vf2, 0(a0)
-  c->vopmula(vf1, vf2);                             // vopmula.xyz acc, vf1, vf2
-  c->vopmsub(vf3, vf2, vf1);                        // vopmsub.xyz vf3, vf2, vf1
-  c->sqc2(vf3, 0, a1);                              // sqc2 vf3, 0(a1)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->daddiu(a0, s4, 16);                            // daddiu a0, s4, 16
-  c->lui(a1, 16256);                                // lui a1, 16256
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->daddiu(s4, sp, 16);                            // daddiu s4, sp, 16
-  c->mov64(v1, s4);                                 // or v1, s4, r0
-  c->lq(a0, 0, s5);                                 // lq a0, 0(s5)
-  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
-  c->load_symbol2(t9, cache.vector_normalize);      // lw t9, vector-normalize!(s7)
-  c->mov64(a0, s4);                                 // or a0, s4, r0
-  c->lui(a1, -16512);                               // lui a1, -16512
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->mtc1(f0, r0);                                  // mtc1 f0, r0
-  c->lui(v1, 16256);                                // lui v1, 16256
-  c->mtc1(f1, v1);                                  // mtc1 f1, v1
-  c->lui(v1, 16800);                                // lui v1, 16800
-  c->mtc1(f2, v1);                                  // mtc1 f2, v1
-  c->lui(v1, 15692);                                // lui v1, 15692
-  c->ori(v1, v1, 52429);                            // ori v1, v1, 52429
-  c->mtc1(f3, v1);                                  // mtc1 f3, v1
-  c->lwc1(f4, 4, s4);                               // lwc1 f4, 4(s4)
-  c->adds(f3, f3, f4);                              // add.s f3, f3, f4
-  c->muls(f2, f2, f3);                              // mul.s f2, f2, f3
-  c->mins(f1, f1, f2);                              // min.s f1, f1, f2
-  c->maxs(f0, f0, f1);                              // max.s f0, f0, f1
-  c->addiu(v1, r0, 0);                              // addiu v1, r0, 0
-  //beq r0, r0, L43                                 // beq r0, r0, L43
-  // nop                                            // sll r0, r0, 0
-  goto block_2;                                     // branch always
-
-  
-block_1:
-  c->lui(a0, 17152);                                // lui a0, 17152
-  c->mtc1(f1, a0);                                  // mtc1 f1, a0
-  c->lui(a0, 16640);                                // lui a0, 16640
-  c->mtc1(f2, a0);                                  // mtc1 f2, a0
-  c->mtc1(f3, v1);                                  // mtc1 f3, v1
-  c->cvtsw(f3, f3);                                 // cvt.s.w f3, f3
-  c->muls(f2, f2, f3);                              // mul.s f2, f2, f3
-  c->subs(f1, f1, f2);                              // sub.s f1, f1, f2
-  c->muls(f1, f1, f0);                              // mul.s f1, f1, f0
-  c->dsll(a0, v1, 4);                               // dsll a0, v1, 4
-  c->daddiu(a0, a0, 528);                           // daddiu a0, a0, 528
-  c->daddu(a0, a0, gp);                             // daddu a0, a0, gp
-  c->cvtws(f2, f1);                                 // cvt.w.s f2, f1
-  c->swc1(f2, 0, a0);                               // swc1 f2, 0(a0)
-  c->cvtws(f2, f1);                                 // cvt.w.s f2, f1
-  c->swc1(f2, 4, a0);                               // swc1 f2, 4(a0)
-  c->cvtws(f1, f1);                                 // cvt.w.s f1, f1
-  c->swc1(f1, 8, a0);                               // swc1 f1, 8(a0)
-  c->addiu(a1, r0, 128);                            // addiu a1, r0, 128
-  c->sw(a1, 12, a0);                                // sw a1, 12(a0)
-  c->daddiu(v1, v1, 1);                             // daddiu v1, v1, 1
-  
-block_2:
-  c->slti(a0, v1, 16);                              // slti a0, v1, 16
-  bc = c->sgpr64(a0) != 0;                          // bne a0, r0, L42
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
-
-  c->mov64(v1, s7);                                 // or v1, s7, r0
-  c->mov64(v1, s7);                                 // or v1, s7, r0
-  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
-  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
-  c->lq(gp, 64, sp);                                // lq gp, 64(sp)
-  c->lq(s5, 48, sp);                                // lq s5, 48(sp)
-  c->lq(s4, 32, sp);                                // lq s4, 32(sp)
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 80);                            // daddiu sp, sp, 80
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  cache.z_vector = intern_from_c(-1, 0, "*z-vector*").c();
-  cache.vector_normalize = intern_from_c(-1, 0, "vector-normalize!").c();
-  gLinkedFunctionTable.reg("(method 31 sky-work)", execute, 256);
-}
-
-} // namespace method_31_sky_work
-} // namespace Mips2C
-
+// add method_32_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_32_sky_work { extern void link(); }
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
@@ -497,7 +353,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_30_sky_work {
 struct Cache {
-  // TODO FIX - void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -686,7 +542,7 @@ block_15:
   c->lq(v1, 16, gp);                                // lq v1, 16(gp)
   c->sq(v1, 16, s5);                                // sq v1, 16(s5)
   c->daddiu(s4, s5, 32);                            // daddiu s4, s5, 32
-  // TODO - fix c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -699,7 +555,7 @@ block_15:
   c->lq(v1, 16, gp);                                // lq v1, 16(gp)
   c->sq(v1, 352, s5);                               // sq v1, 352(s5)
   c->daddiu(s5, s5, 368);                           // daddiu s5, s5, 368
-  // TODO FIX - c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s5);                                 // or a0, s5, r0
   c->lwu(a1, 20, sp);                               // lwu a1, 20(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -730,14 +586,16 @@ end_of_function:
 }
 
 void link() {
-  // TODO FIX - cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 30 sky-work)", execute, 256);
 }
 
 } // namespace method_30_sky_work
 } // namespace Mips2C
-
+// add method_30_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_30_sky_work { extern void link(); }
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
@@ -746,7 +604,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_29_sky_work {
 struct Cache {
-  // TODO - fix void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -890,7 +748,7 @@ block_12:
   c->lq(a0, 16, gp);                                // lq a0, 16(gp)
   c->sq(a0, 16, v1);                                // sq a0, 16(v1)
   c->daddiu(s5, v1, 32);                            // daddiu s5, v1, 32
-  // TODO fix - c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s5);                                 // or a0, s5, r0
   c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -921,14 +779,16 @@ end_of_function:
 }
 
 void link() {
-  // TODO - fix cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 29 sky-work)", execute, 256);
 }
 
 } // namespace method_29_sky_work
 } // namespace Mips2C
-
+// add method_29_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_29_sky_work { extern void link(); }
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
@@ -983,7 +843,9 @@ void link() {
 
 } // namespace method_17_sky_work
 } // namespace Mips2C
-
+// add method_17_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_17_sky_work { extern void link(); }
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
@@ -1805,3 +1667,487 @@ void link() {
 
 } // namespace set_tex_offset
 } // namespace Mips2C
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jakx/kscheme.h"
+using ::jakx::intern_from_c;
+namespace Mips2C::jakx {
+namespace method_16_sky_work {
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  bool cop1_bc = false;
+  c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
+  c->lwu(a2, 176, a1);                              // lwu a2, 176(a1)
+  c->daddiu(v1, sp, 16);                            // daddiu v1, sp, 16
+  c->sq(r0, 0, v1);                                 // sq r0, 0(v1)
+  c->daddiu(a1, a0, 1472);                          // daddiu a1, a0, 1472
+  c->mov64(a3, v1);                                 // or a3, v1, r0
+  c->daddiu(t0, a2, 812);                           // daddiu t0, a2, 812
+  c->lq(t0, 0, t0);                                 // lq t0, 0(t0)
+  c->sq(t0, 0, a3);                                 // sq t0, 0(a3)
+  c->mtc1(f0, r0);                                  // mtc1 f0, r0
+  c->lwc1(f1, 928, a2);                             // lwc1 f1, 928(a2)
+  cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
+  bc = !cop1_bc;                                    // bc1f L87
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_2;}                           // branch non-likely
+
+  c->lui(a3, 16256);                                // lui a3, 16256
+  c->mtc1(f0, a3);                                  // mtc1 f0, a3
+  c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
+  c->adds(f0, f0, f1);                              // add.s f0, f0, f1
+  c->swc1(f0, 4, v1);                               // swc1 f0, 4(v1)
+  c->mfc1(a3, f0);                                  // mfc1 a3, f0
+  //beq r0, r0, L88                                 // beq r0, r0, L88
+  // nop                                            // sll r0, r0, 0
+  goto block_3;                                     // branch always
+
+  
+block_2:
+  c->lui(a3, -16512);                               // lui a3, -16512
+  c->mtc1(f0, a3);                                  // mtc1 f0, a3
+  c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
+  c->adds(f0, f0, f1);                              // add.s f0, f0, f1
+  c->swc1(f0, 4, v1);                               // swc1 f0, 4(v1)
+  c->mfc1(a3, f0);                                  // mfc1 a3, f0
+  
+block_3:
+  c->daddiu(a3, a0, 1024);                          // daddiu a3, a0, 1024
+  c->lwc1(f0, 908, a2);                             // lwc1 f0, 908(a2)
+  c->swc1(f0, 0, a3);                               // swc1 f0, 0(a3)
+  c->lwc1(f0, 128, a2);                             // lwc1 f0, 128(a2)
+  c->swc1(f0, 4, a3);                               // swc1 f0, 4(a3)
+  c->lwc1(f0, 124, a2);                             // lwc1 f0, 124(a2)
+  c->swc1(f0, 8, a3);                               // swc1 f0, 8(a3)
+  c->lui(t0, 16256);                                // lui t0, 16256
+  c->mtc1(f0, t0);                                  // mtc1 f0, t0
+  c->swc1(f0, 12, a3);                              // swc1 f0, 12(a3)
+  c->lqc2(vf31, 0, a1);                             // lqc2 vf31, 0(a1)
+  c->lqc2(vf30, 16, a1);                            // lqc2 vf30, 16(a1)
+  c->lqc2(vf29, 32, a1);                            // lqc2 vf29, 32(a1)
+  c->lqc2(vf28, 48, a1);                            // lqc2 vf28, 48(a1)
+  c->lqc2(vf14, 780, a2);                           // lqc2 vf14, 780(a2)
+  c->lqc2(vf26, 796, a2);                           // lqc2 vf26, 796(a2)
+  c->lqc2(vf25, 0, v1);                             // lqc2 vf25, 0(v1)
+  c->lqc2(vf13, 1024, a0);                          // lqc2 vf13, 1024(a0)
+  c->vmul(DEST::xyzw, vf31, vf31, vf14);            // vmul.xyzw vf31, vf31, vf14
+  c->vmul(DEST::xyzw, vf30, vf30, vf14);            // vmul.xyzw vf30, vf30, vf14
+  c->vmul(DEST::xyzw, vf29, vf29, vf14);            // vmul.xyzw vf29, vf29, vf14
+  c->vmul(DEST::xyzw, vf28, vf28, vf14);            // vmul.xyzw vf28, vf28, vf14
+  c->vmove(DEST::z, vf25, vf0);                     // vmove.z vf25, vf0
+  c->vmove(DEST::xyzw, vf24, vf0);                  // vmove.xyzw vf24, vf0
+  c->vmove(DEST::xyzw, vf23, vf0);                  // vmove.xyzw vf23, vf0
+  c->mov128_gpr_vf(v1, vf23);                       // qmfc2.i v1, vf23
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 32);                            // daddiu sp, sp, 32
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  gLinkedFunctionTable.reg("(method 16 sky-work)", execute, 256);
+}
+
+} // namespace method_16_sky_work
+} // namespace Mips2C
+// add method_16_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_16_sky_work { extern void link(); }
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jakx/kscheme.h"
+using ::jakx::intern_from_c;
+namespace Mips2C::jakx {
+namespace method_28_sky_work {
+struct Cache {
+  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  bool cop1_bc = false;
+  c->daddiu(sp, sp, -64);                           // daddiu sp, sp, -64
+  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
+  c->sq(s5, 32, sp);                                // sq s5, 32(sp)
+  c->sq(gp, 48, sp);                                // sq gp, 48(sp)
+  c->mov64(gp, a0);                                 // or gp, a0, r0
+  c->mov64(s5, a2);                                 // or s5, a2, r0
+  c->sw(a1, 1916, gp);                              // sw a1, 1916(gp)
+  c->load_symbol2(t9, cache.lookup_texture_by_id_fast);// lw t9, lookup-texture-by-id-fast(s7)
+  c->lui(v1, 128);                                  // lui v1, 128
+  c->ori(a0, v1, 2304);                             // ori a0, v1, 2304
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->sll(v0, ra, 0);                                // sll v0, ra, 0
+  c->jalr(call_addr);                               // jalr ra, t9
+  c->sw(v0, 16, sp);                                // sw v0, 16(sp)
+  c->lwu(v1, 16, sp);                               // lwu v1, 16(sp)
+  bc = c->sgpr64(s7) == c->sgpr64(v1);              // beq s7, v1, L56
+  c->mov64(v1, s7);                                 // or v1, s7, r0
+  if (bc) {goto block_14;}                          // branch non-likely
+
+  c->lqc2(vf15, 1184, gp);                          // lqc2 vf15, 1184(gp)
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf15);       // vmulax.xyzw acc, vf31, vf15
+  c->lqc2(vf1, 224, gp);                            // lqc2 vf1, 224(gp)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf15);      // vmadday.xyzw acc, vf30, vf15
+  c->lqc2(vf4, 240, gp);                            // lqc2 vf4, 240(gp)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf15);      // vmaddaz.xyzw acc, vf29, vf15
+  c->lqc2(vf2, 784, gp);                            // lqc2 vf2, 784(gp)
+  c->vmadd_bc(DEST::xyzw, BC::w, vf15, vf28, vf0);  // vmaddw.xyzw vf15, vf28, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmul(DEST::xyzw, vf16, vf15, vf14);            // vmul.xyzw vf16, vf15, vf14
+  c->lqc2(vf5, 800, gp);                            // lqc2 vf5, 800(gp)
+  c->vdiv(vf0, BC::w, vf16, BC::w);                 // vdiv Q, vf0.w, vf16.w
+  c->lqc2(vf8, 32, gp);                             // lqc2 vf8, 32(gp)
+  c->lqc2(vf11, 48, gp);                            // lqc2 vf11, 48(gp)
+  c->lqc2(vf3, 416, gp);                            // lqc2 vf3, 416(gp)
+  c->lqc2(vf6, 432, gp);                            // lqc2 vf6, 432(gp)
+  c->vwaitq();                                      // vwaitq
+  c->vmulq(DEST::xyz, vf15, vf15);                  // vmulq.xyz vf15, vf15, Q
+  c->vmulq(DEST::xyzw, vf16, vf26);                 // vmulq.xyzw vf16, vf26, Q
+  c->vmul_bc(DEST::xyzw, BC::w, vf1, vf1, vf16);    // vmulw.xyzw vf1, vf1, vf16
+  c->vmul_bc(DEST::xyzw, BC::w, vf4, vf4, vf16);    // vmulw.xyzw vf4, vf4, vf16
+  c->vadd(DEST::xyzw, vf15, vf15, vf25);            // vadd.xyzw vf15, vf15, vf25
+  c->vadd(DEST::xyz, vf1, vf1, vf15);               // vadd.xyz vf1, vf1, vf15
+  c->vadd(DEST::xyz, vf4, vf4, vf15);               // vadd.xyz vf4, vf4, vf15
+  c->vftoi4(DEST::xyz, vf1, vf1);                   // vftoi4.xyz vf1, vf1
+  c->vftoi4(DEST::xyzw, vf4, vf4);                  // vftoi4.xyzw vf4, vf4
+  c->sqc2(vf1, 1600, gp);                           // sqc2 vf1, 1600(gp)
+  c->sqc2(vf4, 1616, gp);                           // sqc2 vf4, 1616(gp)
+  c->lw(v1, 1612, gp);                              // lw v1, 1612(gp)
+  c->mtc1(f0, v1);                                  // mtc1 f0, v1
+  c->mtc1(f1, r0);                                  // mtc1 f1, r0
+  cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
+  bc = !cop1_bc;                                    // bc1f L54
+  c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
+  if (bc) {goto block_3;}                           // branch non-likely
+
+  c->mov64(v1, s7);                                 // or v1, s7, r0
+  
+block_3:
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(v1))) {// beql s7, v1, L55
+    c->mov64(v1, v1);                               // or v1, v1, r0
+    goto block_12;
+  }
+  
+block_5:
+  c->lw(v1, 1600, gp);                              // lw v1, 1600(gp)
+  c->lw(a0, 556, s5);                               // lw a0, 556(s5)
+  c->dsll(a0, a0, 4);                               // dsll a0, a0, 4
+  c->slt(v1, v1, a0);                               // slt v1, v1, a0
+  c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
+  c->movz(a0, s7, v1);                              // movz a0, s7, v1
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a0))) {// beql s7, a0, L55
+    c->mov64(v1, a0);                               // or v1, a0, r0
+    goto block_12;
+  }
+  
+block_7:
+  c->lw(v1, 1604, gp);                              // lw v1, 1604(gp)
+  c->lw(a0, 560, s5);                               // lw a0, 560(s5)
+  c->dsll(a0, a0, 4);                               // dsll a0, a0, 4
+  c->slt(v1, v1, a0);                               // slt v1, v1, a0
+  c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
+  c->movz(a0, s7, v1);                              // movz a0, s7, v1
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a0))) {// beql s7, a0, L55
+    c->mov64(v1, a0);                               // or v1, a0, r0
+    goto block_12;
+  }
+  
+block_9:
+  c->addiu(v1, r0, 28672);                          // addiu v1, r0, 28672
+  c->lw(a0, 1616, gp);                              // lw a0, 1616(gp)
+  c->slt(v1, v1, a0);                               // slt v1, v1, a0
+  c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
+  c->movz(a0, s7, v1);                              // movz a0, s7, v1
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a0))) {// beql s7, a0, L55
+    c->mov64(v1, a0);                               // or v1, a0, r0
+    goto block_12;
+  }
+  
+block_11:
+  c->addiu(v1, r0, 29440);                          // addiu v1, r0, 29440
+  c->lw(a0, 1620, gp);                              // lw a0, 1620(gp)
+  c->slt(a0, v1, a0);                               // slt a0, v1, a0
+  c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
+  c->movz(v1, s7, a0);                              // movz v1, s7, a0
+  
+block_12:
+  bc = c->sgpr64(s7) == c->sgpr64(v1);              // beq s7, v1, L56
+  c->mov64(v1, s7);                                 // or v1, s7, r0
+  if (bc) {goto block_14;}                          // branch non-likely
+
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(t0, 4, v1);                                // lwu t0, 4(v1)
+  c->vsub(DEST::z, vf1, vf0, vf0);                  // vsub.z vf1, vf0, vf0
+  c->vsub(DEST::z, vf4, vf0, vf0);                  // vsub.z vf4, vf0, vf0
+  c->sqc2(vf8, 112, t0);                            // sqc2 vf8, 112(t0)
+  c->sqc2(vf11, 128, t0);                           // sqc2 vf11, 128(t0)
+  c->sqc2(vf3, 144, t0);                            // sqc2 vf3, 144(t0)
+  c->sqc2(vf2, 160, t0);                            // sqc2 vf2, 160(t0)
+  c->sqc2(vf1, 176, t0);                            // sqc2 vf1, 176(t0)
+  c->sqc2(vf5, 192, t0);                            // sqc2 vf5, 192(t0)
+  c->sqc2(vf4, 208, t0);                            // sqc2 vf4, 208(t0)
+  c->sqc2(vf8, 224, t0);                            // sqc2 vf8, 224(t0)
+  c->sqc2(vf11, 240, t0);                           // sqc2 vf11, 240(t0)
+  c->sqc2(vf6, 256, t0);                            // sqc2 vf6, 256(t0)
+  c->sqc2(vf2, 272, t0);                            // sqc2 vf2, 272(t0)
+  c->sqc2(vf1, 288, t0);                            // sqc2 vf1, 288(t0)
+  c->sqc2(vf5, 304, t0);                            // sqc2 vf5, 304(t0)
+  c->sqc2(vf4, 320, t0);                            // sqc2 vf4, 320(t0)
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
+  c->lq(a0, 0, gp);                                 // lq a0, 0(gp)
+  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
+  c->lq(a0, 16, gp);                                // lq a0, 16(gp)
+  c->sq(a0, 16, v1);                                // sq a0, 16(v1)
+  c->daddiu(s5, v1, 32);                            // daddiu s5, v1, 32
+  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->mov64(a0, s5);                                 // or a0, s5, r0
+  c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->sll(v0, ra, 0);                                // sll v0, ra, 0
+  c->jalr(call_addr);                               // jalr ra, t9
+  c->addiu(v1, r0, 72);                             // addiu v1, r0, 72
+  c->sd(v1, 64, s5);                                // sd v1, 64(s5)
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
+  c->daddiu(v1, v1, 336);                           // daddiu v1, v1, 336
+  c->lwu(a0, 1916, gp);                             // lwu a0, 1916(gp)
+  c->sw(v1, 4, a0);                                 // sw v1, 4(a0)
+  
+block_14:
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
+  c->lq(gp, 48, sp);                                // lq gp, 48(sp)
+  c->lq(s5, 32, sp);                                // lq s5, 32(sp)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 64);                            // daddiu sp, sp, 64
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
+  gLinkedFunctionTable.reg("(method 28 sky-work)", execute, 256);
+}
+
+} // namespace method_28_sky_work
+} // namespace Mips2C
+// add method_28_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_28_sky_work { extern void link(); }
+
+//--------------------------MIPS2C---------------------
+// clang-format off
+#include "game/mips2c/mips2c_private.h"
+#include "game/kernel/jakx/kscheme.h"
+using ::jakx::intern_from_c;
+namespace Mips2C::jakx {
+namespace method_33_sky_work {
+struct Cache {
+  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
+} cache;
+
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  c->daddiu(sp, sp, -64);                           // daddiu sp, sp, -64
+  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
+  c->sq(s4, 16, sp);                                // sq s4, 16(sp)
+  c->sq(s5, 32, sp);                                // sq s5, 32(sp)
+  c->sq(gp, 48, sp);                                // sq gp, 48(sp)
+  c->mov64(gp, a0);                                 // or gp, a0, r0
+  c->mov64(s5, a2);                                 // or s5, a2, r0
+  c->sw(a1, 1916, gp);                              // sw a1, 1916(gp)
+  c->load_symbol2(t9, cache.lookup_texture_by_id_fast);// lw t9, lookup-texture-by-id-fast(s7)
+  c->lui(v1, 128);                                  // lui v1, 128
+  c->ori(a0, v1, 2560);                             // ori a0, v1, 2560
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->sll(v0, ra, 0);                                // sll v0, ra, 0
+  c->jalr(call_addr);                               // jalr ra, t9
+  c->mov64(a1, v0);                                 // or a1, v0, r0
+  bc = c->sgpr64(s7) == c->sgpr64(a1);              // beq s7, a1, L31
+  c->mov64(t0, s7);                                 // or t0, s7, r0
+  if (bc) {goto block_14;}                          // branch non-likely
+
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
+  c->lq(a0, 0, gp);                                 // lq a0, 0(gp)
+  c->sq(a0, 0, v1);                                 // sq a0, 0(v1)
+  c->lq(a0, 16, gp);                                // lq a0, 16(gp)
+  c->sq(a0, 16, v1);                                // sq a0, 16(v1)
+  c->daddiu(s4, v1, 32);                            // daddiu s4, v1, 32
+  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->mov64(a0, s4);                                 // or a0, s4, r0
+  call_addr = c->gprs[t9].du32[0];                  // function call:
+  c->sll(v0, ra, 0);                                // sll v0, ra, 0
+  c->jalr(call_addr);                               // jalr ra, t9
+  c->addiu(v1, r0, 72);                             // addiu v1, r0, 72
+  c->sd(v1, 64, s4);                                // sd v1, 64(s4)
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(v1, 4, v1);                                // lwu v1, 4(v1)
+  c->daddiu(v1, v1, 112);                           // daddiu v1, v1, 112
+  c->lwu(a0, 1916, gp);                             // lwu a0, 1916(gp)
+  c->sw(v1, 4, a0);                                 // sw v1, 4(a0)
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->lwu(t0, 4, v1);                                // lwu t0, 4(v1)
+  c->mov64(v1, gp);                                 // or v1, gp, r0
+  c->addiu(a1, r0, 0);                              // addiu a1, r0, 0
+  c->lqc2(vf2, 784, gp);                            // lqc2 vf2, 784(gp)
+  c->lqc2(vf5, 800, gp);                            // lqc2 vf5, 800(gp)
+  c->lqc2(vf8, 32, gp);                             // lqc2 vf8, 32(gp)
+  c->lqc2(vf11, 48, gp);                            // lqc2 vf11, 48(gp)
+  c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
+  //beq r0, r0, L30                                 // beq r0, r0, L30
+  // nop                                            // sll r0, r0, 0
+  goto block_12;                                    // branch always
+
+  
+block_2:
+  c->lqc2(vf15, 1920, v1);                          // lqc2 vf15, 1920(v1)
+  c->daddiu(v1, v1, 16);                            // daddiu v1, v1, 16
+  c->vmula_bc(DEST::xyzw, BC::x, vf31, vf15);       // vmulax.xyzw acc, vf31, vf15
+  c->lqc2(vf1, 384, gp);                            // lqc2 vf1, 384(gp)
+  c->vmadda_bc(DEST::xyzw, BC::y, vf30, vf15);      // vmadday.xyzw acc, vf30, vf15
+  c->lqc2(vf4, 400, gp);                            // lqc2 vf4, 400(gp)
+  c->vmadda_bc(DEST::xyzw, BC::z, vf29, vf15);      // vmaddaz.xyzw acc, vf29, vf15
+  c->daddu(a2, gp, a1);                             // daddu a2, gp, a1
+  c->vmadd_bc(DEST::xyzw, BC::w, vf15, vf28, vf0);  // vmaddw.xyzw vf15, vf28, vf0
+  // nop                                            // sll r0, r0, 0
+  c->vmul(DEST::xyzw, vf16, vf15, vf14);            // vmul.xyzw vf16, vf15, vf14
+  c->lqc2(vf3, 528, a2);                            // lqc2 vf3, 528(a2)
+  c->vdiv(vf0, BC::w, vf16, BC::w);                 // vdiv Q, vf0.w, vf16.w
+  c->daddiu(a1, a1, 16);                            // daddiu a1, a1, 16
+  c->vwaitq();                                      // vwaitq
+  c->andi(a1, a1, 255);                             // andi a1, a1, 255
+  c->vmulq(DEST::xyz, vf15, vf15);                  // vmulq.xyz vf15, vf15, Q
+  c->vadd(DEST::xyzw, vf15, vf15, vf25);            // vadd.xyzw vf15, vf15, vf25
+  c->vadd(DEST::xyz, vf1, vf1, vf15);               // vadd.xyz vf1, vf1, vf15
+  c->vadd(DEST::xyz, vf4, vf4, vf15);               // vadd.xyz vf4, vf4, vf15
+  c->vftoi4(DEST::xyzw, vf1, vf1);                  // vftoi4.xyzw vf1, vf1
+  c->vftoi4(DEST::xyzw, vf4, vf4);                  // vftoi4.xyzw vf4, vf4
+  c->sqc2(vf1, 1600, gp);                           // sqc2 vf1, 1600(gp)
+  c->sqc2(vf4, 1616, gp);                           // sqc2 vf4, 1616(gp)
+  c->lw(a2, 1600, gp);                              // lw a2, 1600(gp)
+  c->lw(a3, 556, s5);                               // lw a3, 556(s5)
+  c->dsll(a3, a3, 4);                               // dsll a3, a3, 4
+  c->slt(a2, a2, a3);                               // slt a2, a2, a3
+  c->daddiu(a3, s7, 4);                             // daddiu a3, s7, 4
+  c->movz(a3, s7, a2);                              // movz a3, s7, a2
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a3))) {// beql s7, a3, L28
+    c->mov64(a2, a3);                               // or a2, a3, r0
+    goto block_9;
+  }
+  
+block_4:
+  c->lw(a2, 1604, gp);                              // lw a2, 1604(gp)
+  c->lw(a3, 560, s5);                               // lw a3, 560(s5)
+  c->dsll(a3, a3, 4);                               // dsll a3, a3, 4
+  c->slt(a2, a2, a3);                               // slt a2, a2, a3
+  c->daddiu(a3, s7, 4);                             // daddiu a3, s7, 4
+  c->movz(a3, s7, a2);                              // movz a3, s7, a2
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a3))) {// beql s7, a3, L28
+    c->mov64(a2, a3);                               // or a2, a3, r0
+    goto block_9;
+  }
+  
+block_6:
+  c->addiu(a2, r0, 28672);                          // addiu a2, r0, 28672
+  c->lw(a3, 1616, gp);                              // lw a3, 1616(gp)
+  c->slt(a2, a2, a3);                               // slt a2, a2, a3
+  c->daddiu(a3, s7, 4);                             // daddiu a3, s7, 4
+  c->movz(a3, s7, a2);                              // movz a3, s7, a2
+  if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(a3))) {// beql s7, a3, L28
+    c->mov64(a2, a3);                               // or a2, a3, r0
+    goto block_9;
+  }
+  
+block_8:
+  c->addiu(a2, r0, 29440);                          // addiu a2, r0, 29440
+  c->lw(a3, 1620, gp);                              // lw a3, 1620(gp)
+  c->slt(a3, a2, a3);                               // slt a3, a2, a3
+  c->daddiu(a2, s7, 4);                             // daddiu a2, s7, 4
+  c->movz(a2, s7, a3);                              // movz a2, s7, a3
+  
+block_9:
+  bc = c->sgpr64(s7) == c->sgpr64(a2);              // beq s7, a2, L29
+  c->mov64(a2, s7);                                 // or a2, s7, r0
+  if (bc) {goto block_11;}                          // branch non-likely
+
+  c->vsub(DEST::z, vf1, vf0, vf0);                  // vsub.z vf1, vf0, vf0
+  c->vsub(DEST::z, vf4, vf0, vf0);                  // vsub.z vf4, vf0, vf0
+  c->sqc2(vf8, 0, t0);                              // sqc2 vf8, 0(t0)
+  c->sqc2(vf11, 16, t0);                            // sqc2 vf11, 16(t0)
+  c->sqc2(vf3, 32, t0);                             // sqc2 vf3, 32(t0)
+  c->sqc2(vf2, 48, t0);                             // sqc2 vf2, 48(t0)
+  c->sqc2(vf1, 64, t0);                             // sqc2 vf1, 64(t0)
+  c->sqc2(vf5, 80, t0);                             // sqc2 vf5, 80(t0)
+  c->sqc2(vf4, 96, t0);                             // sqc2 vf4, 96(t0)
+  c->daddiu(t0, t0, 112);                           // daddiu t0, t0, 112
+  c->mov64(a2, t0);                                 // or a2, t0, r0
+  
+block_11:
+  c->daddiu(a0, a0, 1);                             // daddiu a0, a0, 1
+  
+block_12:
+  c->slti(a2, a0, 512);                             // slti a2, a0, 512
+  bc = c->sgpr64(a2) != 0;                          // bne a2, r0, L27
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_2;}                           // branch non-likely
+
+  c->mov64(v1, s7);                                 // or v1, s7, r0
+  c->mov64(v1, s7);                                 // or v1, s7, r0
+  c->lwu(v1, 1916, gp);                             // lwu v1, 1916(gp)
+  c->sw(t0, 4, v1);                                 // sw t0, 4(v1)
+  
+block_14:
+  c->mov64(v1, t0);                                 // or v1, t0, r0
+  c->gprs[v0].du64[0] = 0;                          // or v0, r0, r0
+  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
+  c->lq(gp, 48, sp);                                // lq gp, 48(sp)
+  c->lq(s5, 32, sp);                                // lq s5, 32(sp)
+  c->lq(s4, 16, sp);                                // lq s4, 16(sp)
+  //jr ra                                           // jr ra
+  c->daddiu(sp, sp, 64);                            // daddiu sp, sp, 64
+  goto end_of_function;                             // return
+
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+end_of_function:
+  return c->gprs[v0].du64[0];
+}
+
+void link() {
+  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
+  gLinkedFunctionTable.reg("(method 33 sky-work)", execute, 256);
+}
+
+} // namespace method_33_sky_work
+} // namespace Mips2C
+// add method_33_sky_work::link to the link callback table for the object file.
+// FWD DEC:
+namespace method_33_sky_work { extern void link(); }
