@@ -410,7 +410,6 @@ u64 kclose(u64 fs) {
   return fs;
 }
 
-// TODO dma_to_iop
 bool dma_to_iop(void* src_G, int size_G, void* dest_G) {
   iop::sceSifDmaData transfer_W;
   transfer_W.mode = 0;

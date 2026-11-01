@@ -327,7 +327,7 @@ constexpr int FIX_SYM_NETWORK_BOOTSTRAP = 0x294;
 namespace jakx_symbols {
 
 constexpr int FIX_SYM_EMPTY_CAR = -0x8;
-constexpr int S7_OFF_FIX_SYM_EMPTY_PAIR = -0x6 - 1;
+constexpr int S7_OFF_FIX_SYM_EMPTY_PAIR = -0x7;
 constexpr int FIX_SYM_EMPTY_CDR = -0x4;
 constexpr int FIX_SYM_FALSE = 0x0;  // GOAL boolean #f (note that this is equal to the $s7 register)
 constexpr int FIX_SYM_TRUE = 0x4;   // GOAL boolean #t
