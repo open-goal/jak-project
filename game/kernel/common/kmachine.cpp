@@ -20,6 +20,7 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/runtime.h"
+#include "game/sce/iop.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
@@ -43,6 +44,8 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 u32 vif1_interrupt_handler = 0;
 u32 vblank_interrupt_handler = 0;
 
+bool cd_S_INITIALIZE_CD_W = false;  // New in Jak X
+
 Timer ee_clock_timer;
 
 void kmachine_init_globals_common() {
@@ -57,9 +60,32 @@ void kmachine_init_globals_common() {
 
 /*!
  * Initialize the CD Drive
+ */
+void InitCDJakX() {
+  if (cd_S_INITIALIZE_CD_W) {
+    s32 result;
+    while (true) {
+      // strlen("dkernel: Initializing DVD drive...\n");  // FIXME: Why is there a strlen here?
+      printf("dkernel: Initializing DVD drive...\n");
+      result = ee::sceCdInit(SCECdINIT);
+      if (result != 0) {
+        break;
+      }
+      printf("dkernel: DVD drive initialization failed, retrying...\n");
+    }
+    printf("dkernel: DVD drive initialized; result=%d\n", result);
+  }
+}
+
+/*!
+ * Initialize the CD Drive
  * DONE, EXACT
  */
 void InitCD() {
+  if (g_game_version == GameVersion::JakX) {
+    InitCDJakX();
+    return;
+  }
   lg::info("Initializing CD drive. This may take a while...");
   ee::sceCdInit(SCECdINIT);
   ee::sceCdMmode(SCECdDVD);
@@ -138,6 +164,9 @@ void CacheFlush(void* mem, int size) {
  * Open a new controller pad.
  * Set the new_pad flag to 1 and state to 0.
  * Prints an error if it fails to open.
+ * FIXME: Different in Jak X, missing CPad library v2 symbols.
+ * See decompiled function here:
+ * https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L126
  */
 u64 CPadOpen(u64 cpad_info, s32 pad_number) {
   auto cpad = Ptr<CPadInfo>(cpad_info).c();
@@ -156,6 +185,9 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
 
 /*!
  * Not checked super carefully for jak 2, but looks the same
+ * FIXME: Different in Jak X, missing CPad library v2 symbols.
+ * See decompiled function here:
+ * https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L143
  */
 u64 CPadGetData(u64 cpad_info) {
   using namespace ee;
@@ -288,6 +320,7 @@ void InstallHandler(u32 handler_idx, u32 handler_func) {
 // nothing used this in jak1, hopefully same for 2
 void InstallDebugHandler() {
   ASSERT(false);
+  // SetDebugHandler();
 }
 
 /*!
@@ -377,9 +410,21 @@ u64 kclose(u64 fs) {
   return fs;
 }
 
-// TODO dma_to_iop
-void dma_to_iop() {
-  ASSERT(false);
+bool dma_to_iop(void* src_G, int size_G, void* dest_G) {
+  iop::sceSifDmaData transfer_W;
+  transfer_W.mode = 0;
+  transfer_W.data = src_G;
+  transfer_W.addr = dest_G;
+  transfer_W.size = size_G;
+  u32 id = sceSifSetDma(&transfer_W, 1);
+  //if (id != 0) {
+    // TODO: no sceSifDmaStat
+    // s32 sVar1;
+    // do {
+    //   sVar1 = sceSifDmaStat(id);
+    // } while (-1 < sVar1);
+  //}
+  return id == 0;
 }
 
 u64 DecodeLanguage() {
@@ -409,9 +454,14 @@ u64 DecodeInactiveTimeout() {
 }
 
 void DecodeTime(u32 ptr) {
-  Ptr<ee::sceCdCLOCK> clock(ptr);
   // in jak2, if this fails, they do a sceScfGetLocalTimefromRTC
-  sceCdReadClock(clock.c());
+  // in jak3, they do a memset?
+  // in jakx, they reused jak2's function, but moved the clock to underlord?
+  // FIXME: Move underlordRpcCall1_W underlord.h
+  // FIXME: Move underlordRpcCall1_W underlord.h
+  // if (ptr != 0 && underlordRpcCall1_W() != 0) {
+  //   sceScfGetLocalTimefromRTC(ptr);
+  // }
 }
 
 void vif_interrupt_callback(int bucket_id) {

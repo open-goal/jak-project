@@ -32,14 +32,14 @@ s32 format_impl_jakx(uint64_t* args) {
   uint64_t* arg_regs = args + 2;
 
   // data for arguments in a format command
-  format_struct argument_data[8];
+  format_struct argument_data[4];
 
   u32 arg_reg_idx = 0;
 
+  u32 original_dest = args[0];
   // the gstring
   char* format_gstring = Ptr<char>(args[1]).c();
 
-  u32 original_dest = args[0];
 
   // set up print pending
   char* print_temp = PrintPending.cast<char>().c();
@@ -52,7 +52,7 @@ s32 format_impl_jakx(uint64_t* args) {
   // what we write to
   char* output_ptr = PrintPending.cast<char>().c();
 
-  // convert gstring to cstring
+  // Address of first byte of buffer within g_string
   char* format_cstring = format_gstring + 4;
 
   // mysteries
@@ -192,6 +192,8 @@ s32 format_impl_jakx(uint64_t* args) {
         case 'W':  // 32 -> 57, W
         case 'Y':  // 34 -> 59, Y
         case 'Z':  // 35 -> 5A, Z
+        case '[':
+        case ']':
         case 'h':
         case 'j':
         case 'k':
@@ -478,12 +480,30 @@ s32 format_impl_jakx(uint64_t* args) {
           ftoa(output_ptr, value / 300.f, pad_length, pad_char, precision, 0);
           output_ptr = strend(output_ptr);
         } break;
-
+        case 't':
+        { // 8 or argument_data[0] space indent
+          int indent = 8;
+          if (argument_data[0].data[0] != -1) {
+            indent = argument_data[0].data[0];
+          }
+          for(int j = 0; j < indent; ++j){
+            *output_ptr = ' ';
+            ++output_ptr;
+          }
+          break;
+        }
         case 'T':
-        case 't': {
-          sprintf(output_ptr, "\t");
-          output_ptr = strend(output_ptr);
-        } break;
+        { // 1 or argument_data[0] tab indent
+          int indent = 1;
+          if (argument_data[0].data[0] != -1){
+            indent = argument_data[0].data[0];
+          }
+          for(int j = 0; j < indent; ++j){
+            *output_ptr = '\t';
+            ++output_ptr;
+          }
+          break;
+        }
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);

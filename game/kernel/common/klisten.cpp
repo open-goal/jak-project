@@ -23,7 +23,7 @@ void klisten_init_globals() {
  * Changed slightly, it will also print to stdout if there's no compiler connected.
  */
 void ClearPending() {
-  if (!MasterDebug || !ListenerStatus) {
+  if (!MasterDebug) {  // TODO: why is ListenerStatus gone?
     // if we aren't debugging or connected print the print buffer to stdout.
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
@@ -32,40 +32,29 @@ void ClearPending() {
       }
       clear_print();
     }
-  } else {
-    if (ListenerStatus) {
-      if (OutputPending.offset != 0) {
-        // note - same 64 kB patch as prints done here
-        char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
-        auto size = strlen(msg);
-        while (size > 0) {
-          // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
-          auto send_size = size;
-          if (send_size > 64000) {
-            send_size = 64000;
-          }
-          SendFromBuffer(msg, send_size);
-          size -= send_size;
-          msg += send_size;
-        }
-        clear_output();
-      }
+  } else if (ListenerStatus) {
+    if (OutputPending.offset != 0) {
+      // note - same 64 kB patch as prints done here
+      char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
+      auto size = strlen(msg);
+      SendFromBuffer(msg, (s32)size);
+      clear_output();
+    }
 
-      if (PrintPending.offset != 0) {
-        char* msg = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
-        auto size = strlen(msg);
-        while (size > 0) {
-          // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
-          auto send_size = size;
-          if (send_size > 64000) {
-            send_size = 64000;
-          }
-          SendFromBufferD(2, 0, msg, send_size);
-          size -= send_size;
-          msg += send_size;
+    if (PrintPending.offset != 0) {
+      char* msg = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
+      auto size = strlen(msg);
+      while (size > 0) {
+        // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
+        auto send_size = size;
+        if (send_size > 64000) {
+          send_size = 64000;
         }
-        clear_print();
+        SendFromBufferD(2, 0, msg, send_size);
+        size -= send_size;
+        msg += send_size;
       }
+      clear_print();
     }
   }
 }
@@ -77,6 +66,7 @@ void ClearPending() {
  * ListenerMessageKind::MSG_ACK field.  Both the type and msg_id fields are sent, which is enough
  * for it to work.
  * Note: jak2 sent 0 length acks.
+ * Then Jak X as well?
  */
 void SendAck() {
   if (MasterDebug) {

@@ -174,13 +174,12 @@ void KernelShutdown(u32 reason) {
 }
 
 int KernelCheckAndDispatch() {
-  // TODO - jak x
-  /*while (MasterExit == RuntimeExitStatus::RUNNING && !POWERING_OFF_W) {
+  while (MasterExit == RuntimeExitStatus::RUNNING && !POWERING_OFF_W) {
     KernelDispatch(kernel_dispatcher->value());
   }
   if (POWERING_OFF_W) {
     KernelShutdown(3);
-  }*/
+  }
   return (u32)MasterExit;
 }
 
