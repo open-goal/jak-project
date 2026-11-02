@@ -462,19 +462,21 @@ s32 format_impl_jak3(uint64_t* args) {
         case 'E':  // time seconds
         case 'e': {
           s64 in = arg_regs[arg_reg_idx++];
-          s8 pad_length = argument_data[0].data[0];
-          s8 pad_char = argument_data[0].data[1];
-          if (pad_char == -1)
-            pad_char = ' ';
-          s8 precision = argument_data[0].data[2];
-          if (precision == -1)
-            precision = 4;
           float value;
           if (in < 0) {
-            ASSERT(false);  // i don't get this one
+            s64 shifted = in >> 1;
+            in = (in & 1) | shifted;
+            value = ((float)in) * 2;
           } else {
             value = in;
           }
+          s8 pad_length = argument_data[0].data[0];
+          s8 pad_char = argument_data[1].data[0];
+          if (pad_char == -1)
+            pad_char = ' ';
+          s8 precision = argument_data[2].data[0];
+          if (precision == -1)
+            precision = 4;
           ftoa(output_ptr, value / 300.f, pad_length, pad_char, precision, 0);
           output_ptr = strend(output_ptr);
         } break;
