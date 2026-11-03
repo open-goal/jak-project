@@ -80,12 +80,15 @@ JAK2_ALLOWED_CHARACTERS = [
     "ァ", "ア", "ィ", "イ", "ゥ", "ウ", "ェ", "エ", "ォ", "オ", "カ", "キ", "ク", "ケ", "コ", "サ", "シ", "ス", "セ", "ソ", "タ", "チ", "ッ", "ツ", "テ", "ト", "ナ", "ニ", "ヌ", "ネ", "ノ", "ハ", "ヒ", "フ", "ヘ", "ホ", "マ", "ミ", "ム", "メ", "モ", "ャ", "ヤ", "ュ", "ユ", "ョ", "ヨ", "ラ", "リ", "ル",
     "ヴ", "ガ", "ギ", "グ", "ゲ", "ゴ", "ザ", "ジ", "ズ", "ゼ", "ゾ", "ダ", "ヂ", "ヅ", "デ", "ド", "バ", "ビ", "ブ", "ベ", "ボ",
     "パ", "ピ", "プ", "ペ", "ポ",
-    "~", "Œ", "°", "ç"
+    "~", "Œ", "°", "ç",
+    # cyrillic (russian), glyphs added via game/assets/jak2/texture_merges
+    "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я",
+    "а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я",
 ]
 
 JAK2_ALLOWED_CODES = [
     "<TIL>", "<SUPERSCRIPT_QUOTE>",
-    "<PAD_X>", "<PAD_TRIANGLE>", "<PAD_CIRCLE>", "<PAD_SQUARE>", "<PAD_DPAD_UP>", "<PAD_DPAD_DOWN>", "<PAD_DPAD_ANY>", "<PAD_L1>", "<PAD_R1>", "<PAD_R2>", "<PAD_L2>", "<PAD_ANALOG_ANY>", "<PAD_ANALOG_LEFT_RIGHT>", "<PAD_ANALOG_UP_DOWN>", "<ICON_MISSION_COMPLETE>", "<ICON_MISSION_TODO>", "<FLAG_ITALIAN>", "<FLAG_SPAIN>", "<FLAG_GERMAN>", "<FLAG_FRANCE>", "<FLAG_UK>", "<FLAG_USA>", "<FLAG_KOREA>", "<FLAG_JAPAN>", "<FLAG_FINLAND>", "<FLAG_SWEDEN>", "<FLAG_DENMARK>", "<FLAG_NORWAY>", "<FLAG_ICELAND>"
+    "<PAD_X>", "<PAD_TRIANGLE>", "<PAD_CIRCLE>", "<PAD_SQUARE>", "<PAD_DPAD_UP>", "<PAD_DPAD_DOWN>", "<PAD_DPAD_ANY>", "<PAD_L1>", "<PAD_R1>", "<PAD_R2>", "<PAD_L2>", "<PAD_ANALOG_ANY>", "<PAD_ANALOG_LEFT_RIGHT>", "<PAD_ANALOG_UP_DOWN>", "<ICON_MISSION_COMPLETE>", "<ICON_MISSION_TODO>", "<FLAG_ITALIAN>", "<FLAG_SPAIN>", "<FLAG_GERMAN>", "<FLAG_FRANCE>", "<FLAG_UK>", "<FLAG_USA>", "<FLAG_KOREA>", "<FLAG_JAPAN>", "<FLAG_FINLAND>", "<FLAG_SWEDEN>", "<FLAG_DENMARK>", "<FLAG_NORWAY>", "<FLAG_ICELAND>", "<FLAG_RUSSIA>"
 ]
 
 JAK2_AUTO_REPLACEMENTS = {
