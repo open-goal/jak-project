@@ -176,7 +176,8 @@ bool socket_timed_out() {
   return errno == EAGAIN;
 #elif _WIN32
   auto err = WSAGetLastError();
-  return err == WSAETIMEDOUT;
+  // some Windows builds report WSA_IO_PENDING when an SO_RCVTIMEO recv times out
+  return err == WSAETIMEDOUT || err == WSA_IO_PENDING;
 #endif
 }
 
