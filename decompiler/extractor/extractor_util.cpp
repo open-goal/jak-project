@@ -161,7 +161,7 @@ extractor_iso_database() {
               "pal",                  // decompiler config
               "jak3",
               {}}}}},
-  };
+      };
   return database;
 }
 
