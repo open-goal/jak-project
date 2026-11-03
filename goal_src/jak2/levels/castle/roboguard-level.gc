@@ -356,9 +356,9 @@
       )
     0
     (enemy-method-129 self)
-    (let ((a0-11 (handle->process (-> self focus handle))))
+    (let ((a0-11 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if a0-11
-          (point-toward-point! (-> self root) (get-trans (the-as process-focusable a0-11) 0))
+          (point-toward-point! (-> self root) (get-trans a0-11 0))
           )
       )
     )
@@ -583,16 +583,12 @@
     (nav-enemy-method-160 self)
     (when (< (-> self roll-timer) (current-time))
       (set! (-> self roll-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 3.0 5.0)))))
-      (let ((gp-2 (handle->process (-> self focus handle))))
+      (let ((gp-2 (the-as process-focusable (handle->process (-> self focus handle)))))
         (when (and gp-2
-                   (and gp-2
-                        (not (logtest? (-> (the-as process-focusable gp-2) focus-status) (focus-status disable dead ignore grabbed)))
-                        )
+                   (and gp-2 (not (logtest? (-> gp-2 focus-status) (focus-status disable dead ignore grabbed))))
                    (< 2 (the-as int (-> self focus aware)))
                    )
-          (let ((s5-2
-                  (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable gp-2) 0) (-> self root trans))
-                  )
+          (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (get-trans gp-2 0) (-> self root trans)))
                 (s4-0 (new 'stack-no-clear 'vector))
                 )
             (set! (-> s5-2 y) 0.0)
@@ -602,7 +598,7 @@
                                            )
                                   )
             (vector-rotate-around-y! s5-2 s5-2 16384.0)
-            (vector+! s4-0 (get-trans (the-as process-focusable gp-2) 0) s5-2)
+            (vector+! s4-0 (get-trans gp-2 0) s5-2)
             (vector-! (-> self roll-dir) s4-0 (-> self root trans))
             )
           (set! (-> self roll-dir y) 0.0)
@@ -1017,12 +1013,7 @@
         (else
           (when (!= (-> arg0 type) target)
             (-> arg1 param 0)
-            (let* ((s3-0 arg0)
-                   (s1-0 (if (type? s3-0 process-focusable)
-                             s3-0
-                             )
-                         )
-                   )
+            (let ((s1-0 (the-as process (as-type arg0 process-focusable))))
               (when (and s1-0 (logtest? (process-mask enemy) (-> s1-0 mask)))
                 (let ((s2-1
                         (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (-> (the-as process-drawable s1-0) root trans))
