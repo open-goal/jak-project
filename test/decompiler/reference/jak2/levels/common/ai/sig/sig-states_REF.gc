@@ -108,34 +108,30 @@
         )
     )
   :code (behavior ()
-    (let ((v1-2 (ja-group)))
-      (cond
-        ((and v1-2 (= v1-2 sig-ready0-to-idle-right0-ja))
-         (ja-no-eval :num! (seek!))
-         (while (not (ja-done? 0))
-           (suspend)
-           (ja-eval)
-           )
-         (ja-channel-push! 1 (seconds 0.2))
+    (cond
+      ((ja-group? sig-ready0-to-idle-right0-ja)
+       (ja-no-eval :num! (seek!))
+       (while (not (ja-done? 0))
+         (suspend)
+         (ja-eval)
          )
-        ((let ((v1-17 (ja-group)))
-           (and v1-17 (= v1-17 sig-idle-right0-ja))
-           )
-         (ja-no-eval :num! (seek!))
-         (while (not (ja-done? 0))
-           (suspend)
-           (ja-eval)
-           )
+       (ja-channel-push! 1 (seconds 0.2))
+       )
+      ((ja-group? sig-idle-right0-ja)
+       (ja-no-eval :num! (seek!))
+       (while (not (ja-done? 0))
+         (suspend)
+         (ja-eval)
          )
-        (else
-          (ja-channel-push! 1 (seconds 0.3))
-          (ja-no-eval :group! sig-ready0-to-idle-right0-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))
-            )
-          (ja-channel-push! 1 (seconds 0.2))
+       )
+      (else
+        (ja-channel-push! 1 (seconds 0.3))
+        (ja-no-eval :group! sig-ready0-to-idle-right0-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
           )
+        (ja-channel-push! 1 (seconds 0.2))
         )
       )
     (until #f
@@ -204,61 +200,54 @@
         )
     )
   :code (behavior ()
-    (let* ((v1-2 (ja-group))
-           (gp-0 (-> self
-                     draw
-                     art-group
-                     data
-                     (cond
-                       ((and v1-2 (= v1-2 sig-idle-right0-ja))
-                        (ja-channel-push! 1 (seconds 0.1))
-                        (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
-                        (until (ja-done? 0)
-                          (suspend)
-                          (ja :num! (seek!))
-                          )
-                        7
-                        )
-                       (else
-                         (let ((v1-32 (ja-group)))
-                           (cond
-                             ((and v1-32 (= v1-32 sig-idle-right0-to-ready0-ja))
-                              (ja-no-eval :num! (seek!))
-                              (while (not (ja-done? 0))
-                                (suspend)
-                                (ja-eval)
-                                )
-                              7
-                              )
-                             (else
-                               (let ((v1-46 (ja-group)))
-                                 (cond
-                                   ((and v1-46 (= v1-46 sig-ready0-ja))
-                                    (ja-no-eval :num! (seek!))
-                                    (while (not (ja-done? 0))
-                                      (suspend)
-                                      (ja-eval)
-                                      )
-                                    7
-                                    )
-                                   (else
-                                     7
-                                     )
-                                   )
-                                 )
-                               )
-                             )
-                           )
+    (let ((gp-0 (-> self
+                    draw
+                    art-group
+                    data
+                    (cond
+                      ((ja-group? sig-idle-right0-ja)
+                       (ja-channel-push! 1 (seconds 0.1))
+                       (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
+                       (until (ja-done? 0)
+                         (suspend)
+                         (ja :num! (seek!))
                          )
+                       7
                        )
-                     )
-                 )
-           )
-      (let ((v1-62 (ja-group)))
-        (if (not (and v1-62 (= v1-62 gp-0)))
-            (ja-channel-push! 1 (seconds 0.3))
-            )
-        )
+                      (else
+                        (cond
+                          ((ja-group? sig-idle-right0-to-ready0-ja)
+                           (ja-no-eval :num! (seek!))
+                           (while (not (ja-done? 0))
+                             (suspend)
+                             (ja-eval)
+                             )
+                           7
+                           )
+                          (else
+                            (cond
+                              ((ja-group? sig-ready0-ja)
+                               (ja-no-eval :num! (seek!))
+                               (while (not (ja-done? 0))
+                                 (suspend)
+                                 (ja-eval)
+                                 )
+                               7
+                               )
+                              (else
+                                7
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                )
+          )
+      (if (not (ja-group? gp-0))
+          (ja-channel-push! 1 (seconds 0.3))
+          )
       (until #f
         (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -312,7 +301,7 @@
       )
     )
   :code (behavior ()
-    (local-vars (s4-1 art-element) (f0-19 float))
+    (local-vars (s4-1 art-joint-anim) (f0-19 float))
     (let ((gp-0 (new 'stack-no-clear 'bot-turn-info)))
       (let ((s5-0 (-> self focus-info fproc)))
         (if (not s5-0)
@@ -320,37 +309,31 @@
             )
         (turn-to-target self gp-0 s5-0 1.4361539)
         )
-      (let ((v1-8 (ja-group)))
-        (cond
-          ((and v1-8 (or (= v1-8 sig-idle-right0-ja) (= v1-8 sig-ready0-to-idle-right0-ja)))
-           (ja-channel-push! 1 (seconds 0.1))
-           (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))
-             )
-           (ja-channel-push! 1 (seconds 0.04))
+      (cond
+        ((ja-group? sig-idle-right0-ja sig-ready0-to-idle-right0-ja)
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
            )
-          (else
-            (let ((v1-38 (ja-group)))
-              (cond
-                ((and v1-38 (= v1-38 sig-idle-right0-to-ready0-ja))
-                 (ja-no-eval :num! (seek!))
-                 (while (not (ja-done? 0))
-                   (suspend)
-                   (ja-eval)
-                   )
-                 (ja-channel-push! 1 (seconds 0.04))
-                 )
-                (else
-                  (let ((v1-53 (ja-group)))
-                    (if (and v1-53 (= v1-53 sig-ready0-ja))
-                        (ja-channel-push! 1 (seconds 0.1))
-                        (ja-channel-push! 1 (seconds 0.3))
-                        )
-                    )
+         (ja-channel-push! 1 (seconds 0.04))
+         )
+        (else
+          (cond
+            ((ja-group? sig-idle-right0-to-ready0-ja)
+             (ja-no-eval :num! (seek!))
+             (while (not (ja-done? 0))
+               (suspend)
+               (ja-eval)
+               )
+             (ja-channel-push! 1 (seconds 0.04))
+             )
+            (else
+              (if (ja-group? sig-ready0-ja)
+                  (ja-channel-push! 1 (seconds 0.1))
+                  (ja-channel-push! 1 (seconds 0.3))
                   )
-                )
               )
             )
           )
@@ -993,61 +976,54 @@
       )
     )
   :code (behavior ()
-    (let* ((v1-2 (ja-group))
-           (gp-0 (-> self
-                     draw
-                     art-group
-                     data
-                     (cond
-                       ((and v1-2 (= v1-2 sig-idle-right0-ja))
-                        (ja-channel-push! 1 (seconds 0.1))
-                        (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
-                        (until (ja-done? 0)
-                          (suspend)
-                          (ja :num! (seek!))
-                          )
-                        7
-                        )
-                       (else
-                         (let ((v1-32 (ja-group)))
-                           (cond
-                             ((and v1-32 (= v1-32 sig-idle-right0-to-ready0-ja))
-                              (ja-no-eval :num! (seek!))
-                              (while (not (ja-done? 0))
-                                (suspend)
-                                (ja-eval)
-                                )
-                              7
-                              )
-                             (else
-                               (let ((v1-46 (ja-group)))
-                                 (cond
-                                   ((and v1-46 (= v1-46 sig-ready0-ja))
-                                    (ja-no-eval :num! (seek!))
-                                    (while (not (ja-done? 0))
-                                      (suspend)
-                                      (ja-eval)
-                                      )
-                                    7
-                                    )
-                                   (else
-                                     7
-                                     )
-                                   )
-                                 )
-                               )
-                             )
-                           )
+    (let ((gp-0 (-> self
+                    draw
+                    art-group
+                    data
+                    (cond
+                      ((ja-group? sig-idle-right0-ja)
+                       (ja-channel-push! 1 (seconds 0.1))
+                       (ja-no-eval :group! sig-idle-right0-to-ready0-ja :num! (seek!) :frame-num 0.0)
+                       (until (ja-done? 0)
+                         (suspend)
+                         (ja :num! (seek!))
                          )
+                       7
                        )
-                     )
-                 )
-           )
-      (let ((v1-62 (ja-group)))
-        (if (not (and v1-62 (= v1-62 gp-0)))
-            (ja-channel-push! 1 (seconds 0.3))
-            )
-        )
+                      (else
+                        (cond
+                          ((ja-group? sig-idle-right0-to-ready0-ja)
+                           (ja-no-eval :num! (seek!))
+                           (while (not (ja-done? 0))
+                             (suspend)
+                             (ja-eval)
+                             )
+                           7
+                           )
+                          (else
+                            (cond
+                              ((ja-group? sig-ready0-ja)
+                               (ja-no-eval :num! (seek!))
+                               (while (not (ja-done? 0))
+                                 (suspend)
+                                 (ja-eval)
+                                 )
+                               7
+                               )
+                              (else
+                                7
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                )
+          )
+      (if (not (ja-group? gp-0))
+          (ja-channel-push! 1 (seconds 0.3))
+          )
       (until #f
         (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -1095,7 +1071,7 @@
     (bot-method-223 self #f)
     )
   :code (behavior ()
-    (local-vars (a1-2 art-element))
+    (local-vars (a1-2 art-joint-anim))
     (enemy-method-46 self 3)
     (ja-channel-push! 1 (seconds 0.1))
     0.0
@@ -1151,7 +1127,7 @@
     0
     (nav-enemy-method-167 self)
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
-    (if (not (handle->process (-> self focus handle)))
+    (if (not (the-as process-focusable (handle->process (-> self focus handle))))
         (react-to-focus self)
         )
     (set! (-> self skel top-anim interp) 0.0)
@@ -1161,7 +1137,7 @@
     (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :code (behavior ()
-    (local-vars (gp-0 art-element))
+    (local-vars (gp-0 art-joint-anim))
     (let ((f30-0 8.0))
       (cond
         ((< (fabs (-> self focus-info ry-diff)) 8192.0)
@@ -1273,7 +1249,7 @@
   :enter (behavior ()
     ((-> (method-of-type sig chase) enter))
     (set! (-> self skel top-anim interp) 1.0)
-    (if (not (handle->process (-> self focus handle)))
+    (if (not (the-as process-focusable (handle->process (-> self focus handle))))
         (go-virtual traveling)
         )
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
@@ -1282,7 +1258,7 @@
     (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :code (behavior ()
-    (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim sig-upper-shoot-ja) 0.0 9 9 1.0 0.0 #f)
+    (push-anim-to-targ (-> self skel top-anim) sig-upper-shoot-ja 0.0 9 9 1.0 0.0 #f)
     (until (time-elapsed? (-> self state-time) (seconds 0.167))
       (sig-method-258 self)
       (suspend)
@@ -1300,7 +1276,7 @@
          0
          )
         (else
-          (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim sig-upper-base-high-ja) 0.0 30 0 1.0 0.0 #f)
+          (push-anim-to-targ (-> self skel top-anim) sig-upper-base-high-ja 0.0 30 0 1.0 0.0 #f)
           )
         )
       )
@@ -1314,10 +1290,10 @@
     (go-virtual chase)
     )
   :post (behavior ()
-    (let ((a0-1 (handle->process (-> self focus handle))))
+    (let ((a0-1 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when a0-1
         (let ((gp-0 (-> self nav state))
-              (v1-7 (get-trans (the-as process-focusable a0-1) 0))
+              (v1-7 (get-trans a0-1 0))
               )
           (logclear! (-> gp-0 flags) (nav-state-flag directional-mode))
           (logior! (-> gp-0 flags) (nav-state-flag target-poly-dirty))
@@ -1497,12 +1473,10 @@
         )
     )
   :code (behavior ()
-    (let ((v1-2 (ja-group)))
-      (if (and v1-2 (or (= v1-2 sig-chased-run-jump-land0-ja) (= v1-2 sig-chased-shoot-jump-land0-ja)))
-          (ja-channel-push! 1 (seconds 0.07))
-          (ja-channel-push! 1 (seconds 0.15))
-          )
-      )
+    (if (ja-group? sig-chased-run-jump-land0-ja sig-chased-shoot-jump-land0-ja)
+        (ja-channel-push! 1 (seconds 0.07))
+        (ja-channel-push! 1 (seconds 0.15))
+        )
     (ja-no-eval :group! sig-chased-run0-ja :num! (loop!))
     (until #f
       (suspend)
@@ -1564,11 +1538,9 @@
     )
   :code (behavior ()
     (let ((f30-0 0.0))
-      (let ((v1-2 (ja-group)))
-        (if (and v1-2 (= v1-2 sig-chased-run-jump0-ja))
-            (set! f30-0 1.0)
-            )
-        )
+      (if (ja-group? sig-chased-run-jump0-ja)
+          (set! f30-0 1.0)
+          )
       (ja-channel-push! 1 (seconds 0.07))
       (ja-no-eval :group! sig-chased-run-jump0-ja :num! (seek!) :frame-num f30-0)
       )
@@ -1693,11 +1665,9 @@
     )
   :code (behavior ()
     (let ((f30-0 0.0))
-      (let ((v1-2 (ja-group)))
-        (if (and v1-2 (= v1-2 sig-chased-shoot-jump0-ja))
-            (set! f30-0 1.0)
-            )
-        )
+      (if (ja-group? sig-chased-shoot-jump0-ja)
+          (set! f30-0 1.0)
+          )
       (ja-channel-push! 1 (seconds 0.07))
       (ja-no-eval :group! sig-chased-shoot-jump0-ja :num! (seek!) :frame-num f30-0)
       )

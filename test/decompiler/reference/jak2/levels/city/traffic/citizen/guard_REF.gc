@@ -1278,7 +1278,7 @@
 ;; WARN: Return type mismatch int vs object.
 (defmethod go-hostile ((this crimson-guard))
   (cond
-    ((handle->process (-> this focus handle))
+    ((the-as process-focusable (handle->process (-> this focus handle)))
      (logior! (-> this flags) (citizen-flag hostile))
      (let ((v1-6 (-> this hit-face)))
        (cond
@@ -1469,7 +1469,7 @@
           (set! (-> v1-4 radius) f0-0)
           (set! (-> v1-4 collide-with) (collide-spec backgnd))
           (set! (-> v1-4 ignore-process0) this)
-          (set! (-> v1-4 ignore-process1) (handle->process (-> this focus handle)))
+          (set! (-> v1-4 ignore-process1) (the-as process-focusable (handle->process (-> this focus handle))))
           (set! (-> v1-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
           (set! (-> v1-4 action-mask) (collide-action solid))
           )
@@ -1528,7 +1528,7 @@
           (set! (-> v1-17 radius) f30-0)
           (set! (-> v1-17 collide-with) (collide-spec civilian enemy obstacle hit-by-player-list hit-by-others-list))
           (set! (-> v1-17 ignore-process0) this)
-          (set! (-> v1-17 ignore-process1) (handle->process (-> this focus handle)))
+          (set! (-> v1-17 ignore-process1) (the-as process-focusable (handle->process (-> this focus handle))))
           (set! (-> v1-17 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
           (set! (-> v1-17 action-mask) (collide-action solid))
           )
@@ -1610,11 +1610,9 @@
             )
           (the-as enemy-aware #f)
           )
-        (let ((s4-1 (handle->process (-> this focus handle))))
+        (let ((s4-1 (the-as process-focusable (handle->process (-> this focus handle)))))
           (cond
-            ((and s4-1
-                  (not (logtest? (-> (the-as process-focusable s4-1) focus-status) (focus-status disable dead inactive)))
-                  )
+            ((and s4-1 (not (logtest? (-> s4-1 focus-status) (focus-status disable dead inactive))))
              (when (logtest? (-> s5-1 flags) (traffic-target-flag updated))
                (logclear! (-> this flags) (citizen-flag target-in-sight))
                (if (crimson-guard-method-215 this)
@@ -1622,8 +1620,8 @@
                    )
                )
              (set! (-> this target-flags) (the-as uint (-> s5-1 flags)))
-             (set! (-> this target-pos quad) (-> (get-trans (the-as process-focusable s4-1) 3) quad))
-             (set! (-> this target-vel-vec quad) (-> (the-as process-focusable s4-1) root transv quad))
+             (set! (-> this target-pos quad) (-> (get-trans s4-1 3) quad))
+             (set! (-> this target-vel-vec quad) (-> s4-1 root transv quad))
              (set! (-> this target-vel) (vector-length (-> this target-vel-vec)))
              (let ((s5-4 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (-> this target-pos))))
                (let* ((f0-3 (vector-length s5-4))
@@ -1999,7 +1997,7 @@
            (vf7 :class vf)
            )
       (init-vf0-vector)
-      (handle->process (-> self focus handle))
+      (the-as process-focusable (handle->process (-> self focus handle)))
       (let ((v1-5 (new 'stack-no-clear 'vector)))
         (if (< 32768.0 (-> self target-self-xz-dist))
             (set! (-> v1-5 quad) (-> self move-position quad))
@@ -2163,7 +2161,7 @@
     (crimson-guard-method-220 self)
     (set! (-> self miss-amount) (lerp-scale 0.0 16384.0 (-> self target-self-dist) 40960.0 122880.0))
     (set! (-> self miss-amount) 16384.0)
-    (let ((v1-27 (handle->process (-> self focus handle))))
+    (let ((v1-27 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if (and v1-27 (logtest? (process-mask enemy) (-> v1-27 mask)))
           (set! (-> self miss-amount) 0.0)
           )
@@ -2177,19 +2175,16 @@
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
-    (let ((gp-0 (handle->process (-> self focus handle))))
+    (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when gp-0
-        (when (not (and gp-0
-                        (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
-                        )
-                   )
+        (when (not (and gp-0 (not (logtest? (-> gp-0 focus-status) (focus-status disable dead ignore grabbed)))))
           (set! (-> self miss-amount) (lerp-scale 0.0 16384.0 (-> self target-self-dist) 40960.0 122880.0))
           (set! (-> self miss-amount) 16384.0)
           )
         (if (and (< (-> self target-self-xz-dist) 16384.0)
                  (and (< (fabs (-> self target-y-angle)) 7281.778)
                       gp-0
-                      (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                      (not (logtest? (-> gp-0 focus-status) (focus-status disable dead ignore grabbed)))
                       )
                  )
             (go-virtual close-attack)
@@ -2243,11 +2238,9 @@
           (let ((f0-8 1.0))
             (cond
               ((logtest? (-> self draw status) (draw-control-status on-screen))
-               (let ((v1-58 (handle->process (-> self focus handle))))
+               (let ((v1-58 (the-as process-focusable (handle->process (-> self focus handle)))))
                  (when v1-58
-                   (if (or (< (-> self target-vel) 40.96)
-                           (and (focus-test? (the-as process-focusable v1-58) pilot) (< (-> self target-pos y) 49152.0))
-                           )
+                   (if (or (< (-> self target-vel) 40.96) (and (focus-test? v1-58 pilot) (< (-> self target-pos y) 49152.0)))
                        (set! (-> self miss-amount) (- (-> self miss-amount) (* 12288.0 f0-8)))
                        (set! (-> self miss-amount) (- (-> self miss-amount) (* 4096.0 f0-8)))
                        )
@@ -2378,11 +2371,11 @@
       ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
-         (let ((a0-20 (handle->process (-> self focus handle))))
+         (let ((a0-20 (the-as process-focusable (handle->process (-> self focus handle)))))
            (if a0-20
                (seek-toward-heading-vec!
                  (-> self root)
-                 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-20) 0) (-> self root trans))
+                 (vector-! (new 'stack-no-clear 'vector) (get-trans a0-20 0) (-> self root trans))
                  32768.0
                  (seconds 0.05)
                  )
@@ -2395,11 +2388,11 @@
       (else
         (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 9.0 0)) :frame-num (ja-aframe 0.0 0))
         (until (ja-done? 0)
-          (let ((a0-33 (handle->process (-> self focus handle))))
+          (let ((a0-33 (the-as process-focusable (handle->process (-> self focus handle)))))
             (if a0-33
                 (seek-toward-heading-vec!
                   (-> self root)
-                  (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-33) 0) (-> self root trans))
+                  (vector-! (new 'stack-no-clear 'vector) (get-trans a0-33 0) (-> self root trans))
                   32768.0
                   (seconds 0.05)
                   )
@@ -2478,11 +2471,11 @@
       ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 9.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
-         (let ((a0-20 (handle->process (-> self focus handle))))
+         (let ((a0-20 (the-as process-focusable (handle->process (-> self focus handle)))))
            (if a0-20
                (seek-toward-heading-vec!
                  (-> self root)
-                 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-20) 0) (-> self root trans))
+                 (vector-! (new 'stack-no-clear 'vector) (get-trans a0-20 0) (-> self root trans))
                  32768.0
                  (seconds 0.05)
                  )
@@ -2495,11 +2488,11 @@
       (else
         (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 0.0 0))
         (until (ja-done? 0)
-          (let ((a0-33 (handle->process (-> self focus handle))))
+          (let ((a0-33 (the-as process-focusable (handle->process (-> self focus handle)))))
             (if a0-33
                 (seek-toward-heading-vec!
                   (-> self root)
-                  (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-33) 0) (-> self root trans))
+                  (vector-! (new 'stack-no-clear 'vector) (get-trans a0-33 0) (-> self root trans))
                   32768.0
                   (seconds 0.05)
                   )
@@ -2572,7 +2565,7 @@
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
-    (send-event (handle->process (-> self focus handle)) 'arrest)
+    (send-event (the-as process-focusable (handle->process (-> self focus handle))) 'arrest)
     )
   :code (behavior ()
     (speech-control-method-12 *speech-control* self (speech-type speech-type-13))
@@ -3022,11 +3015,9 @@
              )
         (go-hostile self)
         )
-    (let ((v1-14 (handle->process (-> self focus handle))))
-      (if (or (focus-test? (the-as process-focusable v1-14) inactive)
-              (focus-test? (the-as process-focusable v1-14) disable)
-              )
-          (set! v1-14 (the-as process #f))
+    (let ((v1-14 (the-as process-focusable (handle->process (-> self focus handle)))))
+      (if (or (focus-test? v1-14 inactive) (focus-test? v1-14 disable))
+          (set! v1-14 (the-as process-focusable #f))
           )
       (if (not v1-14)
           (go-virtual active)
@@ -3090,7 +3081,7 @@
                 (set! v1-94
                       (or (< (current-time) (-> self next-shot))
                           (< (-> self target-self-xz-dist) 16384.0)
-                          (not (and (handle->process (-> self focus handle))
+                          (not (and (the-as process-focusable (handle->process (-> self focus handle)))
                                     (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                                    (focus-status disable dead ignore grabbed)
                                                    )
@@ -3109,7 +3100,7 @@
             )
           )
         (cond
-          ((and (handle->process (-> self focus handle))
+          ((and (the-as process-focusable (handle->process (-> self focus handle)))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
                                )

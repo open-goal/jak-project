@@ -163,8 +163,8 @@
       )
     (ja-play-spooled-anim
       (-> self spool-anim)
-      (the-as art-joint-anim jakb-stance-loop-ja)
-      (the-as art-joint-anim jakb-stance-loop-ja)
+      jakb-stance-loop-ja
+      jakb-stance-loop-ja
       (lambda ((arg0 process-drawable)) (!= (-> *cpad-list* cpads 0 stick0-speed) 0.0))
       )
     (go target-stance)
@@ -372,11 +372,7 @@
         (+! gp-0 (- (current-time) (-> self clock old-frame-counter)))
         (suspend)
         )
-      (if (or (> gp-0 0)
-              (let ((v1-10 (ja-group)))
-                (and v1-10 (or (= v1-10 jakb-jump-ja) (= v1-10 jakb-jump-loop-ja) (= v1-10 jakb-duck-high-jump-ja)))
-                )
-              )
+      (if (or (> gp-0 0) (ja-group? jakb-jump-ja jakb-jump-loop-ja jakb-duck-high-jump-ja))
           (target-hit-ground-anim #f (are-still?))
           )
       )
@@ -580,22 +576,20 @@
             (vector-dot (-> self control edge-grab-edge-dir) (vector-normalize! (-> self control unknown-vector37) 1.0))
             )
           )
-    (let ((v1-8 (ja-group)))
-      (cond
-        ((and v1-8 (= v1-8 jakb-pole-jump-loop-ja))
-         (while (not (-> self control did-move-to-pole-or-max-jump-height))
-           (ja :num! (seek!))
-           (suspend)
-           )
-         (ja :num-func num-func-identity :frame-num (ja-aframe 37.0 0))
+    (cond
+      ((ja-group? jakb-pole-jump-loop-ja)
+       (while (not (-> self control did-move-to-pole-or-max-jump-height))
+         (ja :num! (seek!))
+         (suspend)
          )
-        (else
-          (while (not (-> self control did-move-to-pole-or-max-jump-height))
-            (suspend)
-            )
+       (ja :num-func num-func-identity :frame-num (ja-aframe 37.0 0))
+       )
+      (else
+        (while (not (-> self control did-move-to-pole-or-max-jump-height))
           (suspend)
-          (ja-channel-push! 1 (seconds 0.15))
           )
+        (suspend)
+        (ja-channel-push! 1 (seconds 0.15))
         )
       )
     (ja-no-eval :group! jakb-pole-cycle-ja :num! (seek!) :frame-num 0.0)
@@ -878,11 +872,9 @@
          )
         (else
           (while (< 0.0 (-> self control hand-to-edge-dist))
-            (let ((v1-60 (ja-group)))
-              (when (not (and v1-60 (= v1-60 jakb-jump-loop-ja)))
-                (ja-channel-push! 1 (seconds 0.15))
-                (ja :group! jakb-jump-loop-ja :num! min)
-                )
+            (when (not (ja-group? jakb-jump-loop-ja))
+              (ja-channel-push! 1 (seconds 0.15))
+              (ja :group! jakb-jump-loop-ja :num! min)
               )
             (suspend)
             )
@@ -920,16 +912,7 @@
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (let ((a1-3 (cond
                     ((using-gun? self)
-                     (push-anim-to-targ
-                       (-> self skel top-anim)
-                       (the-as art-joint-anim jakb-gun-edge-grab-to-jump-ja)
-                       0.0
-                       0
-                       30
-                       1.0
-                       0.0
-                       #f
-                       )
+                     (push-anim-to-targ (-> self skel top-anim) jakb-gun-edge-grab-to-jump-ja 0.0 0 30 1.0 0.0 #f)
                      jakb-gun-edge-grab-to-jump-ja
                      )
                     (else
@@ -971,16 +954,7 @@
     (send-event *camera* 'damp-up)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (if (using-gun? self)
-          (push-anim-to-targ
-            (-> self skel top-anim)
-            (the-as art-joint-anim jakb-gun-edge-grab-off-ja)
-            0.0
-            0
-            30
-            1.0
-            0.0
-            #f
-            )
+          (push-anim-to-targ (-> self skel top-anim) jakb-gun-edge-grab-off-ja 0.0 0 30 1.0 0.0 #f)
           )
       (ja-no-eval :group! jakb-edge-grab-off-ja :num! (seek! (ja-aframe 191.0 0)) :frame-num 0.0)
       (until (ja-done? 0)
@@ -1176,9 +1150,7 @@
         )
     (if (and (using-gun? self)
              (and (-> self next-state) (= (-> self next-state name) 'target-stance))
-             (let ((v1-85 (ja-group)))
-               (and v1-85 (= v1-85 jakb-stance-loop-ja))
-               )
+             (ja-group? jakb-stance-loop-ja)
              )
         (go target-gun-stance)
         )
@@ -1210,9 +1182,9 @@
         (set! (-> a0-5 frame-interp 1) f0-7)
         (set! (-> a0-5 frame-interp 0) f0-7)
         )
-      (set! (-> a0-5 frame-group) (the-as art-joint-anim jakb-wall-hide-body-ja))
+      (set! (-> a0-5 frame-group) jakb-wall-hide-body-ja)
       (set! (-> a0-5 param 0) 1.0)
-      (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim jakb-wall-hide-body-ja) num-func-loop!)
+      (joint-control-channel-group-eval! a0-5 jakb-wall-hide-body-ja num-func-loop!)
       )
     (set! (-> self control unknown-word04) (the-as uint 0.5))
     (set! (-> self control did-move-to-pole-or-max-jump-height) 0.5)
