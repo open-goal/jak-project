@@ -356,7 +356,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs object.
-(defun-debug add-debug-flat-triangle-noclip ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 int))
+(defun-debug add-debug-flat-triangle-noclip ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 int))
   (if (not (or arg0 *display-capture-mode*))
       (return (the-as object #f))
       )
@@ -372,7 +372,7 @@
                (transform-point-qword! (-> s5-0 2) (the-as vector (-> s5-0 8)))
                )
       (with-dma-buffer-add-bucket ((v1-15 (-> *display* frames (-> *display* on-screen) debug-buf))
-                                   (the-as bucket-id arg1)
+                                   arg1
                                    )
         (let ((a0-12 (-> v1-15 base)))
           (let* ((a1-4 v1-15)
@@ -1870,68 +1870,4 @@
     )
   0
   (none)
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
-(defun-debug cpu-delay ((arg0 uint))
-  (local-vars (v1-2 int) (a1-0 int) (a1-1 int))
-  0
-  0
-  (.mfc0 v1-2 Count)
-  (until (>= (the-as uint a1-1) arg0)
-    (.mfc0 a1-0 Count)
-    (nop!)
-    (set! a1-1 (- a1-0 v1-2))
-    (nop!)
-    )
-  0
-  (none)
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a0, Count]
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defun-debug qword-read-time ((arg0 (pointer uint128)) (arg1 int))
-  (local-vars (v1-1 int) (a0-1 int))
-  (let ((v1-0 (shr arg1 2))
-        (a1-1 arg0)
-        )
-    (.mfc0 a0-1 Count)
-    (until (zero? v1-0)
-      (-> a1-1 0)
-      (+! v1-0 -1)
-      (-> a1-1 1)
-      (nop!)
-      (-> a1-1 2)
-      (nop!)
-      (-> a1-1 3)
-      (set! a1-1 (&-> a1-1 4))
-      )
-    )
-  (.mfc0 v1-1 Count)
-  (- v1-1 a0-1)
-  )
-
-(defun-debug bugfix? ()
-  (let ((s5-0 (the-as int #xffffffff))
-        (gp-0 (the-as int #xffffffff))
-        (s4-0 (logior #x20000000 (logand (the-as uint #xffffffc0) #f)))
-        )
-    0
-    (let ((s3-0 (+ #x2000000 s4-0)))
-      (dotimes (s2-0 100)
-        (set! s5-0 (min s5-0 (qword-read-time (the-as (pointer uint128) s4-0) 128)))
-        (set! gp-0 (min gp-0 (qword-read-time (the-as (pointer uint128) s3-0) 128)))
-        )
-      (let ((f30-0 (/ (the float gp-0) (the float s5-0))))
-        (format #t "qword read times:  hi #x~x ~d, lo #x~x ~d~%" s3-0 gp-0 s4-0 s5-0)
-        (format #t "hi/lo memory bank uncached read speed ratio is ~f~%" f30-0)
-        (format
-          #t
-          "If the workaround for the EE memory controller bug is turned on, this ratio should be about 1.3, otherwise about 1.0.~%"
-          )
-        (< 1.15 f30-0)
-        )
-      )
-    )
   )

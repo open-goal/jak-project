@@ -5,6 +5,16 @@
 ;; name in dgo: construction-obs-h
 ;; dgos: ENGINE, GAME
 
+(define-extern rigid-body-object-event-handler (function process int symbol event-message-block object :behavior rigid-body-object))
+(define-extern *simple-sprite-system* simple-sprite-system)
+
+(deftype cquery-with-pad (structure)
+  "construction-object::71"
+  ((cquery collide-query :inline)
+   (pad   uint32        )
+   )
+  )
+
 ;; DECOMP BEGINS
 
 (deftype construction-object (rigid-body-object)
@@ -22,18 +32,17 @@
   )
 
 
-(define *construction-glow-template*
-  (new 'static 'sprite-glow-data
-    :position (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 2867.2))
-    :size-probe 163.84
-    :z-offset 4096.0
-    :size-y 2867.2
-    :color (new 'static 'rgbaf :data (new 'static 'array float 4 128.0 100.0 0.0 35.0))
-    :fade-a -0.0000122044
-    :fade-b 8.997864
-    :tex-id (new 'static 'texture-id :index #x15 :page #x4)
-    )
-  )
+(define *construction-glow-template* (new 'static 'sprite-glow-data
+                                       :position (new 'static 'vector :w 2867.2)
+                                       :size-probe 163.84
+                                       :z-offset 4096.0
+                                       :size-y 2867.2
+                                       :color (new 'static 'rgbaf :x 128.0 :y 100.0 :w 35.0)
+                                       :fade-a -0.0000122044
+                                       :fade-b 8.997864
+                                       :tex-id (new 'static 'texture-id :index #x15 :page #x4)
+                                       )
+        )
 
 (defstate idle (construction-object)
   :virtual #t
@@ -72,14 +81,14 @@
     (quad-copy! (the-as pointer (-> gp-0 position)) (the-as pointer *construction-glow-template*) 4)
     (vector-matrix*!
       (-> (&+ gp-0 64) position)
-      (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+      (new 'static 'vector :y 20480.0 :w 1.0)
       (-> this node-list data 0 bone transform)
       )
     (let* ((v1-2 (-> gp-0 position))
            (a1-2 (&+ gp-0 64))
            (f0-0 (-> v1-2 w))
            )
-      (set! (-> (the-as vector (-> v1-2 data)) quad) (-> a1-2 position quad))
+      (set! (-> (the-as vector (&-> v1-2 x)) quad) (-> a1-2 position quad))
       (set! (-> v1-2 w) f0-0)
       )
     0
@@ -91,37 +100,47 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
+;; WARN: Return type mismatch object vs symbol.
 (defmethod rigid-body-object-method-80 ((this construction-object) (arg0 rigid-body-impact))
-  (cond
-    ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
-     (let* ((s4-0 (new 'stack-no-clear 'vector))
-            (v1-3 (-> arg0 process))
-            (f30-0 (fmin 286720.0 (vector-length (-> (the-as process-drawable v1-3) root transv))))
-            )
-       (set! (-> s4-0 quad) (-> arg0 normal quad))
-       (vector-normalize! s4-0 (* 0.0012 f30-0))
-       (+! (-> s4-0 y) (/ f30-0 1000))
+  (the-as
+    symbol
+    (cond
+      ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
+       (let ((s4-0 (new 'stack-no-clear 'vector)))
+         (let* ((v1-3 (-> arg0 process))
+                (f30-0 (fmin 286720.0 (vector-length (-> (the-as process-drawable v1-3) root transv))))
+                )
+           (set! (-> s4-0 quad) (-> arg0 normal quad))
+           (vector-normalize! s4-0 (* 0.0012 f30-0))
+           (+! (-> s4-0 y) (/ f30-0 1000))
+           )
+         (set! (-> arg0 point quad) (-> (the-as process-drawable (-> arg0 process)) root trans quad))
+         (+! (-> arg0 point y) -20.48)
+         (apply-impact! (-> this rbody) (-> arg0 point) s4-0)
+         )
+       (rigid-body-control-method-12 (-> this rbody) 1.0)
+       (rigid-body-control-method-13 (-> this rbody))
+       (logior! (-> this root penetrated-by) (penetrate vehicle))
+       (let ((v0-4 (the-as object (+ (current-time) (seconds 0.1)))))
+         (set! (-> this hit-time) (the-as int v0-4))
+         v0-4
+         )
        )
-     (set! (-> arg0 point quad) (-> (the-as process-drawable (-> arg0 process)) root trans quad))
-     (+! (-> arg0 point y) -20.48)
-     (rigid-body-control-method-18 (-> this rbody) (-> arg0 point))
-     (rigid-body-control-method-12 (-> this rbody) 1.0)
-     ((method-of-object (-> this rbody) rigid-body-control-method-13))
-     (logior! (-> this root penetrated-by) (penetrate vehicle))
-     (set! (-> this hit-time) (the-as int (+ (current-time) (seconds 0.1))))
-     )
-    (else
-      ((method-of-type rigid-body-object rigid-body-object-method-80) this arg0)
+      (else
+        ((method-of-type rigid-body-object rigid-body-object-method-80) this arg0)
+        )
       )
     )
-  (none)
   )
 
-(defmethod rigid-body-object-method-82 ((this construction-object) (arg0 object) (arg1 rigid-body-object-constants))
+(defmethod rigid-body-object-method-82 ((this construction-object)
+                                       (arg0 process-drawable)
+                                       (arg1 rigid-body-object-constants)
+                                       (arg2 object)
+                                       (arg3 object)
+                                       )
   (set! (-> arg1 info inertial-tensor fvec x) (/ (-> arg1 info inertial-tensor fvec x) 1000))
-  ((method-of-type rigid-body-object rigid-body-object-method-82) this arg0 arg1)
-  (none)
+  ((method-of-type rigid-body-object rigid-body-object-method-82) this arg0 arg1 arg2 arg3)
   )
 
 (defmethod construction-object-method-90 ((this construction-object))
@@ -174,7 +193,7 @@
     (let ((s5-0 (new 'stack-no-clear 'water-info)))
       (water-info-init! (-> this root) s5-0 (collide-action solid semi-solid))
       (when (logtest? (-> s5-0 flags) (water-flag dark-eco))
-        (let ((v1-8 (make-sound-instance (-> *sound-info* 568) 0 (the-as handle #f))))
+        (let ((v1-8 (make-sound-instance (-> *sound-info* 568) 0 #f)))
           (cond
             (v1-8
               (set! (-> v1-8 trans quad) (-> this root trans quad))
@@ -211,14 +230,20 @@
       (set! (-> a0-16 action-mask) (collide-action solid))
       (set! (-> a0-16 nav-mesh) #f)
       )
-    (collide-cache-method-13 *collide-cache* (-> v1-28 cquery))
+    (fill-using-line-sphere *collide-cache* (-> v1-28 cquery))
     )
   ((method-of-type rigid-body-object rigid-body-object-method-71) this)
   (none)
   )
 
 (defmethod construction-object-method-92 ((this construction-object) (arg0 object))
-  (let ((gp-0 (entity-more-perm-hash-method-12 *entity-more-perm* (-> this entity extra perm aid) #f)))
+  (let ((gp-0 (entity-more-perm-hash-method-12
+                *entity-more-perm*
+                (-> this entity extra perm aid)
+                (the-as (pointer symbol) #f)
+                )
+              )
+        )
     (cond
       (arg0
         (logior! (-> gp-0 user-uint64) 1)
@@ -233,7 +258,7 @@
         (set! (-> gp-0 user-int8 6) (the int (* 127.0 (-> this root rot y))))
         (set! (-> gp-0 user-int8 7) (the int (* 127.0 (-> this root rot z))))
         (let ((v1-23 (new 'stack-no-clear 'vector)))
-          (vector-! (the-as vector (-> v1-23 data)) (-> this root trans) (-> this entity trans))
+          (vector-! (the-as vector (&-> v1-23 x)) (-> this root trans) (-> this entity trans))
           (when (or (< 2457600.0 (fabs (-> v1-23 x))) (< 2457600.0 (fabs (-> v1-23 y))) (< 2457600.0 (fabs (-> v1-23 z))))
             (logior! (-> gp-0 user-uint64) 1)
             (logior! (-> this entity extra perm status) (entity-perm-status dead))

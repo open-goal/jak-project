@@ -28,6 +28,24 @@
   )
 ;; ---pad-buttons-u64
 
+(declare-type clm basic)
+(define-extern *clm-edit* clm)
+(define-extern *clm* clm)
+(define-extern *clm-spline-attr* clm)
+(define-extern *clm-intro-attr* clm)
+(define-extern *clm-index-attr* clm)
+(define-extern *clm-focalpull-attr* clm)
+(define-extern *clm-select* clm)
+
+(define-extern camera-line-setup (function vector4w none))
+(define-extern camera-line-draw (function vector vector none))
+(define-extern camera-line (function vector vector vector4w none))
+(define-extern camera-cross (function vector vector vector vector4w meters none))
+(define-extern camera-fov-frame (function matrix vector float float float vector4w symbol))
+(define-extern analog-input (function int float float float float float))
+(define-extern cam-slave-options->string (function cam-slave-options object string))
+(define-extern cam-index-options->string (function cam-index-options object string))
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -119,7 +137,7 @@
 (define *volume-normal* (new 'debug 'vector-array 600))
 
 (deftype volume-descriptor-array (inline-array-class)
-  ((data  plane-volume  :dynamic)
+  ((data  plane-volume  :inline :dynamic)
    )
   )
 
@@ -520,13 +538,7 @@
         (.svf (&-> a1-8 quad) vf6)
         )
       (camera-line (-> arg1 origin) s5-0 (-> arg1 color))
-      (camera-cross
-        (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-        (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
-        s5-0
-        (-> arg1 color)
-        (meters 1)
-        )
+      (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) s5-0 (-> arg1 color) (meters 1))
       )
     (none)
     )
@@ -584,13 +596,7 @@
         (.svf (&-> a1-8 quad) vf6)
         )
       (camera-line (-> arg1 origin) s5-0 (-> arg1 color))
-      (camera-cross
-        (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-        (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
-        s5-0
-        (-> arg1 color)
-        (meters 1)
-        )
+      (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) s5-0 (-> arg1 color) (meters 1))
       )
     (none)
     )
@@ -622,8 +628,8 @@
                (or (!= *camera-layout-blink* 'pivot) (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
                )
           (camera-cross
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+            (new 'static 'vector :y 1024.0)
+            (new 'static 'vector :z 1024.0)
             s5-1
             (new 'static 'vector4w :x #x80 :w #x80)
             (meters 1)
@@ -635,8 +641,8 @@
                (or (!= *camera-layout-blink* 'align) (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
                )
           (camera-cross
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+            (new 'static 'vector :y 1024.0)
+            (new 'static 'vector :z 1024.0)
             s5-2
             (new 'static 'vector4w :y #x80 :w #x80)
             (meters 1)
@@ -650,8 +656,8 @@
                    )
                )
           (camera-cross
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-            (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+            (new 'static 'vector :y 1024.0)
+            (new 'static 'vector :z 1024.0)
             s5-3
             (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
             (meters 1)
@@ -727,8 +733,8 @@
           (.svf (&-> a0-55 quad) vf6)
           )
         (camera-cross
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
           s5-4
           (new 'static 'vector4w :x #xff :y #xff :w #x80)
           (meters 1)
@@ -800,8 +806,8 @@
           (.svf (&-> a1-45 quad) vf6)
           )
         (camera-cross
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
           s5-5
           (new 'static 'vector4w :z #xff :w #x80)
           (meters 1)
@@ -815,8 +821,8 @@
           (.svf (&-> a0-88 quad) vf6)
           )
         (camera-cross
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
           s5-5
           (new 'static 'vector4w :z #xff :w #x80)
           (meters 1)
@@ -863,8 +869,8 @@
         (camera-line s4-3 s3-3 (new 'static 'vector4w :y #x80 :w #x80))
         (vector-lerp-clamp! s5-6 s4-3 s3-3 (-> *CAM_LAYOUT-bank* spline-t))
         (camera-cross
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
           s5-6
           (new 'static 'vector4w :x #xff :y #xff :w #x80)
           (meters 1)
@@ -889,8 +895,8 @@
           (-> *CAM_LAYOUT-bank* spline-t)
           )
         (camera-cross
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 1024.0 0.0 0.0))
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 1024.0 0.0))
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
           s5-7
           (new 'static 'vector4w :y #xff :z #xff :w #x80)
           (meters 1)
@@ -930,23 +936,23 @@
           )
         (set! (-> s5-8 axis) #f)
         (set! (-> s5-8 disp) "li")
-        (set! (-> s5-8 color) (the-as vector4w L802))
+        (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :w #x80))
         (interp-test (the-as (function vector vector vector float vector float none) vector-lerp!) s5-8)
         (set! (-> s5-8 disp) "si")
-        (set! (-> s5-8 color) (the-as vector4w L800))
+        (set! (-> s5-8 color) (new 'static 'vector4w :y #xff :w #x80))
         (interp-test (the-as (function vector vector vector float vector float none) v-slrp!) s5-8)
         (set! (-> s5-8 disp) "si2")
-        (set! (-> s5-8 color) (the-as vector4w L798))
+        (set! (-> s5-8 color) (new 'static 'vector4w :z #xff :w #x80))
         (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) s5-8)
         (set! (-> s5-8 disp) "si3")
-        (set! (-> s5-8 color) (the-as vector4w L796))
+        (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :z #xff :w #x80))
         (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) s5-8)
-        (set! (-> s5-8 axis) (-> (view-get-active-camera) local-down))
+        (set! (-> s5-8 axis) (the-as vector (&-> (view-get-active-camera) stack 160)))
         (set! (-> s5-8 disp) "si2d")
-        (set! (-> s5-8 color) (the-as vector4w L794))
+        (set! (-> s5-8 color) (new 'static 'vector4w :y #xff :z #xff :w #x80))
         (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) s5-8)
         (set! (-> s5-8 disp) "si3d")
-        (set! (-> s5-8 color) (the-as vector4w L792))
+        (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :y #xff :w #x80))
         (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) s5-8)
         )
       )
@@ -958,14 +964,14 @@
   (with-pp
     (cam-layout-print 16 *camera-layout-message-ypos* "button test")
     (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 14))
-    (setting-control-method-11
+    (cam-reconnect
       *setting-control*
       (view-get-active-index)
       pp
-      'master-options
+      (the-as time-frame 'master-options)
       'set
-      (the-as vector 0)
-      32
+      0
+      0.000000000000000000000000000000000000000000045
       )
     #f
     )
@@ -975,14 +981,14 @@
   (with-pp
     (cam-layout-print 16 *camera-layout-message-ypos* "button not applicable")
     (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 14))
-    (setting-control-method-11
+    (cam-reconnect
       *setting-control*
       (view-get-active-index)
       pp
-      'master-options
+      (the-as time-frame 'master-options)
       'set
-      (the-as vector 0)
-      32
+      0
+      0.000000000000000000000000000000000000000000045
       )
     #t
     )
@@ -992,14 +998,14 @@
   (with-pp
     (cam-layout-print 16 *camera-layout-message-ypos* "button not implemented yet")
     (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 14))
-    (setting-control-method-11
+    (cam-reconnect
       *setting-control*
       (view-get-active-index)
       pp
-      'master-options
+      (the-as time-frame 'master-options)
       'set
-      (the-as vector 0)
-      32
+      0
+      0.000000000000000000000000000000000000000000045
       )
     #t
     )
@@ -1022,14 +1028,18 @@
       (set! (-> arg1 x)
             (- (-> arg1 x) (analog-input (the-as int (-> *cpad-list* cpads arg2 leftx)) 128.0 48.0 110.0 1.0))
             )
-      (when (logtest? (-> (view-get-active-camera) settings master-options) (cam-master-options READ_BUTTONS))
+      (when (logtest? (-> (the-as camera-master (view-get-active-camera)) settings master-options)
+                      (cam-master-options READ_BUTTONS)
+                      )
         (if (cpad-hold? arg2 r1)
             (set! (-> arg1 y)
                   (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 9)) 0.0 32.0 230.0 0.5) (-> arg1 y))
                   )
             )
         )
-      (when (logtest? (-> (view-get-active-camera) settings master-options) (cam-master-options READ_BUTTONS))
+      (when (logtest? (-> (the-as camera-master (view-get-active-camera)) settings master-options)
+                      (cam-master-options READ_BUTTONS)
+                      )
         (if (cpad-hold? arg2 l1)
             (set! (-> arg1 y)
                   (- (-> arg1 y) (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 8)) 0.0 32.0 230.0 0.5)))
@@ -1143,14 +1153,14 @@
         )
       )
     )
-  (setting-control-method-11
+  (cam-reconnect
     *setting-control*
     (view-get-active-index)
     self
-    'master-options
+    (the-as time-frame 'master-options)
     'set
-    (the-as vector 0)
-    32
+    0
+    0.000000000000000000000000000000000000000000045
     )
   #t
   )
@@ -1189,14 +1199,14 @@
         )
       )
     (clmf-next-volume a0-1)
-    (setting-control-method-11
+    (cam-reconnect
       *setting-control*
       (view-get-active-index)
       pp
-      'master-options
+      (the-as time-frame 'master-options)
       'set
-      (the-as vector 0)
-      32
+      0
+      0.000000000000000000000000000000000000000000045
       )
     #t
     )
@@ -1302,14 +1312,14 @@
   (set! (-> *camera-other-root* quad) (-> *camera-other-trans* quad))
   (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) *camera-other-matrix*)
   (set! *camera-look-through-other* 10)
-  (setting-control-method-11
+  (cam-reconnect
     *setting-control*
     (view-get-active-index)
     self
-    'master-options
+    (the-as time-frame 'master-options)
     'set
-    (the-as vector 0)
-    32
+    0
+    0.000000000000000000000000000000000000000000045
     )
   #f
   )
@@ -1407,7 +1417,7 @@
             (vector-! s3-1 s3-1 (the-as vector s2-1))
             )
           (set! s2-1 (or s5-1 s2-1))
-          (set! arg0 (and (the-as vector s2-1) arg0))
+          (set! arg0 (and (the-as symbol s2-1) arg0))
           (if (the-as object arg0)
               (format #t "final trans ~M ~M ~M (maya)~%" (-> s3-1 x) (-> s3-1 y) (-> s3-1 z))
               )
@@ -2252,15 +2262,15 @@
 (defbehavior clmf-save-single cam-layout ((arg0 entity-camera) (arg1 symbol) (arg2 symbol))
   (clear *temp-string*)
   (if arg2
-      (format *temp-string* "db/caminfo/~s.cam" (-> arg0 unknown))
+      (format *temp-string* "db/caminfo/~s.cam" (-> arg0 name))
       (format *temp-string* "db/caminfo/garbage")
       )
   (let ((s4-1 (new 'stack 'file-stream *temp-string* 'write)))
     (if arg1
-        (format #t "---------camera '~S'------------~%" (-> arg0 unknown))
+        (format #t "---------camera '~S'------------~%" (-> arg0 name))
         )
     (format s4-1 "#include /jakx/db/config/standard.m2d~%")
-    (format s4-1 "camera ~s {~%" (-> arg0 unknown))
+    (format s4-1 "camera ~s {~%" (-> arg0 name))
     (cam-layout-save-cam-rot arg1 (the-as string s4-1) arg0)
     (cam-layout-save-cam-trans arg1 (the-as string s4-1) arg0)
     (cam-layout-save-pivot arg1 (the-as string s4-1) arg0)
@@ -2301,7 +2311,7 @@
         (format #t "===============================~%~%~%~%")
         )
     (if gp-1
-        (format #t "'~S' save completed~%" (-> self cam-entity unknown))
+        (format #t "'~S' save completed~%" (-> self cam-entity name))
         )
     )
   #t
@@ -2558,14 +2568,14 @@
         )
       )
     )
-  (setting-control-method-11
+  (cam-reconnect
     *setting-control*
     (view-get-active-index)
     self
-    'master-options
+    (the-as time-frame 'master-options)
     'set
-    (the-as vector 0)
-    32
+    0
+    0.000000000000000000000000000000000000000000045
     )
   #t
   )
@@ -3606,19 +3616,19 @@
       )
   (let ((s5-0 30))
     (let ((s4-0 (cam-state-from-entity (-> self cam-entity))))
-      (setting-control-method-11
+      (cam-reconnect
         *setting-control*
         (view-get-active-index)
         self
-        'master-options
+        (the-as time-frame 'master-options)
         'clear
-        (the-as vector 0)
-        32
+        0
+        0.000000000000000000000000000000000000000000045
         )
       (let ((s3-1 (-> self cam-entity)))
         (clear *temp-string*)
         (if s3-1
-            (format *temp-string* "\"~S\"~%" (-> s3-1 unknown))
+            (format *temp-string* "\"~S\"~%" (-> s3-1 name))
             )
         )
       (if (not s4-0)

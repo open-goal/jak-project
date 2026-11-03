@@ -5,6 +5,23 @@
 ;; name in dgo: sparticle
 ;; dgos: ENGINE, GAME
 
+(define-extern *sprite-array-2d* sprite-array-2d)
+(define-extern *sprite-array-3d* sprite-array-3d)
+(define-extern *sp-launcher-lock* symbol)
+(define-extern clear-sprite-aux-list
+               "Reset all pending sprites in the aux-list."
+               (function none))
+(define-extern sp-clear-queue (function none))
+(define-extern *sprite-aux-list* sprite-aux-list)
+
+(defmacro .movz (result value check original)
+  `(if (= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch object vs sparticle-cpuinfo.
@@ -412,14 +429,14 @@
            (if (and (nonzero? (-> (the-as sparticle-cpuinfo sv-16) valid))
                     (= (-> (the-as sparticle-cpuinfo sv-16) key) arg0)
                     )
-               (arg1 arg2 (the-as sparticle-cpuinfo sv-16) sv-20)
+               (arg1 arg2 sv-16 sv-20)
                )
-           (set! sv-16 (+ (the-as uint (the-as sparticle-cpuinfo sv-16)) 144))
+           (set! sv-16 (the-as sparticle-cpuinfo (+ (the-as uint (the-as sparticle-cpuinfo sv-16)) 144)))
            (&+! sv-20 48)
            )
          )
         (else
-          (set! sv-16 (&+ (the-as pointer sv-16) 9216))
+          (set! sv-16 (the-as sparticle-cpuinfo (&+ (the-as pointer sv-16) 9216)))
           (&+! sv-20 3072)
           )
         )

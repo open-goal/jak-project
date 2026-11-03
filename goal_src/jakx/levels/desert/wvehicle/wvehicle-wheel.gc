@@ -5,6 +5,10 @@
 ;; name in dgo: wvehicle-wheel
 ;; dgos: COMMON, GAME
 
+(define-extern *part-tracker-params-default* part-tracker-init-params)
+(define-extern part-tracker-subsampler-init (function part-tracker-init-params object :behavior part-tracker-subsampler))
+(define-extern part-tracker-init (function part-tracker-init-params object :behavior part-tracker))
+
 ;; DECOMP BEGINS
 
 (deftype vehicle-wheel-init-params (structure)
@@ -19,24 +23,23 @@
   )
 
 
-(define *vehicle-wheel-constants*
-  (new 'static 'rigid-body-object-constants
-    :info (new 'static 'rigid-body-info
-      :max-time-step 0.033333335
-      :mass 1.0
-      :inv-mass 1.0
-      :linear-damping 0.01
-      :angular-damping 0.01
-      :bounce-factor 0.5
-      :friction-factor 0.5
-      :bounce-mult-factor 1.22
-      :cm-offset-joint (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 1.0))
-      :inertial-tensor-box (new 'static 'array meters 3 (meters 2) (meters 3) (meters 3))
-      :gravity 204800.0
-      )
-    :name '*vehicle-wheel-constants*
-    )
-  )
+(define *vehicle-wheel-constants* (new 'static 'rigid-body-object-constants
+                                    :info (new 'static 'rigid-body-info
+                                      :max-time-step 0.033333335
+                                      :mass 1.0
+                                      :inv-mass 1.0
+                                      :linear-damping 0.01
+                                      :angular-damping 0.01
+                                      :bounce-factor 0.5
+                                      :friction-factor 0.5
+                                      :bounce-mult-factor 1.22
+                                      :cm-offset-joint (new 'static 'vector :w 1.0)
+                                      :inertial-tensor-box (new 'static 'array meters 3 (meters 2) (meters 3) (meters 3))
+                                      :gravity 204800.0
+                                      )
+                                    :name '*vehicle-wheel-constants*
+                                    )
+        )
 
 (deftype vehicle-wheel (rigid-body-object)
   ((camera-dist  float)
@@ -166,7 +169,7 @@
       (set! (-> a0-4 action-mask) (collide-action solid))
       (set! (-> a0-4 nav-mesh) #f)
       )
-    (collide-cache-method-13 *collide-cache* (-> v1-0 cquery))
+    (fill-using-line-sphere *collide-cache* (-> v1-0 cquery))
     )
   (if *display-collide-cache*
       (debug-draw *collide-cache*)
@@ -196,7 +199,7 @@
 (defmethod rigid-body-object-method-80 ((this vehicle-wheel) (arg0 rigid-body-impact))
   (when (< 40960.0 (-> arg0 impulse))
     (let ((f30-0 (* 0.000024414063 (+ -40960.0 (-> arg0 impulse))))
-          (v1-5 (make-sound-instance (-> *sound-info* 625) 0 (the-as handle #f)))
+          (v1-5 (make-sound-instance (-> *sound-info* 625) 0 #f))
           )
       (cond
         (v1-5
@@ -211,7 +214,7 @@
       )
     (when (< 81920.0 (-> arg0 impulse))
       (let ((f30-1 (* 0.000024414063 (+ -81920.0 (-> arg0 impulse))))
-            (v1-13 (make-sound-instance (-> *sound-info* 624) 0 (the-as handle #f)))
+            (v1-13 (make-sound-instance (-> *sound-info* 624) 0 #f))
             )
         (cond
           (v1-13
@@ -246,8 +249,8 @@
              (gp-1 (-> block param 1))
              )
          (when (and a1-3 gp-1)
-           ((method-of-object (-> self rbody) rigid-body-control-method-31))
-           ((method-of-object (-> self rbody) rigid-body-control-method-32))
+           (rigid-body-control-method-31 (-> self rbody) (the-as vector a1-3))
+           (rigid-body-control-method-32 (-> self rbody) (the-as vector gp-1))
            (go-virtual explode)
            )
          )

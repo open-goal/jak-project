@@ -52,8 +52,16 @@ def add_function_to_hacks(path, function):
 def namespace_for_goal_function(function):
     method = re.fullmatch(r"\(method\s+(\d+)\s+([^)]+)\)", function)
     if method:
-        return f"method_{method.group(1)}_{method.group(2).replace('-', '_')}"
-    return function.replace("-", "_").replace("!", "").replace("<", "").replace(">", "")
+        function = method.group(2)
+        prefix = f"method_{method.group(1)}_"
+    else:
+        prefix = ""
+    # GOAL's `<-` naming convention becomes an underscore in the C++ namespace.
+    function = function.replace("<-", "_").replace("-", "_")
+    function = re.sub(r"[!?*]", "", function)
+    function = re.sub(r"[^A-Za-z0-9_]", "_", function)
+    function = re.sub(r"_+", "_", function).strip("_")
+    return prefix + function
 
 
 def extract_generated_function(output_path, function):
@@ -64,9 +72,17 @@ def extract_generated_function(output_path, function):
     wanted = namespace_for_goal_function(function)
     for marker in markers:
         block = marker.group(1).strip() + "\n"
-        namespace = re.search(r"namespace Mips2C::\w+\s*\{\s*namespace (\w+)\s*\{", block)
-        if namespace and wanted == namespace.group(1):
-            return namespace.group(1), block
+        namespace = re.search(
+            r"namespace Mips2C::\w+\s*\{\s*namespace ([^\s{]+)\s*\{", block
+        )
+        registration = re.search(r'gLinkedFunctionTable\.reg\("' + re.escape(function) + r'"\s*,', block)
+        if namespace and registration:
+            generated_namespace = namespace.group(1)
+            if generated_namespace != wanted:
+                # Some GOAL names contain `<-`, which the decompiler currently emits
+                # verbatim even though that is not a valid C++ namespace identifier.
+                block = block.replace(generated_namespace, wanted)
+            return wanted, block
     raise ValueError(f"No generated C++ namespace matching {function!r} in {output_path}")
 
 

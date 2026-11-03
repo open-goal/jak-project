@@ -104,7 +104,7 @@
       (cond
         ((view-get-active-camera-combiner)
          (let ((gp-0 *camera-dummy-velocity*))
-           (.lvf vf1 (&-> (-> (view-get-active-camera-combiner) velocity) quad))
+           (.lvf vf1 (&-> (-> (the-as camera-combiner (view-get-active-camera-combiner)) velocity) quad))
            (let ((f0-0 (-> pp clock frames-per-second)))
              (.mov at-0 f0-0)
              )
@@ -179,11 +179,13 @@
   (sqrtf (math-camera-nearest-dist-sq arg0))
   )
 
+;; WARN: Return type mismatch object vs matrix.
 (defun camera-matrix ()
-  (if (view-get-active-camera-combiner)
-      (-> (view-get-active-camera-combiner) inv-camera-rot)
-      (-> (view-get-active-math-camera) inv-camera-rot)
-      )
+  (the-as matrix (if (view-get-active-camera-combiner)
+                     (&-> (view-get-active-camera-combiner) stack 16)
+                     (-> (view-get-active-math-camera) inv-camera-rot)
+                     )
+          )
   )
 
 (defun math-camera-matrix ()

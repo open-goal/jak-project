@@ -109,7 +109,6 @@
   :size-assert         #x37b
   :flag-assert         #x90000037b
   )
-
 (deftype net-world (process-nettable)
   ((net-state                  net-world-state :inline :offset-assert 192)
    (is-late-join               basic                   :offset-assert 1084)
@@ -121,7 +120,7 @@
    (task-node                  uint16                  :offset-assert 1106)
    (task-info                  game-task-info                   :offset-assert 1108)
    (task-node-info             game-task-node-info                   :offset-assert 1112)
-   (player-to-vehicle-slot-map uint8         24      :offset-assert 1116)
+   (player-to-vehicle-slot-map int8         24      :offset-assert 1116)
    (vehicle-slot-to-player-map uint8         6       :offset-assert 1140)
    )
   :method-count-assert 87
@@ -189,14 +188,35 @@
   )
 
 (deftype prebuilt-ai-vehicle (structure)
-  ((levname    symbol           :offset-assert 0)
-   (v-type     vehicle-type-u8  :offset-assert 4)
-   (load-parts uint64           :offset-assert 8)
+  ((levname    symbol            :offset-assert 0)
+   (v-type     vehicle-type-u8   :offset-assert 4)
+   (load-parts uint64            :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+;; +++net-world-h:net-vehicle-type
+(defenum net-vehicle-type
+  :type int8
+  (falcon 0)
+  (possum 1)
+  (bobcat 2)
+  (cougar 3)
+  (wombat 4)
+  (leopard 5)
+  (wolf 6)
+  (panther 7)
+  (tiger 8)
+  (bear 9)
+  (gila 10)
+  (cheetah 11)
+  (snake 12)
+  (mongoose 13)
+  (daxtermobile 14)
+)
+;; ---net-world-h:net-vehicle-type
 
 (deftype net-vehicle (structure)
   ((id         uint32           :offset-assert 0)
@@ -209,7 +229,7 @@
    (index      net-vehicle-type :offset-assert 24)
    (cup-mask   uint32           :offset-assert 28)
    (id-variant uint32           :offset-assert 32)
-   (ai-levels  (array symbol)   :offset-assert 36)
+   (ai-levels  (array prebuilt-ai-vehicle)   :offset-assert 36) ;; une supposition, should it be (array symbol) like master made it?
    )
   :method-count-assert 9
   :size-assert         #x28

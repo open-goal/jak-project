@@ -5,18 +5,38 @@
 ;; name in dgo: main
 ;; dgos: ENGINE, GAME
 
+(define-extern *in-game-menu-process* (pointer hud))
+(define-extern in-game-menu-startup (function none))
+(define-extern menu-respond-to-pause (function symbol))
+(define-extern cheat-add-gold (function none))
+(define-extern hud-string-draw-all (function none))
+(define-extern texscroll-execute (function none))
+(define-extern region-execute (function none))
+(define-extern execute-math-engine (function int))
+(define-extern execute-cloth-engine (function int))
+(define-extern temp-render-chat-messages (function none))
+(define-extern draw-color-bars (function blit-displays-work none))
+(define-extern load-level-text-files (function int none))
+(declare-type editable-player process-drawable)
+(define-extern *editable* (pointer editable-player))
+(define-extern display-frame-finish (function display display))
+(define-extern display-sync (function display none))
+(define-extern auto-save-check (function int))
+(define-extern hud-string-init (function none))
+(define-extern bg (function symbol none))
+(declare-type camera-start process-hidden)
+(define-extern entity-by-type (function type entity-actor))
+(define-extern anim-tester-add-object (function string none))
+
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch time-frame vs none.
 (defun set-letterbox-frames ((arg0 time-frame))
   (with-pp
     (set! (-> *game-info* letterbox-time)
-          (the-as
-            uint
-            (+ (-> *display* base-clock frame-counter)
-               (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
-               )
-            )
+          (+ (-> *display* base-clock frame-counter)
+             (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
+             )
           )
     (none)
     )
@@ -61,12 +81,12 @@
 (defun set-blackout-frames ((arg0 time-frame))
   (with-pp
     (if (zero? arg0)
-        (set! (-> *game-info* blackout-time) (the-as uint (-> *display* base-clock frame-counter)))
+        (set! (-> *game-info* blackout-time) (-> *display* base-clock frame-counter))
         (set! (-> *game-info* blackout-time)
               (the-as
-                uint
+                time-frame
                 (max
-                  (the-as int (-> *game-info* blackout-time))
+                  (-> *game-info* blackout-time)
                   (+ (-> *display* base-clock frame-counter)
                      (the int (/ (* (the float arg0) (-> *display* game-clock clock-ratio)) (-> pp clock clock-ratio)))
                      arg0
@@ -100,10 +120,10 @@
 (defun add-blackout ((arg0 time-frame) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
   (let ((v1-0 *display*))
     (let ((a0-1 (new 'static 'array time-frame 2 (seconds 0) (seconds 0))))
-      (set! (-> v1-0 bgcolor) (logior (logand (-> v1-0 bgcolor) -256) (shr (shl arg1 56) 56)))
-      (set! (-> v1-0 bgcolor) (logior (logand (-> v1-0 bgcolor) -65281) (shr (shl arg2 56) 48)))
-      (set! (-> v1-0 bgcolor) (logior (logand (-> v1-0 bgcolor) -16711681) (shr (shl arg3 56) 40)))
-      (set! (-> v1-0 pmode) (logior (logand (-> v1-0 pmode) -65281) (shr (shl (- 255 arg4) 56) 48)))
+      (set! (-> v1-0 bgcolor r) arg1)
+      (set! (-> v1-0 bgcolor g) arg2)
+      (set! (-> v1-0 bgcolor b) arg3)
+      (set! (-> v1-0 pmode alp) (- 255 arg4))
       (set! (-> a0-1 0) 0)
       (set! (-> a0-1 1) 0)
       )
@@ -187,14 +207,14 @@
                               sog31
                               )
                             )
-         (set! (-> *game-info* pause-start-time) (the-as uint (-> *display* real-clock frame-counter)))
+         (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
          )
        )
       (('freeze)
        (logior! (-> *setting-control* user-default process-mask) (process-mask freeze))
        (logclear! (-> *setting-control* user-default process-mask) (process-mask pause menu))
        (sound-group-pause (sound-group sfx ambient))
-       (set! (-> *game-info* pause-start-time) (the-as uint (-> *display* real-clock frame-counter)))
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
        )
       (('menu)
        (logior! (-> *setting-control* user-default process-mask) (process-mask menu))
@@ -291,7 +311,7 @@
            (set-master-mode 'game)
            )
          )
-       (set! (-> *game-info* pause-start-time) (the-as uint (-> *display* real-clock frame-counter)))
+       (set! (-> *game-info* pause-start-time) (-> *display* real-clock frame-counter))
        )
       (('game)
        (logclear! (-> *setting-control* user-default process-mask) (process-mask freeze pause menu))
@@ -306,7 +326,7 @@
            )
        )
       )
-    (setting-control-method-23 *setting-control*)
+    (apply-settings! *setting-control*)
     )
   (if *debug-segment*
       (menu-respond-to-pause)
@@ -316,11 +336,11 @@
   )
 
 (defun pause-allowed? ()
-  (not (or (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* blackout-time)))
+  (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
            (!= (-> *setting-control* user-current bg-a) 0.0)
            (!= (-> *setting-control* user-current bg-a-force) 0.0)
            (not (-> *setting-control* user-current allow-pause))
-           (-> *setting-control* user-current unknown-uint32-2)
+           (-> *setting-control* user-current mpeg-mode?)
            (handle->process (-> *game-info* auto-save-proc))
            (= *master-mode* 'freeze)
            (not (view-get-active-target))
@@ -338,14 +358,14 @@
      (set-master-mode
        (cond
          ((and (logtest? (-> *cpad-list* cpads 0 valid) 128)
-               (>= (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* blackout-time)))
+               (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
                (= (-> *setting-control* user-current bg-a) 0.0)
                (and (= (-> *setting-control* user-current bg-a-force) 0.0)
                     (< (seconds 1003) (-> *display* real-clock frame-counter))
                     )
                )
           (if (and (-> *setting-control* user-current allow-in-game-menu)
-                   (not (-> *setting-control* user-current unknown-uint32-2))
+                   (not (-> *setting-control* user-current mpeg-mode?))
                    (not *in-game-menu-process*)
                    )
               'progress
@@ -356,7 +376,7 @@
           'menu
           )
          ((and (or (cpad-hold? 0 select) (cpad-hold? 0 r2))
-               (and *debug-segment* (not (-> *setting-control* user-current unknown-uint32-2)))
+               (and *debug-segment* (not (-> *setting-control* user-current mpeg-mode?)))
                )
           'pause
           )
@@ -367,7 +387,7 @@
               )
           )
          ((and (or (cpad-hold? 0 start) (cpad-hold? 1 start))
-               (and (not (-> *setting-control* user-current unknown-uint32-2))
+               (and (not (-> *setting-control* user-current mpeg-mode?))
                     (-> *setting-control* user-current allow-in-game-menu)
                     )
                )
@@ -608,12 +628,12 @@
                           (or (and (>= (- (-> *display* base-clock frame-counter) (the-as int (-> *cpad-list* cpads 0 change-time)))
                                        (the int (* 300.0 (the float v1-1)))
                                        )
-                                   (>= (- (-> *display* game-clock frame-counter) (the-as int (-> *game-info* kiosk-timeout)))
+                                   (>= (- (-> *display* game-clock frame-counter) (-> *game-info* kiosk-timeout))
                                        (the int (* 300.0 (the float v1-1)))
                                        )
                                    )
                               (and (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'freeze))
-                                   (>= (- (-> *display* real-clock frame-counter) (the-as int (-> *game-info* pause-start-time)))
+                                   (>= (- (-> *display* real-clock frame-counter) (-> *game-info* pause-start-time))
                                        (the int (* 300.0 (the float v1-1)))
                                        )
                                    )
@@ -626,17 +646,17 @@
                  )
         (cond
           ((and (= *kernel-boot-message* 'demo) (not *master-exit*))
-           (setting-control-method-14 *setting-control* 'sfx-volume 150 'sfx-volume 'abs 0.0 0)
-           (setting-control-method-14 *setting-control* 'music-volume 150 'music-volume 'abs 0.0 0)
-           (setting-control-method-14 *setting-control* 'dialog-volume 150 'dialog-volume 'abs 0.0 0)
-           (setting-control-method-14 *setting-control* 'ambient-volume 150 'ambient-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'sfx-volume (seconds 0.5) 'sfx-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'music-volume (seconds 0.5) 'music-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'dialog-volume (seconds 0.5) 'dialog-volume 'abs 0.0 0)
+           (setting-pers *setting-control* 'ambient-volume (seconds 0.5) 'ambient-volume 'abs 0.0 0)
            (set! (-> *setting-control* user-current sfx-volume) 0.01)
            (set! (-> *setting-control* user-current music-volume) 0.01)
            (set! (-> *setting-control* user-current dialog-volume) 0.01)
            (set! (-> *setting-control* user-current ambient-volume) 0.01)
-           (setting-control-method-23 *setting-control*)
+           (apply-settings! *setting-control*)
            (set! (-> *game-info* mode) 'play)
-           (initialize! *game-info* 'game (the-as game-save #f) "fmv-intro" (the-as resetter-spec #f))
+           (reset *game-info* 'game (the-as game-save #f) (the-as continue-point "fmv-intro") #f)
            )
           (else
             (when (process-spawn-function
@@ -645,7 +665,7 @@
                       (set-blackout-frames (seconds 100))
                       (set! (-> *setting-control* user-default allow-pause) #f)
                       (set! (-> *setting-control* user-default allow-progress) #f)
-                      (setting-control-method-23 *setting-control*)
+                      (apply-settings! *setting-control*)
                       (set! (-> *setting-control* user-default sfx-volume) 0.0)
                       (set! (-> *setting-control* user-default music-volume) 0.0)
                       (set! (-> *setting-control* user-default dialog-volume) 0.0)
@@ -678,7 +698,7 @@
 
 (defun main-cheats ()
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 r1) (cpad-hold? 0 r3) (cpad-pressed? 0 l1) *cheat-mode*)
-    (let ((v1-19 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+    (let ((v1-19 (make-sound-instance (-> *sound-info* 314) 0 #f)))
       (cond
         (v1-19
           (set! (-> v1-19 fo-power) 0.0)
@@ -690,7 +710,7 @@
           )
         )
       )
-    (let ((v1-23 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+    (let ((v1-23 (make-sound-instance (-> *sound-info* 314) 0 #f)))
       (cond
         (v1-23
           (set! (-> v1-23 fo-power) 0.0)
@@ -790,7 +810,7 @@
              ((cpad-pressed? 1 circle)
               (logclear! (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r1))
               (logclear! (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons r1))
-              (let ((v1-122 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+              (let ((v1-122 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                 (cond
                   (v1-122
                     (set! (-> v1-122 fo-power) 0.0)
@@ -907,7 +927,7 @@
                  (set! *cheat-mode* (not *cheat-mode*))
                  (cond
                    (*cheat-mode*
-                     (let ((v1-82 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                     (let ((v1-82 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                        (cond
                          (v1-82
                            (set! (-> v1-82 fo-power) 0.0)
@@ -921,7 +941,7 @@
                        )
                      )
                    (else
-                     (let ((v1-86 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                     (let ((v1-86 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                        (cond
                          (v1-86
                            (set! (-> v1-86 fo-power) 0.0)
@@ -1106,7 +1126,7 @@
                          )
                    (cond
                      ((= *cheat-mode* 'debug)
-                      (let ((v1-215 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                      (let ((v1-215 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                         (cond
                           (v1-215
                             (set! (-> v1-215 fo-power) 0.0)
@@ -1120,7 +1140,7 @@
                         )
                       )
                      (else
-                       (let ((v1-219 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (let ((v1-219 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                          (cond
                            (v1-219
                              (set! (-> v1-219 fo-power) 0.0)
@@ -1244,7 +1264,7 @@
                        )
                  (cond
                    (*progress-cheat*
-                     (let ((v1-83 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                     (let ((v1-83 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                        (cond
                          (v1-83
                            (set! (-> v1-83 fo-power) 0.0)
@@ -1258,7 +1278,7 @@
                        )
                      )
                    (else
-                     (let ((v1-87 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                     (let ((v1-87 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                        (cond
                          (v1-87
                            (set! (-> v1-87 fo-power) 0.0)
@@ -1377,7 +1397,7 @@
                          )
                    (cond
                      (*progress-cheat*
-                       (let ((v1-177 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (let ((v1-177 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                          (cond
                            (v1-177
                              (set! (-> v1-177 fo-power) 0.0)
@@ -1391,7 +1411,7 @@
                          )
                        )
                      (else
-                       (let ((v1-181 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (let ((v1-181 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                          (cond
                            (v1-181
                              (set! (-> v1-181 fo-power) 0.0)
@@ -1513,7 +1533,7 @@
                            (external-cam-reset!)
                            )
                        (set! *external-cam-mode* 'pad-1)
-                       (let ((v1-265 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (let ((v1-265 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                          (cond
                            (v1-265
                              (set! (-> v1-265 fo-power) 0.0)
@@ -1528,7 +1548,7 @@
                        )
                      (else
                        (set! *external-cam-mode* #f)
-                       (let ((v1-269 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                       (let ((v1-269 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                          (cond
                            (v1-269
                              (set! (-> v1-269 fo-power) 0.0)
@@ -1567,7 +1587,7 @@
             (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-red) 1000.0)
             (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-blue) 1000.0)
             (send-event (view-get-active-target) 'get-pickup (pickup-type ammo-dark) 1000.0)
-            (let ((v1-32 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+            (let ((v1-32 (make-sound-instance (-> *sound-info* 314) 0 #f)))
               (cond
                 (v1-32
                   (set! (-> v1-32 fo-power) 0.0)
@@ -1584,7 +1604,7 @@
             (set! (-> *level* disk-load-timing?) (not (-> *level* disk-load-timing?)))
             (cond
               ((-> *level* disk-load-timing?)
-               (let ((v1-44 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+               (let ((v1-44 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                  (cond
                    (v1-44
                      (set! (-> v1-44 fo-power) 0.0)
@@ -1598,7 +1618,7 @@
                  )
                )
               (else
-                (let ((v1-46 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                (let ((v1-46 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                   (cond
                     (v1-46
                       (set! (-> v1-46 fo-power) 0.0)
@@ -1617,7 +1637,7 @@
             (set! *display-scene-control* (logxor *display-scene-control* (scene-controls bounds-spheres)))
             (cond
               ((logtest? *display-scene-control* (scene-controls bounds-spheres))
-               (let ((v1-57 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+               (let ((v1-57 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                  (cond
                    (v1-57
                      (set! (-> v1-57 fo-power) 0.0)
@@ -1631,7 +1651,7 @@
                  )
                )
               (else
-                (let ((v1-59 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                (let ((v1-59 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                   (cond
                     (v1-59
                       (set! (-> v1-59 fo-power) 0.0)
@@ -1650,7 +1670,7 @@
             (set! *display-bug-report* (not *display-bug-report*))
             (cond
               (*display-bug-report*
-                (let ((v1-68 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                (let ((v1-68 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                   (cond
                     (v1-68
                       (set! (-> v1-68 fo-power) 0.0)
@@ -1664,7 +1684,7 @@
                   )
                 )
               (else
-                (let ((v1-70 (make-sound-instance (-> *sound-info* 314) 0 (the-as handle #f))))
+                (let ((v1-70 (make-sound-instance (-> *sound-info* 314) 0 #f)))
                   (cond
                     (v1-70
                       (set! (-> v1-70 fo-power) 0.0)
@@ -1763,7 +1783,7 @@
             (lookup-text! *common-text* (text-id text-id-2) #f)
             s3-1
             0
-            (if (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* letterbox-time)))
+            (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                 352
                 320
                 )
@@ -1774,7 +1794,7 @@
       (let ((s2-2 (the int (-> *font-context* origin y))))
         (cond
           ((or (!= (-> *setting-control* user-current letterbox) 0.0)
-               (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* letterbox-time)))
+               (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                )
            (+! s2-2 56)
            )
@@ -1968,7 +1988,7 @@
                            sog31
                            )
                          )
-      (setting-control-method-13 *setting-control* self 'process-mask 'set 0 14)
+      (add-setting! 'process-mask 'set 0.0 (process-mask freeze pause menu))
       )
     )
   :exit (behavior ()
@@ -2030,7 +2050,7 @@
 
 (defun display-loop-main ((arg0 display))
   (with-pp
-    (when (not (-> *setting-control* user-current unknown-uint32-2))
+    (when (not (-> *setting-control* user-current mpeg-mode?))
       (cond
         ((and (-> *setting-control* user-current allow-in-game-menu) (logtest? (-> *cpad-list* cpads 0 valid) 128))
          (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -2381,10 +2401,10 @@
           )
         )
       (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
-                (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* letterbox-time)))
+                (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                 )
-        (if (< (the-as time-frame (-> *game-info* letterbox-time)) (-> *display* base-clock frame-counter))
-            (set! (-> *game-info* letterbox-time) (the-as uint (-> *display* base-clock frame-counter)))
+        (if (< (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
+            (set! (-> *game-info* letterbox-time) (-> *display* base-clock frame-counter))
             )
         (if (and (= (-> *setting-control* user-current aspect-ratio) 'aspect4x3)
                  (and (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (-> *screen-shot-work* letterbox-enable))
@@ -2393,7 +2413,7 @@
                  )
             (letterbox
               (bucket-id bucket789)
-              (if (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* letterbox-time)))
+              (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                   1.0
                   (-> *setting-control* user-current letterbox)
                   )
@@ -2401,7 +2421,7 @@
             )
         )
       (when (-> *setting-control* user-current render)
-        (if (< (-> *display* base-clock frame-counter) (the-as time-frame (-> *game-info* blackout-time)))
+        (if (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
             (set! (-> *setting-control* user-default bg-a-force) 1.0)
             (seek! (-> *setting-control* user-default bg-a-force) 0.0 (* 16.0 (seconds-per-frame)))
             )
@@ -2450,7 +2470,7 @@
       (display-frame-finish arg0)
       )
     (display-sync arg0)
-    (when (not (-> *setting-control* user-current unknown-uint32-2))
+    (when (not (-> *setting-control* user-current mpeg-mode?))
       (when *debug-segment*
         (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
         (-> *perf-stats* data)
@@ -2481,17 +2501,17 @@
     (swap-sound-buffers
       (ear-trans 0 0)
       (ear-trans 1 0)
-      (if (-> *setting-control* user-current unknown-sym-1)
+      (if (-> *setting-control* user-current unknown-usd-4)
           (ear-trans 1 0)
           (camera-pos)
           )
       (-> (math-camera-matrix) fvec)
       (-> (math-camera-matrix) rvec)
-      (-> *setting-control* user-current unknown-float-1)
+      (-> *setting-control* user-current sound-ear-scale)
       )
     (update-jukebox-music)
     (str-play-kick)
-    (level-update *level*)
+    ((method-of-object *level* level-group-method-19))
     (mc-run)
     (auto-save-check)
     0
@@ -2558,7 +2578,7 @@
   (let ((gp-1 *display*))
     (viewport-array-method-9 *viewport-array* (the-as viewport 0))
     (set! *teleport* #t)
-    (setting-control-method-24 *setting-control*)
+    (update! *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
     (display-sync gp-1)
     (display-frame-finish gp-1)
@@ -2651,7 +2671,7 @@
            (level-get-with-status *level* 'alive)
            (level-get-with-status *level* 'active)
            )
-       (activate-levels! *level*)
+       ((method-of-object *level* level-group-method-13))
        (when (not arg0)
          (let ((gp-1 (entity-by-type camera-start)))
            (when (and gp-1 (type? gp-1 entity-actor))

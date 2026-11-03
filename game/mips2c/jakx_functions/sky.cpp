@@ -353,7 +353,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_30_sky_work {
 struct Cache {
-  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader_texture_simple; // adgif-shader<-texture-simple! 
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -542,7 +542,7 @@ block_15:
   c->lq(v1, 16, gp);                                // lq v1, 16(gp)
   c->sq(v1, 16, s5);                                // sq v1, 16(s5)
   c->daddiu(s4, s5, 32);                            // daddiu s4, s5, 32
-  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -555,7 +555,7 @@ block_15:
   c->lq(v1, 16, gp);                                // lq v1, 16(gp)
   c->sq(v1, 352, s5);                               // sq v1, 352(s5)
   c->daddiu(s5, s5, 368);                           // daddiu s5, s5, 368
-  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s5);                                 // or a0, s5, r0
   c->lwu(a1, 20, sp);                               // lwu a1, 20(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -586,7 +586,7 @@ end_of_function:
 }
 
 void link() {
-  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 30 sky-work)", execute, 256);
 }
@@ -604,7 +604,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_29_sky_work {
 struct Cache {
-  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader_texture_simple; // adgif-shader<-texture-simple!
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -748,7 +748,7 @@ block_12:
   c->lq(a0, 16, gp);                                // lq a0, 16(gp)
   c->sq(a0, 16, v1);                                // sq a0, 16(v1)
   c->daddiu(s5, v1, 32);                            // daddiu s5, v1, 32
-  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s5);                                 // or a0, s5, r0
   c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -779,7 +779,7 @@ end_of_function:
 }
 
 void link() {
-  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 29 sky-work)", execute, 256);
 }
@@ -1771,7 +1771,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_28_sky_work {
 struct Cache {
-  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader_texture_simple; // adgif-shader<-texture-simple!
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -1915,7 +1915,7 @@ block_12:
   c->lq(a0, 16, gp);                                // lq a0, 16(gp)
   c->sq(a0, 16, v1);                                // sq a0, 16(v1)
   c->daddiu(s5, v1, 32);                            // daddiu s5, v1, 32
-  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s5);                                 // or a0, s5, r0
   c->lwu(a1, 16, sp);                               // lwu a1, 16(sp)
   call_addr = c->gprs[t9].du32[0];                  // function call:
@@ -1946,7 +1946,7 @@ end_of_function:
 }
 
 void link() {
-  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 28 sky-work)", execute, 256);
 }
@@ -1965,7 +1965,7 @@ using ::jakx::intern_from_c;
 namespace Mips2C::jakx {
 namespace method_33_sky_work {
 struct Cache {
-  void* adgif_shader<_texture_simple; // adgif-shader<-texture-simple!
+  void* adgif_shader_texture_simple; // adgif-shader<-texture-simple!
   void* lookup_texture_by_id_fast; // lookup-texture-by-id-fast
 } cache;
 
@@ -1999,7 +1999,7 @@ u64 execute(void* ctxt) {
   c->lq(a0, 16, gp);                                // lq a0, 16(gp)
   c->sq(a0, 16, v1);                                // sq a0, 16(v1)
   c->daddiu(s4, v1, 32);                            // daddiu s4, v1, 32
-  c->load_symbol2(t9, cache.adgif_shader<_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
+  c->load_symbol2(t9, cache.adgif_shader_texture_simple);// lw t9, adgif-shader<-texture-simple!(s7)
   c->mov64(a0, s4);                                 // or a0, s4, r0
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
@@ -2141,7 +2141,7 @@ end_of_function:
 }
 
 void link() {
-  cache.adgif_shader<_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
+  cache.adgif_shader_texture_simple = intern_from_c(-1, 0, "adgif-shader<-texture-simple!").c();
   cache.lookup_texture_by_id_fast = intern_from_c(-1, 0, "lookup-texture-by-id-fast").c();
   gLinkedFunctionTable.reg("(method 33 sky-work)", execute, 256);
 }

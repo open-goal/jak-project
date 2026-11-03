@@ -5,6 +5,14 @@
 ;; name in dgo: vehicle-manager
 ;; dgos: ENGINE, GAME
 
+(define-extern rb-reset-perf-times (function none))
+(define-extern rigid-body-queue-manager-spawn (function rigid-body-queue process-tree process))
+(define-extern *rigid-body-queue-manager* rigid-body-queue-manager)
+(define-extern *net-vehicles* (array net-vehicle))
+(define-extern driver-spawn (function driver-type process uint driver))
+(define-extern helmet-garage-spawn (function vehicle none))
+(define-extern vehicle-respawn-invul-spawn (function vehicle none))
+
 ;; DECOMP BEGINS
 
 (deftype vehicle-manager (process)
@@ -32,8 +40,8 @@
 (defmethod deactivate ((this vehicle-manager))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set! *vehicle-manager* #f)
-  (setting-control-method-16 *setting-control* this 'task-mask)
-  (setting-control-method-23 *setting-control*)
+  (remove-setting *setting-control* this 'task-mask)
+  (apply-settings! *setting-control*)
   ((method-of-type process deactivate) this)
   (none)
   )
@@ -52,11 +60,11 @@
 (defbehavior vehicle-manager-event-handler vehicle-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('no-extra-bank)
-     (setting-control-method-16 *setting-control* self 'extra-bank)
+     (remove-setting! 'extra-bank)
      )
     (('extra-bank)
      (let ((a3-1 (-> arg3 param 0)))
-       (setting-control-method-15 *setting-control* self 'extra-bank (the-as symbol a3-1) 0 0)
+       (set-setting! 'extra-bank a3-1 0.0 0)
        )
      )
     (('vehicle-count?)
@@ -79,7 +87,7 @@
   (stack-size-set! (-> self main-thread) 128)
   (set! *vehicle-manager* self)
   (vehicle-manager-method-17 self)
-  (setting-control-method-13 *setting-control* self 'task-mask 'clear 0 2048)
+  (add-setting! 'task-mask 'clear 0.0 (task-mask vehicle))
   (set! (-> self event-hook) vehicle-manager-event-handler)
   (set! *rigid-body-queue-manager*
         (the-as rigid-body-queue-manager (rigid-body-queue-manager-spawn *rigid-body-queue* self))
@@ -113,13 +121,10 @@
       (process-spawn vehicle-manager :name "vehicle-manager" :to arg0)
       )
   0
-  (none)
   )
 
-;; WARN: Return type mismatch symbol vs none.
 (defun vehicle-manager-kill ()
   (kill-by-type vehicle-manager *active-pool*)
-  (none)
   )
 
 (define *car-appearance-hack* 0)
@@ -170,7 +175,7 @@
       )
   (format #t "active-index: ~d~%" (-> self player-id))
   (dotimes (s5-0 12)
-    (vehicle-section-method-11 (-> self vehicle-sections s5-0) (the-as wvehicle self))
+    (vehicle-section-method-11 (-> self sections s5-0) (the-as wvehicle self))
     )
   (if (and (nonzero? (-> self draw)) (= *lobby-local-players* 2))
       (logior! (-> self draw global-effect) (draw-control-global-effect rim-lights3))
@@ -179,10 +184,10 @@
     (set! (-> self draw lod-set lod 0 dist) 0.0)
     (set! (-> self draw lod-set lod 1 dist) 0.0)
     (dotimes (gp-1 12)
-      (vehicle-section-method-11 (-> self vehicle-sections gp-1) (the-as wvehicle self))
-      (when (nonzero? (-> self vehicle-sections gp-1 draw))
-        (set! (-> self vehicle-sections gp-1 draw bbox-radius) 0.0)
-        (set! (-> self vehicle-sections gp-1 draw bbox-center x) 0.0)
+      (vehicle-section-method-11 (-> self sections gp-1) (the-as wvehicle self))
+      (when (nonzero? (-> self sections gp-1 draw))
+        (set! (-> self sections gp-1 draw bbox-radius) 0.0)
+        (set! (-> self sections gp-1 draw bbox-center x) 0.0)
         )
       )
     )

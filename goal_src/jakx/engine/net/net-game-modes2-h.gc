@@ -5,9 +5,11 @@
 ;; name in dgo: net-game-modes2-h
 ;; dgos: ENGINE, GAME
 
+(declare-type ctf-flag process-focusable)
+
 ;; DECOMP BEGINS
 
-(define *ctf-flag* #f)
+(define *ctf-flag* (the-as ctf-flag #f))
 
 (define *ctf-red-base* #f)
 
@@ -26,7 +28,7 @@
   )
 
 
-(defbehavior net-player-ctf-init-remote net-player-ctf ((arg0 int))
+(defbehavior net-player-ctf-init-remote net-player-ctf ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -34,7 +36,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-ctf) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-ctf) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-ctf :init net-player-ctf-init-remote arg0 :name "net-player-ctf")
     )
@@ -67,7 +69,7 @@
   )
 
 
-(defbehavior net-game-mgr-ctf-init-remote net-game-mgr-ctf ((arg0 int))
+(defbehavior net-game-mgr-ctf-init-remote net-game-mgr-ctf ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -75,7 +77,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-ctf) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-ctf) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-game-mgr-ctf :init net-game-mgr-ctf-init-remote arg0 :name "net-game-mgr-ctf")
     )
@@ -103,27 +105,29 @@
   )
 
 (deftype ctf-flag (process-focusable)
-  ((carrier        uint64)
+  ((carrier        handle)
    (grabbed-time   int32)
-   (carried-part   uint64)
-   (task-arrow     uint64)
+   (carried-part   handle)
+   (task-arrow     handle)
    (team           uint8)
    (count          uint8)
    (spawn-pos      vector  :inline)
    (last-good-pos  vector  :inline)
    )
+  (:state-methods
+    wait-for-bases
+    idle
+    carried
+    dropped
+    falling
+    fade
+    )
   (:methods
-    (ctf-flag-method-59 () none)
-    (ctf-flag-method-60 () none)
-    (ctf-flag-method-61 () none)
-    (ctf-flag-method-62 () none)
-    (ctf-flag-method-63 () none)
-    (ctf-flag-method-64 () none)
     (ctf-flag-method-65 () none)
     (ctf-flag-method-66 () none)
     (ctf-flag-method-67 () none)
     (ctf-flag-method-68 () none)
-    (ctf-flag-method-69 () none)
+    (ctf-flag-method-69 (_type_) none)
     (ctf-flag-method-70 () none)
     (ctf-flag-method-71 () none)
     (ctf-flag-method-72 () none)
@@ -138,13 +142,13 @@
 
 (defbehavior ctf-flag-init-remote ctf-flag ((arg0 int))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
+  (process-nettable-method-35 self (the-as mem-buffer arg0))
   (process-nettable-method-36 self)
   0
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this ctf-flag) (arg0 int))
+(defmethod process-nettable-method-41 ((this ctf-flag) (arg0 mem-buffer))
   (ppointer->process (process-spawn ctf-flag :init ctf-flag-init-remote arg0 :name "ctf-flag"))
   )
 
@@ -196,7 +200,7 @@
   )
 
 
-(defbehavior net-player-rushhour-init-remote net-player-rushhour ((arg0 int))
+(defbehavior net-player-rushhour-init-remote net-player-rushhour ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -204,7 +208,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-rushhour) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-rushhour) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-rushhour :init net-player-rushhour-init-remote arg0 :name "net-player-rushhour")
     )
@@ -238,7 +242,7 @@
   )
 
 
-(defbehavior net-game-mgr-rushhour-init-remote net-game-mgr-rushhour ((arg0 int))
+(defbehavior net-game-mgr-rushhour-init-remote net-game-mgr-rushhour ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -246,7 +250,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-rushhour) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-rushhour) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-rushhour
                        :init net-game-mgr-rushhour-init-remote
@@ -289,7 +293,7 @@
   )
 
 
-(defbehavior net-game-mgr-king-of-hill-init-remote net-game-mgr-king-of-hill ((arg0 int))
+(defbehavior net-game-mgr-king-of-hill-init-remote net-game-mgr-king-of-hill ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -297,7 +301,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-king-of-hill) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-king-of-hill) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-king-of-hill
                        :init net-game-mgr-king-of-hill-init-remote
@@ -338,7 +342,7 @@
   )
 
 
-(defbehavior net-player-king-of-hill-init-remote net-player-king-of-hill ((arg0 int))
+(defbehavior net-player-king-of-hill-init-remote net-player-king-of-hill ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -346,7 +350,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-king-of-hill) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-king-of-hill) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-player-king-of-hill
                        :init net-player-king-of-hill-init-remote
@@ -398,7 +402,7 @@
   )
 
 
-(defbehavior net-player-time-box-init-remote net-player-time-box ((arg0 int))
+(defbehavior net-player-time-box-init-remote net-player-time-box ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -406,7 +410,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-time-box) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-time-box) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-time-box :init net-player-time-box-init-remote arg0 :name "net-player-time-box")
     )
@@ -442,7 +446,7 @@
   )
 
 
-(defbehavior net-game-mgr-time-box-init-remote net-game-mgr-time-box ((arg0 int))
+(defbehavior net-game-mgr-time-box-init-remote net-game-mgr-time-box ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -450,7 +454,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-time-box) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-time-box) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-time-box
                        :init net-game-mgr-time-box-init-remote
@@ -488,7 +492,7 @@
   )
 
 
-(defbehavior net-player-time-trial-init-remote net-player-time-trial ((arg0 int))
+(defbehavior net-player-time-trial-init-remote net-player-time-trial ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -496,7 +500,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-time-trial) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-time-trial) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-player-time-trial
                        :init net-player-time-trial-init-remote
@@ -534,7 +538,7 @@
   )
 
 
-(defbehavior net-game-mgr-time-trial-init-remote net-game-mgr-time-trial ((arg0 int))
+(defbehavior net-game-mgr-time-trial-init-remote net-game-mgr-time-trial ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -542,7 +546,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-time-trial) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-time-trial) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-time-trial
                        :init net-game-mgr-time-trial-init-remote
@@ -585,7 +589,7 @@
   )
 
 
-(defbehavior net-game-mgr-training-init-remote net-game-mgr-training ((arg0 int))
+(defbehavior net-game-mgr-training-init-remote net-game-mgr-training ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -593,7 +597,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-training) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-training) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-training
                        :init net-game-mgr-training-init-remote
@@ -640,7 +644,7 @@
   )
 
 
-(defbehavior net-player-boss-battle-init-remote net-player-boss-battle ((arg0 int))
+(defbehavior net-player-boss-battle-init-remote net-player-boss-battle ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -648,7 +652,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-player-boss-battle) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-player-boss-battle) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-player-boss-battle
                        :init net-player-boss-battle-init-remote
@@ -689,7 +693,7 @@
   )
 
 
-(defbehavior net-game-mgr-boss-battle-init-remote net-game-mgr-boss-battle ((arg0 int))
+(defbehavior net-game-mgr-boss-battle-init-remote net-game-mgr-boss-battle ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
   (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
@@ -697,7 +701,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-game-mgr-boss-battle) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-game-mgr-boss-battle) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-boss-battle
                        :init net-game-mgr-boss-battle-init-remote

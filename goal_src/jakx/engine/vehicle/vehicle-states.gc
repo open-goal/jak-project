@@ -5,6 +5,8 @@
 ;; name in dgo: vehicle-states
 ;; dgos: ENGINE, GAME
 
+(define-extern vehicle-event-handler (function process int symbol event-message-block object :behavior vehicle))
+
 ;; DECOMP BEGINS
 
 (defbehavior vehicle-idle-post vehicle ()
@@ -106,17 +108,17 @@
     (vehicle-method-121 self)
     (let ((gp-1 (logtest? (vehicle-flag camera) (-> self v-flags))))
       (vehicle-method-125 self)
-      (setting-control-method-15 *setting-control* self 'blur-enabled? #t 0 0)
+      (set-setting! 'blur-enabled? #t 0.0 0)
       (when (not gp-1)
         (send-event (view-get-active-camera) 'change-target self)
         (send-event (view-get-active-camera) 'teleport self)
         )
       )
-    (set! (-> *setting-control* user-default unknown-usd-uint64) (the-as uint (process->handle self)))
+    (set! (-> *setting-control* user-default sound-ear) (process->handle self))
     )
   :exit (behavior ()
     (set! (-> self max-time-step) 0.05)
-    (setting-control-method-16 *setting-control* self 'blur-enabled?)
+    (remove-setting! 'blur-enabled?)
     (vehicle-method-126 self)
     (rigid-body-object-method-76 self)
     (logclear! (-> self v-flags) (vehicle-flag player-driving reverse-gear camera-look-mode))
@@ -203,7 +205,7 @@
         (setup
           (-> *screen-filter-array* (logand (-> self player-id) 1))
           (new 'static 'vector)
-          (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 127.0))
+          (new 'static 'vector :w 127.0)
           30.0
           (bucket-id bucket786)
           #xfffffe

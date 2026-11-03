@@ -5,6 +5,8 @@
 ;; name in dgo: merc-blend-shape
 ;; dgos: ENGINE, GAME
 
+(define-extern setup-blerc-chains (function merc-ctrl (pointer int16) dma-buffer none))
+
 ;; DECOMP BEGINS
 
 (define *stats-blerc* #f)
@@ -109,7 +111,6 @@
 
 ;; WARN: Return type mismatch int vs object.
 (defun merc-blend-shape ((arg0 process-drawable))
-  (local-vars (sp-0 none))
   (let* ((v1-1 (-> arg0 skel float-channels))
          (a2-0 (cond
                  ((> v1-1 0)
@@ -129,7 +130,7 @@
                  )
                )
          (a3-0 (-> a2-0 frame-group))
-         (a1-0 (+ (the-as uint sp-0) 16))
+         (a1-0 (new 'stack-no-clear 'array 'int16 128))
          )
     (when (and a3-0 (and (> (-> arg0 skel active-channels) 0)
                          (zero? (-> arg0 draw cur-lod))
@@ -212,6 +213,8 @@
          (s3-0 (-> arg0 header blend-target-count))
          (v1-1 (-> arg2 base))
          (sv-20 (&+ v1-1 0))
+         ;; og:preserve-this
+         (sv-32 (the-as object #f))
          (a2-1 (the-as object (&+ v1-1 16)))
          )
     (if (zero? (-> *blerc-globals* first))
@@ -225,9 +228,10 @@
           (let ((v1-15 (the-as object (-> sv-24 frag-geo)))
                 (s1-0 (the-as structure (-> sv-24 frag-ctrl)))
                 (s0-0 (the-as object (-> sv-24 blend-data)))
-                (sv-32 (-> sv-24 blend-ctrl))
                 (sv-48 0)
                 )
+            ;; og:preserve-this
+            (set! sv-32 (-> sv-24 blend-ctrl))
             (while (< sv-48 (the-as int sv-28))
               (let ((sv-64 (+ (the-as int v1-15)
                               (logand (* (+ (-> (the-as merc-fragment-control s1-0) unsigned-four-count) 3) 4) #xfff0)
@@ -244,14 +248,15 @@
                            (* (-> (the-as merc-fragment-control s1-0) fp-qwc) 16)
                            )
                         )
-                  (set! s1-0 (+ (the-as uint s1-0) (* (-> (the-as merc-fragment-control s1-0) mat-xfer-count) 2) 4))
+                  ;; og:preserve-this
+                  (set! s1-0 (&+ s1-0 (* (-> (the-as merc-fragment-control s1-0) mat-xfer-count) 2) 4))
                   (set! s0-0
                         (+ (the-as int s0-0) (* (the-as uint a0-14) (+ (-> (the-as merc-blend-ctrl sv-32) nonzero-index-count) 1)))
                         )
                   )
                 )
               (set! sv-32 (+ (the-as int sv-32) s3-0 2))
-              (the-as int (the-as int sv-32))
+              sv-32
               (+! sv-48 1)
               )
             )

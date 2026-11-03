@@ -5,6 +5,12 @@
 ;; name in dgo: title-obs
 ;; dgos: ENGINE, GAME
 
+(declare-type title-control process)
+(define-extern *title-control* title-control)
+(define-extern draw-raw-image (function blit-displays-work bucket-id art-group vector vector level int none))
+(define-extern lobby-start (function none))
+(define-extern fmv-player-run (function string process-tree symbol none))
+
 ;; DECOMP BEGINS
 
 (deftype title-control (process)
@@ -53,11 +59,11 @@
 (defbehavior title-control-init title-control ((arg0 symbol))
   (stack-size-set! (-> self main-thread) 2048)
   (logclear! (-> self mask) (process-mask freeze pause menu progress actor-pause))
-  (setting-control-method-15 *setting-control* self 'allow-pause #f 0.0 0)
-  (setting-control-method-15 *setting-control* self 'allow-progress #f 0.0 0)
-  (setting-control-method-15 *setting-control* self 'allow-timeout #f 0.0 0)
-  (setting-control-method-15 *setting-control* self 'allow-error #f 0.0 0)
-  (setting-control-method-23 *setting-control*)
+  (set-setting! 'allow-pause #f 0.0 0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (set-setting! 'allow-timeout #f 0.0 0)
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings! *setting-control*)
   (dotimes (s5-0 2)
     (set! (-> self buffer s5-0)
           (new
@@ -174,14 +180,14 @@
   (set! (-> self want-name 1) (-> self draw-name))
   (set! (-> self want 1) (-> self draw))
   (when arg4
-    (setting-control-method-15 *setting-control* self 'bg-a 'abs 1.0 0)
+    (set-setting! 'bg-a 'abs 1.0 0)
     (set! (-> *setting-control* user-current bg-a) 1.0)
     (set-blackout-frames 0)
-    (setting-control-method-23 *setting-control*)
+    (apply-settings! *setting-control*)
     )
   (when (>= (-> self draw) 0)
-    (setting-control-method-15 *setting-control* self 'bg-a 'abs 1.0 0)
-    (setting-control-method-23 *setting-control*)
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (apply-settings! *setting-control*)
     (while (!= (-> *setting-control* user-current bg-a) 1.0)
       (suspend)
       )
@@ -192,7 +198,7 @@
   (while (and (>= (-> self draw) 0) (not (-> self active)))
     (suspend)
     )
-  (setting-control-method-16 *setting-control* self 'bg-a)
+  (remove-setting! 'bg-a)
   (set! (-> self want-name 1) arg2)
   (set! (-> self want 1) arg3)
   0
@@ -295,7 +301,7 @@
               (a0-31 *blit-displays-work*)
               (a1-15 785)
               (a2-5 (-> gp-4 art-group))
-              (a3-7 (new 'static 'vector :data (new 'static 'array float 4 512.0 416.0 0.0 1.0)))
+              (a3-7 (new 'static 'vector :x 512.0 :y 416.0 :w 1.0))
               (t0-2 (new 'stack-no-clear 'vector))
               )
           (set! (-> t0-2 x) (-> *video-params* relative-x-scale))
@@ -311,37 +317,35 @@
   )
 
 (defun title-progress ((arg0 symbol))
-  (with-pp
-    (setup
-      *screen-filter*
-      (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 128.0))
-      (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 128.0))
-      (seconds-per-frame)
-      (bucket-id bucket789)
-      #x3fffff
-      #x33001
-      (the-as symbol 0)
-      )
-    (setting-control-method-15 *setting-control* pp 'allow-progress #t 0.0 0)
-    (setting-control-method-23 *setting-control*)
-    (setting-control-method-15 *setting-control* pp 'allow-progress #f 0.0 0)
-    (dotimes (gp-0 5)
-      (suspend)
-      )
-    (disable *screen-filter*)
-    (setting-control-method-16 *setting-control* pp 'allow-error)
-    (setting-control-method-15 *setting-control* pp 'allow-error #f 0.0 0)
-    (setting-control-method-23 *setting-control*)
-    (set-blackout-frames (seconds 0.2))
-    0
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id bucket789)
+    #x3fffff
+    #x33001
+    (the-as symbol 0)
     )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings! *setting-control*)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-0 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings! *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
   )
 
 (defun title-fade-out ((arg0 float))
   (setup
     *screen-filter*
     (new 'static 'vector)
-    (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 128.0))
+    (new 'static 'vector :w 128.0)
     arg0
     (bucket-id bucket789)
     #x3fffff
@@ -360,7 +364,7 @@
              )
     (suspend)
     )
-  (set! (-> *game-info* blackout-time) (the-as uint 0))
+  (set! (-> *game-info* blackout-time) 0)
   (set! (-> *setting-control* user-current bg-a-force) 0.0)
   (disable *screen-filter*)
   0
@@ -605,7 +609,7 @@
       )
     (suspend-for (seconds 0.6)
       )
-    (setting-control-method-14 *setting-control* 'title-control-scene #x11e1a300 'render #f 0.0 0)
+    (setting-pers *setting-control* 'title-control-scene (seconds 1000000) 'render #f 0.0 0)
     )
   :post (-> (method-of-type title-control startup) post)
   )
@@ -656,7 +660,7 @@
       )
     (suspend-for (seconds 0.6)
       )
-    (setting-control-method-14 *setting-control* 'title-control-scene #x11e1a300 'render #f 0.0 0)
+    (setting-pers *setting-control* 'title-control-scene (seconds 1000000) 'render #f 0.0 0)
     )
   :post (-> (method-of-type title-control startup) post)
   )
@@ -857,9 +861,9 @@
               )
              )
            (set! (-> *setting-control* user-default language) (the-as language-enum gp-1))
-           (set! (-> *setting-control* user-default subtitle-language) (the-as uint gp-1))
+           (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum gp-1))
            (if (< (the-as uint gp-1) (the-as uint 5))
-               (set! (-> *setting-control* user-default audio-language) (the-as uint gp-1))
+               (set! (-> *setting-control* user-default audio-language) (the-as language-enum gp-1))
                )
            )
          )
@@ -867,9 +871,9 @@
           (let ((v1-58 (-> gp-0 file (-> gp-0 last-file) language)))
             (when (and (>= v1-58 0) (< v1-58 (the-as uint 11)))
               (set! (-> *setting-control* user-default language) (the-as language-enum v1-58))
-              (set! (-> *setting-control* user-default subtitle-language) v1-58)
+              (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum v1-58))
               (if (< v1-58 (the-as uint 5))
-                  (set! (-> *setting-control* user-default audio-language) v1-58)
+                  (set! (-> *setting-control* user-default audio-language) (the-as language-enum v1-58))
                   )
               )
             )
@@ -954,7 +958,15 @@
     (check-language)
     (until #f
       (let ((v1-0 (new 'stack-no-clear 'vector)))
-        (when (dma-try-alloc #xd2800 #xd2800 'title-control 0 (the-as int (-> v1-0 data)) (the-as int (&-> v1-0 y)) #f)
+        (when (dma-try-alloc
+                #xd2800
+                #xd2800
+                'title-control
+                0
+                (the-as (pointer int32) (&-> v1-0 x))
+                (the-as (pointer int32) (&-> v1-0 y))
+                #f
+                )
           (suspend)
           (suspend)
           (goto cfg-5)
@@ -986,35 +998,21 @@
        (cond
          ((= *game-mode* 'adventure)
           (set! *game-mode* #f)
-          (let ((t9-9 auto-save-command)
-                (a0-8 'restore)
-                (a1-5 0)
-                (a2-3 *profile-slot*)
-                (t0-1 #f)
-                )
-            (t9-9 a0-8 a1-5 a2-3 self t0-1)
-            )
+          (auto-save-command 'restore 0 *profile-slot* self #f #f)
           )
          ((= *game-mode* 'online)
           (set! *game-mode* #f)
-          (let ((t9-10 auto-save-command)
-                (a0-10 'restore)
-                (a1-6 0)
-                (a2-4 *profile-slot*)
-                (t0-2 #f)
-                )
-            (t9-10 a0-10 a1-6 a2-4 self t0-2)
-            )
+          (auto-save-command 'restore 0 *profile-slot* self #f #f)
           )
          (else
-           (let ((v1-16 (game-info-method-18 *game-info* "menu2-start-button")))
+           (let ((v1-16 (get-continue-by-name *game-info* "menu2-start-button")))
              (send-event self 'continue v1-16)
              )
            )
          )
        )
       (else
-        (let ((v1-19 (game-info-method-18 *game-info* "menu2-start")))
+        (let ((v1-19 (get-continue-by-name *game-info* "menu2-start")))
           (send-event self 'continue v1-19)
           )
         )
@@ -1052,7 +1050,7 @@
     (while *fmv-player*
       (suspend)
       )
-    (let ((v1-3 (game-info-method-18 *game-info* "menu2-start")))
+    (let ((v1-3 (get-continue-by-name *game-info* "menu2-start")))
       (send-event self 'continue v1-3)
       )
     (until #f
@@ -1063,12 +1061,12 @@
   :post target-no-move-post
   )
 
-(define *end-credits-proc* (the-as (pointer handle) L226))
+(define *end-credits-proc* (new 'static 'handle-wrapper))
 
-(set! (-> *end-credits-proc* 0) (the-as handle #f))
+(set! (-> *end-credits-proc* handle) (the-as handle #f))
 
 (defun end-end-credits ()
-  (send-event (handle->process (-> *end-credits-proc* 0)) 'go-die)
+  (send-event (handle->process (-> *end-credits-proc* handle)) 'go-die)
   0
   (none)
   )

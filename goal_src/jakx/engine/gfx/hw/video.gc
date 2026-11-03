@@ -5,20 +5,22 @@
 ;; name in dgo: video
 ;; dgos: ENGINE, GAME
 
+(define-extern *video-mode* int)
+
 ;; DECOMP BEGINS
 
 (defun set-video-mode ((arg0 symbol))
   (case arg0
     (('ntsc)
-     (set! (-> *setting-control* user-default unknown-usd-1) 0)
-     (set! (-> *setting-control* user-default unknown-usd-2) 8)
+     (set! (-> *setting-control* user-default screenx) 0)
+     (set! (-> *setting-control* user-default screeny) 8)
      (set! (-> *video-params* display-sy) 224)
      (set! *video-mode* 0)
      (sound-set-fps 60)
      )
     (('pal)
-     (set! (-> *setting-control* user-default unknown-usd-1) 0)
-     (set! (-> *setting-control* user-default unknown-usd-2) 24)
+     (set! (-> *setting-control* user-default screenx) 0)
+     (set! (-> *setting-control* user-default screeny) 24)
      (set! (-> *video-params* display-sy) 256)
      (set! *video-mode* 1)
      (sound-set-fps 50)
@@ -61,14 +63,13 @@
   )
 
 (defun set-progressive-scan ((arg0 symbol))
-  (set! (-> *setting-control* user-default unknown-usd-5) (the-as uint arg0))
+  (set! (-> *setting-control* user-default smode2) arg0)
   0
   (none)
   )
 
-;; WARN: Return type mismatch uint vs symbol.
 (defun get-progressive-scan ()
-  (the-as symbol (-> *setting-control* user-current unknown-usd-5))
+  (-> *setting-control* user-current smode2)
   )
 
 (defun set-graphics-mode ()
@@ -79,7 +80,7 @@
           (s5-0 *display*)
           )
       (cond
-        ((-> v1-0 user-current unknown-usd-5)
+        ((-> v1-0 user-current smode2)
          (when (nonzero? (-> s4-0 smode2))
            (reset-graph 0 0 80 0)
            (set! (-> s4-0 smode2) (the-as uint 0))
@@ -115,11 +116,11 @@
                 )
           )
         )
-      (set! (-> gp-0 pmode) (the-as gs-pmode (-> s5-0 pmode)))
-      (set! (-> gp-0 bgcolor) (the-as gs-bgcolor (-> s5-0 bgcolor)))
+      (set! (-> gp-0 pmode) (-> s5-0 pmode))
+      (set! (-> gp-0 bgcolor) (-> s5-0 bgcolor))
       )
     (set! (-> gp-0 dspfb1)
-          (new 'static 'gs-display-fb :fbw #xa :fbp (if (-> *setting-control* user-current unknown-uint32-2) 167 142))
+          (new 'static 'gs-display-fb :fbw #xa :fbp (if (-> *setting-control* user-current mpeg-mode?) 167 142))
           )
     )
   0

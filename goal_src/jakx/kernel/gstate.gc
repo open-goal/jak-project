@@ -328,14 +328,14 @@
   #f
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [lwu sp, 28(v1)]
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread-dead(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr t9]
-;; ERROR: Unsupported inline assembly instruction kind - [sw v1, 0(sp)]
+(define-extern enter-state (function object object object object object object object))
 (defun enter-state ((arg0 object) (arg1 object) (arg2 object) (arg3 object) (arg4 object) (arg5 object))
   (local-vars (s7-0 none) (sp-0 int) (ra-0 int))
   (with-pp
-    (+! (-> pp profile-ticks) 1)
+    ;; added!!
+    (if (zero? (-> pp next-state))
+        (break!))
+
     (logclear! (-> pp mask) (process-mask sleep sleep-code))
     (logior! (-> pp mask) (process-mask going))
     (cond
@@ -386,13 +386,79 @@
                (t9-5)
                )
            )
-         )
-       (let ((v1-31 (-> pp main-thread)))
-         (.lwu sp-0 28 v1-31)
-         )
-       (let ((t9-6 (-> pp state code)))
-         (.lw ra-0 return-from-thread-dead s7-0)
-         (.jr t9-6)
+         (#cond
+          ((eq? INSTRUCTION_SET 'arm64)
+           (rlet ((func)
+                  (sp :reg sp :type uint)
+                  (off :reg off :type uint)
+                  (xoff :reg exec-off :type uint)
+                  (ra :reg lr :type uint)
+                  (carg0 :reg carg0)
+                  (carg1 :reg carg1)
+                  (carg2 :reg carg2)
+                  (carg3 :reg carg3))
+             ;; load the arguments before discarding their stack slots
+             (.mov carg0 arg0)
+             (.mov carg1 arg1)
+             (.mov carg2 arg2)
+             (.mov carg3 arg3)
+             ;; convert the code pointer to the executable alias before branching
+             (.mov func (-> s0-2 code))
+             (.add func xoff)
+             ;; reset sp through the writable alias
+             (.mov sp (-> pp main-thread stack-top))
+             (.add sp off)
+             ;; return through deactivate
+             (.mov ra return-from-thread-dead)
+             (.add ra xoff)
+             (.jr func)
+             ;; keep the argument registers live until the branch
+             (.add carg0 carg1)
+             (.add carg2 carg3)
+             #f ;; can't get here
+             ))
+          (#t
+            (rlet ((temp)
+                   (func)
+                   (sp :reg rsp :type uint)
+                   (off :reg r15 :type uint)
+                   (carg0 :reg rdi)
+                   (carg1 :reg rsi)
+                   (carg2 :reg rdx)
+                   (carg3 :reg rcx))
+              ;; prepare args
+              ;; compiler will likely have these on the stack, we need to get them in regs
+              ;; before messing with the stack.
+              (.mov carg0 arg0)
+              (.mov carg1 arg1)
+              (.mov carg2 arg2)
+              (.mov carg3 arg3)
+
+              ;; get the main code as an x86-64 pointer
+              (.mov func (-> s0-2 code))
+              (.add func off)
+              ;; reset the stack (scary)
+              (.mov sp (-> pp main-thread stack-top))
+              (.add sp off)
+              ;; push the return trampoline for when code returns.
+              (.mov temp return-from-thread-dead) ;; will deactivate
+              (.add temp off)
+              (.push temp)
+              ;; and call!
+              (.jr func)
+              ;; stupid hack so the compiler doesn't throw away these registers.
+              (.add carg0 carg1)
+              (.add carg2 carg3)
+              #f ;; can't get here
+              )
+           ))
+         ; (let ((v1-29 (-> pp main-thread)))
+         ;   (.lwu sp-0 28 v1-29)
+         ;   )
+         ; (let ((t9-6 (-> s0-2 code)))
+         ;   (.lw ra-0 return-from-thread-dead s7-0)
+         ;   (.jr t9-6)
+         ;   )
          )
        arg4
        )
@@ -400,9 +466,17 @@
         (set! (-> pp trans-hook) #f)
         (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
         (when (!= (-> pp top-thread name) 'post)
-          (let ((v1-35 return-from-thread))
-            (.sw v1-35 0 (the-as none sp-0))
-            )
+         ;; abandon this one too.
+         ;; NOTE - this is different from GOAL.
+         ;; GOAL installs this as the return address for this function and returns normally.
+         ;; but we don't because I don't have an easy way to find where to stick this.
+         ;; I can't see how this makes a difference, as all non-main threads seem
+         ;; temporary, but if this turns out to be false, we will need to change this.
+         (abandon-thread)
+         #f ;; can't get here
+          ; (let ((v1-32 return-from-thread))
+          ;   (.sw v1-32 0 (the-as none sp-0))
+          ;   )
           )
         #t
         )
@@ -414,14 +488,18 @@
 
 (let ((v1-4 (new 'global 'event-message-block-array 64)))
   (set! (-> v1-4 length) 0)
-  (set! *event-queue* v1-4)
+  (define *event-queue* v1-4) ;; og:preserve-this
   )
 
 (kmemclose)
 
 (defun send-event-function ((arg0 process-tree) (arg1 event-message-block))
   (with-pp
-    (when (and arg0 (!= (-> arg0 type) process-tree) (-> (the-as process arg0) event-hook) (-> arg1 from))
+    ;; og:preserve-this check that we have a _valid_ process. originally this just checked
+    ;; that type != process-tree, but sometimes we might get stale process ref (jak1 qbert-plat-master)
+    (when (and (valid? arg0 process (the-as string #f) #f 0)
+               (nonzero? (-> (the-as process arg0) pid))
+               (-> (the-as process arg0) event-hook) (-> arg1 from))
       (let ((gp-0 pp))
         (set! pp (the-as process arg0))
         (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from 0) (-> arg1 num-params) (-> arg1 message) arg1)))
@@ -454,4 +532,16 @@
     (suspend)
     )
   #f
+  )
+
+;; og:preserve-this
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
   )

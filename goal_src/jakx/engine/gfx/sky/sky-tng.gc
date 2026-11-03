@@ -23,16 +23,19 @@
 ;; ERROR: Function may read a register that is not set: ra
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defun close-sky-buffer ((arg0 dma-buffer))
+  "Close DMA buffer for large polygon drawing."
   (local-vars (ra-0 none))
   (nop!)
   (let ((v1-0 #x8000)
         (v0-0 (-> arg0 base))
         )
-    (set! (-> (the-as (pointer int128) v0-0)) 0)
+    ;; og:preserve-this
+    (set! (-> (the-as (pointer int128) v0-0)) (the int128 0))
     (nop!)
     (set! (-> (the-as (pointer int32) v0-0)) v1-0)
     (let ((v0-1 (&+ v0-0 16)))
-      (.jr ra-0)
+      ;; to save like 1 instruction they put this in the delay slot of the jr-ra
+      ;;(.jr ra-0)
       (set! (-> arg0 base) v0-1)
       )
     )
@@ -59,7 +62,7 @@
     )
   )
 
-(defmethod OK-update-template-colors ((this sky-work))
+(defmethod update-template-colors ((this sky-work))
   (let ((v1-1 (-> *time-of-day-context* current-fog erase-color))
         (a0-3 (-> *level* level-default mood-context current-sky-color))
         )
@@ -72,7 +75,7 @@
   (none)
   )
 
-(defmethod OK-update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
+(defmethod update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
   (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
       (set! arg1 (* 10.0 arg1))
       )
@@ -90,7 +93,7 @@
 
 (defmethod-mips2c "(method 17 sky-work)" 17 sky-work)
 
-(defmethod OK-update-colors-for-time ((this sky-work) (arg0 float))
+(defmethod update-colors-for-time ((this sky-work) (arg0 float))
   0
   0
   0.0
@@ -133,7 +136,7 @@
   (none)
   )
 
-(defmethod OK-cloud-vtx-light-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 cloud-lights) (arg3 vector) (arg4 vector))
+(defmethod cloud-vtx-light-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 cloud-lights) (arg3 vector) (arg4 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector4)))
     (let* ((f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
            (f1-1 (vector-dot (-> arg2 sun1-normal) arg1))
@@ -156,7 +159,7 @@
   (none)
   )
 
-(defmethod OK-cloud-vtx-tex-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 cloud-lights))
+(defmethod cloud-vtx-tex-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 cloud-lights))
   (let ((s5-0 (new 'stack-no-clear 'vector4))
         (s2-0 (new 'stack-no-clear 'vector4))
         (s4-0 (new 'stack-no-clear 'vector4))
@@ -177,7 +180,7 @@
   (none)
   )
 
-(defmethod OK-adjust-cloud-lighting ((this sky-work))
+(defmethod adjust-cloud-lighting ((this sky-work))
   (let ((s5-0 *cloud-vert-array*)
         (s4-0 (-> this cloud-lights))
         )
@@ -221,8 +224,8 @@
       )
     (dotimes (s3-1 100)
       (let ((s2-1 (-> s5-0 data s3-1)))
-        (OK-cloud-vtx-light-update this (-> s2-1 col) (-> s2-1 nrm) s4-0 (-> s4-0 sun0-color) (-> s4-0 ambi-color))
-        (OK-cloud-vtx-light-update
+        (cloud-vtx-light-update this (-> s2-1 col) (-> s2-1 nrm) s4-0 (-> s4-0 sun0-color) (-> s4-0 ambi-color))
+        (cloud-vtx-light-update
           this
           (-> s2-1 col2)
           (-> s2-1 nrm2)
@@ -230,7 +233,7 @@
           (-> s4-0 sun0-color-lower)
           (-> s4-0 ambi-color-lower)
           )
-        (OK-cloud-vtx-tex-update this (-> s2-1 stq2) (-> s2-1 stq) (-> s2-1 pos) s4-0)
+        (cloud-vtx-tex-update this (-> s2-1 stq2) (-> s2-1 stq) (-> s2-1 pos) s4-0)
         )
       )
     )
@@ -238,7 +241,7 @@
   (none)
   )
 
-(defmethod OK-cloud-vtx1-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
+(defmethod cloud-vtx1-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
   (set! (-> arg0 pos quad) (-> arg1 pos quad))
   (set! (-> arg0 stq quad) (-> arg1 stq quad))
   (set! (-> arg0 col quad) (-> arg1 col quad))
@@ -246,7 +249,7 @@
   (none)
   )
 
-(defmethod OK-cloud-vtx2-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
+(defmethod cloud-vtx2-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
   (set! (-> arg0 pos quad) (-> arg1 pos quad))
   (set! (-> arg0 stq quad) (-> arg1 stq2 quad))
   (set! (-> arg0 col quad) (-> arg1 col2 quad))
@@ -254,7 +257,7 @@
   (none)
   )
 
-(defmethod OK-draw-clouds ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
+(defmethod draw-clouds ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
   (local-vars (v1-27 float))
   (rlet ((vf23 :class vf)
          (vf27 :class vf)
@@ -305,14 +308,14 @@
                       (sv-32 (+ (* 9 s2-1) s1-1))
                       (sv-48 (+ s1-1 81 (* 9 s2-1)))
                       )
-                  (OK-cloud-vtx1-to-sky this (-> sv-20 (* sv-32 4)) (-> sv-16 data s0-2))
-                  (OK-cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 1)) (-> sv-16 data (+ s0-2 1)))
-                  (OK-cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 2)) (-> sv-16 data (+ s0-2 11)))
-                  (OK-cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 3)) (-> sv-16 data (+ s0-2 10)))
-                  (OK-cloud-vtx2-to-sky this (-> sv-20 (* sv-48 4)) (-> sv-16 data s0-2))
-                  (OK-cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 1)) (-> sv-16 data (+ s0-2 1)))
-                  (OK-cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 2)) (-> sv-16 data (+ s0-2 11)))
-                  (OK-cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 3)) (-> sv-16 data (+ s0-2 10)))
+                  (cloud-vtx1-to-sky this (-> sv-20 (* sv-32 4)) (-> sv-16 data s0-2))
+                  (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 1)) (-> sv-16 data (+ s0-2 1)))
+                  (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 2)) (-> sv-16 data (+ s0-2 11)))
+                  (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 3)) (-> sv-16 data (+ s0-2 10)))
+                  (cloud-vtx2-to-sky this (-> sv-20 (* sv-48 4)) (-> sv-16 data s0-2))
+                  (cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 1)) (-> sv-16 data (+ s0-2 1)))
+                  (cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 2)) (-> sv-16 data (+ s0-2 11)))
+                  (cloud-vtx2-to-sky this (-> sv-20 (+ (* sv-48 4) 3)) (-> sv-16 data (+ s0-2 10)))
                   )
                 )
               )
@@ -334,7 +337,7 @@
     )
   )
 
-(defmethod OK-apply-haze-light ((this sky-work) (arg0 vector) (arg1 vector) (arg2 haze-lights) (arg3 float))
+(defmethod apply-haze-light ((this sky-work) (arg0 vector) (arg1 vector) (arg2 haze-lights) (arg3 float))
   (let* ((s5-0 (new 'stack-no-clear 'vector4))
          (f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
          (f1-1 (vector-dot (-> arg2 sun1-normal) arg1))
@@ -359,7 +362,7 @@
   (none)
   )
 
-(defmethod OK-adjust-haze-lighting ((this sky-work))
+(defmethod adjust-haze-lighting ((this sky-work))
   (let ((s5-0 *haze-vert-array*)
         (s4-0 (-> this haze-lights))
         )
@@ -397,7 +400,7 @@
     (let ((f30-1 (* 144.0 (fmax 0.0 (fmin 1.0 (* 16.0 (-> s4-0 sun0-normal y)))))))
       (dotimes (s3-1 36)
         (let ((v1-28 (-> s5-0 data s3-1)))
-          (OK-apply-haze-light this (-> v1-28 col) (-> v1-28 nrm) s4-0 f30-1)
+          (apply-haze-light this (-> v1-28 col) (-> v1-28 nrm) s4-0 f30-1)
           )
         )
       )
@@ -406,7 +409,7 @@
   (none)
   )
 
-(defmethod OK-haze-vtx-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 sky-vertex) (arg2 haze-vertex))
+(defmethod haze-vtx-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 sky-vertex) (arg2 haze-vertex))
   (set! (-> arg0 pos quad) (-> arg2 pos quad))
   (set! (-> arg0 col quad) (-> arg2 col quad))
   (set! (-> arg0 col w) 128.0)
@@ -418,10 +421,10 @@
   (none)
   )
 
-(defmethod OK-draw-haze ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
+(defmethod draw-haze ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
   (rlet ((vf27 :class vf))
     (dma-buffer-add-gs-set arg0 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)))
-    (OK-init-regs-for-large-polygon-draw this arg1)
+    (init-regs-for-large-polygon-draw this arg1)
     (.lvf vf27 (&-> this giftag-haze quad))
     (let ((s3-0 (the-as object (-> arg0 base))))
       (&+! (-> arg0 base) 16)
@@ -429,11 +432,11 @@
             (sv-20 *haze-poly*)
             )
         (dotimes (s2-0 35)
-          (OK-haze-vtx-to-sky this (-> sv-20 (* s2-0 4)) (-> sv-20 (+ (* s2-0 4) 1)) (-> sv-16 data s2-0))
-          (OK-haze-vtx-to-sky this (-> sv-20 (+ (* s2-0 4) 3)) (-> sv-20 (+ (* s2-0 4) 2)) (-> sv-16 data (+ s2-0 1)))
+          (haze-vtx-to-sky this (-> sv-20 (* s2-0 4)) (-> sv-20 (+ (* s2-0 4) 1)) (-> sv-16 data s2-0))
+          (haze-vtx-to-sky this (-> sv-20 (+ (* s2-0 4) 3)) (-> sv-20 (+ (* s2-0 4) 2)) (-> sv-16 data (+ s2-0 1)))
           )
-        (OK-haze-vtx-to-sky this (-> sv-20 140) (-> sv-20 141) (-> sv-16 data 35))
-        (OK-haze-vtx-to-sky this (-> sv-20 143) (-> sv-20 142) (-> sv-16 data 0))
+        (haze-vtx-to-sky this (-> sv-20 140) (-> sv-20 141) (-> sv-16 data 35))
+        (haze-vtx-to-sky this (-> sv-20 143) (-> sv-20 142) (-> sv-16 data 0))
         (dotimes (s4-1 36)
           (render-sky-quad (the-as (inline-array sky-vertex) (-> sv-20 (* s4-1 4))) arg0 (-> arg1 math-camera))
           )
@@ -456,7 +459,7 @@
 
 (defmethod-mips2c "(method 30 sky-work)" 30 sky-work)
 
-(defmethod OK-setup-stars ((this sky-work) (arg0 matrix) (arg1 sky-upload-data))
+(defmethod setup-stars ((this sky-work) (arg0 matrix) (arg1 sky-upload-data))
   (set! (-> arg0 fvec quad) (-> arg1 data 0))
   (vector-normalize! (-> arg0 fvec) 1.0)
   (vector-cross! (-> arg0 rvec) *z-vector* (-> arg0 fvec))
@@ -482,13 +485,13 @@
 
 (defmethod-mips2c "(method 33 sky-work)" 33 sky-work)
 
-(defmethod OK-draw-roof ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
+(defmethod draw-roof ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
   (dma-buffer-add-gs-set arg0
                          (zbuf-1 (-> arg1 zbuf-on))
                          (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
                          (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                          )
-  (OK-init-regs-for-large-polygon-draw this arg1)
+  (init-regs-for-large-polygon-draw this arg1)
   (let ((s5-0 (the-as object (-> arg0 base))))
     (&+! (-> arg0 base) 16)
     (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 0)) arg0)
@@ -506,7 +509,7 @@
   (none)
   )
 
-(defmethod OK-draw-base ((this sky-work) (arg0 dma-buffer))
+(defmethod draw-base ((this sky-work) (arg0 dma-buffer))
   (dma-buffer-add-gs-set arg0
                          (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
                          )
@@ -527,7 +530,7 @@
   (none)
   )
 
-(defmethod OK-draw-fog ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
+(defmethod draw-fog ((this sky-work) (arg0 dma-buffer) (arg1 viewport))
   (let ((s3-0 (-> *sky-texture-anim-array* array-data (+ (-> arg1 index) 1) tex)))
     (when s3-0
       (let* ((v1-6 arg0)
@@ -609,7 +612,6 @@
     )
   (&+! (-> arg0 base) 176)
   0
-  (none)
   )
 
 (defmethod draw-erase ((this sky-work) (arg0 dma-buffer) (arg1 vector))
@@ -632,7 +634,7 @@
             )
           )
         )
-      (case (-> *setting-control* user-current unknown-usd-symbol-3)
+      (case (-> *setting-control* user-current sky-override)
         (('off)
          (set! s0-0 #f)
          )
@@ -643,7 +645,7 @@
       (set! v0-23
             (cond
               ((and s0-0
-                    (logtest? (-> *display* vu1-enable-user) 8)
+                    (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask sky))
                     (logtest? (-> *texture-pool* texture-enable-user) (texture-enable-mask sky))
                     )
                (set! (-> *level* level-default texture-anim-array 9) *sky-texture-anim-array*)
@@ -656,9 +658,9 @@
                      (let ((s1-0 *viewport-array*))
                        (cond
                          ((= s0-0 'menumap)
-                          (let ((a0-18 (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 128.0)))
-                                (a1-15 (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 16.0 128.0)))
-                                (v1-26 (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 128.0 128.0)))
+                          (let ((a0-18 (new 'static 'vector :w 128.0))
+                                (a1-15 (new 'static 'vector :z 16.0 :w 128.0))
+                                (v1-26 (new 'static 'vector :z 128.0 :w 128.0))
                                 )
                             (dotimes (a2-4 12)
                               (set! (-> sky-base-polygons a2-4 col quad) (-> a1-15 quad))
@@ -707,14 +709,14 @@
                               )
                             (sky-work-method-14 s3-0 s0-1)
                             (.lvf vf27 (&-> this giftag-roof quad))
-                            (OK-draw-roof s3-0 s2-0 s0-1)
+                            (draw-roof s3-0 s2-0 s0-1)
                             )
-                          (OK-draw-base s3-0 s2-0)
+                          (draw-base s3-0 s2-0)
                           )
                          (else
-                           (OK-update-template-colors this)
-                           (OK-adjust-haze-lighting this)
-                           (OK-adjust-cloud-lighting this)
+                           (update-template-colors this)
+                           (adjust-haze-lighting this)
+                           (adjust-cloud-lighting this)
                            (dotimes (s0-2 (the-as int (-> s1-0 num-viewports)))
                              (view-push-context s0-2)
                              (let* ((v1-37 s1-0)
@@ -751,25 +753,25 @@
                                    )
                                  )
                                (sky-work-method-14 s3-0 sv-16)
-                               (OK-setup-stars s3-0 (-> s3-0 star-mat) (-> this upload-data))
+                               (setup-stars s3-0 (-> s3-0 star-mat) (-> this upload-data))
                                (if (nonzero? (-> s3-0 star-colors 0 x))
-                                   (OK-stars-transform-asm s3-0)
+                                   (stars-transform-asm s3-0)
                                    )
                                (.lvf vf27 (&-> this giftag-base quad))
-                               (OK-draw-roof s3-0 s2-0 sv-16)
-                               (OK-init-regs-for-sky-asm s3-0 sv-16)
+                               (draw-roof s3-0 s2-0 sv-16)
+                               (init-regs-for-sky-asm s3-0 sv-16)
                                (if (nonzero? (-> s3-0 star-colors 0 x))
-                                   (OK-stars-dma s3-0 s2-0 sv-16)
+                                   (stars-dma s3-0 s2-0 sv-16)
                                    )
-                               (OK-sun-dma s3-0 s2-0 sv-16)
-                               (OK-green-sun-dma s3-0 s2-0 sv-16)
-                               (OK-moon-dma s3-0 s2-0 sv-16)
-                               (OK-draw-haze s3-0 s2-0 sv-16)
-                               (OK-draw-clouds s3-0 s2-0 sv-16)
+                               (sun-dma s3-0 s2-0 sv-16)
+                               (green-sun-dma s3-0 s2-0 sv-16)
+                               (moon-dma s3-0 s2-0 sv-16)
+                               (draw-haze s3-0 s2-0 sv-16)
+                               (draw-clouds s3-0 s2-0 sv-16)
                                (.lvf vf27 (&-> this giftag-base quad))
                                sv-16
-                               (OK-draw-base s3-0 s2-0)
-                               (let ((sv-32 (OK-draw-fog s3-0 s2-0 sv-16)))
+                               (draw-base s3-0 s2-0)
+                               (let ((sv-32 (draw-fog s3-0 s2-0 sv-16)))
                                  )
                                )
                              (view-pop-context)

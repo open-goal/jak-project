@@ -517,7 +517,8 @@ namespace method_13_collide_mesh { extern void link(); }
 namespace method_21_grid_hash { extern void link(); }
 namespace method_24_grid_hash { extern void link(); }
 namespace method_35_sphere_hash { extern void link(); }
-namespace method_40_spatial_hash { extern void link(); }}
+namespace method_40_spatial_hash { extern void link(); }
+namespace cspace_parented_transformq_joint { extern void link(); }}
 // clang-format on
 
 LinkedFunctionTable gLinkedFunctionTable;
@@ -798,7 +799,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"texture", {jakx::adgif_shader_texture_with_update::link}},
      {"collide-func",
       {jakx::moving_sphere_triangle_intersect::link, jakx::collide_do_primitives::link}},
-     {"joint", {}},
+     {"joint", {jakx::cspace_parented_transformq_joint::link}},
      {"foreground",
       {jakx::foreground_check_longest_edge_asm::link, jakx::foreground_generic_merc::link,
        jakx::foreground_merc::link, jakx::foreground_draw_hud::link}},
@@ -807,7 +808,8 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
       {jakx::method_11_collide_hash::link, jakx::method_12_collide_hash::link,
        jakx::fill_bg_using_box_new::link, jakx::fill_bg_using_line_sphere_new::link}},
      {"collide-mesh",
-      {jakx::method_14_collide_mesh::link, jakx::method_10_collide_shape_prim_mesh::link, jakx::method_11_collide_mesh::link, jakx::method_13_collide_mesh::link}},
+      {jakx::method_14_collide_mesh::link, jakx::method_10_collide_shape_prim_mesh::link,
+       jakx::method_11_collide_mesh::link, jakx::method_13_collide_mesh::link}},
      {"collide-cache",
       {jakx::method_10_collide_shape_prim_mesh::link,
        jakx::method_10_collide_shape_prim_sphere::link,
@@ -818,7 +820,11 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jakx::method_10_collide_cache_prim::link, jakx::method_17_collide_cache::link,
        jakx::method_9_collide_puss_work::link, jakx::method_10_collide_puss_work::link}},
      {"spatial-hash",
-      {jakx::method_20_grid_hash::link, jakx::method_22_grid_hash::link, jakx::method_30_sphere_hash::link, jakx::method_36_spatial_hash::link, jakx::method_21_grid_hash::link, jakx::method_24_grid_hash::link, jakx::method_35_sphere_hash::link, jakx::method_35_spatial_hash::link, jakx::method_40_spatial_hash::link}},
+      {jakx::method_20_grid_hash::link, jakx::method_22_grid_hash::link,
+       jakx::method_30_sphere_hash::link, jakx::method_36_spatial_hash::link,
+       jakx::method_21_grid_hash::link, jakx::method_24_grid_hash::link,
+       jakx::method_35_sphere_hash::link, jakx::method_35_spatial_hash::link,
+       jakx::method_40_spatial_hash::link}},
      {"sparticle-launcher",
       {jakx::sparticle_motion_blur::link, jakx::sp_launch_particles_var::link,
        jakx::particle_adgif::link, jakx::sp_init_fields::link}},
@@ -845,7 +851,11 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jakx::generic_translucent::link, jakx::high_speed_reject::link,
        jakx::mercneric_convert::link, jakx::generic_merc_init_asm::link}},
      {"sky-tng",
-      {jakx::set_tex_offset::link, jakx::render_sky_quad::link, jakx::render_sky_tri::link, jakx::method_17_sky_work::link, jakx::method_29_sky_work::link, jakx::method_30_sky_work::link, jakx::method_32_sky_work::link, jakx::draw_large_polygon::link, jakx::method_16_sky_work::link, jakx::method_28_sky_work::link, jakx::method_33_sky_work::link}},
+      {jakx::set_tex_offset::link, jakx::render_sky_quad::link, jakx::render_sky_tri::link,
+       jakx::method_17_sky_work::link, jakx::method_29_sky_work::link,
+       jakx::method_30_sky_work::link, jakx::method_32_sky_work::link,
+       jakx::draw_large_polygon::link, jakx::method_16_sky_work::link,
+       jakx::method_28_sky_work::link, jakx::method_33_sky_work::link}},
      {"shadow-cpu",
       {jakx::shadow_xform_verts::link, jakx::shadow_execute::link,
        jakx::shadow_calc_dual_verts::link, jakx::shadow_scissor_edges::link,

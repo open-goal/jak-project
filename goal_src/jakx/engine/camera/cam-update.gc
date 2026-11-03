@@ -5,6 +5,20 @@
 ;; name in dgo: cam-update
 ;; dgos: ENGINE, GAME
 
+(define-extern cam-free-floating-move (function camera-master cam-rotation-tracker vector vector int vector))
+(define-extern shrub-make-perspective-matrix (function matrix matrix matrix))
+
+(deftype camera-free-floating-move-info (structure)
+  ((rv vector :inline :offset-assert 0)
+   (tv vector :inline :offset-assert 16)
+   (up vector :inline :offset-assert 32)
+   (tm matrix :inline :offset-assert 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
 ;; DECOMP BEGINS
 
 (defun plane-from-points ((arg0 (inline-array plane)) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 int))
@@ -288,7 +302,7 @@
             (set! s4-2 (the-as vector #f))
             )
         (cam-free-floating-move
-          (view-get-active-camera)
+          (the-as camera-master (view-get-active-camera))
           (the-as cam-rotation-tracker *save-camera-inv-rot*)
           (-> arg0 trans)
           s4-2
@@ -308,7 +322,7 @@
     (when (view-get-active-camera-combiner)
       (matrix-copy!
         (-> (view-get-active-math-camera) inv-camera-rot)
-        (-> (view-get-active-camera-combiner) inv-camera-rot)
+        (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot)
         )
       (set! (-> (view-get-active-math-camera) trans quad)
             (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad)
@@ -340,24 +354,26 @@
           (format
             #t
             "Player pos = ~F ~F ~F~%"
-            (-> (view-get-active-target) control trans x)
-            (-> (view-get-active-target) control trans y)
-            (-> (view-get-active-target) control trans z)
+            (-> (the-as target (view-get-active-target)) root trans x)
+            (-> (the-as target (view-get-active-target)) root trans y)
+            (-> (the-as target (view-get-active-target)) root trans z)
             )
-          (set! (-> *start-pos* quad) (-> (view-get-active-target) control trans quad))
+          (set! (-> *start-pos* quad) (-> (the-as target (view-get-active-target)) root trans quad))
           )
         (when (= *timer-value* 480)
           (format
             #t
             "Player pos = ~F ~F ~F~%"
-            (-> (view-get-active-target) control trans x)
-            (-> (view-get-active-target) control trans y)
-            (-> (view-get-active-target) control trans z)
+            (-> (the-as target (view-get-active-target)) root trans x)
+            (-> (the-as target (view-get-active-target)) root trans y)
+            (-> (the-as target (view-get-active-target)) root trans z)
             )
           (format
             #t
             "Dist = ~F~%"
-            (* 0.00024414062 (vector-vector-xz-distance (-> (view-get-active-target) control trans) *start-pos*))
+            (* 0.00024414062
+               (vector-vector-xz-distance (-> (the-as target (view-get-active-target)) root trans) *start-pos*)
+               )
             )
           (set! *start-timer* (the-as int #f))
           )
@@ -432,12 +448,12 @@
            (matrix-copy! *save-camera-inv-rot* (-> gp-0 inv-camera-rot))
            )
           ((and (view-get-active-camera-combiner) (not *external-cam-mode*))
-           (set! (-> gp-0 fov) (-> (view-get-active-camera-combiner) fov))
+           (set! (-> gp-0 fov) (-> (the-as camera-combiner (view-get-active-camera-combiner)) fov))
            (set! (-> gp-0 trans quad) (-> (the-as vector (-> (view-get-active-camera-combiner) stack)) quad))
            (matrix*!
              (-> gp-0 inv-camera-rot)
              (the-as matrix (-> s5-5 tv))
-             (-> (view-get-active-camera-combiner) inv-camera-rot)
+             (the-as matrix (&-> (view-get-active-camera-combiner) stack 16))
              )
            (matrix-copy! *save-camera-inv-rot* (-> gp-0 inv-camera-rot))
            )
@@ -480,11 +496,11 @@
         (format
           *stdcon*
           "cam vel ~7,,1M ~7,,1M ~7,,1M~%"
-          (* (-> (view-get-active-camera-combiner) velocity x) (-> pp clock frames-per-second))
-          (* (-> (view-get-active-camera-combiner) velocity y) (-> pp clock frames-per-second))
-          (* (-> (view-get-active-camera-combiner) velocity z) (-> pp clock frames-per-second))
+          (* (-> (the-as camera-combiner (view-get-active-camera-combiner)) velocity x) (-> pp clock frames-per-second))
+          (* (-> (the-as camera-combiner (view-get-active-camera-combiner)) velocity y) (-> pp clock frames-per-second))
+          (* (-> (the-as camera-combiner (view-get-active-camera-combiner)) velocity z) (-> pp clock frames-per-second))
           )
-        (let ((v1-92 (-> (view-get-active-camera) settings)))
+        (let ((v1-92 (-> (the-as camera-master (view-get-active-camera)) settings)))
           (format
             *stdcon*
             "string info min-l ~M max-l ~M min-h ~M max-h ~M~%"

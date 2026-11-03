@@ -40,7 +40,7 @@
 
 
 (deftype net-powerup (process-nettable)
-  ((child-proc           uint64)
+  ((child-proc           handle)
    (die-or-respawn-time  int32)
    (touched-time         int32)
    (touched-by           int8)
@@ -49,34 +49,36 @@
    (pos                  vector  :inline)
    (motion-info          basic)
    )
+  (:state-methods
+    net-powerup-s1
+    net-powerup-s2
+    )
   (:methods
-    (net-powerup-method-42 () none)
-    (net-powerup-method-43 () none)
     (net-powerup-method-44 () none)
     (net-powerup-method-45 () none)
-    (net-powerup-method-46 () none)
-    (net-powerup-method-47 () none)
-    (net-powerup-method-48 () none)
-    (net-powerup-method-49 () none)
-    (net-powerup-method-50 () none)
-    (net-powerup-method-51 () none)
-    (net-powerup-method-52 () none)
-    (net-powerup-method-53 () none)
-    (net-powerup-method-54 () none)
+    (net-powerup-method-46 (_type_ object object) none)
+    (net-powerup-method-47 (_type_) none)
+    (net-powerup-method-48 (_type_) none)
+    (net-powerup-method-49 (_type_) none)
+    (net-powerup-method-50 (_type_) none)
+    (net-powerup-method-51 (_type_) none)
+    (net-powerup-method-52 (_type_ process) none)
+    (net-powerup-method-53 (_type_) none)
+    (net-powerup-method-54 (_type_) none)
     (net-powerup-method-55 () none)
     )
   )
 
 
-(defbehavior net-powerup-init-remote net-powerup ((arg0 process))
+(defbehavior net-powerup-init-remote net-powerup ((arg0 mem-buffer))
   (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self (the-as int arg0))
+  (process-nettable-method-35 self arg0)
   (process-nettable-method-36 self)
   0
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-powerup) (arg0 int))
+(defmethod process-nettable-method-41 ((this net-powerup) (arg0 mem-buffer))
   (ppointer->process (process-spawn net-powerup :init net-powerup-init-remote arg0 :name "net-powerup"))
   )
 
@@ -104,20 +106,20 @@
   )
 
 (deftype powerup-draw (process-drawable)
-  ((parent-proc  uint64)
+  ((parent-proc  handle)
    (glow-sound   basic)
    (part-time    int32)
    )
   (:state-methods
-    TODO
+    idle
     )
   (:methods
     (powerup-draw-method-51 () none)
-    (powerup-draw-method-52 () none)
-    (powerup-draw-method-53 () none)
-    (powerup-draw-method-54 () none)
-    (powerup-draw-method-55 () none)
-    (powerup-draw-method-56 () none)
+    (powerup-draw-method-52 (_type_ float) none)
+    (powerup-draw-method-53 (_type_ object vector) none)
+    (powerup-draw-method-54 (_type_ process-drawable) none)
+    (powerup-draw-method-55 (_type_) none)
+    (powerup-draw-method-56 (_type_) none)
     )
   )
 
@@ -130,10 +132,10 @@
         (art-group-get-by-name *level* (-> arg0 name) (&-> self level))
         )
     (set! (-> s5-0 quad) (-> arg1 quad))
+    (set! (-> self parent-proc) (process->handle arg0))
+    (stack-size-set! (-> self main-thread) 32)
+    (powerup-draw-method-53 self arg0 s5-0)
     )
-  (set! (-> self parent-proc) (the-as uint (process->handle arg0)))
-  (stack-size-set! (-> self main-thread) 32)
-  ((method-of-object self powerup-draw-method-53))
-  (go-virtual TODO)
+  (go-virtual idle)
   (none)
   )

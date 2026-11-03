@@ -5,6 +5,9 @@
 ;; name in dgo: wvehicle-states
 ;; dgos: COMMON, GAME
 
+(define-extern *explosion-effect-suppress* explosion)
+(define-extern explosion-spawn (function explosion-init-params process-drawable none))
+
 ;; DECOMP BEGINS
 
 (define *old-vector* (new 'static 'vector))
@@ -71,15 +74,15 @@
       (send-event (handle->process (-> self net-player)) 'vehicle-explode)
       (cond
         ((logtest? (-> self v-flags) (vehicle-flag player-owned))
-         (let ((v1-41 (make-sound-instance (-> *sound-info* 434) 0 (the-as handle #f))))
+         (let ((v1-41 (make-sound-instance (-> *sound-info* 434) 0 #f)))
            (if v1-41
                (-> v1-41 id)
                0
                )
            )
          )
-        ((= (-> self info vehicle-type) 15)
-         (let ((v1-46 (make-sound-instance (-> *sound-info* 435) 0 (the-as handle #f))))
+        ((= (-> self info vehicle-type) (vehicle-type-u8 drone))
+         (let ((v1-46 (make-sound-instance (-> *sound-info* 435) 0 #f)))
            (if v1-46
                (-> v1-46 id)
                0
@@ -97,7 +100,7 @@
                                                       )
                        )
                     )
-               (let ((v1-57 (make-sound-instance (-> *sound-info* 643) 0 (the-as handle #f))))
+               (let ((v1-57 (make-sound-instance (-> *sound-info* 643) 0 #f)))
                  (if v1-57
                      (-> v1-57 id)
                      0
@@ -105,7 +108,7 @@
                  )
                )
               (else
-                (let ((v1-61 (make-sound-instance (-> *sound-info* 436) 0 (the-as handle #f))))
+                (let ((v1-61 (make-sound-instance (-> *sound-info* 436) 0 #f)))
                   (if v1-61
                       (-> v1-61 id)
                       0
@@ -129,7 +132,7 @@
           )
         )
       (dotimes (gp-4 12)
-        (let ((s5-1 (-> self vehicle-sections gp-4)))
+        (let ((s5-1 (-> self sections gp-4)))
           (when (nonzero? (-> s5-1 draw))
             (let ((f0-5 (+ 2.0 (* 2.0 (rand-vu)))))
               (vehicle-section-method-13 s5-1 f0-5)
@@ -285,7 +288,7 @@
          (if (zero? (-> self car-fire-loop))
              (set! (-> self car-fire-loop) (the-as uint (new-sound-id)))
              )
-         (let ((v1-8 (make-sound-instance (-> *sound-info* 308) (the-as int (-> self car-fire-loop)) (the-as handle #f))))
+         (let ((v1-8 (make-sound-instance (-> *sound-info* 308) (the-as int (-> self car-fire-loop)) #f)))
            (cond
              (v1-8
                (set! (-> v1-8 volume) (the int (* 1024.0 (-> gp-0 y))))
@@ -315,8 +318,7 @@
        (if (zero? (-> self vehicle-sound-1))
            (set! (-> self vehicle-sound-1) (new-sound-id))
            )
-       (let ((v1-22 (make-sound-instance (-> *sound-info* 286) (the-as int (-> self vehicle-sound-1)) (the-as handle #f)))
-             )
+       (let ((v1-22 (make-sound-instance (-> *sound-info* 286) (the-as int (-> self vehicle-sound-1)) #f)))
          (cond
            (v1-22
              (set! (-> v1-22 volume) (the int (* 1024.0 (-> self vehicle-float-2))))
@@ -349,8 +351,7 @@
          (set! (-> gp-1 w) 1.0)
          (set! (-> gp-1 w) (/ 1.0 (+ 1.0 (square (-> gp-1 z)))))
          (set! (-> gp-1 w) (cube-root (-> gp-1 w)))
-         (let ((v1-43 (make-sound-instance (-> *sound-info* 619) (the-as int (-> self vehicle-sound-2)) (the-as handle #f)))
-               )
+         (let ((v1-43 (make-sound-instance (-> *sound-info* 619) (the-as int (-> self vehicle-sound-2)) #f)))
            (cond
              (v1-43
                (set! (-> v1-43 volume) (the int (* 1024.0 (-> gp-1 w))))
@@ -408,7 +409,7 @@
       )
     (logior! (-> self focus-status) (focus-status disable inactive))
     (dotimes (gp-1 12)
-      (let ((a0-15 (-> self vehicle-sections gp-1)))
+      (let ((a0-15 (-> self sections gp-1)))
         (set! (-> a0-15 damage) 1.0)
         (vehicle-section-method-11 a0-15 self)
         )
@@ -441,7 +442,7 @@
             (set! (-> a1-1 rot-speed) 1000.0)
             (let ((v1-21 (-> a1-1 fountain-rand-transv-lo)))
               (let ((a0-5 (-> self root transv))
-                    (a3-0 (new 'static 'vector :data (new 'static 'array float 4 -81920.0 61440.0 -81920.0 1.0)))
+                    (a3-0 (new 'static 'vector :x -81920.0 :y 61440.0 :z -81920.0 :w 1.0))
                     )
                 (.lvf vf4 (&-> a0-5 quad))
                 (.lvf vf5 (&-> a3-0 quad))
@@ -452,7 +453,7 @@
               )
             (let ((v1-22 (-> a1-1 fountain-rand-transv-hi)))
               (let ((a0-7 (-> self root transv))
-                    (a3-1 (new 'static 'vector :data (new 'static 'array float 4 81920.0 131072.0 81920.0 1.0)))
+                    (a3-1 (new 'static 'vector :x 81920.0 :y 131072.0 :z 81920.0 :w 1.0))
                     )
                 (.lvf vf4 (&-> a0-7 quad))
                 (.lvf vf5 (&-> a3-1 quad))
@@ -544,7 +545,7 @@
     (set! (-> self sink-sound-id) (new-sound-id))
     (cond
       ((logtest? (-> self unk-vehicle-int32-3) 8)
-       (let ((v1-27 (make-sound-instance (-> *sound-info* 302) (the-as int (-> self sink-sound-id)) (the-as handle #f))))
+       (let ((v1-27 (make-sound-instance (-> *sound-info* 302) (the-as int (-> self sink-sound-id)) #f)))
          (if v1-27
              (-> v1-27 id)
              0
@@ -552,7 +553,7 @@
          )
        )
       (else
-        (let ((v1-31 (make-sound-instance (-> *sound-info* 259) (the-as int (-> self sink-sound-id)) (the-as handle #f))))
+        (let ((v1-31 (make-sound-instance (-> *sound-info* 259) (the-as int (-> self sink-sound-id)) #f)))
           (if v1-31
               (-> v1-31 id)
               0
@@ -572,7 +573,7 @@
       )
     (let ((gp-0 (handle->process (-> self fire-tracker))))
       (when gp-0
-        (let ((v1-42 (make-sound-instance (-> *sound-info* 306) 0 (the-as handle #f))))
+        (let ((v1-42 (make-sound-instance (-> *sound-info* 306) 0 #f)))
           (if v1-42
               (-> v1-42 id)
               0
@@ -584,14 +585,14 @@
     )
   :code sleep-code
   :post (behavior ()
-    (setting-control-method-11
+    (cam-reconnect
       *setting-control*
       (view-get-active-index)
       self
-      'string-camera-floor
+      (the-as time-frame 'string-camera-floor)
       'abs
-      (the-as vector (+ 12288.0 (-> self water-height)))
-      0
+      (+ 12288.0 (-> self water-height))
+      0.0
       )
     (let ((v1-4 (-> self draw color-mult)))
       (let ((f0-3 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
