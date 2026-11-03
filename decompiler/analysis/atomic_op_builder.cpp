@@ -640,12 +640,17 @@ std::unique_ptr<AtomicOp> convert_dsubu_1(const Instruction& i0, int idx) {
 }
 
 std::unique_ptr<AtomicOp> convert_nor_1(const Instruction& i0, int idx) {
-  if (i0.get_src(1).is_reg(rr0())) {
-    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
-                                      SimpleExpression(SimpleExpression::Kind::LOGNOT,
-                                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
-                                      idx);
+  if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_reg(rr0())) {
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleExpression(SimpleAtom::make_int_constant(-1).as_expr()), idx);
   } else {
+    if (i0.get_src(1).is_reg(rr0())) {
+      return std::make_unique<SetVarOp>(
+          make_dst_var(i0, idx),
+          SimpleExpression(SimpleExpression::Kind::LOGNOT,
+                           make_src_atom(i0.get_src(0).get_reg(), idx)),
+          idx);
+    }
     // fall back
     return make_3reg_op(i0, SimpleExpression::Kind::NOR, idx);
   }
