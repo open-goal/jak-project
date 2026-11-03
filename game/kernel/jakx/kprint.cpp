@@ -339,8 +339,13 @@ s32 format_impl_jakx(uint64_t* args) {
               if (type.offset) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
               }
+              else {
+                //jakx::print_object(in);
+                ASSERT(false); // bad type?
+              }
             } else {
-              ASSERT(false);  // bad type.
+              //jakx::print_object(in);
+              ASSERT(false);  // bad sim?
             }
           }
           output_ptr = strend(output_ptr);
