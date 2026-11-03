@@ -1,9 +1,3 @@
-// Iterates through the `all-types` DTS to find types that meet a variety of criteria, such as:
-// - type size
-// - field types at given offsets
-// - parent-types
-// - ...
-
 #include <queue>
 
 #include "common/formatter/formatter.h"

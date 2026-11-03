@@ -164,7 +164,7 @@
 
 (defmethod add-spheres-from-mesh-user-list ((this nav-engine) (arg0 sphere-hash) (arg1 nav-mesh))
   (countdown (s3-0 (-> arg1 static-sphere-count))
-    (sphere-hash-method-29 arg0 (-> arg1 static-sphere s3-0) 64)
+    (add-a-sphere-with-flag arg0 (-> arg1 static-sphere s3-0) 64)
     )
   (let* ((s4-1 (-> arg1 user-list))
          (v1-6 (-> s4-1 alive-list next0))
@@ -185,18 +185,18 @@
                  )
              (if (logtest? (-> (the-as collide-shape s2-0) nav-flags) (nav-flags has-root-sphere))
                  (set! (-> s1-0 root-sphere-id)
-                       (the-as uint (sphere-hash-method-29
+                       (the-as uint (add-a-sphere-with-flag
                                       arg0
-                                      (the-as sphere (-> s1-0 root-nav-sphere))
+                                      (-> s1-0 root-nav-sphere)
                                       (the-as int (-> (the-as collide-shape s2-0) backup-collide-as))
                                       )
                                )
                        )
                  )
              (if (logtest? (-> (the-as collide-shape s2-0) nav-flags) (nav-flags has-extra-sphere))
-                 (sphere-hash-method-29
+                 (add-a-sphere-with-flag
                    arg0
-                   (the-as sphere (-> s1-0 extra-nav-sphere))
+                   (-> s1-0 extra-nav-sphere)
                    (the-as int (-> (the-as collide-shape s2-0) backup-collide-as))
                    )
                  )
@@ -207,11 +207,7 @@
               (let ((a1-5 (new 'stack-no-clear 'vector)))
                 (set! (-> a1-5 quad) (-> (the-as collide-shape s2-0) trans quad))
                 (set! (-> a1-5 w) (-> (the-as collide-shape s2-0) nav-radius))
-                (sphere-hash-method-29
-                  arg0
-                  (the-as sphere a1-5)
-                  (the-as int (-> (the-as collide-shape s2-0) backup-collide-as))
-                  )
+                (add-a-sphere-with-flag arg0 a1-5 (the-as int (-> (the-as collide-shape s2-0) backup-collide-as)))
                 )
               )
             )
@@ -232,7 +228,7 @@
                 (let ((a1-6 (new 'stack-no-clear 'vector)))
                   (set! (-> a1-6 quad) (-> s2-1 prim-core world-sphere quad))
                   (set! (-> a1-6 w) (-> (the-as collide-shape-prim-sphere s2-1) nav-radius))
-                  (sphere-hash-method-29 arg0 (the-as sphere a1-6) (the-as int (-> s2-1 prim-core collide-as)))
+                  (add-a-sphere-with-flag arg0 a1-6 (the-as int (-> s2-1 prim-core collide-as)))
                   )
                 )
               (&+! s2-1 80)
@@ -252,7 +248,7 @@
   (let ((s4-0 (-> this nav-mesh-addr))
         (gp-0 (-> this nav-mesh-addr sphere-hash))
         )
-    (sphere-hash-method-27 gp-0)
+    (clear-objects! gp-0)
     (set! (-> gp-0 bucket-array) (the-as (pointer grid-hash-word) (-> this hash-buckets-addr)))
     (set! (-> gp-0 sphere-array) (the-as (inline-array sphere) (-> this hash-sphere-addr)))
     (add-spheres-from-mesh-user-list this gp-0 s4-0)
@@ -268,7 +264,7 @@
         (set! s4-1 (-> s4-1 prev-nav-mesh))
         )
       )
-    (sphere-hash-method-30 gp-0)
+    (update-from-spheres gp-0)
     )
   0
   (none)
@@ -282,7 +278,7 @@
           (set! (-> a0-3 sphere-count) 0)
           (set! (-> a0-3 state mesh) (-> this nav-mesh-addr))
           (set! (-> this mem-work nav) (the-as basic a0-3))
-          (nav-control-method-47 a0-3 #f)
+          (find-sphere-ids-from-sphere-hash a0-3 #f)
           (set! (-> this mem-work nav) #f)
           )
         )
@@ -513,7 +509,7 @@
        )
      )
     (else
-      (sphere-hash-method-27 (-> this sphere-hash))
+      (clear-objects! (-> this sphere-hash))
       )
     )
   0

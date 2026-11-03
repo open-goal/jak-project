@@ -7,3 +7,1348 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-ice-debris-a ice-debris ice-debris-a-lod0-jg -1
+              ((ice-debris-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-ice-debris-b ice-debris ice-debris-b-lod0-jg -1
+              ((ice-debris-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-ice-debris-c ice-debris ice-debris-c-lod0-jg -1
+              ((ice-debris-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-ice-debris-d ice-debris ice-debris-d-lod0-jg -1
+              ((ice-debris-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-ice-debris-e ice-debris ice-debris-e-lod0-jg -1
+              ((ice-debris-e-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(deftype snow-icebreak-a (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-snow-icebreak-a snow-icebreak-a snow-icebreak-a-lod0-jg snow-icebreak-a-idle-ja
+              ((snow-icebreak-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+(define *ice-debris-params-a*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-a"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 53248.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-b"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 36864.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-c"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 24576.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-d"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 12288.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-a"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 8192.0 8192.0 8192.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-b"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -8192.0 12288.0 8192.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-e"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -8192.0 4096.0 -8192.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x217
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-65 ((this snow-icebreak-a) (arg0 matrix))
+  (< 40960.0 (* (-> arg0 trans x) (process-focusable-method-57 this)))
+  )
+
+(defmethod net-simple-destruct-method-66 ((this snow-icebreak-a))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 514) 0 #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
+        )
+      (else
+        0
+        )
+      )
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 423))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 423 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  (let ((s5-2 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-2 scale-rand-lo) 1.5)
+    (set! (-> s5-2 scale-rand-hi) 2.3)
+    (set-vector! (-> s5-2 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-lo) (-> s5-2 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-2 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-hi) (-> s5-2 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-2 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-2 duration) (the-as uint 300))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-43 (-> this root root-prim)))
+        (set! (-> v1-43 prim-core collide-as) (collide-spec))
+        (set! (-> v1-43 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-2 *ice-debris-params-a* (the-as process-drawable #f))
+    )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
+  )
+
+(defmethod init-from-entity! ((this snow-icebreak-a) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 143360.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 143360.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-snow-icebreak-a" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this hit-points) 7.0)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this net-simple-destruct-state-1))
+  )
+
+(deftype snow-icebreak-b (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-snow-icebreak-b snow-icebreak-b snow-icebreak-b-lod0-jg snow-icebreak-b-idle-ja
+              ((snow-icebreak-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+(define *ice-debris-params-b*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-a"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 32768.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-b"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 24576.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-c"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 16384.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-d"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-e"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x217
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-65 ((this snow-icebreak-b) (arg0 matrix))
+  (< 40960.0 (* (-> arg0 trans x) (process-focusable-method-57 this)))
+  )
+
+(defmethod net-simple-destruct-method-66 ((this snow-icebreak-b))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 514) 0 #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
+        )
+      (else
+        0
+        )
+      )
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 424))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 424 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  (let ((s5-2 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-2 scale-rand-lo) 1.0)
+    (set! (-> s5-2 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-2 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-lo) (-> s5-2 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-2 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-hi) (-> s5-2 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-2 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-2 duration) (the-as uint 1200))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-43 (-> this root root-prim)))
+        (set! (-> v1-43 prim-core collide-as) (collide-spec))
+        (set! (-> v1-43 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-2 *ice-debris-params-b* (the-as process-drawable #f))
+    )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
+  )
+
+(defmethod init-from-entity! ((this snow-icebreak-b) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 143360.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 143360.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-snow-icebreak-b" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this hit-points) 7.0)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this net-simple-destruct-state-1))
+  )
+
+(deftype snow-icebreak-c (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-snow-icebreak-c snow-icebreak-c snow-icebreak-c-lod0-jg snow-icebreak-c-idle-ja
+              ((snow-icebreak-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+(define *ice-debris-params-c*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-a"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-b"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-ice-debris-c"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x217
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-65 ((this snow-icebreak-c) (arg0 matrix))
+  (< 40960.0 (* (-> arg0 trans x) (process-focusable-method-57 this)))
+  )
+
+(defmethod net-simple-destruct-method-66 ((this snow-icebreak-c))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 514) 0 #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
+        )
+      (else
+        0
+        )
+      )
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 425))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 425 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  (let ((s5-2 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-2 scale-rand-lo) 0.25)
+    (set! (-> s5-2 scale-rand-hi) 0.5)
+    (set-vector! (-> s5-2 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-lo) (-> s5-2 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-2 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector-! (-> s5-2 fountain-rand-transv-hi) (-> s5-2 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-2 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-2 duration) (the-as uint 1200))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-43 (-> this root root-prim)))
+        (set! (-> v1-43 prim-core collide-as) (collide-spec))
+        (set! (-> v1-43 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-2 *ice-debris-params-c* (the-as process-drawable #f))
+    )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
+  )
+
+(defmethod init-from-entity! ((this snow-icebreak-c) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 143360.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 143360.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-snow-icebreak-c" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this hit-points) 7.0)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this net-simple-destruct-state-1))
+  )
+
+(deftype cliffs-wood-fence-a (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-cliffs-wood-fence-a cliffs-wood-fence-a cliffs-wood-fence-a-lod0-jg cliffs-wood-fence-a-idle-ja
+              ((cliffs-wood-fence-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-cliffs-fence-debris-raila cliffs-fence-debris cliffs-fence-debris-raila-lod0-jg -1
+              ((cliffs-fence-debris-raila-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-cliffs-fence-debris-railb cliffs-fence-debris cliffs-fence-debris-railb-lod0-jg -1
+              ((cliffs-fence-debris-railb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-cliffs-fence-debris-railc cliffs-fence-debris cliffs-fence-debris-railc-lod0-jg -1
+              ((cliffs-fence-debris-railc-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-cliffs-fence-debris-post cliffs-fence-debris cliffs-fence-debris-post-lod0-jg -1
+              ((cliffs-fence-debris-post-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(define *cliffs-wood-fence-a-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 16384.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 16384.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x267
+    :initial-sound-hit #x22e
+    :roll-sound #x22f
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-66 ((this cliffs-wood-fence-a))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
+      (cond
+        (v1-1
+          (set! (-> v1-1 trans quad) (-> this root trans quad))
+          (logior! (-> v1-1 flags) 96)
+          (-> v1-1 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+      (set! (-> s5-0 scale-rand-lo) 1.0)
+      (set! (-> s5-0 scale-rand-hi) 1.0)
+      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
+        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
+              (a0-10 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-8 quad))
+          (.lvf vf5 (&-> a0-10 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-5 quad) vf6)
+        )
+      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
+        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
+              (a0-15 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-10 quad))
+          (.lvf vf5 (&-> a0-15 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-6 quad) vf6)
+        )
+      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+      (set! (-> s5-0 duration) (the-as uint 600))
+      (when (type? (-> this root) collide-shape)
+        (let ((v1-15 (-> this root root-prim)))
+          (set! (-> v1-15 prim-core collide-as) (collide-spec))
+          (set! (-> v1-15 prim-core collide-with) (collide-spec))
+          )
+        0
+        )
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (if (type? (-> this root) collide-shape)
+          (transform-post)
+          )
+      (debris-spawn this s5-0 *cliffs-wood-fence-a-debris-params* (the-as process-drawable #f))
+      )
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 426))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 426 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this cliffs-wood-fence-a) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this hit-points) 30.0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-cliffs-wood-fence-a" (the-as (pointer level) #f))
+    0
+    )
+  (process-drawable-from-entity! this arg0)
+  (go (method-of-object this net-simple-destruct-state-1))
+  0
+  )
+
+(deftype cliffs-wood-fence-b (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-cliffs-wood-fence-b cliffs-wood-fence-b cliffs-wood-fence-b-lod0-jg cliffs-wood-fence-b-idle-ja
+              ((cliffs-wood-fence-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :origin-joint-index 3
+              )
+
+(define *cliffs-wood-fence-b-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 16384.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 16384.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x267
+    :initial-sound-hit #x22e
+    :roll-sound #x22f
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-66 ((this cliffs-wood-fence-b))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
+      (cond
+        (v1-1
+          (set! (-> v1-1 trans quad) (-> this root trans quad))
+          (logior! (-> v1-1 flags) 96)
+          (-> v1-1 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+      (set! (-> s5-0 scale-rand-lo) 1.0)
+      (set! (-> s5-0 scale-rand-hi) 1.0)
+      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
+        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
+              (a0-10 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-8 quad))
+          (.lvf vf5 (&-> a0-10 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-5 quad) vf6)
+        )
+      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
+        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
+              (a0-15 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-10 quad))
+          (.lvf vf5 (&-> a0-15 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-6 quad) vf6)
+        )
+      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+      (set! (-> s5-0 duration) (the-as uint 600))
+      (when (type? (-> this root) collide-shape)
+        (let ((v1-15 (-> this root root-prim)))
+          (set! (-> v1-15 prim-core collide-as) (collide-spec))
+          (set! (-> v1-15 prim-core collide-with) (collide-spec))
+          )
+        0
+        )
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (if (type? (-> this root) collide-shape)
+          (transform-post)
+          )
+      (debris-spawn this s5-0 *cliffs-wood-fence-b-debris-params* (the-as process-drawable #f))
+      )
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 426))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 426 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this cliffs-wood-fence-b) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 819200.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this hit-points) 30.0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-cliffs-wood-fence-b" (the-as (pointer level) #f))
+    0
+    )
+  (process-drawable-from-entity! this arg0)
+  (go (method-of-object this net-simple-destruct-state-1))
+  0
+  )
+
+(deftype cliffs-wood-fence-c (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-cliffs-wood-fence-c cliffs-wood-fence-c cliffs-wood-fence-c-lod0-jg cliffs-wood-fence-c-idle-ja
+              ((cliffs-wood-fence-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              :origin-joint-index 3
+              )
+
+(define *cliffs-wood-fence-c-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 40960.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 -20480.0 16384.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 16384.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x267
+    :initial-sound-hit #x22e
+    :roll-sound #x22f
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-66 ((this cliffs-wood-fence-c))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
+      (cond
+        (v1-1
+          (set! (-> v1-1 trans quad) (-> this root trans quad))
+          (logior! (-> v1-1 flags) 96)
+          (-> v1-1 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+      (set! (-> s5-0 scale-rand-lo) 1.0)
+      (set! (-> s5-0 scale-rand-hi) 1.0)
+      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
+        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
+              (a0-10 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-8 quad))
+          (.lvf vf5 (&-> a0-10 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-5 quad) vf6)
+        )
+      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
+        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
+              (a0-15 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-10 quad))
+          (.lvf vf5 (&-> a0-15 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-6 quad) vf6)
+        )
+      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+      (set! (-> s5-0 duration) (the-as uint 600))
+      (when (type? (-> this root) collide-shape)
+        (let ((v1-15 (-> this root root-prim)))
+          (set! (-> v1-15 prim-core collide-as) (collide-spec))
+          (set! (-> v1-15 prim-core collide-with) (collide-spec))
+          )
+        0
+        )
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (if (type? (-> this root) collide-shape)
+          (transform-post)
+          )
+      (debris-spawn this s5-0 *cliffs-wood-fence-c-debris-params* (the-as process-drawable #f))
+      )
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 426))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 426 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this cliffs-wood-fence-c) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this hit-points) 30.0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-cliffs-wood-fence-c" (the-as (pointer level) #f))
+    0
+    )
+  (process-drawable-from-entity! this arg0)
+  (go (method-of-object this net-simple-destruct-state-1))
+  0
+  )
+
+(deftype cliffs-wood-fence-d (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-cliffs-wood-fence-d cliffs-wood-fence-d cliffs-wood-fence-d-lod0-jg cliffs-wood-fence-d-idle-ja
+              ((cliffs-wood-fence-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 12)
+              :origin-joint-index 3
+              )
+
+(define *cliffs-wood-fence-d-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-post"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 20480.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-raila"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 0.0 8192.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railb"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 4096.0 0.0 1.0))
+        )
+      (new 'static 'debris-static-joint-params
+        :parent-joint-index 3
+        :group "skel-cliffs-fence-debris-railc"
+        :offset (new 'static 'vector :data (new 'static 'array float 4 20480.0 16384.0 0.0 1.0))
+        )
+      )
+    :collide-spec (collide-spec backgnd)
+    :sound-hit #x267
+    :initial-sound-hit #x22e
+    :roll-sound #x22f
+    :art-level #f
+    :vscale 20480.0
+    :volume-time 2.0
+    :play-delay 45
+    :min-speed 8192.0
+    :max-speed 40960.0
+    )
+  )
+
+(defmethod net-simple-destruct-method-66 ((this cliffs-wood-fence-d))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
+      (cond
+        (v1-1
+          (set! (-> v1-1 trans quad) (-> this root trans quad))
+          (logior! (-> v1-1 flags) 96)
+          (-> v1-1 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+      (set! (-> s5-0 scale-rand-lo) 1.0)
+      (set! (-> s5-0 scale-rand-hi) 1.0)
+      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
+        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
+              (a0-10 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-8 quad))
+          (.lvf vf5 (&-> a0-10 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-5 quad) vf6)
+        )
+      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
+        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
+              (a0-15 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-10 quad))
+          (.lvf vf5 (&-> a0-15 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-6 quad) vf6)
+        )
+      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+      (set! (-> s5-0 duration) (the-as uint 600))
+      (when (type? (-> this root) collide-shape)
+        (let ((v1-15 (-> this root root-prim)))
+          (set! (-> v1-15 prim-core collide-as) (collide-spec))
+          (set! (-> v1-15 prim-core collide-with) (collide-spec))
+          )
+        0
+        )
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (if (type? (-> this root) collide-shape)
+          (transform-post)
+          )
+      (debris-spawn this s5-0 *cliffs-wood-fence-d-debris-params* (the-as process-drawable #f))
+      )
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 427))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 427 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this cliffs-wood-fence-d) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker coliseum-ball))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this hit-points) 30.0)
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-cliffs-wood-fence-d" (the-as (pointer level) #f))
+    0
+    )
+  (process-drawable-from-entity! this arg0)
+  (go (method-of-object this net-simple-destruct-state-1))
+  0
+  )

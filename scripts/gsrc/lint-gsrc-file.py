@@ -131,8 +131,14 @@ with open(src_path) as f:
     for lineno, line in enumerate(src_lines):
         adjusted_lineno = lineno + 1
         for rule in linter_rules:
-            match = rule.regex_pattern.search(line)
-            if match:
+            matches = rule.regex_pattern.finditer(line)
+            for match in matches:
+                if rule.rule_name == "method_splits":
+                    # A method split used as the target of (go ...) is intentional.
+                    # Ignore only that occurrence, not other method splits on the line.
+                    prefix = line[: match.start()]
+                    if re.search(r"\(\s*go\s+\(\s*$", prefix):
+                        continue
                 rule.matches.append(
                     LintMatch(
                         src_path,
