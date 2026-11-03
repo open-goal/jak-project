@@ -252,6 +252,8 @@ void TexturePool::handle_upload_now(const u8* tpage,
             slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
             ASSERT(slot.gpu_texture != (GLuint)-1);
           }
+          slot.source->ps2_w = tex.w;
+          slot.source->ps2_h = tex.h;
         }
       }
     } else {
