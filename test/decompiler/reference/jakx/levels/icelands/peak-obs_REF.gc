@@ -48,7 +48,7 @@
   )
 
 ;; definition for method 41 of type peak-snowball
-(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 int))
+(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 mem-buffer))
   (ppointer->process (process-spawn peak-snowball :init peak-snowball-init-remote arg0 :name "peak-snowball"))
   )
 
@@ -125,7 +125,7 @@
     (process-nettable-method-28 this s4-1)
     )
   (vector-float*! (-> this impact-direction) (-> arg0 normal) -1.0)
-  (let ((v1-34 (make-sound-instance (-> *sound-info* 603) 0 (process->handle this))))
+  (let ((v1-34 (make-sound-instance (-> *sound-info* 603) 0 (the-as symbol (process->handle this)))))
     (if v1-34
         (-> v1-34 id)
         0
@@ -175,7 +175,7 @@
         (set! (-> a0-10 action-mask) (collide-action solid))
         (set! (-> a0-10 nav-mesh) #f)
         )
-      (OK-fill-using-line-sphere *collide-cache* (-> v1-8 0))
+      (fill-using-line-sphere *collide-cache* (-> v1-8 0))
       )
     (rigid-body-control-method-13 (-> this rbody))
     (rbody-collision (-> this root) (-> this rbody) f30-0)
@@ -183,7 +183,7 @@
   (rigid-body-object-method-70 this)
   (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
   (rigid-body-object-method-61 this)
-  (OK-update-transforms (-> this root))
+  (update-transforms (-> this root))
   0
   (none)
   )
@@ -297,7 +297,7 @@
           )
         )
     (sound-stop (the-as sound-id (-> self roll-sound)) #t)
-    (let ((v1-32 (make-sound-instance (-> *sound-info* 604) 0 (process->handle self))))
+    (let ((v1-32 (make-sound-instance (-> *sound-info* 604) 0 (the-as symbol (process->handle self)))))
       (if v1-32
           (-> v1-32 id)
           0
@@ -400,7 +400,12 @@
           (cond
             ((not (logtest? (-> self draw status) (draw-control-status no-draw)))
              (let ((f24-0 (lerp-scale 0.2 0.7 f30-0 0.0 1024000.0))
-                   (v1-28 (make-sound-instance (-> *sound-info* 602) (the-as int (-> self roll-sound)) (process->handle self)))
+                   (v1-28 (make-sound-instance
+                            (-> *sound-info* 602)
+                            (the-as int (-> self roll-sound))
+                            (the-as symbol (process->handle self))
+                            )
+                          )
                    )
                (set! (-> self roll-sound) (the-as uint (cond
                                                          (v1-28
@@ -513,7 +518,7 @@
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 81920.0)
       (set! (-> s5-0 root-prim) s4-0)
       )
-    (OK-pusher-init s5-0)
+    (pusher-init s5-0)
     (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
       (set! (-> v1-15 prim-core collide-with) (collide-spec vehicle-sphere hit-by-others-list))
@@ -531,7 +536,3 @@
   0
   (none)
   )
-
-
-
-

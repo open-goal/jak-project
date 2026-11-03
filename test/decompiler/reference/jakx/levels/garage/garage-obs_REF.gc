@@ -42,28 +42,11 @@
   )
 
 ;; failed to figure out what this is:
-(let ((a0-2 (new 'static 'skeleton-group
-              :name "skel-garage-tool-arm"
-              :extra #f
-              :info #f
-              :art-group-name "garage-tool-arm"
-              :bounds (new 'static 'vector :y -40960.0 :w 61440.0)
-              :version 8
+(defskelgroup skel-garage-tool-arm garage-tool-arm garage-tool-arm-lod0-jg garage-tool-arm-idle-ja
+              ((garage-tool-arm-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -10 0 15)
               :origin-joint-index 5
-              :clothing #f
               )
-            )
-      )
-  (when #f
-    (set! (-> a0-2 clothing) (new 'static 'boxed-array :type cloth-params))
-    (set! (-> a0-2 clothing length) (-> a0-2 clothing allocated-length))
-    )
-  (set! (-> a0-2 jgeo) 0)
-  (set! (-> a0-2 janim) 2)
-  (set! (-> a0-2 mgeo 0) 1)
-  (set! (-> a0-2 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-2)
-  )
 
 ;; failed to figure out what this is:
 (defstate idle (garage-tool-arm)
@@ -254,8 +237,8 @@
    (turn-start-time  uint64)
    )
   (:state-methods
-    up
     down
+    up
     )
   (:methods
     (garage-turntable-method-52 (_type_) none)
@@ -290,53 +273,104 @@
   )
 
 ;; failed to figure out what this is:
-(let ((a0-8 (new 'static 'skeleton-group
-              :name "skel-garage-turntable"
-              :extra #f
-              :info #f
-              :art-group-name "garage-turntable"
-              :bounds (new 'static 'vector :w 20480.0)
-              :version 8
+(defskelgroup skel-garage-turntable garage-turntable garage-turntable-lod0-jg garage-turntable-idle-ja
+              ((garage-turntable-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
               :origin-joint-index 3
-              :clothing #f
               )
-            )
+
+;; failed to figure out what this is:
+(defstate up (garage-turntable)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('up?)
+       (logtest? (-> self flags) 2)
+       )
+      (('go-down)
+       (go-virtual down)
+       )
+      (('veh-pos)
+       (-> self root trans)
+       )
+      (('veh-rot)
+       (-> self root rot)
+       )
+      (('speed)
+       (set! (-> self speed) (the-as float (-> block param 0)))
+       )
+      (('auto-rotate?)
+       (set! v0-1 (-> block param 0))
+       (set! (-> self auto-rotate?) (the-as basic v0-1))
+       v0-1
+       )
+      (('no-pad)
+       (set! v0-1 (-> block param 0))
+       (set! (-> self no-pad) (the-as basic v0-1))
+       v0-1
+       )
       )
-  (when #f
-    (set! (-> a0-8 clothing) (new 'static 'boxed-array :type cloth-params))
-    (set! (-> a0-8 clothing length) (-> a0-8 clothing allocated-length))
     )
-  (set! (-> a0-8 jgeo) 0)
-  (set! (-> a0-8 janim) 2)
-  (set! (-> a0-8 mgeo 0) 1)
-  (set! (-> a0-8 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-8)
+  :enter (behavior ()
+    (logior! (-> self flags) 1)
+    (logand! (-> self flags) -3)
+    (set! (-> self dest-trans quad) (-> self entity extra trans quad))
+    )
+  :trans (behavior ()
+    (garage-turntable-method-53 self)
+    (garage-turntable-method-52 self)
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (sleep-code)
+    )
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
-(let ((gp-1
-        (new 'static 'state :name 'up :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
-        )
+(defstate down (garage-turntable)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('down?)
+       (logtest? (-> self flags) 2)
+       )
+      (('go-up)
+       (go-virtual up)
+       )
+      (('speed)
+       (set! (-> self speed) (the-as float (-> block param 0)))
+       )
+      (('auto-rotate?)
+       (set! v0-1 (-> block param 0))
+       (set! (-> self auto-rotate?) (the-as basic v0-1))
+       v0-1
+       )
+      (('no-pad)
+       (set! v0-1 (-> block param 0))
+       (set! (-> self no-pad) (the-as basic v0-1))
+       v0-1
+       )
       )
-  (method-set! garage-turntable 51 gp-1)
-  (set! (-> gp-1 event) (the-as (function process int symbol event-message-block object) L72))
-  (set! (-> gp-1 enter) L80)
-  (set! (-> gp-1 trans) (the-as (function object) L71))
-  (set! (-> gp-1 code) L69)
-  (set! (-> gp-1 post) ja-post)
-  )
-
-;; failed to figure out what this is:
-(let ((gp-2
-        (new 'static 'state :name 'down :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
-        )
-      )
-  (method-set! garage-turntable 50 gp-2)
-  (set! (-> gp-2 event) (the-as (function process int symbol event-message-block object) L62))
-  (set! (-> gp-2 enter) L68)
-  (set! (-> gp-2 trans) (the-as (function object) L61))
-  (set! (-> gp-2 code) L59)
-  (set! (-> gp-2 post) ja-post)
+    )
+  :enter (behavior ()
+    (logior! (-> self flags) 1)
+    (logand! (-> self flags) -3)
+    (set! (-> self dest-trans quad) (-> self entity extra trans quad))
+    (+! (-> self dest-trans y) -57344.0)
+    (logand! (-> self flags) -13)
+    )
+  :trans (behavior ()
+    (garage-turntable-method-53 self)
+    (garage-turntable-method-52 self)
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (sleep-code)
+    )
+  :post ja-post
   )
 
 ;; definition for method 53 of type garage-turntable
@@ -351,7 +385,7 @@
     (cond
       ((not (logtest? (-> this flags) 2))
        (when (logtest? (-> this draw status) (draw-control-status on-screen))
-         (let ((v1-19 (make-sound-instance (-> *sound-info* 634) (the-as int (-> this lift-sound-id)) (the-as handle #f))))
+         (let ((v1-19 (make-sound-instance (-> *sound-info* 634) (the-as int (-> this lift-sound-id)) #f)))
            (set! (-> this lift-sound-id) (the-as uint (if v1-19
                                                           (the-as int (-> v1-19 id))
                                                           0
@@ -363,7 +397,7 @@
        (when (< (fabs (- (-> this root trans y) (-> this dest-trans y))) 2048.0)
          (logior! (-> this flags) 2)
          (when (logtest? (-> this draw status) (draw-control-status on-screen))
-           (let ((v1-31 (make-sound-instance (-> *sound-info* 635) 0 (the-as handle #f))))
+           (let ((v1-31 (make-sound-instance (-> *sound-info* 635) 0 #f)))
              (if v1-31
                  (-> v1-31 id)
                  0
@@ -385,7 +419,7 @@
       )
     )
   (when (nonzero? (-> this room-sound-id))
-    (let ((v1-46 (make-sound-instance (-> *sound-info* 356) (the-as int (-> this room-sound-id)) (the-as handle #f))))
+    (let ((v1-46 (make-sound-instance (-> *sound-info* 356) (the-as int (-> this room-sound-id)) #f)))
       (cond
         (v1-46
           (logior! (-> v1-46 flags) 320)
@@ -436,7 +470,7 @@
                         (< 2.0 (fabs (-> this rotv)))
                         )
                (logior! (-> this flags) 8)
-               (let ((v0-2 (make-sound-instance (-> *sound-info* 642) 0 (the-as handle #f))))
+               (let ((v0-2 (make-sound-instance (-> *sound-info* 642) 0 #f)))
                  (if v0-2
                      (-> v0-2 id)
                      0
@@ -554,7 +588,7 @@
         (let ((f30-3 (* 0.33333334 (fabs (-> this rotv)))))
           (cond
             ((logtest? (-> this draw status) (draw-control-status on-screen))
-             (let ((v0-21 (make-sound-instance (-> *sound-info* 357) (the-as int (-> this plat-sound-id)) (the-as handle #f))))
+             (let ((v0-21 (make-sound-instance (-> *sound-info* 357) (the-as int (-> this plat-sound-id)) #f)))
                (cond
                  (v0-21
                    (set! (-> v0-21 volume) (the int (* 1024.0 (if (< 0.1 (fabs (-> this rotv)))
@@ -629,7 +663,7 @@
   (set! (-> this auto-rotate?) (the-as basic #t))
   (set! (-> this no-pad) #f)
   (+! (-> this root trans y) -57344.0)
-  (go (method-of-object this up))
+  (go (method-of-object this down))
   )
 
 ;; definition of type garage-car-arm
@@ -659,27 +693,10 @@
   )
 
 ;; failed to figure out what this is:
-(let ((a0-17 (new 'static 'skeleton-group
-               :name "skel-garage-car-arm"
-               :extra #f
-               :info #f
-               :art-group-name "garage-car-arm"
-               :bounds (new 'static 'vector :y -26624.0 :w 34816.0)
-               :version 8
-               :clothing #f
-               )
-             )
-      )
-  (when #f
-    (set! (-> a0-17 clothing) (new 'static 'boxed-array :type cloth-params))
-    (set! (-> a0-17 clothing length) (-> a0-17 clothing allocated-length))
-    )
-  (set! (-> a0-17 jgeo) 0)
-  (set! (-> a0-17 janim) 2)
-  (set! (-> a0-17 mgeo 0) 1)
-  (set! (-> a0-17 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-17)
-  )
+(defskelgroup skel-garage-car-arm garage-car-arm garage-car-arm-lod0-jg garage-car-arm-idle-ja
+              ((garage-car-arm-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -6.5 0 8.5)
+              )
 
 ;; definition for function set-mult
 ;; INFO: Used lq/sq
@@ -692,15 +709,21 @@
   )
 
 ;; failed to figure out what this is:
-(let ((gp-3
-        (new 'static 'state :name 'idle :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
-        )
+(defstate idle (garage-car-arm)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v0-0 (-> (new 'static 'vector :x 0.4 :y 0.4 :z 0.4 :w 1.0) quad)))
+      (set! (-> self draw color-mult quad) v0-0)
       )
-  (method-set! garage-car-arm 50 gp-3)
-  (set! (-> gp-3 enter) L18)
-  (set! (-> gp-3 trans) (the-as (function object) L17))
-  (set! (-> gp-3 code) L15)
-  (set! (-> gp-3 post) ja-post)
+    )
+  :trans (behavior ()
+    (garage-car-arm-method-51 self)
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (sleep-code)
+    )
+  :post ja-post
   )
 
 ;; definition for method 51 of type garage-car-arm
@@ -757,37 +780,44 @@
   )
 
 ;; failed to figure out what this is:
-(let ((a0-23 (new 'static 'skeleton-group
-               :name "skel-garage-sliding-door"
-               :extra #f
-               :info #f
-               :art-group-name "garage-sliding-door"
-               :bounds (new 'static 'vector :w 122880.0)
-               :version 8
-               :clothing #f
-               )
-             )
-      )
-  (when #f
-    (set! (-> a0-23 clothing) (new 'static 'boxed-array :type cloth-params))
-    (set! (-> a0-23 clothing length) (-> a0-23 clothing allocated-length))
-    )
-  (set! (-> a0-23 jgeo) 0)
-  (set! (-> a0-23 janim) 2)
-  (set! (-> a0-23 mgeo 0) 1)
-  (set! (-> a0-23 lod-dist 0) 4095996000.0)
-  (add-to-loading-level a0-23)
-  )
+(defskelgroup skel-garage-sliding-door garage-sliding-door garage-sliding-door-lod0-jg garage-sliding-door-idle-ja
+              ((garage-sliding-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
 
 ;; failed to figure out what this is:
-(let ((gp-4
-        (new 'static 'state :name 'idle :next #f :exit #f :parent #f :code #f :trans #f :post #f :enter #f :event #f)
+(defstate idle (garage-sliding-door)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-0 draw-control-status))
+    (case message
+      (('hide)
+       (when (nonzero? (-> self draw))
+         (set! v0-0 (logior (-> self draw status) (draw-control-status no-draw)))
+         (set! (-> self draw status) v0-0)
+         v0-0
+         )
+       )
+      (('show)
+       (when (nonzero? (-> self draw))
+         (set! v0-0 (logclear (-> self draw status) (draw-control-status no-draw)))
+         (set! (-> self draw status) v0-0)
+         v0-0
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
         )
       )
-  (method-set! garage-sliding-door 50 gp-4)
-  (set! (-> gp-4 event) (the-as (function process int symbol event-message-block object) L9))
-  (set! (-> gp-4 code) L3)
-  (set! (-> gp-4 post) ja-post)
+    #f
+    )
+  :post ja-post
   )
 
 ;; definition for method 11 of type garage-sliding-door
@@ -804,7 +834,3 @@
       )
   (go (method-of-object this idle))
   )
-
-
-
-

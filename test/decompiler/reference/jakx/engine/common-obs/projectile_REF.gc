@@ -46,7 +46,6 @@
 
 ;; definition for method 68 of type projectile
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch object vs none.
 (defmethod projectile-method-68 ((this projectile) (arg0 process) (arg1 object))
   (let ((s5-0 (new 'stack 'attack-info)))
     (let ((v1-1 s5-0))
@@ -83,7 +82,6 @@
       (send-event (handle->process (-> s5-0 attacker)) 'you-attacked s3-1 arg0 s5-0)
       )
     )
-  (none)
   )
 
 ;; definition for method 66 of type projectile
@@ -178,7 +176,7 @@
   )
 
 ;; definition for method 69 of type projectile
-;; WARN: Return type mismatch symbol vs none.
+;; WARN: Return type mismatch symbol vs object.
 (defmethod projectile-method-69 ((this projectile))
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
@@ -192,9 +190,8 @@
       (set! (-> a1-0 action-mask) (collide-action solid))
       (set! (-> a1-0 nav-mesh) #f)
       )
-    (OK-fill-and-try-snap-to-surface v1-0 (-> v1-0 transv) -6144.0 0.0 -2048.0 t1-0)
+    (fill-and-try-snap-to-surface v1-0 (-> v1-0 transv) -6144.0 0.0 -2048.0 t1-0)
     )
-  (none)
   )
 
 ;; definition for function projectile-move-fill-all-dirs
@@ -208,7 +205,7 @@
     (set! (-> a2-0 ignore-process1) (handle->process (-> arg0 ignore-handle)))
     (set! (-> a2-0 ignore-pat) (-> v1-0 pat-ignore-mask))
     (set! (-> a2-0 action-mask) (collide-action solid))
-    (OK-fill-cache-integrate-and-collide v1-0 (-> v1-0 transv) a2-0 (meters 0))
+    (fill-cache-integrate-and-collide v1-0 (-> v1-0 transv) a2-0 (meters 0))
     )
   0
   (none)
@@ -248,9 +245,9 @@
             (set! (-> v1-2 nav-mesh) #f)
             )
           )
-        (OK-fill-using-line-sphere *collide-cache* a1-0)
+        (fill-using-line-sphere *collide-cache* a1-0)
         )
-      (OK-integrate-and-collide! gp-0 (-> gp-0 transv))
+      (integrate-and-collide! gp-0 (-> gp-0 transv))
       )
     0
     (none)
@@ -261,7 +258,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun projectile-update-velocity-add-gravity ((arg0 projectile))
-  (vector-v++! (-> arg0 root transv) (OK-compute-acc-due-to-gravity (-> arg0 root) (new-stack-vector0) 1.0))
+  (vector-v++! (-> arg0 root transv) (compute-acc-due-to-gravity (-> arg0 root) (new-stack-vector0) 1.0))
   0
   (none)
   )
@@ -303,7 +300,7 @@
         (.svf (&-> v1-26 quad) vf6)
         )
       )
-    (vector-v++! (-> arg0 root transv) (OK-compute-acc-due-to-gravity (-> arg0 root) (new-stack-vector0) 0.0))
+    (vector-v++! (-> arg0 root transv) (compute-acc-due-to-gravity (-> arg0 root) (new-stack-vector0) 0.0))
     (if (< (-> arg0 max-speed) (vector-length (-> arg0 root transv)))
         (vector-normalize! (-> arg0 root transv) (-> arg0 max-speed))
         )
@@ -561,7 +558,7 @@
   (set! (-> self target-pos quad) (-> self base-target-pos quad))
   (set! (-> self event-hook) projectile-event-handler)
   (projectile-method-61 self)
-  (OK-update-transforms (-> self root))
+  (update-transforms (-> self root))
   (projectile-method-54 self)
   (projectile-method-58 self 0)
   (when (logtest? (-> self options) (projectile-options po15))
@@ -604,7 +601,7 @@
     (projectile-bounce-update-velocity self)
     (set! (-> s5-0 quad) (-> gp-0 trans quad))
     (vector-v++! s5-0 (-> gp-0 transv))
-    (when (OK-find-ground
+    (when (find-ground
             gp-0
             s4-0
             (collide-spec backgnd crate obstacle hit-by-others-list pusher)
@@ -621,7 +618,7 @@
           )
         )
       )
-    (OK-move-to-point! gp-0 s5-0)
+    (move-to-point! gp-0 s5-0)
     )
   (transform-post)
   0
@@ -739,11 +736,11 @@
     (set! (-> s5-0 event-self) 'touched)
     (set! (-> this root) s5-0)
     )
-  (OK-set-collide-with!
+  (set-collide-with!
     (-> this root)
     (collide-spec backgnd bot crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
     )
-  (OK-set-collide-as! (-> this root) (collide-spec projectile))
+  (set-collide-as! (-> this root) (collide-spec projectile))
   (set! (-> this root pat-ignore-mask) (new 'static 'pat-surface
                                          :noentity #x1
                                          :nogrind #x1
@@ -774,7 +771,3 @@
   0
   (none)
   )
-
-
-
-

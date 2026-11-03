@@ -615,7 +615,7 @@
   )
 
 ;; definition for function make-sound-instance
-(defun make-sound-instance ((arg0 sound-info) (arg1 int) (arg2 handle))
+(defun make-sound-instance ((arg0 sound-info) (arg1 int) (arg2 symbol))
   (when arg0
     (let ((s3-0 (the-as sound-instance #f)))
       (let ((s2-0 (the-as sound-handle #f))
@@ -633,7 +633,7 @@
         (when (not s3-0)
           (cond
             ((< (-> *sound-instances* length) 128)
-             (set! s2-0 (get-sound-handle arg2))
+             (set! s2-0 (get-sound-handle (the-as handle arg2)))
              (cond
                (s2-0
                  (set! s3-0 (-> *sound-instances* (-> *sound-instances* length)))
@@ -654,7 +654,7 @@
           )
         (mem-clear! (the-as pointer s3-0) 92)
         (set! (-> s3-0 sh) s2-0)
-        (set! (-> s3-0 last-update) (the-as time-frame s4-0))
+        (set! (-> s3-0 last-update) (the-as uint s4-0))
         (set! (-> s3-0 pan-angle) f30-0)
         )
       (set! (-> s3-0 info) arg0)
@@ -1051,7 +1051,7 @@
         (when (or (nonzero? (-> s3-1 last-update)) (not (logtest? (-> s3-1 flags) 64)))
           (dotimes (v1-79 48)
             (when (= (-> s3-1 id) (-> *sound-iop-info* id-info v1-79))
-              (set-time! (-> s3-1 last-update))
+              (set! (-> s3-1 last-update) (the-as uint (current-time)))
               (logior! (-> s3-1 flags) 64)
               #t
               (goto cfg-73)
@@ -1060,14 +1060,14 @@
           (label cfg-73)
           (cond
             ((= (-> s0-0 group) 14)
-             (when (>= (- (-> *display* real-clock frame-counter) (-> s3-1 last-update)) (seconds 0.167))
+             (when (>= (- (-> *display* real-clock frame-counter) (the-as int (-> s3-1 last-update))) (seconds 0.167))
                (remove-sound-instance-by-index s4-1)
                (+! s4-1 -1)
                (goto cfg-154)
                )
              )
             (else
-              (when (time-elapsed? (-> s3-1 last-update) (seconds 0.167))
+              (when (time-elapsed? (the-as int (-> s3-1 last-update)) (seconds 0.167))
                 (remove-sound-instance-by-index s4-1)
                 (+! s4-1 -1)
                 (goto cfg-154)
@@ -1127,7 +1127,7 @@
                 )
             (cond
               ((zero? (-> s3-1 last-update))
-               (set-time! (-> s3-1 last-update))
+               (set! (-> s3-1 last-update) (the-as uint (current-time)))
                (sound-instance-play s3-1)
                )
               (else
@@ -1460,13 +1460,7 @@
               )
             )
           (when (-> s5-1 info)
-            (let ((s4-0 (make-sound-instance
-                          (-> *sound-info* (-> s5-1 info index))
-                          (the-as int (-> this playing-id))
-                          (the-as handle #f)
-                          )
-                        )
-                  )
+            (let ((s4-0 (make-sound-instance (-> *sound-info* (-> s5-1 info index)) (the-as int (-> this playing-id)) #f)))
               (set! (-> this playing-id) (the-as sound-id (cond
                                                             (s4-0
                                                               (quad-copy! (the-as pointer s4-0) (the-as pointer s5-1) 4)
@@ -1527,9 +1521,9 @@
 
 ;; definition for method 15 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-falloff-mode! ((this ambient-sound) (arg0 int))
+(defmethod set-falloff-mode! ((this ambient-sound) (arg0 float))
   (logior! (-> this spec flags) 8)
-  (set! (-> this spec fo-power) (the-as float (gpr->fpr arg0)))
+  (set! (-> this spec fo-power) arg0)
   0
   (none)
   )
@@ -1862,7 +1856,3 @@
   0
   (none)
   )
-
-
-
-
