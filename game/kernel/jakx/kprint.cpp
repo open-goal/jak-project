@@ -89,7 +89,7 @@ s32 format_impl_jakx(uint64_t* args) {
       char* arg_start = format_ptr;
       // get some arguments
       arg_idx = 0;
-      u8 justify = 0;
+      //u8 justify = 0;
       for (auto& x : argument_data) {
         x.reset();
       }
@@ -245,28 +245,26 @@ s32 format_impl_jakx(uint64_t* args) {
               if (desired_length > 1) {  // mark with tilde that we will truncate
                 output_ptr[desired_length - 1] = '~';
               }
-              output_ptr[desired_length] = 0;  // and truncate
+              output_ptr[desired_length] = '\0';  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if(argument_data[1].data[0] != -1){
+                pad = argument_data[1].data[0];
+              }
+              if(argument_data[0].data[1] == 0){
+                //Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-              } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                while(0 < (desired_length - print_len)) {
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //
-                //                }
-                //                *output_ptr = 0;
+              }
+              else
+              {
+                //Pad on the right
+                output_ptr = strend(output_ptr);
+                while(desired_length > print_len){
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
@@ -298,28 +296,23 @@ s32 format_impl_jakx(uint64_t* args) {
               output_ptr[desired_length] = 0;  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if(argument_data[1].data[0] != -1){
+                pad = argument_data[1].data[0];
+              }
+              if(argument_data[0].data[1] == 0){
+                //Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-
-              } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                u32 l140 = 0;
-                //                while(l140 < (desired_length - print_len)) {
-                //                  char* l108 = output_ptr;
-                //
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //                }
-                //                *output_ptr = 0;
+              }
+              else
+              {
+                //Pad on the right
+                output_ptr = strend(output_ptr);
+                while(desired_length > print_len){
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
