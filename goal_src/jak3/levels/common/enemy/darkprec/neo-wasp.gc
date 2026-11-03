@@ -438,9 +438,7 @@
           )
       (when (and (= gp-0 neo-wasp-idle-ja)
                  (or (and (>= f0-0 0.0) (>= 1.0 f0-0))
-                     (and (>= f0-0 16.0)
-                          (>= (the float (+ (-> (the-as art-joint-anim neo-wasp-idle-ja) frames num-frames) -1)) (ja-frame-num 0))
-                          )
+                     (and (>= f0-0 16.0) (>= (the float (+ (-> neo-wasp-idle-ja frames num-frames) -1)) (ja-frame-num 0)))
                      )
                  )
         (if (and (time-elapsed?
@@ -693,32 +691,26 @@
   (none)
   )
 
-;; WARN: Return type mismatch process vs process-focusable.
 (defmethod neo-wasp-method-182 ((this neo-wasp))
-  (let ((s5-0 (handle->process (-> this focus handle))))
-    (the-as
-      process-focusable
-      (when s5-0
-        (let* ((a0-4 (-> this root))
-               (s4-1 (vector+! (new 'stack-no-clear 'vector) (-> a0-4 trans) (-> a0-4 transv)))
-               (s3-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> this focus-pos)))
-               )
-          (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s5-0) 0))
-          (let ((s3-2 (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0)))
-            (if (and (and s5-0
-                          (not (logtest? (-> (the-as process-focusable s5-0) focus-status) (focus-status disable dead ignore grabbed)))
-                          )
-                     (and (time-elapsed? (-> this on-screen-timer) (seconds 0.5))
-                          (< (vector-vector-distance s4-1 (-> this focus-pos)) 225280.0)
-                          (and (< (fabs (vector-x-angle s3-2)) 7281.778)
-                               (pointing-toward? this (-> this focus-pos) 4551.1113)
-                               (should-check-los? (-> this los) (seconds 0.4))
-                               )
-                          )
-                     )
-                s5-0
-                )
-            )
+  (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
+    (when s5-0
+      (let* ((a0-4 (-> this root))
+             (s4-1 (vector+! (new 'stack-no-clear 'vector) (-> a0-4 trans) (-> a0-4 transv)))
+             (s3-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> this focus-pos)))
+             )
+        (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat s5-0 0))
+        (let ((s3-2 (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0)))
+          (if (and (and s5-0 (not (logtest? (-> s5-0 focus-status) (focus-status disable dead ignore grabbed))))
+                   (and (time-elapsed? (-> this on-screen-timer) (seconds 0.5))
+                        (< (vector-vector-distance s4-1 (-> this focus-pos)) 225280.0)
+                        (and (< (fabs (vector-x-angle s3-2)) 7281.778)
+                             (pointing-toward? this (-> this focus-pos) 4551.1113)
+                             (should-check-los? (-> this los) (seconds 0.4))
+                             )
+                        )
+                   )
+              s5-0
+              )
           )
         )
       )
