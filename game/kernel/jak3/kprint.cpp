@@ -246,18 +246,16 @@ s32 format_impl_jak3(uint64_t* args) {
             } else if (print_len < desired_length) {
               // too short
               char pad = ' ';
-              if(argument_data[1].data[0] != -1){
+              if (argument_data[1].data[0] != -1) {
                 pad = argument_data[1].data[0];
               }
-              if(argument_data[0].data[1] == 0){
-                //Pad on the left
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-              }
-              else
-              {
-                //Pad on the right
+              } else {
+                // Pad on the right
                 output_ptr = strend(output_ptr);
-                while(desired_length > print_len){
+                while (desired_length > print_len) {
                   *output_ptr = pad;
                   ++output_ptr;
                   ++print_len;
@@ -294,18 +292,16 @@ s32 format_impl_jak3(uint64_t* args) {
             } else if (print_len < desired_length) {
               // too short
               char pad = ' ';
-              if(argument_data[1].data[0] != -1){
+              if (argument_data[1].data[0] != -1) {
                 pad = argument_data[1].data[0];
               }
-              if(argument_data[0].data[1] == 0){
-                //Pad on the left
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-              }
-              else
-              {
-                //Pad on the right
+              } else {
+                // Pad on the right
                 output_ptr = strend(output_ptr);
-                while(desired_length > print_len){
+                while (desired_length > print_len) {
                   *output_ptr = pad;
                   ++output_ptr;
                   ++print_len;

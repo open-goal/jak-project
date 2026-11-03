@@ -40,7 +40,6 @@ s32 format_impl_jakx(uint64_t* args) {
   // the gstring
   char* format_gstring = Ptr<char>(args[1]).c();
 
-
   // set up print pending
   char* print_temp = PrintPending.cast<char>().c();
   if (!PrintPending.offset) {
@@ -89,7 +88,7 @@ s32 format_impl_jakx(uint64_t* args) {
       char* arg_start = format_ptr;
       // get some arguments
       arg_idx = 0;
-      //u8 justify = 0;
+      // u8 justify = 0;
       for (auto& x : argument_data) {
         x.reset();
       }
@@ -249,18 +248,16 @@ s32 format_impl_jakx(uint64_t* args) {
             } else if (print_len < desired_length) {
               // too short
               char pad = ' ';
-              if(argument_data[1].data[0] != -1){
+              if (argument_data[1].data[0] != -1) {
                 pad = argument_data[1].data[0];
               }
-              if(argument_data[0].data[1] == 0){
-                //Pad on the left
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-              }
-              else
-              {
-                //Pad on the right
+              } else {
+                // Pad on the right
                 output_ptr = strend(output_ptr);
-                while(desired_length > print_len){
+                while (desired_length > print_len) {
                   *output_ptr = pad;
                   ++output_ptr;
                   ++print_len;
@@ -297,18 +294,16 @@ s32 format_impl_jakx(uint64_t* args) {
             } else if (print_len < desired_length) {
               // too short
               char pad = ' ';
-              if(argument_data[1].data[0] != -1){
+              if (argument_data[1].data[0] != -1) {
                 pad = argument_data[1].data[0];
               }
-              if(argument_data[0].data[1] == 0){
-                //Pad on the left
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-              }
-              else
-              {
-                //Pad on the right
+              } else {
+                // Pad on the right
                 output_ptr = strend(output_ptr);
-                while(desired_length > print_len){
+                while (desired_length > print_len) {
                   *output_ptr = pad;
                   ++output_ptr;
                   ++print_len;
@@ -338,13 +333,12 @@ s32 format_impl_jakx(uint64_t* args) {
               Ptr<Type> type(sym->value());
               if (type.offset) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
-              }
-              else {
-                //jakx::print_object(in);
-                ASSERT(false); // bad type?
+              } else {
+                // jakx::print_object(in);
+                ASSERT(false);  // bad type?
               }
             } else {
-              //jakx::print_object(in);
+              // jakx::print_object(in);
               ASSERT(false);  // bad sim?
             }
           }
@@ -480,25 +474,23 @@ s32 format_impl_jakx(uint64_t* args) {
           ftoa(output_ptr, value / 300.f, pad_length, pad_char, precision, 0);
           output_ptr = strend(output_ptr);
         } break;
-        case 't':
-        { // 8 or argument_data[0] space indent
+        case 't': {  // 8 or argument_data[0] space indent
           int indent = 8;
           if (argument_data[0].data[0] != -1) {
             indent = argument_data[0].data[0];
           }
-          for(int j = 0; j < indent; ++j){
+          for (int j = 0; j < indent; ++j) {
             *output_ptr = ' ';
             ++output_ptr;
           }
           break;
         }
-        case 'T':
-        { // 1 or argument_data[0] tab indent
+        case 'T': {  // 1 or argument_data[0] tab indent
           int indent = 1;
-          if (argument_data[0].data[0] != -1){
+          if (argument_data[0].data[0] != -1) {
             indent = argument_data[0].data[0];
           }
-          for(int j = 0; j < indent; ++j){
+          for (int j = 0; j < indent; ++j) {
             *output_ptr = '\t';
             ++output_ptr;
           }

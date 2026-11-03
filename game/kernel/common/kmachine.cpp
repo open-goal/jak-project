@@ -417,12 +417,12 @@ bool dma_to_iop(void* src_G, int size_G, void* dest_G) {
   transfer_W.addr = dest_G;
   transfer_W.size = size_G;
   u32 id = sceSifSetDma(&transfer_W, 1);
-  //if (id != 0) {
-    // TODO: no sceSifDmaStat
-    // s32 sVar1;
-    // do {
-    //   sVar1 = sceSifDmaStat(id);
-    // } while (-1 < sVar1);
+  // if (id != 0) {
+  //  TODO: no sceSifDmaStat
+  //  s32 sVar1;
+  //  do {
+  //    sVar1 = sceSifDmaStat(id);
+  //  } while (-1 < sVar1);
   //}
   return id == 0;
 }
