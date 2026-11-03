@@ -320,7 +320,7 @@ int run_decompilation_process(decompiler::Config config,
     if (config.rip_streamed_audio) {
       process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
                              config.streamed_audio_file_names);
-      process_sfx(streaming_audio_out / "sfx", in_folder);
+      process_sfx(config, streaming_audio_out / "sfx", in_folder);
     }
     // Rip music for jak 1 or jak 2
     if (config.rip_music &&
