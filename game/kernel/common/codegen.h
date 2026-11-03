@@ -42,17 +42,28 @@ inline void flush_icache_goal(u32 goal_addr, u32 size) {
 #ifdef __aarch64__
 
 /*!
- * Emits a fixed movz/movk sequence for a 64-bit value.
+ * Emits a 64-bit value with one MOVZ and only the needed MOVKs.
  */
 inline int emit_arm64_mov64(u8* dst, u32 reg, u64 val) {
-  u32 instr = arm64::encode_movz_64(reg, u16(val & 0xffff), 0);
-  memcpy(dst, &instr, 4);
-  int offset = 4;
-  for (u32 halfword = 1; halfword < 4; halfword++) {
-    instr = arm64::encode_movk_64(reg, u16((val >> (halfword * 16)) & 0xffff), halfword);
+  int offset = 0;
+  for (u32 halfword = 0; halfword < 4; halfword++) {
+    const u16 value = u16((val >> (halfword * 16)) & 0xffff);
+    if (!value) {
+      continue;
+    }
+
+    const u32 instr = offset ? arm64::encode_movk_64(reg, value, halfword)
+                             : arm64::encode_movz_64(reg, value, halfword);
     memcpy(dst + offset, &instr, 4);
     offset += 4;
   }
+
+  if (!offset) {
+    const u32 instr = arm64::encode_movz_64(reg, 0, 0);
+    memcpy(dst, &instr, 4);
+    offset = 4;
+  }
+
   return offset;
 }
 
