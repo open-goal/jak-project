@@ -3,11 +3,11 @@
 
 ;; definition for method 16 of type camera-master
 (defmethod camera-master-method-16 ((this camera-master) (arg0 symbol))
-  (let ((a2-0 (handle->process (-> this focus handle)))
+  (let ((a2-0 (the-as process-focusable (handle->process (-> this focus handle))))
         (v1-4 0)
         )
     (if a2-0
-        (set! v1-4 (logand (the-as int (-> (the-as process-focusable a2-0) root pat-ignore-mask)) 112))
+        (set! v1-4 (logand (the-as int (-> a2-0 root pat-ignore-mask)) 112))
         )
     (logior (if arg0
                 #x9010002
@@ -21,9 +21,9 @@
 ;; definition for function reset-follow
 ;; INFO: Used lq/sq
 (defbehavior reset-follow camera-master ((arg0 symbol))
-  (let ((a0-2 (handle->process (-> self focus handle))))
+  (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
     (when a0-2
-      (let ((v1-5 (get-trans (the-as process-focusable a0-2) 4)))
+      (let ((v1-5 (get-trans a0-2 4)))
         (cond
           (arg0
             (set! (-> self tpos-old x) (-> v1-5 x))
@@ -58,27 +58,25 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
 (defbehavior reset-target-tracking camera-master ()
-  (let ((gp-0 (handle->process (-> self focus handle))))
+  (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
     (when gp-0
-      (vector-copy! (-> self tpos-old) (get-trans (the-as process-focusable gp-0) 4))
+      (vector-copy! (-> self tpos-old) (get-trans gp-0 4))
       (vector-copy! (-> self tpos-curr) (-> self tpos-old))
       (vector-copy! (-> self tpos-old-adj) (-> self tpos-old))
       (vector-copy! (-> self tpos-curr-adj) (-> self tpos-old))
       (vector-copy! (-> self tpos-tgt) (-> self tpos-old))
-      (quaternion->matrix (-> self tgt-rot-mat) (get-quat (the-as process-focusable gp-0) 2))
-      (quaternion->matrix (-> self tgt-face-mat) (get-quat (the-as process-focusable gp-0) 1))
+      (quaternion->matrix (-> self tgt-rot-mat) (get-quat gp-0 2))
+      (quaternion->matrix (-> self tgt-face-mat) (get-quat gp-0 1))
       (vector-reset! (-> self pitch-off))
       (set! (-> self upspeed) 0.0)
-      (set! (-> self on-ground)
-            (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status in-air)))
-            )
+      (set! (-> self on-ground) (not (logtest? (-> gp-0 focus-status) (focus-status in-air))))
       (set! (-> self on-pole) #f)
       (set! (-> self ease-t) 1.0)
       (set! (-> self string-max target y) (-> self settings string-max-height))
       (set! (-> self string-max target z) (-> self settings string-max-length))
       (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
       (cond
-        ((time-elapsed? (get-notice-time (the-as process-focusable gp-0)) (-> *CAMERA-bank* attack-timeout))
+        ((time-elapsed? (get-notice-time gp-0) (-> *CAMERA-bank* attack-timeout))
          (set! (-> self being-attacked) #f)
          )
         (else
@@ -92,7 +90,7 @@
           )
         )
       (cond
-        ((focus-test? (the-as process-focusable gp-0) under-water)
+        ((focus-test? gp-0 under-water)
          (set! (-> self under-water) 2)
          )
         (else
@@ -112,7 +110,7 @@
 ;; definition for function master-track-target
 ;; INFO: Used lq/sq
 (defbehavior master-track-target camera-master ()
-  (let ((gp-0 (handle->process (-> self focus handle))))
+  (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
     (cond
       ((and *target* (not gp-0))
        (focus-on! (-> self focus) *target*)
@@ -131,7 +129,7 @@
       (gp-0
         (logior! (-> self master-options) (cam-master-options-u32 HAVE_TARGET))
         (cond
-          ((time-elapsed? (get-notice-time (the-as process-focusable gp-0)) (-> *CAMERA-bank* attack-timeout))
+          ((time-elapsed? (get-notice-time gp-0) (-> *CAMERA-bank* attack-timeout))
            (set! (-> self being-attacked) #f)
            )
           (else
@@ -147,7 +145,7 @@
             )
           )
         (cond
-          ((focus-test? (the-as process-focusable gp-0) under-water)
+          ((focus-test? gp-0 under-water)
            (set! (-> self under-water) 2)
            )
           ((> (-> self under-water) 0)
@@ -156,8 +154,8 @@
           )
         (vector-copy! (-> self tpos-old) (-> self tpos-curr))
         (vector-copy! (-> self tpos-old-adj) (-> self tpos-curr-adj))
-        (quaternion->matrix (-> self tgt-rot-mat) (get-quat (the-as process-focusable gp-0) 2))
-        (quaternion->matrix (-> self tgt-face-mat) (get-quat (the-as process-focusable gp-0) 1))
+        (quaternion->matrix (-> self tgt-rot-mat) (get-quat gp-0 2))
+        (quaternion->matrix (-> self tgt-face-mat) (get-quat gp-0 1))
         (cond
           ((< (-> self ease-t) 1.0)
            (new 'stack-no-clear 'vector)
@@ -175,7 +173,7 @@
                (vector-lerp!
                  (-> self tpos-curr)
                  (-> self ease-from)
-                 (get-trans (the-as process-focusable gp-0) 4)
+                 (get-trans gp-0 4)
                  (parameter-ease-sin-clamp (-> self ease-t))
                  )
                )
@@ -183,10 +181,10 @@
            (+! (-> self ease-t) (-> self ease-step))
            )
           (else
-            (vector-copy! (-> self tpos-curr) (get-trans (the-as process-focusable gp-0) 4))
+            (vector-copy! (-> self tpos-curr) (get-trans gp-0 4))
             )
           )
-        (when (focus-test? (the-as process-focusable gp-0) edge-grab)
+        (when (focus-test? gp-0 edge-grab)
           (if *display-cam-los-debug*
               (format *stdcon* "ride edge~%")
               )
@@ -214,15 +212,11 @@
               )
             )
           )
-        (set! (-> self on-ground)
-              (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status in-air)))
-              )
+        (set! (-> self on-ground) (not (logtest? (-> gp-0 focus-status) (focus-status in-air))))
         (let ((s5-7 (new-stack-vector0)))
           0.0
           (cond
-            ((and (focus-test? (the-as process-focusable gp-0) in-air)
-                  (not (logtest? (focus-status halfpipe super) (-> (the-as process-focusable gp-0) focus-status)))
-                  )
+            ((and (focus-test? gp-0 in-air) (not (logtest? (focus-status halfpipe super) (-> gp-0 focus-status))))
              (if *display-cam-los-debug*
                  (format *stdcon* "air tracking~%")
                  )
@@ -249,7 +243,7 @@
                     )
                (vector+float*! (-> self tpos-curr-adj) (-> self tpos-tgt) (-> self local-down) f0-29)
                )
-             (vector-! s5-7 (get-trans (the-as process-focusable gp-0) 1) (-> self tpos-curr-adj))
+             (vector-! s5-7 (get-trans gp-0 1) (-> self tpos-curr-adj))
              (let* ((f0-31 (vector-dot s5-7 (-> self local-down)))
                     (f0-32 (* 0.03 f0-31))
                     )
@@ -265,9 +259,7 @@
               (vector-! s5-7 (-> self tpos-curr) (-> self tpos-old))
               (let ((f0-34 (vector-dot s5-7 (-> self local-down))))
                 (cond
-                  ((and (focus-test? (the-as process-focusable gp-0) touch-water)
-                        (not (logtest? (focus-status mech) (-> (the-as process-focusable gp-0) focus-status)))
-                        )
+                  ((and (focus-test? gp-0 touch-water) (not (logtest? (focus-status mech) (-> gp-0 focus-status))))
                    (set! (-> self upspeed) 0.0)
                    )
                   ((< 0.0 f0-34)
@@ -302,10 +294,8 @@
         (if (not (logtest? (-> self settings slave-options) (cam-slave-options JUMP_PITCHES)))
             (reset-follow (logtest? (cam-slave-options JUMP_LAG) (-> self settings slave-options)))
             )
-        (when (and (focus-test? (the-as process-focusable gp-0) on-water under-water)
-                   (not (logtest? (focus-status mech) (-> (the-as process-focusable gp-0) focus-status)))
-                   )
-          (let ((f0-41 (- (get-water-height (the-as process-focusable gp-0)) (-> self settings target-height))))
+        (when (and (focus-test? gp-0 on-water under-water) (not (logtest? (focus-status mech) (-> gp-0 focus-status))))
+          (let ((f0-41 (- (get-water-height gp-0) (-> self settings target-height))))
             (if (< (-> self tpos-curr-adj y) f0-41)
                 (set! (-> self tpos-curr-adj y) f0-41)
                 )
@@ -318,7 +308,7 @@
           (vector--float*! s5-8 (-> self tpos-curr-adj) (-> self local-down) (-> self settings target-height))
           (let ((s4-7 (new 'stack-no-clear 'vector)))
             0.0
-            (vector-! s4-7 (get-trans (the-as process-focusable gp-0) 1) s5-8)
+            (vector-! s4-7 (get-trans gp-0 1) s5-8)
             (let* ((f0-46 (vector-dot s4-7 (-> self local-down)))
                    (f0-47 (+ -4096.0 f0-46))
                    )
@@ -1041,7 +1031,7 @@
 
 ;; definition for method 14 of type camera-master
 (defmethod camera-master-method-14 ((this camera-master) (arg0 vector))
-  (if (handle->process (-> this focus handle))
+  (if (the-as process-focusable (handle->process (-> this focus handle)))
       (vector-! arg0 (-> this tpos-curr) (-> this tpos-old))
       (vector-reset! arg0)
       )
