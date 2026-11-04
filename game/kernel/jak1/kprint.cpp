@@ -96,7 +96,6 @@ s32 format_impl_jak1(uint64_t* args) {
       char* arg_start = format_ptr;
       // get some arguments
       arg_idx = 0;
-      u8 justify = 0;
       for (auto& x : argument_data) {
         x.reset();
       }
@@ -243,25 +242,21 @@ s32 format_impl_jak1(uint64_t* args) {
               output_ptr[desired_length] = 0;  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if (argument_data[1].data[0] != -1) {
+                pad = argument_data[1].data[0];
+              }
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
               } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                while(0 < (desired_length - print_len)) {
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //
-                //                }
-                //                *output_ptr = 0;
+                // Pad on the right
+                output_ptr = strend(output_ptr);
+                while (desired_length > print_len) {
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
@@ -293,28 +288,21 @@ s32 format_impl_jak1(uint64_t* args) {
               output_ptr[desired_length] = 0;  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if (argument_data[1].data[0] != -1) {
+                pad = argument_data[1].data[0];
+              }
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-
               } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                u32 l140 = 0;
-                //                while(l140 < (desired_length - print_len)) {
-                //                  char* l108 = output_ptr;
-                //
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //                }
-                //                *output_ptr = 0;
+                // Pad on the right
+                output_ptr = strend(output_ptr);
+                while (desired_length > print_len) {
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
@@ -459,19 +447,21 @@ s32 format_impl_jak1(uint64_t* args) {
         case 'E':  // time seconds
         case 'e': {
           s64 in = arg_regs[arg_reg_idx++];
-          s8 pad_length = argument_data[0].data[0];
-          s8 pad_char = argument_data[0].data[1];
-          if (pad_char == -1)
-            pad_char = ' ';
-          s8 precision = argument_data[0].data[2];
-          if (precision == -1)
-            precision = 4;
           float value;
           if (in < 0) {
-            ASSERT(false);  // i don't get this one
+            s64 shifted = in >> 1;
+            in = (in & 1) | shifted;
+            value = ((float)in) * 2;
           } else {
             value = in;
           }
+          s8 pad_length = argument_data[0].data[0];
+          s8 pad_char = argument_data[1].data[0];
+          if (pad_char == -1)
+            pad_char = ' ';
+          s8 precision = argument_data[2].data[0];
+          if (precision == -1)
+            precision = 4;
           ftoa(output_ptr, value / 300.f, pad_length, pad_char, precision, 0);
           output_ptr = strend(output_ptr);
         } break;
