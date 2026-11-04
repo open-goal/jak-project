@@ -803,7 +803,7 @@ void link_control::jakx_finish(bool jump_from_c_to_goal) {
             call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
           }
           // Call nothing function? Might wanna omit this.
-          auto otherFunction = Ptr<Function>(s7.offset + jakx_symbols::FIX_SYM_NOTHING_FUNC - 1);
+          auto otherFunction = *Ptr<Ptr<Function>>(s7.offset + jakx_symbols::FIX_SYM_NOTHING_FUNC - 1);
           call_goal(otherFunction, 0, 0, 0, s7.offset, g_ee_main_mem);
 
           // inform compiler that we loaded.
