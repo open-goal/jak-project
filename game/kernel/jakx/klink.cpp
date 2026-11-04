@@ -757,7 +757,6 @@ void link_control::jakx_finish(bool jump_from_c_to_goal) {
   if (m_flags & LINK_FLAG_FORCE_FAST_LINK) {
     FastLink = 1;
   }
-
   *EnableMethodSet = *EnableMethodSet + m_keep_debug;
 
   // printf("finish %s\n", m_object_name);
@@ -788,23 +787,37 @@ void link_control::jakx_finish(bool jump_from_c_to_goal) {
       output_segment_load(m_object_name, m_link_block_ptr, m_flags);
     }
   } else {
-    if (m_flags & LINK_FLAG_EXECUTE) {
-      // version 5 keeps the final code range in m_link_segments_table
-      if (m_version == 5 && m_link_segments_table) {
-        flush_icache_for_linked_object_v2(Ptr<u8>(m_link_segments_table[0].data),
-                                          m_link_segments_table[0].size);
-      } else {
-        flush_icache_for_linked_object_v2(m_object_data, m_code_size);
+    if (m_version == 5 && m_link_segments_table) {
+      flush_icache_for_linked_object_v2(Ptr<u8>(m_link_segments_table[0].data),
+                                        m_link_segments_table[0].size);
+    } else {
+      flush_icache_for_linked_object_v2(m_object_data, m_code_size);
+    }
+
+    if (m_version == 5) {
+      if (m_entry.offset) {
+        if (*(Ptr<int>(m_entry.offset - 4)) ==
+                *(Ptr<int>(s7.offset + jakx_symbols::FIX_SYM_FUNCTION_TYPE - 1)) &&
+            (m_flags & (LINK_FLAG_EXECUTE | LINK_FLAG_OUTPUT_LOAD)) != 0) {
+          if (m_flags & LINK_FLAG_EXECUTE) {
+            call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
+          }
+          // Call nothing function? Might wanna omit this.
+          auto otherFunction = Ptr<Function>(s7.offset + jakx_symbols::FIX_SYM_NOTHING_FUNC - 1);
+          call_goal(otherFunction, 0, 0, 0, s7.offset, g_ee_main_mem);
+
+          // inform compiler that we loaded.
+          if (m_flags & LINK_FLAG_OUTPUT_LOAD) {
+            output_segment_load(m_object_name, m_link_block_ptr, m_flags);
+          }
+        } else if (m_flags & LINK_FLAG_EXECUTE) {
+          auto name = basename_goal(m_object_name);
+          strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
+          Ptr<jakx::Type> type(*((m_entry - 4).cast<u32>()));
+          jakx::call_method_of_type_arg2(m_entry.offset, type, GOAL_RELOC_METHOD, m_heap.offset,
+                                         Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
+        }
       }
-      auto entry = m_entry;
-      auto name = basename_goal(m_object_name);
-      strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
-      // printf(" about to call... (0x%x)\n", entry.offset);
-      Ptr<jakx::Type> type(*((entry - 4).cast<u32>()));
-      // printf(" type is %s\n", jakx::sym_to_cstring(type->symbol));
-      jakx::call_method_of_type_arg2(entry.offset, type, GOAL_RELOC_METHOD, m_heap.offset,
-                                     Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
-      // printf("  done with call!\n");
     }
   }
 
