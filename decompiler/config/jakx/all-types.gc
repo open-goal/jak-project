@@ -22089,7 +22089,7 @@
   :size-assert         #x10
   :flag-assert         #xd00000010
   (:methods
-    (play (_type_ int gui-channel symbol) sound-id) ;; 9
+    (play-speech (_type_ int gui-channel symbol) sound-id) ;; 9
     (speech-info-method-10 (_type_ string gui-channel) sound-id) ;; 10
     (speech-info-method-11 (_type_ gui-channel symbol) sound-id) ;; 11
     (set-list-len! (_type_) none) ;; 12
@@ -34437,8 +34437,8 @@
     (entity-more-perm-hash-method-9 (_type_) none) ;; 9
     (entity-more-perm-hash-method-10 (_type_ uint) uint) ;; 10
     (entity-more-perm-hash-method-11 (_type_ actor-id) entity-more-perm) ;; 11
-    (entity-more-perm-hash-method-12 (_type_ actor-id symbol) entity-more-perm) ;; 12 TODO - probably an actual type not a pointer
-    (entity-more-perm-hash-method-13 (_type_ object) none) ;; 13
+    (entity-more-perm-hash-method-12 (_type_ actor-id (pointer symbol)) entity-more-perm) ;; 12 TODO - probably an actual type not a pointer
+    (entity-more-perm-hash-method-13 (_type_ level) none) ;; 13
     (entity-more-perm-hash-method-14 (_type_ level) none) ;; 14
     )
   )
@@ -39763,7 +39763,7 @@
 (define-extern *level-text-file-load-flag* symbol)
 (define-extern convert-korean-text (function string string))
 (define-extern text-is-loading symbol)
-(define-extern load-game-text-info (function string (pointer game-text-info) kheap int))
+(define-extern load-game-text-info (function string (pointer object) kheap int))
 (define-extern load-level-text-files (function int none))
 (define-extern draw-debug-text-box (function font-context none))
 (define-extern *print-game-text-work* print-game-text-work)
@@ -41977,7 +41977,7 @@
   ((flags              rigid-body-flag                                 :offset-assert 4)
    (debug-id           int8                                            :offset-assert 6)
    (debugger-step      int8                                            :offset-assert 7)
-   (info               rigid-body-info                                 :offset-assert 8)
+   (info               rigid-body-object-constants                     :offset-assert 8)
    (force-callback     (function rigid-body-object float none)         :offset-assert 12) ;; guessed by decompiler
    (post-move-callback (function rigid-body-object float object)       :offset-assert 16)
    (process            process                                         :offset-assert 20) ;; guessed by decompiler
@@ -42090,7 +42090,7 @@
 
 (deftype rigid-body-object (process-focusable)
   ((root               collide-shape-moving         :override)
-   (info               rigid-body-info              :offset-assert 256)
+   (info               rigid-body-object-constants  :offset-assert 256)
    (flags              rigid-body-object-flag       :offset-assert 264)
    (max-time-step      float                        :offset-assert 272)
    (incoming-attack-id uint32                       :offset-assert 276)
@@ -42109,7 +42109,7 @@
     (rigid-body-object-method-61 (_type_) none) ;; 61
     (rigid-body-object-method-62 (_type_ float) none) ;; 62
     (rigid-body-object-method-63 (_type_) none) ;; 63
-    (rigid-body-object-method-64 (_type_ rigid-body-info) none) ;; 64
+    (rigid-body-object-method-64 (_type_ rigid-body-object-constants) none) ;; 64
     (init-collision! (_type_) none) ;; 65
     (rigid-body-object-method-66 (_type_) none) ;; 66
     (rigid-body-object-method-67 (_type_) none) ;; 67
@@ -42125,7 +42125,7 @@
     (rigid-body-object-method-77 (_type_) none) ;; 77
     (rigid-body-object-method-78 (_type_) none) ;; 78
     (rigid-body-object-method-79 (_type_ rigid-body-impact attack-info) none) ;; 79
-    (rigid-body-object-method-80 (_type_ object) none) ;; 80
+    (rigid-body-object-method-80 (_type_ rigid-body-impact) symbol) ;; 80
     (rigid-body-object-method-81 (_type_ process int symbol event-message-block) object) ;; 81
     (attack-handler (_type_ process-focusable attack-info touching-shapes-entry penetrate) object) ;; 82
     (touch-handler (_type_ process-focusable touching-shapes-entry) object) ;; 83
@@ -42230,8 +42230,8 @@
    (flags          rb-debugger-flag :offset-assert 2)
    (target-count   int8             :offset-assert 3)
    (target-array   handle  8        :offset-assert 8)
-   ; (pad0           uint8   256      :offset-assert 72)
-   (playback-index int32            :offset 328)
+   (pad0           uint8   256      :offset-assert 72)
+   (playback-index int32            :offset-assert 328)
    (recorder-index int32            :offset-assert 332)
    (begin-index    int32            :offset-assert 336)
    (end-index      int32            :offset-assert 340)
@@ -44973,6 +44973,10 @@
   (vsf0 0)
   (vsf1 1)
   (vsf2 2)
+  (vsf3 3)
+  (vsf4 4)
+  (vsf5 5)
+  (vsf6 6)
   )
 ;; ---vehicle-h:vehicle-seat-flag
 
@@ -45246,7 +45250,8 @@
 ;; TODO - jakx more misaligned inline arrays?
 (declare-type driver process-focusable)
 (deftype vehicle (rigid-body-object)
-  (; (info rigid-body-vehicle-constants :override)
+  ((self                            vehicle                                     :override)
+   (info                            rigid-body-vehicle-constants                :override)
    (car-info                        car-info-full                               :offset 284)
    (v-flags                         vehicle-flag                                :offset 264 :score 999) ;; rigid-body-object-flag
    (pad1 uint32 2)
@@ -50487,7 +50492,7 @@
 ;; udp-layer                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern knet-scert-net-get-nat-service (function (pointer net-address) int))
+(define-extern knet-scert-net-get-nat-service (function pointer int))
 (define-extern knet-udp-socket-open (function int int))
 (define-extern knet-udp-socket-sendto (function int pointer int uint int int))
 (define-extern knet-udp-socket-recvfrom (function int pointer int (pointer uint32) (pointer int32) int))
@@ -57314,6 +57319,7 @@
     idle ;; 59
     )
   (:methods
+    (init-collision! (_type_ vehicle-wheel-init-params) none :replace)
     (vehicle-wheel-method-92 (_type_ int int) none) ;; 92
     )
   )
