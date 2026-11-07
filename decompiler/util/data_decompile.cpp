@@ -1073,6 +1073,8 @@ const std::unordered_map<
          }},
         {GameVersion::JakX,
          {
+             {"actor-hash-bucket",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"), 16)}}},
              {"ocean-near-indices",
               {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
@@ -1082,6 +1084,8 @@ const std::unordered_map<
               {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
              {"sparticle-launch-group",
               {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+             {"simple-sprite-system",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
              {"continue-point",
               {{"want", ArrayFieldDecompMeta(TypeSpec("level-buffer-state-small"), 8)}}},
              {"vehicle-sound-info",
@@ -1103,6 +1107,16 @@ const std::unordered_map<
              {"vehicle-hardpoint-info",
               {
                   {"local-pos-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+              }},
+             {"attackable-hash",
+              {
+                  {"procs", ArrayFieldDecompMeta(TypeSpec("handle"),
+                                                 8,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+                  {"trans", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"masks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                                 4,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
               }},
          }}};
 

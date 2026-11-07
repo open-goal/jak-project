@@ -22,6 +22,8 @@
 (define-extern *texture-pool* texture-pool)
 (define-extern *fog-texture-work* fog-texture-work)
 (define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern update-texture-anim (function bucket-id texture-anim-array none))
+(define-extern set-dirty-mask! (function level int int int none))
 
 ;; +++tex-upload-mode
 (defenum tex-upload-mode
@@ -43,6 +45,14 @@
   (backup-sprite-tex 10) ;; set when particle-setup-adgif fails texture lookup.
   )
 ;; ---link-test-flags
+
+;; og:preserve-this
+(defmacro get-texture (name tpage)
+  `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage)))
+
+(import "goal_src/jakx/engine/data/tpages.gc")
+(import "goal_src/jakx/engine/data/textures.gc")
+
 
 ;; DECOMP BEGINS
 
@@ -84,25 +94,25 @@ as the tpage number and index of the texture within the tpage."
    )
   (:methods
     (new (symbol type) _type_)
-    (texture-pool-method-9 () none)
-    (texture-pool-method-10 () none)
-    (texture-pool-method-11 () none)
-    (texture-pool-method-12 () none)
-    (texture-pool-method-13 () none)
-    (texture-pool-method-14 () none)
-    (texture-pool-method-15 () none)
-    (texture-pool-method-16 () none)
-    (texture-pool-method-17 () none)
-    (texture-pool-method-18 () none)
-    (texture-pool-method-19 () none)
-    (texture-pool-method-20 () none)
-    (texture-pool-method-21 () none)
-    (texture-pool-method-22 () none)
-    (texture-pool-method-23 () none)
-    (texture-pool-method-24 () none)
-    (texture-pool-method-25 () none)
-    (texture-pool-method-26 () none)
-    (texture-pool-method-27 () none)
+    (initialize! (_type_) _type_)
+    (print-usage (_type_) _type_)
+    (setup-font-texture (_type_) none)
+    (allocate-defaults (_type_) none)
+    (login-level-textures (_type_ level int (pointer texture-id)) none)
+    (add-level-tpage-dma (_type_ level tpage-category bucket-id) none)
+    (allocate-vram-words! (_type_ int) int)
+    (allocate-segment (_type_ texture-pool-segment int) texture-pool-segment)
+    (unload-page (_type_ texture-page) none)
+    (get-common-page-slot-by-id (_type_ int) int)
+    (update-warp-and-hud (_type_) none)
+    (update-sprites (_type_) none)
+    (mark-hud-warp-sprite-dirty (_type_ (pointer int32)) symbol)
+    (lay-out-car-tex (_type_ level) none)
+    (lay-out-driver-tex (_type_ level) none)
+    (lay-out-sprite-tex (_type_) none)
+    (lay-out-hud-tex (_type_) none)
+    (lay-out-warp-tex (_type_) none)
+    (clear-ids (_type_) none)
     )
   )
 
@@ -143,21 +153,22 @@ So mask 0 is needed if segment 0 of the texture is needed, etc..."
 
 (deftype texture (basic)
   "Metadata for a texture."
-  ((w             int16)
-   (h             int16)
-   (num-mips      uint8)
-   (tex1-control  uint8)
-   (psm           gs-psm)
-   (mip-shift     uint8)
-   (clutpsm       uint16)
-   (dest          uint16         7)
-   (clutdest      uint16)
-   (width         uint8          7)
-   (name          string)
-   (size          uint32)
-   (uv-dist       float)
-   (pad           uint32         3)
-   (masks         texture-masks  :inline)
+  ((w              int16)
+   (h              int16)
+   (num-mips       uint8)
+   (tex1-control   uint8)
+   (psm            gs-psm)
+   (mip-shift      uint8)
+   (clutpsm        uint16)
+   (dest           uint16         7)
+   (clutdest       uint16)
+   (width          uint8          7)
+   (name           string)
+   (size           uint32)
+   (uv-dist        float)
+   (pad            uint32         3)
+   (texture-unk-1  int32          :overlay-at (-> pad 0))
+   (masks          texture-masks  :inline)
    )
   )
 
@@ -200,12 +211,12 @@ Lower number segments are larger and have hi-res versions of textures."
    (data       texture               :dynamic)
    )
   (:methods
-    (texture-page-method-9 () none)
-    (texture-page-method-10 () none)
-    (texture-page-method-11 () none)
-    (texture-page-method-12 () none)
-    (texture-page-method-13 () none)
-    (texture-page-method-14 () none)
+    (remove-data-from-heap (_type_ kheap) _type_)
+    (get-leftover-block-count (_type_ int int) int)
+    (relocate-dests! (_type_ int int) none)
+    (add-to-dma-buffer (_type_ dma-buffer tex-upload-mode) int)
+    (upload-now! (_type_ tex-upload-mode) none)
+    (allocate-vram! (_type_ int) uint)
     )
   )
 
@@ -250,7 +261,7 @@ This is static data loaded from the DVD at boot."
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace)
     (unlink-shaders-in-heap (_type_ kheap) int)
-    (texture-page-dir-method-10 (_type_) none)
+    (find-entry (_type_ level uint) texture-page-dir-entry)
     )
   )
 

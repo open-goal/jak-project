@@ -7,3 +7,41 @@
 
 ;; DECOMP BEGINS
 
+(deftype snow-states (structure)
+  ((light  light-state   :inline)
+   (flame  flames-state  :inline)
+   )
+  )
+
+
+(defbehavior update-mood-snow time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    0.0
+    (let ((f0-3 (cond
+                  ((or (< arg1 6.0) (< 19.0 arg1))
+                   1.0
+                   )
+                  ((and (>= arg1 6.0) (< arg1 7.0))
+                   (- 1.0 (* 0.8 (+ -6.0 arg1)))
+                   )
+                  ((and (>= arg1 18.0) (< arg1 19.0))
+                   (+ 0.2 (* 0.8 (+ -18.0 arg1)))
+                   )
+                  (else
+                    0.2
+                    )
+                  )
+                )
+          )
+      (update-mood-flames arg0 6 1 8 f0-3 0.000390625 1.5)
+      )
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )

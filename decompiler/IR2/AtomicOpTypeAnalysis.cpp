@@ -904,6 +904,11 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
       result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
       return result;
     }
+    if (m_instr.src[1].get_imm() > 0 &&
+        dts.ts.tc(TypeSpec("integer"), result.get(m_src[0]->reg()).typespec())) {
+      result.get(m_dst->reg()) = TP_Type::make_from_ts("uint");
+      return result;
+    }
   }
 
   if (m_dst.has_value()) {
@@ -1008,9 +1013,11 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id == GOAL_NEW_METHOD) {
         return TP_Type::make_non_object_new(method_type, TypeSpec(type_name));
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
-        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
+        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id,
+                                                method_info.name);
       } else {
-        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
+        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id,
+                                            method_info.name);
       }
     }
 
@@ -1023,7 +1030,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
           // this can get us the wrong thing for `new` methods.  And maybe relocate?
           return TP_Type::make_non_virtual_method(
-              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id,
+              method_info.name);
         }
       }
     }

@@ -1,0 +1,887 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition of type save-memcard
+(deftype save-memcard (process)
+  ((pad  uint8  4)
+   )
+  (:state-methods
+    create-file
+    error-error
+    done-done
+    save-account
+    )
+  )
+
+;; definition for method 3 of type save-memcard
+(defmethod inspect ((this save-memcard))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tname: ~A~%" (-> this name))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate create-file (save-memcard)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('done)
+          (case (-> block param 1)
+            ((1)
+             (go-virtual save-account)
+             )
+            (else
+              (go-virtual error-error)
+              )
+            )
+          )
+         (('error)
+          (go-virtual error-error)
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ()
+    (auto-save-command 'create-file 0 0 self #f #f)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate save-account (save-memcard)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('done)
+          (case (-> block param 1)
+            ((1)
+             (go-virtual done-done)
+             )
+            (else
+              (go-virtual error-error)
+              )
+            )
+          )
+         (('error)
+          (go-virtual error-error)
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ()
+    (auto-save-command 'save-common 0 0 self #f #f)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate error-error (save-memcard)
+  :virtual #t
+  :code (behavior ()
+    (format 0 " ******** ERROR *******~%")
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate done-done (save-memcard)
+  :virtual #t
+  :code (behavior ()
+    (format 0 " ******** DONE *******~%")
+    )
+  )
+
+;; definition for function save-memcard-init-by-other
+(defbehavior save-memcard-init-by-other save-memcard ((arg0 string))
+  (set! (-> self name) arg0)
+  (go-virtual create-file)
+  )
+
+;; definition (perm) for symbol *debug-save-memcard-dead-pool*, type dead-pool
+(define-perm *debug-save-memcard-dead-pool* dead-pool
+  (new 'debug 'dead-pool 1 #x10000 "*debug-save-memcard-dead-pool*")
+  )
+
+;; definition for function start-save-memcard
+;; WARN: Return type mismatch (pointer process) vs (pointer save-memcard).
+(defun start-save-memcard ((arg0 string))
+  (kill-by-type save-memcard *active-pool*)
+  (set! (-> *mc-common-data* net-accounts default-idx) 0)
+  (set! (-> *mc-common-data* net-accounts ct) 1)
+  (charp<-string (-> *mc-common-data* data) arg0)
+  (charp<-string (&-> *mc-common-data* data 64) "retset")
+  (process-spawn save-memcard arg0 :name "save-memcard" :from *debug-save-memcard-dead-pool*)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-part-tester
+  :id 49
+  :flags (sp0 sp2)
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 299 :flags (sp6) :period (seconds 4) :length (seconds 0.017))
+    (sp-item 300 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 20)
+    (sp-item 301 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 40)
+    (sp-item 302 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 60)
+    (sp-item 303 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 80)
+    (sp-item 304 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 50)
+    (sp-item 305 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 70)
+    (sp-item 306 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 90)
+    (sp-item 307 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 110)
+    (sp-item 308 :flags (sp6) :period (seconds 4) :length (seconds 0.017) :offset 130)
+    (sp-item 309 :flags (sp6) :period (seconds 4) :length (seconds 1.835) :offset 60)
+    (sp-item 310 :flags (sp6) :period (seconds 4) :length (seconds 1.767) :offset 80)
+    (sp-item 311 :flags (sp6) :period (seconds 4) :length (seconds 1.7) :offset 100)
+    (sp-item 312 :flags (sp6) :period (seconds 4) :length (seconds 1.635) :offset 120)
+    (sp-item 313 :flags (sp6) :period (seconds 4) :length (seconds 1.567) :offset 140)
+    (sp-item 314 :flags (sp6) :period (seconds 4) :length (seconds 1.667) :offset 100)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 314
+  :init-specs ((:texture (tinyspeck level-default-sprite))
+    (:num 10.0)
+    (:x (meters 1.3) (meters 0.3))
+    (:y (meters -0.3) (meters 0.6))
+    (:scale-x (meters 10))
+    (:scale-y (meters 1))
+    (:r 32.0)
+    (:g 64.0)
+    (:b 128.0)
+    (:a 32.0 32.0)
+    (:vel-x (meters -0.033333335) (meters -0.016666668))
+    (:timer (seconds 0.167))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 299
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters -1))
+    (:scale-x (meters 1.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters -0.016666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 2.1333334)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 315)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 315
+  :init-specs ((:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.035))
+    (:next-launcher 316)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 316
+  :init-specs ((:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.0)
+    (:next-time (seconds 1.935))
+    (:next-launcher 317)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 317
+  :init-specs ((:vel-x (meters -0.06666667))
+    (:scalevel-x (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0016666667) (meters 0.0033333334))
+    (:friction 1.1)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 300
+  :init-specs ((:texture (banner-2 level-default-sprite))
+    (:num 1.0)
+    (:x (meters -0.5))
+    (:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 2.1333334)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 318)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 318
+  :init-specs ((:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.035))
+    (:next-launcher 319)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 319
+  :init-specs ((:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.0)
+    (:next-time (seconds 1.867))
+    (:next-launcher 320)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 320
+  :init-specs ((:vel-x (meters -0.05))
+    (:scalevel-x (meters 0.005))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0016666667) (meters 0.0033333334))
+    (:friction 1.1)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 301
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0))
+    (:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 2.1333334)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 321)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 321
+  :init-specs ((:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.035))
+    (:next-launcher 322)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 322
+  :init-specs ((:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.0)
+    (:next-time (seconds 1.8))
+    (:next-launcher 323)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 323
+  :init-specs ((:vel-x (meters -0.033333335) 1 (meters 0.06666667))
+    (:scalevel-x (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0016666667) (meters 0.0033333334))
+    (:friction 1.1)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 302
+  :init-specs ((:texture (banner-2 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0.5))
+    (:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 2.1333334)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 324)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 324
+  :init-specs ((:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.035))
+    (:next-launcher 325)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 325
+  :init-specs ((:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.0)
+    (:next-time (seconds 1.735))
+    (:next-launcher 326)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 326
+  :init-specs ((:vel-x (meters 0.05))
+    (:scalevel-x (meters 0.005))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0016666667) (meters 0.0033333334))
+    (:friction 1.1)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 303
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 1))
+    (:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 2.1333334)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 327)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 327
+  :init-specs ((:scale-x (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.035))
+    (:next-launcher 328)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 328
+  :init-specs ((:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.0)
+    (:next-time (seconds 1.667))
+    (:next-launcher 329)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 329
+  :init-specs ((:vel-x (meters 0.06666667))
+    (:scalevel-x (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0016666667) (meters 0.0033333334))
+    (:friction 1.1)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 309
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 0.2)
+    (:x (meters -1.02) (meters 0.04))
+    (:y (meters -0.02) (meters 0.04))
+    (:scale-x (meters 0.98) (meters 0.04))
+    (:scale-y (meters 0.98) (meters 0.04))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 30.0 80.0)
+    (:timer (seconds 0.017) (seconds 0.065))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 310
+  :init-specs ((:texture (banner-2 level-default-sprite))
+    (:num 0.2)
+    (:x (meters -0.52) (meters 0.04))
+    (:y (meters -0.02) (meters 0.04))
+    (:scale-x (meters 0.98) (meters 0.04))
+    (:scale-y (meters 0.98) (meters 0.04))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 30.0 80.0)
+    (:timer (seconds 0.017) (seconds 0.065))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 311
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 0.2)
+    (:x (meters -0.02) (meters 0.04))
+    (:y (meters -0.02) (meters 0.04))
+    (:scale-x (meters 0.98) (meters 0.04))
+    (:scale-y (meters 0.98) (meters 0.04))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 30.0 80.0)
+    (:timer (seconds 0.017) (seconds 0.065))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 312
+  :init-specs ((:texture (banner-2 level-default-sprite))
+    (:num 0.2)
+    (:x (meters 0.42) (meters 0.04))
+    (:y (meters -0.02) (meters 0.04))
+    (:scale-x (meters 0.98) (meters 0.04))
+    (:scale-y (meters 0.98) (meters 0.04))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 30.0 80.0)
+    (:timer (seconds 0.017) (seconds 0.065))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 313
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 0.2)
+    (:x (meters 0.92) (meters 0.04))
+    (:y (meters -0.02) (meters 0.04))
+    (:scale-x (meters 0.98) (meters 0.04))
+    (:scale-y (meters 0.98) (meters 0.04))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 30.0 80.0)
+    (:timer (seconds 0.017) (seconds 0.065))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 304
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters -1))
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-a -0.42666668)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 305
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters -0.5))
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-a -0.42666668)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 306
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0))
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-a -0.42666668)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 307
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0.5))
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-a -0.42666668)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 308
+  :init-specs ((:texture (banner-3 level-default-sprite))
+    (:num 1.0)
+    (:x (meters 1))
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-a -0.42666668)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-debug-placeholder-small
+  :id 50
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 330 :flags (sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 330
+  :init-specs ((:texture (harddot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 0.2))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-debug-placeholder-single
+  :id 51
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 331 :flags (sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 331
+  :init-specs ((:texture (harddot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-debug-placeholder-multiple
+  :id 52
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 332 :flags (sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 332
+  :init-specs ((:texture (harddot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 0.3))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.01))
+    (:timer (seconds 2))
+    (:flags ())
+    (:conerot-x (degrees -45) (degrees 90))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition of type part-tester
+(deftype part-tester (process)
+  ((root       trsqv)
+   (part       sparticle-launch-control)
+   (old-group  sparticle-launch-group)
+   )
+  (:states
+    part-tester-idle
+    )
+  )
+
+;; definition for method 3 of type part-tester
+(defmethod inspect ((this part-tester))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Troot: ~A~%" (-> this root))
+  (format #t "~2Tpart: ~A~%" (-> this part))
+  (format #t "~2Told-group: ~A~%" (-> this old-group))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *part-tester-name*, type string
+(define *part-tester-name* (the-as string #f))
+
+;; definition for method 10 of type part-tester
+(defmethod deactivate ((this part-tester))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this part))
+      (sparticle-launch-control-method-19 (-> this part))
+      )
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate part-tester-idle (part-tester)
+  :code (behavior ()
+    (until #f
+      (let ((gp-0 (entity-by-name *part-tester-name*)))
+        (when gp-0
+          (let ((s5-0 (-> gp-0 extra process)))
+            (if (and s5-0 (type? s5-0 process-drawable) (nonzero? (-> (the-as process-drawable s5-0) root)))
+                (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))
+                (set! (-> self root trans quad) (-> gp-0 extra trans quad))
+                )
+            )
+          )
+        )
+      (add-debug-x
+        #t
+        (bucket-id bucket785)
+        (-> self root trans)
+        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+        )
+      (let ((gp-1 (-> *part-group-id-table* 49)))
+        (let ((s5-1 (-> self root trans)))
+          (when (!= gp-1 (-> self old-group))
+            (when (nonzero? (-> self part))
+              (sparticle-launch-control-method-19 (-> self part))
+              (set! (-> self heap-cur) (&-> self part type))
+              )
+            (set! (-> self part) (create-launch-control gp-1 self))
+            )
+          (if (nonzero? (-> self part))
+              (sparticle-launch-control-method-16 (-> self part) (cond
+                                                                   ((logtest? (-> gp-1 flags) (sp-group-flag sp2))
+                                                                    *zero-vector*
+                                                                    )
+                                                                   (else
+                                                                     (empty)
+                                                                     s5-1
+                                                                     )
+                                                                   )
+                                                  )
+              )
+          )
+        (set! (-> self old-group) gp-1)
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for function part-tester-init-by-other
+;; INFO: Used lq/sq
+(defbehavior part-tester-init-by-other part-tester ((arg0 vector))
+  (+! (-> self clock ref-count) -1)
+  (+! (-> *display* part-clock ref-count) 1)
+  (set! (-> self clock) (-> *display* part-clock))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! *part-tester* (the-as (pointer part-tester) (process->ppointer self)))
+  (go part-tester-idle)
+  )
+
+;; definition (perm) for symbol *debug-part-dead-pool*, type dead-pool
+(define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 "*debug-part-dead-pool*"))
+
+;; definition for function start-part
+;; WARN: Return type mismatch (pointer process) vs none.
+(defun start-part ()
+  (kill-by-type part-tester *active-pool*)
+  (process-spawn part-tester (target-pos 0) :name "part-tester" :from *debug-part-dead-pool*)
+  (none)
+  )
+
+;; definition of type test-process
+(deftype test-process (process-focusable)
+  ((effect    uint8     :offset 264)
+   (sound-id  sound-id  :offset 268)
+   )
+  )
+
+;; definition for method 3 of type test-process
+(defmethod inspect ((this test-process))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Teffect: ~D~%" (-> this effect))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate test-idle (test-process)
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (let ((gp-0 *font-context*))
+      (set-origin! gp-0 0 200)
+      (set-scale! gp-0 1.0)
+      (set-width! gp-0 512)
+      (set-height! gp-0 100)
+      (let ((a0-4 gp-0))
+        (set! (-> a0-4 effect) (the-as uint 19))
+        )
+      (let ((v1-5 gp-0))
+        (set! (-> v1-5 effect-time) (* 0.0033333334 (the float (current-time))))
+        )
+      (set! (-> gp-0 flags) (font-flags kerning middle large ff12))
+      (let ((a0-8 gp-0))
+        (set! (-> a0-8 color) (font-color font-color-62))
+        )
+      (let ((a0-10 (lookup-text! *common-text* (text-id text-id-2632) #f)))
+        (print-game-text a0-10 gp-0 #f 44 (bucket-id bucket787) #f (the-as dma-buffer #f))
+        )
+      )
+    )
+  :code (behavior ()
+    (set-time! (-> self state-time))
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for function test-process-init-by-other
+;; INFO: Used lq/sq
+(defbehavior test-process-init-by-other test-process ((arg0 vector))
+  (set! (-> self root) (the-as collide-shape (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> (camera-pos) quad))
+  (set! (-> self sound-id) (new-sound-id))
+  (go test-idle)
+  )
+
+;; definition for function start-test
+;; WARN: Return type mismatch (pointer process) vs (pointer test-process).
+(defun start-test ()
+  (kill-by-type test-process *active-pool*)
+  (process-spawn test-process (camera-pos) :name "test-process" :from *nk-dead-pool*)
+  )

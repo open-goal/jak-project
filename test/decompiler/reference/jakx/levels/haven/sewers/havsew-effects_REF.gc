@@ -1,0 +1,569 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type havsewx-states
+(deftype havsewx-states (structure)
+  ()
+  )
+
+;; definition for method 3 of type havsewx-states
+(defmethod inspect ((this havsewx-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'havsewx-states)
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-havsewx
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-havsewx time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 0 w) 1.0)
+      (set! (-> arg0 times 1 w) 1.0)
+      (let* ((v1-7 (-> *display* part-clock frame-counter))
+             (f0-3 (* 0.2 (the float (mod v1-7 300))))
+             )
+        (set! (-> arg0 times 5 w) (+ 0.95 (* 0.45 (sin (* 182.04445 (* 6.0 f0-3))))))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *havsewx-water-texture-anim-array*, type texture-anim-array
+(define *havsewx-water-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "havend-water-canal-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 1500.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.3 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -1.3 -1.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.3 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.3 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "sewe-fallingwater-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 600.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "sewe-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.5 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.5 -1.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "sewe-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 600.0
+          :tex-name "sewe-fallingwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "sewf-froth-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 525.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "sewf-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 -1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 -1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "sewf-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 525.0
+          :tex-name "sewf-froth"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp))
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "sewf-stillwater-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 1500.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "sewf-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.3 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -1.3 -1.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "sewf-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.3 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.3 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "sewf-stillwater"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for symbol *havsewy-alpha-texture-anim-array*, type texture-anim-array
+(define *havsewy-alpha-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x4
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "havend-alpha-canal-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 1500.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-alpha-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.3 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -1.3 -1.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-alpha-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.3 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.3 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-alpha-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 0.333 :y 0.333 :z 0.333 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'set-alpha-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name #f
+          :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for symbol *havsewy-water-texture-anim-array*, type texture-anim-array
+(define *havsewy-water-texture-anim-array*
+  (new 'static 'texture-anim-array :type texture-anim
+    (new 'static 'texture-anim
+      :num-layers #x3
+      :func #f
+      :init-func-id 'texture-anim-override-size-init
+      :mip-func-id 'texture-anim-draw-mips
+      :time-func #f
+      :tex #f
+      :tex-name "havend-water-canal-dest"
+      :extra (new 'static 'vector :x 128.0 :y 128.0 :z 4.0)
+      :color (new 'static 'rgba :a #x80)
+      :frame-delta 300.0
+      :frame-mod 1500.0
+      :test #x31001
+      :alpha #x44
+      :clamp #x5
+      :data (new 'static 'array texture-anim-layer 6
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -0.3 0.0))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 -1.3 -1.0))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.3 -0.5))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.3 -2.5))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        (new 'static 'texture-anim-layer
+          :func-id 'default-texture-anim-layer-func
+          :init-func #f
+          :tex #f
+          :end-time 1500.0
+          :tex-name "havend-water-canal"
+          :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+          :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -0.25))
+          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 -3.25))
+          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+          )
+        )
+      )
+    )
+  )

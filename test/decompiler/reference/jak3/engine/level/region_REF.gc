@@ -407,14 +407,14 @@
   (sphere<-vector+r! (the-as sphere (-> (the-as region-prim-area #x70000000) pos)) arg0 0.0)
   (let* ((s5-0 (-> this data2 (+ (-> this length) -1) length))
          (s4-0 0)
-         (a0-8 (the-as object (+ (+ (* s4-0 32) 32) (the-as int (-> this data2 (+ (-> this length) -1))))))
+         (a0-8 (-> (the-as drawable-inline-array-region-prim (-> this data2 (+ (-> this length) -1))) data s4-0))
          )
     (while (< s4-0 s5-0)
-      (if (within-area? (the-as drawable-region-prim a0-8) (the-as region-prim-area (+ #x70000000 0)))
+      (if (within-area? a0-8 (the-as region-prim-area (-> (the-as region-prim-area #x70000000) region-prim-list)))
           (return #t)
           )
       (+! s4-0 1)
-      (set! a0-8 (+ (+ (* s4-0 32) 32) (the-as int (-> this data2 (+ (-> this length) -1)))))
+      (set! a0-8 (-> (the-as drawable-inline-array-region-prim (-> this data2 (+ (-> this length) -1))) data s4-0))
       )
     )
   #f
@@ -422,7 +422,7 @@
 
 ;; definition for method 9 of type region
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch int vs symbol.
+;; WARN: Return type mismatch drawable-region-prim vs symbol.
 (defmethod point-in-region-debug! ((this region) (arg0 vector))
   "Debug check to see if point is in region. This is not efficient, since it has to find the parent geometry of this region."
   (sphere<-vector+r! (the-as sphere (-> (the-as region-prim-area #x70000000) pos)) arg0 0.0)
@@ -437,19 +437,18 @@
             (while (< s2-0 s3-0)
               (let* ((s0-0 (-> s1-0 data2 (+ (-> s1-0 length) -1) length))
                      (sv-16 0)
-                     (sv-32 (+ (+ (* sv-16 32) 32) (the-as int (-> s1-0 data2 (+ (-> s1-0 length) -1)))))
+                     (sv-32 (-> (the-as drawable-inline-array-region-prim (-> s1-0 data2 (+ (-> s1-0 length) -1))) data sv-16))
                      )
                 (while (< sv-16 s0-0)
-                  (if (and (= (-> (the-as drawable-region-prim sv-32) region) this)
-                           (within-area?
-                             (the-as drawable-region-prim sv-32)
-                             (the-as region-prim-area (-> (the-as region-prim-area #x70000000) region-prim-list))
-                             )
+                  (if (and (= (-> sv-32 region) this)
+                           (within-area? sv-32 (the-as region-prim-area (-> (the-as region-prim-area #x70000000) region-prim-list)))
                            )
                       (return (the-as symbol sv-32))
                       )
                   (+! sv-16 1)
-                  (set! sv-32 (+ (+ (* sv-16 32) 32) (the-as int (-> s1-0 data2 (+ (-> s1-0 length) -1)))))
+                  (set! sv-32
+                        (-> (the-as drawable-inline-array-region-prim (-> s1-0 data2 (+ (-> s1-0 length) -1))) data sv-16)
+                        )
                   )
                 )
               (+! s2-0 1)

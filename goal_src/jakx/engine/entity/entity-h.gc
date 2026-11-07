@@ -30,9 +30,17 @@
 
 (declare-type race-mesh basic)
 (declare-type nav-poly structure)
+(declare-type powerup-draw process-drawable)
+
+(define-extern *spawn-actors* symbol)
 
 (define-extern entity-by-name (function string entity))
 (define-extern entity-by-aid (function uint entity))
+(define-extern reset-actors (function symbol none))
+(define-extern reset-actors-by-game-type (function symbol object))
+(define-extern select-continue-point (function object continue-point))
+(define-extern target-pos (function int vector))
+(define-extern birth-viewer (function process entity-actor object))
 
 ;; DECOMP BEGINS
 
@@ -109,17 +117,17 @@ Levels store a reference to this which holds all the entities in the level."
   "Entities are mainly used to place objects in a level.
 
 As a child of [[res-lump]], they store various types of metadata
-in [[res-tag]]s (such as name, curve data, volume data, etc.)
+in [[res-tag]]s (such as curve data, volume data, etc.)
 that gets accessed by the accompanying process."
-  ((trans    vector  :inline)
-   (aid      uint32)
-   (unknown  uint32)
+  ((trans  vector  :inline)
+   (aid    actor-id)
+   (name   string)
    )
   (:methods
     (birth! (_type_) _type_)
     (kill! (_type_) _type_)
-    (entity-method-24 (_type_) _type_)
-    (entity-method-25 (_type_) _type_)
+    (add-to-level! (_type_ level-group level actor-id) _type_)
+    (remove-from-level! (_type_ level-group) _type_)
     (get-level (_type_) level)
     )
   )
@@ -174,7 +182,7 @@ that gets accessed by the accompanying process."
 
 
 (deftype actor-group (inline-array-class)
-  ((data  actor-reference  :dynamic)
+  ((data  actor-reference  :inline :dynamic)
    )
   )
 

@@ -356,6 +356,52 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
   return {};
 }
 
+/*!
+ * Setting a field to a field of another bitfield:
+ * (shl (the-as int (-> other g)) 8) or just (-> other r) for a field at bit 0.
+ * Only allowed if the field we read fits in the field we set
+ */
+std::optional<BitFieldDef> get_bitfield_set_from_field_read(Form* value,
+                                                            const BitField& field,
+                                                            int offset_in_bitfield,
+                                                            const TypeSystem& ts,
+                                                            const Env& env) {
+  Form* read = strip_int_or_uint_cast(value);
+  int shift = 0;
+  auto shl_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                 {Matcher::any(0), Matcher::any_integer(1)});
+  auto mr = match(shl_matcher, read);
+  if (mr.matched) {
+    read = strip_int_or_uint_cast(mr.maps.forms.at(0));
+    shift = mr.maps.ints.at(1);
+  }
+  if (shift != field.offset() - offset_in_bitfield) {
+    return std::nullopt;
+  }
+
+  auto deref = read->try_as_element<DerefElement>();
+  if (!deref || deref->is_addr_of() || deref->tokens().size() != 1 ||
+      deref->tokens().front().kind() != DerefToken::Kind::FIELD_NAME) {
+    return std::nullopt;
+  }
+  auto base = form_as_atom(deref->base());
+  if (!base || !base->is_var()) {
+    return std::nullopt;
+  }
+  auto read_type =
+      dynamic_cast<BitFieldType*>(ts.lookup_type(env.get_variable_type(base->var(), true)));
+  BitField read_field;
+  if (!read_type || !read_type->lookup_field(deref->tokens().front().field_name(), &read_field) ||
+      read_field.size() > field.size()) {
+    return std::nullopt;
+  }
+
+  BitFieldDef def;
+  def.value = read;
+  def.field_name = field.name();
+  def.is_signed = false;
+  return def;
+}
 }  // namespace
 
 void BitfieldAccessElement::push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& /*env*/) {
@@ -490,8 +536,11 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     int size = 64 - step.amount;
     int start_bit = end_bit - size;
     bool neg = false;
+    int neg_shift = 0;
     if (start_bit < 0) {
       // throw std::runtime_error("push_step: Bad bitfield start bit");
+      // the field ends up shifted left by however much the right shift fell short.
+      neg_shift = -start_bit;
       size += start_bit;
       start_bit = 0;
       neg = true;
@@ -509,7 +558,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
       auto result = pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::SHL),
           pool.form<CastElement>(TypeSpec("int"), pool.alloc_single_form(nullptr, deref)),
-          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(64 - step.amount)));
+          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(neg_shift)));
       return result;
     } else {
       return deref;
@@ -621,6 +670,9 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     ASSERT(field);
 
     auto val = get_bitfield_initial_set(step.value, as_bitfield, ts, pcpyud_offset);
+    if (!val) {
+      val = get_bitfield_set_from_field_read(step.value, *field, pcpyud_offset, ts, env);
+    }
 
     if (!val) {
       throw std::runtime_error(
@@ -781,6 +833,81 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
   return pool.form<ConstantTokenElement>(fmt::format("(static-sound-name \"{}\")", name));
 }
 
+std::optional<std::vector<Form*>> masked_sets_to_logior_args(const BitFieldType* type_info,
+                                                             Form* in,
+                                                             FormPool& pool,
+                                                             const Env& env) {
+  auto any_matcher = [](int i) {
+    return Matcher::match_or({Matcher::cast("uint", Matcher::any(i)),
+                              Matcher::cast("int", Matcher::any(i)), Matcher::any(i)});
+  };
+  auto clear_matcher =
+      Matcher::op_fixed(FixedOperatorKind::LOGAND, {any_matcher(0), any_matcher(1)});
+  auto set_matcher = Matcher::match_or(
+      {Matcher::op_fixed(FixedOperatorKind::LOGIOR, {clear_matcher, any_matcher(2)}),
+       Matcher::op_fixed(FixedOperatorKind::LOGIOR, {any_matcher(2), clear_matcher})});
+
+  struct FieldSet {
+    u64 mask;
+    Form* value;
+  };
+  std::vector<FieldSet> sets;
+  Form* base = strip_int_or_uint_cast(in);
+  while (true) {
+    auto mr = match(set_matcher, base);
+    if (!mr.matched) {
+      break;
+    }
+    auto mask = get_goal_integer_constant(strip_int_or_uint_cast(mr.maps.forms.at(1)), env);
+    if (!mask) {
+      break;
+    }
+    sets.push_back({*mask, mr.maps.forms.at(2)});
+    base = strip_int_or_uint_cast(mr.maps.forms.at(0));
+  }
+
+  auto constant = get_goal_integer_constant(base, env);
+  if (sets.empty() || !constant) {
+    return std::nullopt;
+  }
+
+  u64 constant_bits = *constant;
+  u64 dynamic_bits = 0;
+  std::vector<Form*> dynamic_values;
+  // innermost set first
+  for (auto it = sets.rbegin(); it != sets.rend(); ++it) {
+    auto& set = *it;
+    if (dynamic_bits & ~set.mask) {
+      // clears a field we already set, not a static def.
+      return std::nullopt;
+    }
+    constant_bits &= set.mask;
+
+    auto value = strip_int_or_uint_cast(set.value);
+    auto value_constant = get_goal_integer_constant(value, env);
+    if (value_constant) {
+      if (*value_constant & set.mask) {
+        return std::nullopt;
+      }
+      constant_bits |= *value_constant;
+      continue;
+    }
+
+    auto field = find_field_from_mask(env.dts->ts, type_info, ~set.mask, false);
+    auto def = get_bitfield_initial_set(value, type_info, env.dts->ts, 0);
+    if (!field || !def || def->field_name != field->name()) {
+      return std::nullopt;
+    }
+    dynamic_bits |= ~set.mask;
+    dynamic_values.push_back(set.value);
+  }
+
+  std::vector<Form*> args = {
+      pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(constant_bits))};
+  args.insert(args.end(), dynamic_values.begin(), dynamic_values.end());
+  return args;
+}
+
 std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldType* type_info,
                                                                  Form* in,
                                                                  const TypeSpec& typespec,
@@ -789,7 +916,11 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
                                                                  std::optional<int> offset) {
   auto in_as_generic = strip_int_or_uint_cast(in)->try_as_element<GenericElement>();
   std::vector<Form*> args;
-  if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
+  auto masked_args =
+      offset.value_or(0) == 0 ? masked_sets_to_logior_args(type_info, in, pool, env) : std::nullopt;
+  if (masked_args) {
+    args = *masked_args;
+  } else if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
     args = compact_nested_logiors(in_as_generic, env);
   } else {
     args = {strip_int_or_uint_cast(in)};

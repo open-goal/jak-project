@@ -414,23 +414,17 @@ namespace init_boundary_regs { extern void link(); }
 namespace draw_boundary_polygon { extern void link(); }
 namespace render_boundary_quad { extern void link(); }
 namespace render_boundary_tri { extern void link(); }
-// namespace set_sky_vf27 { extern void link(); }
 namespace generic_light_proc { extern void link(); }
 namespace generic_envmap_proc { extern void link(); }
-// namespace generic_prepare_dma_double { extern void link(); }
 namespace generic_prepare_dma_single { extern void link(); }
 namespace generic_warp_source_proc { extern void link(); }
 namespace generic_warp_dest_proc { extern void link(); }
 namespace generic_warp_dest { extern void link(); }
 namespace generic_warp_envmap_dest { extern void link(); }
 namespace generic_no_light_proc { extern void link(); }
-// namespace method_9_font_work { extern void link(); }
-// namespace draw_string_asm { extern void link(); }
-// namespace get_string_length { extern void link(); }
 namespace adgif_shader_texture_with_update { extern void link(); }
 namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace collide_do_primitives { extern void link(); }
-// namespace cspace_parented_transformq_joint { extern void link(); }
 namespace foreground_check_longest_edge_asm { extern void link(); }
 namespace foreground_merc { extern void link(); }
 namespace foreground_generic_merc { extern void link(); }
@@ -440,9 +434,7 @@ namespace method_11_collide_hash { extern void link(); }
 namespace method_12_collide_hash { extern void link(); }
 namespace fill_bg_using_box_new { extern void link(); }
 namespace fill_bg_using_line_sphere_new { extern void link(); }
-namespace method_12_collide_mesh { extern void link(); }
 namespace method_14_collide_mesh { extern void link(); }
-// namespace method_15_collide_mesh { extern void link(); }
 namespace method_10_collide_shape_prim_mesh { extern void link(); }
 namespace method_10_collide_shape_prim_sphere { extern void link(); }
 namespace method_10_collide_shape_prim_group { extern void link(); }
@@ -454,20 +446,11 @@ namespace method_10_collide_cache_prim { extern void link(); }
 namespace method_17_collide_cache { extern void link(); }
 namespace method_9_collide_puss_work { extern void link(); }
 namespace method_10_collide_puss_work { extern void link(); }
-// namespace method_18_grid_hash { extern void link(); }
-namespace method_19_grid_hash { extern void link(); }
 namespace method_20_grid_hash { extern void link(); }
 namespace method_22_grid_hash { extern void link(); }
-namespace method_28_sphere_hash { extern void link(); }
-// namespace method_32_sphere_hash { extern void link(); }
-// namespace method_29_sphere_hash { extern void link(); }
 namespace method_30_sphere_hash { extern void link(); }
-// namespace method_31_sphere_hash { extern void link(); }
-// namespace method_32_spatial_hash { extern void link(); }
-// namespace method_38_spatial_hash { extern void link(); }
 namespace method_35_spatial_hash { extern void link(); }
 namespace method_36_spatial_hash { extern void link(); }
-namespace method_34_spatial_hash { extern void link(); }
 namespace sparticle_motion_blur { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace particle_adgif { extern void link(); }
@@ -490,9 +473,6 @@ namespace ripple_matrix_scale { extern void link(); }
 namespace ripple_apply_wave_table { extern void link(); }
 namespace ripple_create_wave_table { extern void link(); }
 namespace ripple_execute_init { extern void link(); }
-// namespace method_14_ocean { extern void link(); }
-// namespace method_15_ocean { extern void link(); }
-// namespace method_16_ocean { extern void link(); }
 namespace init_ocean_far_regs { extern void link(); }
 namespace draw_large_polygon_ocean { extern void link(); }
 namespace render_ocean_quad { extern void link(); }
@@ -511,11 +491,7 @@ namespace render_sky_tri { extern void link(); }
 namespace method_17_sky_work { extern void link(); }
 namespace method_29_sky_work { extern void link(); }
 namespace method_30_sky_work { extern void link(); }
-namespace method_31_sky_work { extern void link(); }
-// namespace method_34_sky_work { extern void link(); }
-// namespace method_35_sky_work { extern void link(); }
 namespace method_32_sky_work { extern void link(); }
-// namespace set_sky_vf23_value { extern void link(); }
 namespace shadow_xform_verts { extern void link(); }
 namespace shadow_calc_dual_verts { extern void link(); }
 namespace shadow_scissor_edges { extern void link(); }
@@ -533,7 +509,16 @@ namespace shadow_add_single_tris { extern void link(); }
 namespace shadow_add_double_tris { extern void link(); }
 namespace shadow_execute { extern void link(); }
 namespace method_21_cloth_system { extern void link(); }
-}
+namespace method_16_sky_work { extern void link(); }
+namespace method_28_sky_work { extern void link(); }
+namespace method_33_sky_work { extern void link(); }
+namespace method_11_collide_mesh { extern void link(); }
+namespace method_13_collide_mesh { extern void link(); }
+namespace method_21_grid_hash { extern void link(); }
+namespace method_24_grid_hash { extern void link(); }
+namespace method_35_sphere_hash { extern void link(); }
+namespace method_40_spatial_hash { extern void link(); }
+namespace cspace_parented_transformq_joint { extern void link(); }}
 // clang-format on
 
 LinkedFunctionTable gLinkedFunctionTable;
@@ -801,27 +786,20 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jakx::light_hash_count_items::link, jakx::light_hash_add_items::link}},
      {"debug",
       {
-          jakx::debug_line_clip::link, jakx::init_boundary_regs::link,
-          jakx::draw_boundary_polygon::link, jakx::render_boundary_quad::link,
-          //  jakx::render_boundary_tri::link, jakx::set_sky_vf27::link
+          jakx::debug_line_clip::link,
+          jakx::init_boundary_regs::link,
+          jakx::draw_boundary_polygon::link,
+          jakx::render_boundary_quad::link,
       }},
      {"generic-effect",
       {jakx::generic_light_proc::link, jakx::generic_envmap_proc::link,
-       //  jakx::generic_prepare_dma_double::link,
        jakx::generic_prepare_dma_single::link, jakx::generic_warp_source_proc::link,
        jakx::generic_warp_dest_proc::link, jakx::generic_warp_dest::link,
        jakx::generic_warp_envmap_dest::link, jakx::generic_no_light_proc::link}},
-     //  {"font",
-     //   {jakx::method_9_font_work::link,
-     //     jakx::draw_string_asm::link,
-     //    jakx::get_string_length::link}},
      {"texture", {jakx::adgif_shader_texture_with_update::link}},
      {"collide-func",
       {jakx::moving_sphere_triangle_intersect::link, jakx::collide_do_primitives::link}},
-     {"joint",
-      {
-          // jakx::cspace_parented_transformq_joint::link
-      }},
+     {"joint", {jakx::cspace_parented_transformq_joint::link}},
      {"foreground",
       {jakx::foreground_check_longest_edge_asm::link, jakx::foreground_generic_merc::link,
        jakx::foreground_merc::link, jakx::foreground_draw_hud::link}},
@@ -830,9 +808,8 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
       {jakx::method_11_collide_hash::link, jakx::method_12_collide_hash::link,
        jakx::fill_bg_using_box_new::link, jakx::fill_bg_using_line_sphere_new::link}},
      {"collide-mesh",
-      {jakx::method_12_collide_mesh::link, jakx::method_14_collide_mesh::link,
-       //  jakx::method_15_collide_mesh::link,
-       jakx::method_10_collide_shape_prim_mesh::link}},
+      {jakx::method_14_collide_mesh::link, jakx::method_10_collide_shape_prim_mesh::link,
+       jakx::method_11_collide_mesh::link, jakx::method_13_collide_mesh::link}},
      {"collide-cache",
       {jakx::method_10_collide_shape_prim_mesh::link,
        jakx::method_10_collide_shape_prim_sphere::link,
@@ -843,19 +820,11 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jakx::method_10_collide_cache_prim::link, jakx::method_17_collide_cache::link,
        jakx::method_9_collide_puss_work::link, jakx::method_10_collide_puss_work::link}},
      {"spatial-hash",
-      {
-          // jakx::method_18_grid_hash::link,
-          jakx::method_19_grid_hash::link, jakx::method_20_grid_hash::link,
-          jakx::method_22_grid_hash::link, jakx::method_28_sphere_hash::link,
-          // jakx::method_32_sphere_hash::link,
-          //  jakx::method_29_sphere_hash::link,
-          jakx::method_30_sphere_hash::link,
-          //  jakx::method_31_sphere_hash::link,
-          //  jakx::method_32_spatial_hash::link,
-          //  jakx::method_38_spatial_hash::link,
-          jakx::method_35_spatial_hash::link, jakx::method_36_spatial_hash::link,
-          //  jakx::method_34_spatial_hash::link
-      }},
+      {jakx::method_20_grid_hash::link, jakx::method_22_grid_hash::link,
+       jakx::method_30_sphere_hash::link, jakx::method_36_spatial_hash::link,
+       jakx::method_21_grid_hash::link, jakx::method_24_grid_hash::link,
+       jakx::method_35_sphere_hash::link, jakx::method_35_spatial_hash::link,
+       jakx::method_40_spatial_hash::link}},
      {"sparticle-launcher",
       {jakx::sparticle_motion_blur::link, jakx::sp_launch_particles_var::link,
        jakx::particle_adgif::link, jakx::sp_init_fields::link}},
@@ -872,12 +841,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"ripple",
       {jakx::ripple_matrix_scale::link, jakx::ripple_apply_wave_table::link,
        jakx::ripple_create_wave_table::link, jakx::ripple_execute_init::link}},
-     {"ocean-vu0",
-      {
-          // jakx::method_14_ocean::link,
-          // jakx::method_15_ocean::link,
-          //  jakx::method_16_ocean::link
-      }},
+     {"ocean-vu0", {}},
      {"ocean",
       {jakx::init_ocean_far_regs::link, jakx::draw_large_polygon_ocean::link,
        jakx::render_ocean_quad::link}},
@@ -889,12 +853,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"sky-tng",
       {jakx::set_tex_offset::link, jakx::render_sky_quad::link, jakx::render_sky_tri::link,
        jakx::method_17_sky_work::link, jakx::method_29_sky_work::link,
-       jakx::method_30_sky_work::link, jakx::method_31_sky_work::link,
-       //  jakx::method_34_sky_work::link,
-       //  jakx::method_35_sky_work::link,
-       jakx::method_32_sky_work::link,
-       //  jakx::set_sky_vf23_value::link,
-       jakx::draw_large_polygon::link}},
+       jakx::method_30_sky_work::link, jakx::method_32_sky_work::link,
+       jakx::draw_large_polygon::link, jakx::method_16_sky_work::link,
+       jakx::method_28_sky_work::link, jakx::method_33_sky_work::link}},
      {"shadow-cpu",
       {jakx::shadow_xform_verts::link, jakx::shadow_execute::link,
        jakx::shadow_calc_dual_verts::link, jakx::shadow_scissor_edges::link,

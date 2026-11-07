@@ -578,7 +578,7 @@ int get_start_idx_process(Function& function,
     return -1;
   }
 
-  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
+  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::GP))) {
     lg::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
@@ -764,7 +764,7 @@ int get_start_idx(Function& function,
     return -1;
   }
 
-  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
+  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
                Register(Reg::GPR, Reg::GP), Register(Reg::GPR, Reg::GP))) {
     lg::print("[iim] op 2 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;
@@ -827,7 +827,7 @@ int get_start_idx(Function& function,
   }
   op_idx++;
 
-  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind ::IDENTITY,
+  if (!is_op_2(aos.ops.at(op_idx).get(), SimpleExpression::Kind::IDENTITY,
                Register(Reg::GPR, Reg::A2), Register(Reg::GPR, Reg::GP))) {
     lg::print("[iim] op 8 bad in {}: {}\n", aos.ops.at(op_idx)->to_string(env), function.name());
     return -1;

@@ -1052,7 +1052,7 @@
           )
       (while (>= (the-as int s3-0) s4-0)
         (dotimes (s2-0 1)
-          (let ((sv-64 (the-as vector (+ (the-as uint (-> this constraints 0 dir)) (* 48 s4-0))))
+          (let ((sv-64 (-> this constraints s4-0 dir))
                 (s1-0 (-> this constraints s4-0))
                 (s0-0 (-> this constraints (+ s4-0 1)))
                 (sv-96 (new 'stack-no-clear 'vector))
@@ -1097,9 +1097,7 @@
                       )
                     )
                   (vector-normalize! sv-96 1.0)
-                  (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> this constraints 0 dir)) (* 48 (+ s4-0 1)))))
-                        (-> sv-96 quad)
-                        )
+                  (vector-copy! (-> this constraints (+ s4-0 1) dir) sv-96)
                   (vector+float*! (-> s0-0 pt) (-> s1-0 pt) sv-96 f30-0)
                   )
                 )
@@ -1111,7 +1109,7 @@
       )
     (let ((s4-1 (+ (-> this num-knots) -2)))
       (while (>= (the-as int s4-1) arg0)
-        (+ (the-as uint (-> this constraints 0 dir)) (* 48 arg0))
+        (-> this constraints arg0 dir)
         (let* ((s3-1 (-> this constraints arg0))
                (s2-1 (-> this constraints (+ arg0 1)))
                (s1-2 (vector-! (new 'stack-no-clear 'vector) (-> s2-1 pt) (-> s3-1 pt)))
@@ -1740,9 +1738,7 @@
       (let ((a0-9 (vector-float*! (new 'stack-no-clear 'vector) (-> *target* gun laser-dir) 24576.0)))
         (dotimes (a1-4 (the-as int (-> *blue-2-lightning-shape* num-knots)))
           (set! (-> *blue-2-lightning-shape* constraints a1-4 pt quad) (-> v1-17 quad))
-          (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 a1-4))))
-                (-> *target* gun laser-dir quad)
-                )
+          (vector-copy! (-> *blue-2-lightning-shape* constraints a1-4 dir) (-> *target* gun laser-dir))
           (vector+! v1-17 v1-17 a0-9)
           (set! (-> *blue-2-lightning-shape* constraints a1-4 length) 24576.0)
           )
@@ -2208,12 +2204,7 @@
                 (vector-copy! a0-19 s3-0)
                 (set! (-> a0-19 w) 12288.0)
                 (if (not (the-as symbol s2-0))
-                    (set! s2-0 (find-gun-blue-2-target-old
-                                 a0-19
-                                 sv-640
-                                 (the-as vector (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 s5-3)))
-                                 )
-                          )
+                    (set! s2-0 (find-gun-blue-2-target-old a0-19 sv-640 (-> *blue-2-lightning-shape* constraints s5-3 dir)))
                     )
                 )
               (cond
@@ -2226,14 +2217,11 @@
                   (vector-copy! s3-0 (get-trans (the-as process-focusable s2-0) 3))
                   (vector-copy! (-> *lightning-pts-cache* s5-3) s3-0)
                   (vector-!
-                    (the-as vector (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 s5-3)))
+                    (-> *blue-2-lightning-shape* constraints s5-3 dir)
                     (-> *lightning-pts-cache* s5-3)
                     (-> *blue-2-lightning-shape* constraints (+ s5-3 -1) pt)
                     )
-                  (vector-normalize!
-                    (the-as vector (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 s5-3)))
-                    1.0
-                    )
+                  (vector-normalize! (-> *blue-2-lightning-shape* constraints s5-3 dir) 1.0)
                   (dotimes (v1-65 1)
                     )
                   )
@@ -2319,7 +2307,7 @@
           (let ((s4-1
                   (matrix-f-u-compose
                     (new 'stack-no-clear 'matrix)
-                    (the-as vector (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 s5-4)))
+                    (-> *blue-2-lightning-shape* constraints s5-4 dir)
                     *up-vector*
                     )
                   )
@@ -2331,7 +2319,7 @@
               (-> s4-1 uvec)
               (-> s4-1 uvec)
               f0-9
-              (the-as vector (+ (the-as uint (-> *blue-2-lightning-shape* constraints 0 dir)) (* 48 s5-4)))
+              (-> *blue-2-lightning-shape* constraints s5-4 dir)
               )
             (vector-normalize! (-> s4-1 uvec) 1.0)
             (vector+float*! s3-2 s3-2 (-> s4-1 uvec) 2048.0)

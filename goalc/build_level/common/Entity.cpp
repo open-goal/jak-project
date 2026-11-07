@@ -105,8 +105,7 @@ static std::unordered_map<
     std::string,
     std::function<std::unique_ptr<
         Res>(const std::string&, const nlohmann::json&, float, decompiler::DecompilerTypeSystem&)>>
-    lump_map = {
-        // integers
+    lump_map = {  // integers
         {"int32",
          [](const std::string& name,
             const nlohmann::json& json,

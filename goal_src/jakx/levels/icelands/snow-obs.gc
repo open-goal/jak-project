@@ -7,3 +7,175 @@
 
 ;; DECOMP BEGINS
 
+(deftype snow-dinobreak (net-simple-destruct)
+  ()
+  )
+
+
+(defskelgroup skel-snow-dinobreak snow-dinobreak snow-dinobreak-lod0-jg snow-dinobreak-idle-ja
+              ((snow-dinobreak-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 25)
+              )
+
+(defskelgroup skel-snow-dinobreak-explode snow-dinobreak snow-dinobreak-explode-lod0-jg snow-dinobreak-explode-idle-ja
+              ((snow-dinobreak-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 25 60)
+              )
+
+(define *snow-dinobreak-explode-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :art-level #f
+    :collide-sound #x219
+    )
+  )
+
+(defmethod net-simple-destruct-method-66 ((this snow-dinobreak))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-1 (make-sound-instance (-> *sound-info* 528) 0 (the-as handle #f))))
+      (if v1-1
+          (-> v1-1 id)
+          0
+          )
+      )
+    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 501))
+    (vector-reset! (-> *part-tracker-params-default* local-offset))
+    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+    (set! (-> *part-tracker-params-default* callback) #f)
+    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+    (set! (-> *part-tracker-params-default* target) #f)
+    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+    (set! (-> *part-tracker-params-default* local-space-param) 0)
+    (set! (-> *part-tracker-params-default* local-space-callback) #f)
+    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+    *part-tracker-params-default*
+    (if (logtest? (-> *part-group-id-table* 501 flags) (sp-group-flag sp13))
+        (process-spawn
+          part-tracker-subsampler
+          :init part-tracker-subsampler-init
+          *part-tracker-params-default*
+          :name "part-tracker-subsampler"
+          :to *entity-pool*
+          :unk 0
+          )
+        (process-spawn
+          part-tracker
+          :init part-tracker-init
+          *part-tracker-params-default*
+          :name "part-tracker"
+          :to *entity-pool*
+          :unk 0
+          )
+        )
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-34 (-> this root root-prim)))
+        (set! (-> v1-34 prim-core collide-as) (collide-spec))
+        (set! (-> v1-34 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (let ((s5-2 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (set! (-> s5-2 duration) (the-as uint 1200))
+      (set! (-> s5-2 gravity) -163840.0)
+      (set! (-> s5-2 rot-speed) 2.0)
+      (let ((a1-10 (-> s5-2 fountain-rand-transv-lo)))
+        (let ((v1-45 (new 'static 'vector :data (new 'static 'array float 4 -20480.0 40960.0 -20480.0 1.0)))
+              (a0-15 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-45 quad))
+          (.lvf vf5 (&-> a0-15 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-10 quad) vf6)
+        )
+      (let ((a1-11 (-> s5-2 fountain-rand-transv-hi)))
+        (let ((v1-46 (new 'static 'vector :data (new 'static 'array float 4 20480.0 81920.0 20480.0 1.0)))
+              (a0-16 (-> this impact-velocity))
+              )
+          (.lvf vf4 (&-> v1-46 quad))
+          (.lvf vf5 (&-> a0-16 quad))
+          )
+        (.mov.vf.w vf6 vf0)
+        (.add.vf.xyz vf6 vf4 vf5)
+        (.svf (&-> a1-11 quad) vf6)
+        )
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-snow-dinobreak-explode" (the-as (pointer level) #f))
+        5
+        s5-2
+        *snow-dinobreak-explode-params*
+        :name "joint-exploder"
+        :to this
+        :unk 0
+        )
+      )
+    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+    (none)
+    )
+  )
+
+(defmethod init-from-entity! ((this snow-dinobreak) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 102400.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 102400.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-method-42
+    this
+    (art-group-get-by-name *level* "skel-snow-dinobreak" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this hit-points) 30.0)
+  (process-drawable-from-entity! this arg0)
+  (go (method-of-object this net-simple-destruct-state-1))
+  )

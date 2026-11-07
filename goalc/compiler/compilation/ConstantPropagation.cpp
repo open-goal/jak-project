@@ -9,8 +9,7 @@ const std::unordered_map<std::string,
                          Compiler::ConstPropResult (Compiler::*)(const goos::Object& form,
                                                                  const goos::Object& rest,
                                                                  Env* env)>
-    g_const_prop_forms = {
-        // INLINE ASM
+    g_const_prop_forms = {  // INLINE ASM
         {"begin", &Compiler::const_prop_begin},
         {"size-of", &Compiler::const_prop_size_of},
         {"#cond", &Compiler::const_prop_gscond}};

@@ -388,11 +388,19 @@ class ObjectFileDB {
     [[maybe_unused]] int fn = 0;
     if (data.linked_data.segments == 3) {
       for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
-        f(data.linked_data.functions_by_seg.at(seg).at(j));
+        auto& func = data.linked_data.functions_by_seg.at(seg).at(j);
+        if (ir2_function_filter && &func != ir2_function_filter) {
+          continue;
+        }
+        f(func);
         fn++;
       }
     }
   }
+
+  // if set, ir2 passes only run on this function (used to re-analyze one function
+  // for the asm branch permuter)
+  const Function* ir2_function_filter = nullptr;
 
   // Danger: after adding all object files, we assume that the vector never reallocates.
   std::unordered_map<std::string, std::vector<ObjectFileData>> obj_files_by_name;

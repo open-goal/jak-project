@@ -301,10 +301,59 @@
   )
 
 ;; definition for function vif1-handler-debug
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Interrupt handler
+;; WARN: Return type mismatch int vs none.
+(defun vif1-handler-debug ((arg0 int))
+  (local-vars (a1-4 int))
+  (let ((v1-0 *profile-interrupt-segment*)
+        (a0-2 (-> (the-as vif-bank #x10003c00) mark))
+        )
+    (let ((a2-0 (-> *profile-work* last-index)))
+      0
+      (let ((a3-0 (-> v1-0 base-time)))
+        (.sync.l)
+        (let ((a1-3 (-> (the-as timer-bank #x10000800) count)))
+          (.sync.l)
+          (cond
+            ((< a0-2 (the-as uint a2-0))
+             (dotimes (a2-1 796)
+               (set! (-> v1-0 data a2-1 start-time) 0)
+               (set! (-> v1-0 data a2-1 end-time) 0)
+               (set! (-> v1-0 data a2-1 vu-count) (the-as uint 0))
+               )
+             (set! (-> v1-0 base-time) (the-as int a1-3))
+             (set! a1-4 0)
+             (set! (-> v1-0 data 0 start-time) 0)
+             (set! (-> v1-0 count) 796)
+             )
+            (else
+              (set! a1-4 (the-as int (- a1-3 (the-as uint a3-0))))
+              (set! (-> v1-0 data a2-0 end-time) a1-4)
+              (set! (-> v1-0 data 0 end-time) a1-4)
+              )
+            )
+          )
+        )
+      )
+    (set! (-> v1-0 data a0-2 vu-count) a0-2)
+    (set! (-> v1-0 data a0-2 start-time) a1-4)
+    (set! (-> *profile-work* last-index) (the-as int a0-2))
+    )
+  (set! (-> (the-as vif-bank #x10003c00) mark) (the-as uint 0))
+  (set! (-> (the-as vif-bank #x10003c00) fbrst) (new 'static 'vif-fbrst :stc #x1))
+  0
+  (none)
+  )
 
 ;; definition for function vif1-handler
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Interrupt handler
+;; WARN: Return type mismatch int vs none.
+(defun vif1-handler ()
+  (set! (-> (the-as vif-bank #x10003c00) mark) (the-as uint 0))
+  (set! (-> (the-as vif-bank #x10003c00) fbrst) (new 'static 'vif-fbrst :stc #x1))
+  0
+  (none)
+  )
 
 ;; failed to figure out what this is:
 (install-handler 5 (if *debug-segment*
@@ -314,7 +363,12 @@
                  )
 
 ;; definition for function vblank-handler
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Interrupt handler
+(defun vblank-handler ()
+  (set! (-> *display* vblank-start-time 0) (-> *display* vblank-start-time 1))
+  (set! (-> *display* vblank-start-time 1) (the-as int (timer-count (the-as timer-bank #x10000800))))
+  0
+  )
 
 ;; definition for function set-display-gs-state
 (defun set-display-gs-state ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
@@ -447,7 +501,3 @@
 
 ;; failed to figure out what this is:
 (kmemclose)
-
-
-
-

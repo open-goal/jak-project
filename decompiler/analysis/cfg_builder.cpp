@@ -181,8 +181,14 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
   ASSERT(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
   ASSERT(src);
-  ASSERT(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
-         src->expr().get_arg(0).get_int() == 0);
+  auto ok = src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+            src->expr().get_arg(0).get_int() == 0;
+  if (!ok) {
+    throw std::runtime_error(
+        fmt::format("secondary assertion hit in `clean_up_return_final` in function: {} ",
+                    f.guessed_name.to_string()));
+  }
+  ASSERT(ok);
   ir->dead_code = nullptr;
 }
 
