@@ -1,0 +1,39 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type lissajous-interp
+(defmethod evaluate! ((this lissajous-interp) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
+  (evaluate! (-> this current) arg0)
+  )
+
+;; definition for method 10 of type lissajous-interp
+(defmethod update! ((this lissajous-interp))
+  "Update both the interpolation, and the curves themselves."
+  (seek! (-> this current x-mag) (-> this dest x-mag) (-> this rate x-mag))
+  (seek! (-> this current y-mag) (-> this dest y-mag) (-> this rate y-mag))
+  (seek! (-> this current theta-rate) (-> this dest theta-rate) (-> this rate theta-rate))
+  (seek! (-> this current theta) (-> this dest theta) (* (-> this current theta-rate) (-> this rate theta)))
+  (seek! (-> this current wx) (-> this dest wx) (-> this rate wx))
+  (seek! (-> this current wy) (-> this dest wy) (-> this rate wy))
+  (set! (-> this current period-shift)
+        (seek (-> this current period-shift) (-> this dest period-shift) (-> this rate period-shift))
+        )
+  )
+
+;; definition for method 9 of type lissajous
+(defmethod evaluate! ((this lissajous) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
+  0.0
+  0.0
+  (let ((f30-0 (* (cos (* (-> this theta) (-> this wx))) (-> this x-mag)))
+        (f0-8 (* (cos (+ (-> this period-shift) (* (-> this theta) (-> this wy)))) (-> this y-mag)))
+        )
+    (set-vector! arg0 f30-0 f0-8 0.0 1.0)
+    )
+  arg0
+  )
+
+
+
+

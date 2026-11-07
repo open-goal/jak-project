@@ -66,9 +66,11 @@ std::string TP_Type::print() const {
     case Kind::DYNAMIC_METHOD_ACCESS:
       return fmt::format("<dynamic-method-access>");
     case Kind::VIRTUAL_METHOD:
-      return fmt::format("<vmethod {}>", m_ts.print());
+      return fmt::format("<vmethod({}:{}) {}>", m_method_id,
+                         m_method_name.empty() ? "?" : m_method_name, m_ts.print());
     case Kind::NON_VIRTUAL_METHOD:
-      return fmt::format("<method {}>", m_ts.print());
+      return fmt::format("<method({}:{}) {}>", m_method_id,
+                         m_method_name.empty() ? "?" : m_method_name, m_ts.print());
     case Kind::LEFT_SHIFTED_BITFIELD:
       if (m_pcpyud) {
         return fmt::format("(<{}> << {}) :u", m_ts.print(), m_int);
