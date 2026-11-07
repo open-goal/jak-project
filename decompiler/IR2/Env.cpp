@@ -592,8 +592,14 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
       continue;
     }
 
+    auto type_of_var = x.type.typespec();
+    auto retype_kv = m_var_retype.find(x.name());
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
     count++;
-    elts.push_back(pretty_print::build_list(lookup_name, print_var_type(x.type.typespec())));
+    elts.push_back(pretty_print::build_list(lookup_name, print_var_type(type_of_var)));
   }
 
   // sort in increasing offset.
