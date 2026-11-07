@@ -532,6 +532,16 @@ std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
   return std::make_unique<SetVarOp>(dest, src, idx);
 }
 
+std::unique_ptr<AtomicOp> convert_xori_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_imm()) {
+    // xori s1, r0, 49292
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_int_constant(i0.get_src(1).get_imm()).as_expr(),
+        idx);
+  }
+  return make_2reg_1imm_op(i0, SimpleExpression::Kind::XOR, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_mtc1_1(const Instruction& i0, int idx) {
   if (i0.get_src(0).is_reg(rr0())) {
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
@@ -910,7 +920,7 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
     case InstructionKind::ANDI:
       return make_2reg_1imm_op(i0, SimpleExpression::Kind::AND, idx);
     case InstructionKind::XORI:
-      return make_2reg_1imm_op(i0, SimpleExpression::Kind::XOR, idx);
+      return convert_xori_1(i0, idx);
     case InstructionKind::NOR:
       return convert_nor_1(i0, idx);
     case InstructionKind::XOR:
