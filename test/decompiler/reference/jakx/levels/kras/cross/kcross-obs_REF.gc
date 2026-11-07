@@ -113,7 +113,7 @@
     (let ((f30-0 (fmin 1.0 (+ 0.25 (* 0.012207031 (-> arg0 impulse))))))
       (cond
         ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)) (< 28.672 (-> arg0 impulse)))
-         (let ((v1-11 (make-sound-instance (-> *sound-info* 594) 0 #f)))
+         (let ((v1-11 (make-sound-instance (-> *sound-info* 594) (new 'static 'sound-id) #f)))
            (cond
              (v1-11
                (set! (-> v1-11 volume) (the int (* 1024.0 f30-0)))
@@ -129,7 +129,7 @@
          )
         ((not (-> this has-hit-ground))
          (set! (-> this has-hit-ground) #t)
-         (let ((v1-18 (make-sound-instance (-> *sound-info* 595) 0 #f)))
+         (let ((v1-18 (make-sound-instance (-> *sound-info* 595) (new 'static 'sound-id) #f)))
            (cond
              (v1-18
                (set! (-> v1-18 volume) (the int (* 1024.0 f30-0)))
@@ -143,7 +143,7 @@
            )
          )
         (else
-          (let ((v1-22 (make-sound-instance (-> *sound-info* 590) 0 #f)))
+          (let ((v1-22 (make-sound-instance (-> *sound-info* 590) (new 'static 'sound-id) #f)))
             (cond
               (v1-22
                 (set! (-> v1-22 volume) (the int (* 1024.0 f30-0)))
@@ -166,53 +166,30 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod construction-object-method-90 ((this kcro-bouncy-tire-a))
-  (local-vars (v1-9 float) (v1-14 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (when (>= (the-as uint (- (current-time) (the-as int (-> this disturbed-time)))) (the-as uint 600))
+    (let ((f0-1 (* (vector-vector-distance-squared (-> this root trans) (camera-pos)) (square 0.00006975447))))
+      (cond
+        ((and (< (vector-length-squared (-> this rbody ang-velocity)) f0-1)
+              (< (vector-length-squared (-> this rbody lin-velocity)) (* f0-1 (square 614.4)))
+              )
+         (set! (-> this rbody lin-momentum quad) (the-as uint128 0))
+         (set! (-> this rbody ang-momentum quad) (the-as uint128 0))
+         (construction-object-method-92 this #f)
+         (go (method-of-object this idle))
          )
-    (init-vf0-vector)
-    (when (>= (the-as uint (- (current-time) (the-as int (-> this disturbed-time)))) (the-as uint 600))
-      (let ((f0-1 (* (vector-vector-distance-squared (-> this root trans) (camera-pos)) (square 0.00006975447))))
-        (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
-        (.add.w.vf.x vf2 vf0 vf0)
-        (.mul.vf vf1 vf1 vf1)
-        (.mul.x.vf.x acc vf2 vf1)
-        (.add.mul.y.vf.x acc vf2 vf1 acc)
-        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-        (.mov v1-9 vf1)
-        (cond
-          ((and (< v1-9 f0-1) (begin
-                                (.lvf vf1 (&-> (-> this rbody lin-velocity) quad))
-                                (.add.w.vf.x vf2 vf0 vf0)
-                                (.mul.vf vf1 vf1 vf1)
-                                (.mul.x.vf.x acc vf2 vf1)
-                                (.add.mul.y.vf.x acc vf2 vf1 acc)
-                                (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-                                (.mov v1-14 vf1)
-                                (< v1-14 (* f0-1 (square 614.4)))
-                                )
-                )
-           (set! (-> this rbody lin-momentum quad) (the-as uint128 0))
-           (set! (-> this rbody ang-momentum quad) (the-as uint128 0))
-           (construction-object-method-92 this #f)
-           (go (method-of-object this idle))
-           )
-          (else
-            (set! (-> this disturbed-time) (the-as uint (current-time)))
-            )
+        (else
+          (set! (-> this disturbed-time) (the-as uint (current-time)))
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 65 of type kcro-bouncy-tire-a
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-65 ((this kcro-bouncy-tire-a) (arg0 vector))
+(defmethod init-collision! ((this kcro-bouncy-tire-a))
   (set! (-> this has-hit-ground) #f)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -278,6 +255,7 @@
   )
 
 ;; definition for method 66 of type kcro-bouncy-tire-a
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-66 ((this kcro-bouncy-tire-a))
   (construction-object-method-91 this)
   (process-drawable-method-42
@@ -287,7 +265,8 @@
     )
   (rigid-body-object-method-64 this *kcro-bouncy-tire-a-constants*)
   (logior! (-> this rbody flags) (rigid-body-flag debug-active))
-  0.0
+  0
+  (none)
   )
 
 ;; definition of type kcro-fence-piece-a
@@ -408,92 +387,65 @@
 
 ;; definition for method 66 of type kcro-fence-piece-a
 (defmethod net-simple-destruct-method-66 ((this kcro-fence-piece-a))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
-      (if v1-1
-          (-> v1-1 id)
-          0
-          )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-2 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-7 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-7 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-2 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-3 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-12 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-12 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-3 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 515) (new 'static 'sound-id) #f)))
+    (if v1-1
+        (-> v1-1 id)
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *kcro-fence-piece-a-debris-params* (the-as process-drawable #f))
-      )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 475))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 475 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *kcro-fence-piece-a-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 475))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 475 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type kcro-fence-piece-a
@@ -601,92 +553,65 @@
 
 ;; definition for method 66 of type kcro-fence-piece-b
 (defmethod net-simple-destruct-method-66 ((this kcro-fence-piece-b))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 515) 0 #f)))
-      (if v1-1
-          (-> v1-1 id)
-          0
-          )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-2 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-7 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-7 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-2 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-3 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-12 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-12 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-3 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 515) (new 'static 'sound-id) #f)))
+    (if v1-1
+        (-> v1-1 id)
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *kcro-fence-piece-b-debris-params* (the-as process-drawable #f))
-      )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 476))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 476 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *kcro-fence-piece-b-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 476))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 476 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type kcro-fence-piece-b
@@ -780,7 +705,7 @@
     (let ((f30-0 (fmin 1.0 (+ 0.25 (* 0.012207031 (-> arg0 impulse))))))
       (cond
         ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)) (< 28.672 (-> arg0 impulse)))
-         (let ((v1-11 (make-sound-instance (-> *sound-info* 591) 0 #f)))
+         (let ((v1-11 (make-sound-instance (-> *sound-info* 591) (new 'static 'sound-id) #f)))
            (cond
              (v1-11
                (set! (-> v1-11 volume) (the int (* 1024.0 f30-0)))
@@ -796,7 +721,7 @@
          )
         ((not (-> this has-hit-ground))
          (set! (-> this has-hit-ground) #t)
-         (let ((v1-18 (make-sound-instance (-> *sound-info* 592) 0 #f)))
+         (let ((v1-18 (make-sound-instance (-> *sound-info* 592) (new 'static 'sound-id) #f)))
            (cond
              (v1-18
                (set! (-> v1-18 volume) (the int (* 1024.0 f30-0)))
@@ -810,7 +735,7 @@
            )
          )
         (else
-          (let ((v1-22 (make-sound-instance (-> *sound-info* 593) 0 #f)))
+          (let ((v1-22 (make-sound-instance (-> *sound-info* 593) (new 'static 'sound-id) #f)))
             (cond
               (v1-22
                 (set! (-> v1-22 volume) (the int (* 1024.0 f30-0)))
@@ -833,53 +758,30 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod construction-object-method-90 ((this kcro-oil-barrel))
-  (local-vars (v1-9 float) (v1-14 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (when (>= (the-as uint (- (current-time) (the-as int (-> this disturbed-time)))) (the-as uint 600))
+    (let ((f0-1 (* (vector-vector-distance-squared (-> this root trans) (camera-pos)) (square 0.00006975447))))
+      (cond
+        ((and (< (vector-length-squared (-> this rbody ang-velocity)) f0-1)
+              (< (vector-length-squared (-> this rbody lin-velocity)) (* f0-1 (square 614.4)))
+              )
+         (set! (-> this rbody lin-momentum quad) (the-as uint128 0))
+         (set! (-> this rbody ang-momentum quad) (the-as uint128 0))
+         (construction-object-method-92 this #f)
+         (go (method-of-object this idle))
          )
-    (init-vf0-vector)
-    (when (>= (the-as uint (- (current-time) (the-as int (-> this disturbed-time)))) (the-as uint 600))
-      (let ((f0-1 (* (vector-vector-distance-squared (-> this root trans) (camera-pos)) (square 0.00006975447))))
-        (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
-        (.add.w.vf.x vf2 vf0 vf0)
-        (.mul.vf vf1 vf1 vf1)
-        (.mul.x.vf.x acc vf2 vf1)
-        (.add.mul.y.vf.x acc vf2 vf1 acc)
-        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-        (.mov v1-9 vf1)
-        (cond
-          ((and (< v1-9 f0-1) (begin
-                                (.lvf vf1 (&-> (-> this rbody lin-velocity) quad))
-                                (.add.w.vf.x vf2 vf0 vf0)
-                                (.mul.vf vf1 vf1 vf1)
-                                (.mul.x.vf.x acc vf2 vf1)
-                                (.add.mul.y.vf.x acc vf2 vf1 acc)
-                                (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-                                (.mov v1-14 vf1)
-                                (< v1-14 (* f0-1 (square 614.4)))
-                                )
-                )
-           (set! (-> this rbody lin-momentum quad) (the-as uint128 0))
-           (set! (-> this rbody ang-momentum quad) (the-as uint128 0))
-           (construction-object-method-92 this #f)
-           (go (method-of-object this idle))
-           )
-          (else
-            (set! (-> this disturbed-time) (the-as uint (current-time)))
-            )
+        (else
+          (set! (-> this disturbed-time) (the-as uint (current-time)))
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 65 of type kcro-oil-barrel
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-65 ((this kcro-oil-barrel) (arg0 vector))
+(defmethod init-collision! ((this kcro-oil-barrel))
   (set! (-> this has-hit-ground) #f)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -966,6 +868,7 @@
   )
 
 ;; definition for method 66 of type kcro-oil-barrel
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-66 ((this kcro-oil-barrel))
   (construction-object-method-91 this)
   (process-drawable-method-42
@@ -975,5 +878,6 @@
     )
   (rigid-body-object-method-64 this *kcro-oil-barrel-constants*)
   (logior! (-> this rbody flags) (rigid-body-flag debug-active))
-  0.0
+  0
+  (none)
   )

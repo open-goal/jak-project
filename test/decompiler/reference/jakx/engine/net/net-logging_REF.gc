@@ -1,0 +1,170 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *lock-stream*, type file-stream
+(define *lock-stream* (new 'static 'file-stream))
+
+;; definition for symbol *lock-name*, type string
+(define *lock-name* (new 'global 'string 100 ""))
+
+;; definition for symbol *net-log-stream*, type file-stream
+(define *net-log-stream* (new 'static 'file-stream))
+
+;; definition for symbol *net-log-name*, type string
+(define *net-log-name* (new 'global 'string 100 ""))
+
+;; definition for symbol *net-ip-string*, type string
+(define *net-ip-string* (new 'global 'string 16 ""))
+
+;; definition for symbol *net-log-buf-mem*, type mem-buffer
+(define *net-log-buf-mem* (new 'static 'mem-buffer))
+
+;; definition for symbol *net-log-buf*, type mem-buffer
+(define *net-log-buf* (new 'static 'mem-buffer))
+
+;; definition for symbol *net-ip*, type net-address
+(define *net-ip* (new 'static 'net-address))
+
+;; failed to figure out what this is:
+(set-buffer! *net-log-buf* (&-> *net-log-buf-mem* base) 1024)
+
+;; definition for symbol *net-log-id*, type int
+(define *net-log-id* 0)
+
+;; definition for function net-log-world-ident
+;; WARN: Return type mismatch int vs object.
+(defun net-log-world-ident ()
+  (reset! *net-log-buf*)
+  (encode-net-world-state (-> *net-world* net-state) *net-log-buf*)
+  (set! (-> *net-log-tmp-header* length) (the-as uint (+ (bytes-used *net-log-buf*) 12)))
+  (set! (-> *net-log-tmp-header* type) (net-log-event-type ident))
+  (set! (-> *net-log-tmp-header* time) (-> *net-mgr* game-state time))
+  (let ((v1-10 (+ *net-log-id* 1)))
+    (set! *net-log-id* v1-10)
+    (set! (-> *net-log-tmp-header* id) v1-10)
+    )
+  (file-stream-write *net-log-stream* (the-as pointer *net-log-tmp-header*) (the-as uint 12))
+  (file-stream-write *net-log-stream* (-> *net-log-buf* base) (the-as uint (bytes-used *net-log-buf*)))
+  0
+  )
+
+;; definition for function net-log-start
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defun net-log-start ((arg0 int) (arg1 int))
+  (set! *scert-function-id* (scert-function net-get-local-ip))
+  (knet-scert-function-1-args (-> *net-ip-string* data))
+  (set! (-> *lock-name* data 0) (the-as uint 0))
+  (format *lock-name* "logs/lock_~G" (-> *net-ip-string* data))
+  (file-stream-open *lock-stream* *lock-name* 'write)
+  (file-stream-close *lock-stream*)
+  (set! *net-log-id* 0)
+  (let ((s4-0 (new 'stack-no-clear 'sce-cd-clock)))
+    (knet-get-local-rtc (&-> s4-0 stat))
+    (set! (-> *net-log-name* data 0) (the-as uint 0))
+    (format
+      *net-log-name*
+      "logs/~D-~D_~D-~D-~D_~G"
+      (bcd-conv (-> s4-0 month))
+      (bcd-conv (-> s4-0 day))
+      (bcd-conv (-> s4-0 hour))
+      (bcd-conv (-> s4-0 minute))
+      (bcd-conv (-> s4-0 second))
+      (-> *net-ip-string* data)
+      )
+    )
+  (format 0 "opening ~A~%" *net-log-name*)
+  (file-stream-open *net-log-stream* *net-log-name* 'write)
+  (format 0 "writing header...~%")
+  (reset! *net-log-buf*)
+  (write-uint8 *net-log-buf* (the-as uint arg0))
+  (write-uint8 *net-log-buf* (the-as uint arg1))
+  (write-uint32 *net-log-buf* (net-get-local-ip))
+  (set! (-> *net-log-tmp-header* length) (the-as uint (+ (bytes-used *net-log-buf*) 12)))
+  (set! (-> *net-log-tmp-header* type) (net-log-event-type start))
+  (set! (-> *net-log-tmp-header* time) (-> *net-mgr* game-state time))
+  (let ((v1-16 (+ *net-log-id* 1)))
+    (set! *net-log-id* v1-16)
+    (set! (-> *net-log-tmp-header* id) v1-16)
+    )
+  (file-stream-write *net-log-stream* (the-as pointer *net-log-tmp-header*) (the-as uint 12))
+  (file-stream-write *net-log-stream* (-> *net-log-buf* base) (the-as uint (bytes-used *net-log-buf*)))
+  (format 0 "wrote header...~%")
+  0
+  )
+
+;; definition for function net-log-remove-lock
+;; WARN: Return type mismatch int vs object.
+(defun net-log-remove-lock ()
+  (set! *scert-function-id* (scert-function net-get-local-ip))
+  (knet-scert-function-1-args (-> *net-ip-string* data))
+  (set! (-> *lock-name* data 0) (the-as uint 0))
+  (format *lock-name* "host0:logs/lock_~G" (-> *net-ip-string* data))
+  (knet-file-erase (-> *lock-name* data))
+  0
+  )
+
+;; definition for function net-log-stop
+;; WARN: Return type mismatch int vs object.
+(defun net-log-stop ()
+  (format 0 "closing log file~%")
+  (file-stream-close *net-log-stream*)
+  (net-log-remove-lock)
+  0
+  )
+
+;; definition for function net-log-client
+;; WARN: Return type mismatch int vs object.
+(defun net-log-client ((arg0 net-log-event-type) (arg1 int))
+  (reset! *net-log-buf*)
+  (write-uint8 *net-log-buf* (the-as uint arg1))
+  (set! (-> *net-log-tmp-header* length) (the-as uint (+ (bytes-used *net-log-buf*) 12)))
+  (set! (-> *net-log-tmp-header* type) arg0)
+  (set! (-> *net-log-tmp-header* time) (-> *net-mgr* game-state time))
+  (let ((v1-11 (+ *net-log-id* 1)))
+    (set! *net-log-id* v1-11)
+    (set! (-> *net-log-tmp-header* id) v1-11)
+    )
+  (file-stream-write *net-log-stream* (the-as pointer *net-log-tmp-header*) (the-as uint 12))
+  (file-stream-write *net-log-stream* (-> *net-log-buf* base) (the-as uint (bytes-used *net-log-buf*)))
+  0
+  )
+
+;; definition for function net-log-msg
+;; WARN: Return type mismatch int vs object.
+(defun net-log-msg ((arg0 pointer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (reset! *net-log-buf*)
+  (write-uint8 *net-log-buf* (the-as uint arg2))
+  (write-uint32 *net-log-buf* (the-as uint arg3))
+  (write-uint8 *net-log-buf* (the-as uint arg4))
+  (mem-copy! (-> *net-log-buf* ptr) arg0 arg1)
+  (&+! (-> *net-log-buf* ptr) arg1)
+  (set! (-> *net-log-tmp-header* length) (the-as uint (+ (bytes-used *net-log-buf*) 12)))
+  (set! (-> *net-log-tmp-header* type) (net-log-event-type msg))
+  (set! (-> *net-log-tmp-header* time) (-> *net-mgr* game-state time))
+  (let ((v1-19 (+ *net-log-id* 1)))
+    (set! *net-log-id* v1-19)
+    (set! (-> *net-log-tmp-header* id) v1-19)
+    )
+  (file-stream-write *net-log-stream* (the-as pointer *net-log-tmp-header*) (the-as uint 12))
+  (file-stream-write *net-log-stream* (-> *net-log-buf* base) (the-as uint (bytes-used *net-log-buf*)))
+  0
+  )
+
+;; definition for function net-log-comment
+;; WARN: Return type mismatch int vs object.
+(defun net-log-comment ((arg0 string))
+  (reset! *net-log-buf*)
+  (mem-copy! (-> *net-log-buf* ptr) (-> arg0 data) (+ (length arg0) 1))
+  (&+! (-> *net-log-buf* ptr) (+ (length arg0) 1))
+  (set! (-> *net-log-tmp-header* length) (the-as uint (+ (bytes-used *net-log-buf*) 12)))
+  (set! (-> *net-log-tmp-header* type) (net-log-event-type comment))
+  (set! (-> *net-log-tmp-header* time) (-> *net-mgr* game-state time))
+  (let ((v1-17 (+ *net-log-id* 1)))
+    (set! *net-log-id* v1-17)
+    (set! (-> *net-log-tmp-header* id) v1-17)
+    )
+  (file-stream-write *net-log-stream* (the-as pointer *net-log-tmp-header*) (the-as uint 12))
+  (file-stream-write *net-log-stream* (-> *net-log-buf* base) (the-as uint (bytes-used *net-log-buf*)))
+  0
+  )

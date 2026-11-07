@@ -1,0 +1,184 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *movie-path-dir*, type string
+(define *movie-path-dir* (new 'global 'string 128 (the-as string #f)))
+
+;; definition for symbol *movie-path-filename*, type string
+(define *movie-path-filename* (new 'global 'string 128 (the-as string #f)))
+
+;; definition of type movie-path
+(deftype movie-path (process)
+  ((root         trsqv)
+   (path         curve-control)
+   (path-pos     float)
+   (path-speed   float)
+   (rot          vector  :inline)
+   (enabled?     symbol)
+   (movie-frame  uint32)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (record-path (_type_) object)
+    )
+  )
+
+;; definition for method 3 of type movie-path
+(defmethod inspect ((this movie-path))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Troot: ~A~%" (-> this root))
+  (format #t "~2Tpath: ~A~%" (-> this path))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~2Tpath-speed: ~f~%" (-> this path-speed))
+  (format #t "~2Trot: #<vector @ #x~X>~%" (-> this rot))
+  (format #t "~2Tenabled?: ~A~%" (-> this enabled?))
+  (format #t "~2Tmovie-frame: ~D~%" (-> this movie-frame))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate active (movie-path)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('record)
+       (tweak-local-net-entities)
+       (kill-by-type-inherited eco *active-pool*)
+       (set! (-> self path-pos) 0.0)
+       (set! (-> self movie-frame) (the-as uint 0))
+       (set! (-> self enabled?) #t)
+       (set! *display-capture-mode* #t)
+       (set! (-> *screen-shot-work* dir-checked?) #f)
+       (send-event (ppointer->process *time-of-day*) 'change 'ratio 0.0)
+       (set! (-> *time-of-day-context* override-enable) #t)
+       (set! (-> *mood-control* overide-weather-flag) #t)
+       (set! (-> (the-as camera-master (view-get-active-camera)) slave 0 fov) 16384.0)
+       )
+      )
+    )
+  :trans (behavior ()
+    (record-path self)
+    )
+  :code sleep-code
+  )
+
+;; definition for method 16 of type movie-path
+;; INFO: Used lq/sq
+(defmethod record-path ((this movie-path))
+  (if (not *record-fma*)
+      (set! (-> this enabled?) #f)
+      )
+  (cond
+    ((-> this enabled?)
+     (when (nonzero? (-> this path))
+       (path-control-method-14 (-> this path) (-> this root trans) (-> this path-pos) 'interp)
+       (curve-control-method-33 (-> this path) (-> this rot) (-> this path-pos) 1.0)
+       (quaternion-look-at! (-> this root rotation) (-> this rot) *up-vector*)
+       (let ((f0-3 (+ (-> this path-pos) (* (-> this path-speed) (seconds-per-frame)))))
+         (set! (-> this path-pos) f0-3)
+         (set! (-> this path-pos) f0-3)
+         )
+       (let ((s5-0 (new 'stack-no-clear 'transformq)))
+         (set! (-> s5-0 trans quad) (-> this root trans quad))
+         (quaternion-copy! (the-as quaternion (-> s5-0 rot)) (-> this root rotation))
+         (vector-identity! (-> s5-0 scale))
+         (send-event (view-get-active-camera) 'teleport-to-transformq s5-0)
+         )
+       (cond
+         ((and *record-fma* (and (= (-> *screen-shot-work* size) -1) (not *record-fma-path-dry-run*)))
+          (format (clear *movie-path-dir*) "~S" (-> this level info taskname))
+          (format (clear *movie-path-filename*) "~S" (-> this level info taskname))
+          (when *record-fma-path-mode*
+            (format *movie-path-filename* "-~S" *record-fma-path-mode*)
+            (format *movie-path-dir* "-~S" *record-fma-path-mode*)
+            )
+          (format *movie-path-filename* "-~5,'0D" (-> this movie-frame))
+          (set! *record-fma-real* #t)
+          (let ((t9-14 screen-shot-scale)
+                (a0-19 (if *record-fma-path-high-res*
+                           2
+                           1
+                           )
+                       )
+                (a1-10 *movie-path-filename*)
+                )
+            *movie-path-dir*
+            (t9-14 a0-19 a1-10)
+            )
+          (+! (-> this movie-frame) 1)
+          (format *stdebug* "~S~%" *movie-path-filename*)
+          )
+         (else
+           (set! *record-fma-real* #f)
+           )
+         )
+       (when (>= (-> this path-pos) 1.0)
+         (set! (-> this enabled?) #f)
+         #f
+         )
+       )
+     )
+    ((>= (-> this path-pos) 1.0)
+     (set! (-> this path-pos) 0.0)
+     (set! *record-fma* #f)
+     (set! *record-fma-real* #f)
+     (set! *display-capture-mode* #f)
+     (set! (-> (the-as camera-master (view-get-active-camera)) slave 0 fov) 11650.845)
+     (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+     (set! (-> *mood-control* overide-weather-flag) #f)
+     (set! (-> *time-of-day-context* override-enable) #f)
+     #f
+     )
+    ((and *record-fma* (string= *record-fma-use-path* (-> this name)))
+     (send-event this 'record)
+     )
+    (else
+      (if (nonzero? (-> this path))
+          (debug-draw (-> this path))
+          )
+      )
+    )
+  )
+
+;; definition for method 7 of type movie-path
+;; WARN: Return type mismatch process vs movie-path.
+(defmethod relocate ((this movie-path) (offset int))
+  (if (nonzero? (-> this root))
+      (&+! (-> this root) offset)
+      )
+  (if (nonzero? (-> this path))
+      (&+! (-> this path) offset)
+      )
+  (the-as movie-path ((method-of-type process relocate) this offset))
+  )
+
+;; definition for symbol *movie-path*, type (pointer movie-path)
+(define *movie-path* (the-as (pointer movie-path) #f))
+
+;; definition for method 11 of type movie-path
+;; INFO: Used lq/sq
+(defmethod init-from-entity! ((this movie-path) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (quaternion-copy! (-> this root rotation) (-> arg0 quat))
+  (vector-identity! (-> this root scale))
+  (when (res-lump-data arg0 'path pointer)
+    (set! (-> this path) (new 'process 'curve-control this 'path (the-as res-lump #f) #f -1000000000.0))
+    (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+    (set! (-> this path-speed)
+          (/ (* 4096.0 (res-lump-float arg0 'speed :default 200.0)) (total-distance (-> this path)))
+          )
+    )
+  (set! (-> this enabled?) #f)
+  (set! *movie-path* (the-as (pointer movie-path) (process->ppointer this)))
+  (go (method-of-object this active))
+  )

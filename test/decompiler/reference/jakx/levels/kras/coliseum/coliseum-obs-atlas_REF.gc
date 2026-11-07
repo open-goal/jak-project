@@ -32,7 +32,7 @@
 ;; definition for method 62 of type coli-object-base
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-62 ((this coli-object-base) (arg0 object) (arg1 attack-info) (arg2 object) (arg3 object))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 563) 0 #f)))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 563) (new 'static 'sound-id) #f)))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> arg1 intersection quad))
@@ -333,7 +333,7 @@
 (defmethod coli-statue-method-52 ((this coli-statue) (arg0 int))
   (set! (-> this destruction-time) arg0)
   (let ((s5-0 (process-nettable-method-27 this 'set-destruction-time)))
-    (mem-buffer-method-16 s5-0 arg0)
+    (write-int32 s5-0 arg0)
     (process-nettable-method-29 this s5-0 -1 16)
     (process-nettable-method-28 this s5-0)
     )
@@ -362,7 +362,7 @@
 
 ;; definition for method 15 of type coli-statue
 (defmethod process-nettable-method-15 ((this coli-statue) (arg0 mem-buffer))
-  (mem-buffer-method-16 arg0 (-> this destruction-time))
+  (write-int32 arg0 (-> this destruction-time))
   (none)
   )
 
@@ -370,7 +370,7 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod process-nettable-method-35 ((this coli-statue) (arg0 mem-buffer))
   (coli-statue-method-54 this (-> this entity))
-  (set! (-> this destruction-time) (mem-buffer-method-34 arg0))
+  (set! (-> this destruction-time) (read-int32 arg0))
   (if (!= (-> this destruction-time) -1)
       (go (method-of-object this explode))
       (go (method-of-object this idle))
@@ -380,10 +380,10 @@
 
 ;; definition for method 17 of type coli-statue
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-17 ((this coli-statue) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+(defmethod process-nettable-method-17 ((this coli-statue) (arg0 symbol) (arg1 mem-buffer))
   (case arg0
     (('set-destruction-time)
-     (set! (-> this destruction-time) (mem-buffer-method-34 arg1))
+     (set! (-> this destruction-time) (read-int32 arg1))
      (go (method-of-object this explode))
      )
     )
@@ -456,7 +456,7 @@
 ;; definition for method 53 of type coli-atlas-statue
 ;; INFO: Used lq/sq
 (defmethod coli-statue-method-53 ((this coli-atlas-statue))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 530) 0 #f)))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 530) (new 'static 'sound-id) #f)))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
@@ -588,7 +588,7 @@
 ;; definition for method 66 of type coli-atlas-base-a
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-a))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) 0 #f)))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
@@ -663,7 +663,7 @@
 ;; definition for method 66 of type coli-atlas-base-b
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-b))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) 0 #f)))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
@@ -793,7 +793,7 @@
 ;; definition for method 66 of type coli-atlas-base-c
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-c))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) 0 #f)))
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
@@ -1203,7 +1203,7 @@
   :virtual #t
   :enter (behavior ()
     (register-additional-spawner self)
-    (quaternion-copy! (-> self orientation) (the-as quaternion (-> self root rot)))
+    (quaternion-copy! (-> self orientation) (-> self root rotation))
     (set! (-> self set-angular-velocity) #f)
     (set! (-> self send-update) #f)
     (set! (-> self rolling-speed) 0.0)
@@ -1218,7 +1218,7 @@
   )
 
 ;; definition for method 17 of type coli-atlas-globe
-(defmethod process-nettable-method-17 ((this coli-atlas-globe) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+(defmethod process-nettable-method-17 ((this coli-atlas-globe) (arg0 symbol) (arg1 mem-buffer))
   (case arg0
     (('update)
      (if (not (process-nettable-method-22 this))
@@ -1247,14 +1247,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod process-nettable-method-35 ((this coli-atlas-globe) (arg0 mem-buffer))
-  (let ((s5-0 arg0))
-    (rigid-body-object-method-65 this (the-as vector arg0))
-    (logior! (-> this mask) (process-mask actor-pause))
-    (vector-identity! (-> this root scale))
-    (rigid-body-object-method-66 this)
-    (set! (-> this last-sent-position quad) (-> this entity trans quad))
-    (coli-atlas-globe-method-92 this s5-0)
-    )
+  (init-collision! this)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (vector-identity! (-> this root scale))
+  (rigid-body-object-method-66 this)
+  (set! (-> this last-sent-position quad) (-> this entity trans quad))
+  (coli-atlas-globe-method-92 this arg0)
   (cond
     ((< 671088.7 (vector-vector-distance-squared (-> this rbody position) (-> this last-sent-position)))
      (go (method-of-object this active))
@@ -1319,24 +1317,24 @@
                                         )
                                     )
         )
-  (mem-buffer-method-16 arg0 (- (- (if *net-mgr*
-                                       (-> *net-mgr* game-state time)
-                                       0
-                                       )
-                                   (if *net-world*
-                                       (-> *net-world* net-state game-start-time)
-                                       0
-                                       )
-                                   )
-                                (if *net-world*
-                                    (-> *net-world* net-state total-pause-time)
-                                    0
-                                    )
-                                )
-                        )
-  (level-bounding-box-method-10 *level-bounding-box* (the-as mem-buffer (-> this rbody position)) arg0)
-  (mem-buffer-method-23 arg0 (-> this rbody lin-momentum))
-  (mem-buffer-method-23 arg0 (-> this angular-velocity))
+  (write-int32 arg0 (- (- (if *net-mgr*
+                              (-> *net-mgr* game-state time)
+                              0
+                              )
+                          (if *net-world*
+                              (-> *net-world* net-state game-start-time)
+                              0
+                              )
+                          )
+                       (if *net-world*
+                           (-> *net-world* net-state total-pause-time)
+                           0
+                           )
+                       )
+               )
+  (write-pos *level-bounding-box* (-> this rbody position) arg0)
+  (write-vector arg0 (-> this rbody lin-momentum))
+  (write-vector arg0 (-> this angular-velocity))
   (none)
   )
 
@@ -1345,13 +1343,13 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod coli-atlas-globe-method-92 ((this coli-atlas-globe) (arg0 mem-buffer))
   (set! (-> this blend-position quad) (-> this root trans quad))
-  (let ((s5-0 (mem-buffer-method-34 arg0)))
+  (let ((s5-0 (read-int32 arg0)))
     (set! (-> this last-sync-time) s5-0)
-    (level-bounding-box-method-11 *level-bounding-box* (the-as mem-buffer (-> this rbody position)) arg0)
-    (mem-buffer-method-41 arg0 (the-as mem-buffer (-> this rbody lin-momentum)))
-    (mem-buffer-method-41 arg0 (the-as mem-buffer (-> this angular-velocity)))
+    (read-pos *level-bounding-box* (the-as mem-buffer (-> this rbody position)) arg0)
+    (read-vector arg0 (the-as mem-buffer (-> this rbody lin-momentum)))
+    (read-vector arg0 (the-as mem-buffer (-> this angular-velocity)))
     (set! (-> this last-position quad) (-> this rbody position quad))
-    (rigid-body-control-method-10
+    (simulate!
       (-> this rbody)
       this
       (* 0.0033333334 (seconds-per-frame) (the float (- (- (- (if *net-mgr*
@@ -1381,7 +1379,7 @@
 
 ;; definition for method 65 of type coli-atlas-globe
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-65 ((this coli-atlas-globe) (arg0 vector))
+(defmethod init-collision! ((this coli-atlas-globe))
   (set! (-> this prox) (new 'process 'proximity-ownership-params))
   ((method-of-object (-> this prox) proximity-ownership-params-method-9))
   (set! (-> this prox ownable-radius) 40960000.0)
@@ -1421,72 +1419,115 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod rigid-body-object-method-80 ((this coli-atlas-globe) (arg0 rigid-body-impact))
-  (local-vars (v1-33 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (set! (-> *coli-atlas-ball-constants* info gravity) 409600.0)
+  (cond
+    ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
+     (if (not (process-nettable-method-22 this))
+         (return (the-as symbol #t))
          )
-    (init-vf0-vector)
-    (set! (-> *coli-atlas-ball-constants* info gravity) 409600.0)
-    (cond
-      ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
-       (if (not (process-nettable-method-22 this))
-           (return (the-as symbol #t))
-           )
-       (let ((s5-0 (new 'stack-no-clear 'vector)))
-         (set! (-> s5-0 quad) (-> arg0 normal quad))
-         (set! (-> s5-0 y) (* 0.7 (-> s5-0 y)))
-         (vector-normalize! s5-0 (* 409600.0 (square (* 0.000024414063 (vector-length (-> arg0 velocity))))))
-         (set! (-> arg0 point quad) (-> this root trans quad))
-         (set! (-> s5-0 y) (fmin 32768000.0 (-> s5-0 y)))
-         (apply-impact! (-> this rbody) (-> arg0 point) s5-0)
-         )
-       (rigid-body-control-method-12 (-> this rbody) 1.0)
-       (rigid-body-control-method-13 (-> this rbody))
-       (set! (-> this send-update) (the-as basic #t))
+     (let ((s5-0 (new 'stack-no-clear 'vector)))
+       (set! (-> s5-0 quad) (-> arg0 normal quad))
+       (set! (-> s5-0 y) (* 0.7 (-> s5-0 y)))
+       (vector-normalize! s5-0 (* 409600.0 (square (* 0.000024414063 (vector-length (-> arg0 velocity))))))
+       (set! (-> arg0 point quad) (-> this root trans quad))
+       (set! (-> s5-0 y) (fmin 32768000.0 (-> s5-0 y)))
+       (apply-impact! (-> this rbody) (-> arg0 point) s5-0)
        )
-      (else
-        (let ((f30-0 (fabs (vector-dot (-> this root transv) (-> arg0 normal)))))
-          (when (>= 81920.0 f30-0)
-            (.lvf vf1 (&-> (-> this root transv) quad))
-            (.add.w.vf.x vf2 vf0 vf0)
-            (.mul.vf vf1 vf1 vf1)
-            (.mul.x.vf.x acc vf2 vf1)
-            (.add.mul.y.vf.x acc vf2 vf1 acc)
-            (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-            (.mov v1-33 vf1)
-            (set! (-> this rolling-speed) (sqrtf (- v1-33 (square f30-0))))
+     (integrate-momentum! (-> this rbody) 1.0)
+     (init-velocities! (-> this rbody))
+     (set! (-> this send-update) (the-as basic #t))
+     )
+    (else
+      (let ((f30-0 (fabs (vector-dot (-> this root transv) (-> arg0 normal)))))
+        (if (>= 81920.0 f30-0)
+            (set! (-> this rolling-speed) (sqrtf (- (vector-length-squared (-> this root transv)) (square f30-0))))
             )
-          (when (< 61440.0 (fabs (vector-dot (-> arg0 normal) (-> arg0 velocity))))
-            (when (< (+ (-> this last-bounce-time) 90) (current-time))
-              (set! (-> this last-bounce-time) (the-as int (current-time)))
-              (let ((v1-45 (-> arg0 normal))
-                    (s5-1 (new 'stack-no-clear 'peak-obs-stackvar0))
-                    )
-                (let ((a1-6 (new 'stack-no-clear 'matrix)))
-                  (vector-cross! (-> a1-6 rvec) v1-45 (new 'static 'vector :z 1.0 :w 1.0))
-                  (set! (-> a1-6 uvec quad) (-> v1-45 quad))
-                  (vector-cross! (-> a1-6 fvec) v1-45 (-> a1-6 uvec))
-                  (quaternion-normalize! (matrix->quaternion (-> s5-1 quat) a1-6))
+        (when (< 61440.0 (fabs (vector-dot (-> arg0 normal) (-> arg0 velocity))))
+          (when (< (+ (-> this last-bounce-time) 90) (current-time))
+            (set! (-> this last-bounce-time) (the-as int (current-time)))
+            (let ((v1-45 (-> arg0 normal))
+                  (s5-1 (new 'stack-no-clear 'peak-obs-stackvar0))
                   )
-                (quaternion->matrix (-> s5-1 mat) (-> s5-1 quat))
-                (set! (-> s5-1 mat trans quad) (-> arg0 point quad))
-                (cond
-                  ((or (= (-> arg0 pat mode) (pat-mode ground)) (= (-> arg0 pat mode) (pat-mode halfpipe)))
+              (let ((a1-6 (new 'stack-no-clear 'matrix)))
+                (vector-cross! (-> a1-6 rvec) v1-45 (new 'static 'vector :z 1.0 :w 1.0))
+                (set! (-> a1-6 uvec quad) (-> v1-45 quad))
+                (vector-cross! (-> a1-6 fvec) v1-45 (-> a1-6 uvec))
+                (quaternion-normalize! (matrix->quaternion (-> s5-1 quat) a1-6))
+                )
+              (quaternion->matrix (-> s5-1 mat) (-> s5-1 quat))
+              (set! (-> s5-1 mat trans quad) (-> arg0 point quad))
+              (cond
+                ((or (= (-> arg0 pat mode) (pat-mode ground)) (= (-> arg0 pat mode) (pat-mode halfpipe)))
+                 (when (!= net-simple-destruct (-> process type))
+                   (let ((f28-0 (fmax 0.7 (fmin 1.0 (/ f30-0 (meters 40)))))
+                         (f26-0 (fmax -1.0 (fmin -0.7 (+ -1.8 (/ 286720.0 f30-0)))))
+                         (v1-66 (make-sound-instance (-> *sound-info* 508) (new 'static 'sound-id) #f))
+                         )
+                     (cond
+                       (v1-66
+                         (set! (-> v1-66 volume) (the int (* 1024.0 f28-0)))
+                         (set! (-> v1-66 pitch-mod) (the int (* 1524.0 f26-0)))
+                         (set! (-> v1-66 trans quad) (-> this root trans quad))
+                         (logior! (-> v1-66 flags) 96)
+                         (logior! (-> v1-66 mask) 1)
+                         (-> v1-66 id)
+                         )
+                       (else
+                         0
+                         )
+                       )
+                     )
+                   )
+                 (let ((v1-71 (get-field-spec-by-id (-> *part-id-table* 1189) (sp-field-id spt-vel-y)))
+                       (f0-23 (fmin 2.0 (/ f30-0 (meters 50))))
+                       )
+                   (set! (-> v1-71 initial-valuef) (* (-> v1-71 initial-valuef) f0-23))
+                   (set! (-> v1-71 random-rangef) (* (-> v1-71 random-rangef) f0-23))
+                   )
+                 (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 343))
+                 (vector-reset! (-> *part-tracker-params-default* local-offset))
+                 (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+                 (set! (-> *part-tracker-params-default* callback) #f)
+                 (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+                 (set! (-> *part-tracker-params-default* target) #f)
+                 (set! (-> *part-tracker-params-default* mat-joint) (-> s5-1 mat))
+                 (set! (-> *part-tracker-params-default* local-space-param) 0)
+                 (set! (-> *part-tracker-params-default* local-space-callback) #f)
+                 (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+                 *part-tracker-params-default*
+                 (if (logtest? (-> *part-group-id-table* 343 flags) (sp-group-flag sp13))
+                     (process-spawn
+                       part-tracker-subsampler
+                       :init part-tracker-subsampler-init
+                       *part-tracker-params-default*
+                       :name "part-tracker-subsampler"
+                       :to *entity-pool*
+                       :unk 0
+                       )
+                     (process-spawn
+                       part-tracker
+                       :init part-tracker-init
+                       *part-tracker-params-default*
+                       :name "part-tracker"
+                       :to *entity-pool*
+                       :unk 0
+                       )
+                     )
+                 )
+                ((begin
                    (when (!= net-simple-destruct (-> process type))
-                     (let ((f28-0 (fmax 0.7 (fmin 1.0 (/ f30-0 (meters 40)))))
-                           (f26-0 (fmax -1.0 (fmin -0.7 (+ -1.8 (/ 286720.0 f30-0)))))
-                           (v1-66 (make-sound-instance (-> *sound-info* 508) 0 #f))
+                     (let ((f28-1 (fmax 0.5 (fmin 1.0 (/ f30-0 (meters 70)))))
+                           (f30-1 (fmax -1.0 (fmin -0.5 (+ -1.8 (/ 286720.0 f30-0)))))
+                           (v1-110 (make-sound-instance (-> *sound-info* 509) (new 'static 'sound-id) #f))
                            )
                        (cond
-                         (v1-66
-                           (set! (-> v1-66 volume) (the int (* 1024.0 f28-0)))
-                           (set! (-> v1-66 pitch-mod) (the int (* 1524.0 f26-0)))
-                           (set! (-> v1-66 trans quad) (-> this root trans quad))
-                           (logior! (-> v1-66 flags) 96)
-                           (logior! (-> v1-66 mask) 1)
-                           (-> v1-66 id)
+                         (v1-110
+                           (set! (-> v1-110 volume) (the int (* 1024.0 f28-1)))
+                           (set! (-> v1-110 pitch-mod) (the int (* 1524.0 f30-1)))
+                           (set! (-> v1-110 trans quad) (-> this root trans quad))
+                           (logior! (-> v1-110 flags) 96)
+                           (logior! (-> v1-110 mask) 1)
+                           (-> v1-110 id)
                            )
                          (else
                            0
@@ -1494,13 +1535,7 @@
                          )
                        )
                      )
-                   (let ((v1-71 (get-field-spec-by-id (-> *part-id-table* 1189) (sp-field-id spt-vel-y)))
-                         (f0-23 (fmin 2.0 (/ f30-0 (meters 50))))
-                         )
-                     (set! (-> v1-71 initial-valuef) (* (-> v1-71 initial-valuef) f0-23))
-                     (set! (-> v1-71 random-rangef) (* (-> v1-71 random-rangef) f0-23))
-                     )
-                   (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 343))
+                   (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 342))
                    (vector-reset! (-> *part-tracker-params-default* local-offset))
                    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
                    (set! (-> *part-tracker-params-default* callback) #f)
@@ -1511,77 +1546,25 @@
                    (set! (-> *part-tracker-params-default* local-space-callback) #f)
                    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
                    *part-tracker-params-default*
-                   (if (logtest? (-> *part-group-id-table* 343 flags) (sp-group-flag sp13))
-                       (process-spawn
-                         part-tracker-subsampler
-                         :init part-tracker-subsampler-init
-                         *part-tracker-params-default*
-                         :name "part-tracker-subsampler"
-                         :to *entity-pool*
-                         :unk 0
-                         )
-                       (process-spawn
-                         part-tracker
-                         :init part-tracker-init
-                         *part-tracker-params-default*
-                         :name "part-tracker"
-                         :to *entity-pool*
-                         :unk 0
-                         )
-                       )
+                   (logtest? (-> *part-group-id-table* 342 flags) (sp-group-flag sp13))
                    )
-                  ((begin
-                     (when (!= net-simple-destruct (-> process type))
-                       (let ((f28-1 (fmax 0.5 (fmin 1.0 (/ f30-0 (meters 70)))))
-                             (f30-1 (fmax -1.0 (fmin -0.5 (+ -1.8 (/ 286720.0 f30-0)))))
-                             (v1-110 (make-sound-instance (-> *sound-info* 509) 0 #f))
-                             )
-                         (cond
-                           (v1-110
-                             (set! (-> v1-110 volume) (the int (* 1024.0 f28-1)))
-                             (set! (-> v1-110 pitch-mod) (the int (* 1524.0 f30-1)))
-                             (set! (-> v1-110 trans quad) (-> this root trans quad))
-                             (logior! (-> v1-110 flags) 96)
-                             (logior! (-> v1-110 mask) 1)
-                             (-> v1-110 id)
-                             )
-                           (else
-                             0
-                             )
-                           )
-                         )
-                       )
-                     (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 342))
-                     (vector-reset! (-> *part-tracker-params-default* local-offset))
-                     (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-                     (set! (-> *part-tracker-params-default* callback) #f)
-                     (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-                     (set! (-> *part-tracker-params-default* target) #f)
-                     (set! (-> *part-tracker-params-default* mat-joint) (-> s5-1 mat))
-                     (set! (-> *part-tracker-params-default* local-space-param) 0)
-                     (set! (-> *part-tracker-params-default* local-space-callback) #f)
-                     (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-                     *part-tracker-params-default*
-                     (logtest? (-> *part-group-id-table* 342 flags) (sp-group-flag sp13))
-                     )
-                   (process-spawn
-                     part-tracker-subsampler
-                     :init part-tracker-subsampler-init
-                     *part-tracker-params-default*
-                     :name "part-tracker-subsampler"
-                     :to *entity-pool*
-                     :unk 0
-                     )
+                 (process-spawn
+                   part-tracker-subsampler
+                   :init part-tracker-subsampler-init
+                   *part-tracker-params-default*
+                   :name "part-tracker-subsampler"
+                   :to *entity-pool*
+                   :unk 0
                    )
-                  (else
-                    (process-spawn
-                      part-tracker
-                      :init part-tracker-init
-                      *part-tracker-params-default*
-                      :name "part-tracker"
-                      :to *entity-pool*
-                      :unk 0
-                      )
+                 )
+                (else
+                  (process-spawn
+                    part-tracker
+                    :init part-tracker-init
+                    *part-tracker-params-default*
+                    :name "part-tracker"
+                    :to *entity-pool*
+                    :unk 0
                     )
                   )
                 )
@@ -1590,34 +1573,35 @@
           )
         )
       )
-    (set! (-> this set-angular-velocity) (the-as basic #t))
-    (the-as symbol 0)
     )
+  (set! (-> this set-angular-velocity) (the-as basic #t))
+  (the-as symbol 0)
   )
 
 ;; definition for method 82 of type coli-atlas-globe
 ;; INFO: Used lq/sq
-(defmethod rigid-body-object-method-82 ((this coli-atlas-globe)
-                                       (arg0 process-drawable)
-                                       (arg1 rigid-body-object-constants)
-                                       (arg2 object)
-                                       (arg3 object)
-                                       )
+;; WARN: Return type mismatch symbol vs object.
+(defmethod attack-handler ((this coli-atlas-globe)
+                          (arg0 process-focusable)
+                          (arg1 attack-info)
+                          (arg2 touching-shapes-entry)
+                          (arg3 penetrate)
+                          )
   (if (not (process-nettable-method-22 this))
-      (return #t)
+      (return (the-as object #t))
       )
   (when arg2
     (if (and (-> this next-state) (= (-> this next-state name) 'idle))
         (rigid-body-object-method-77 this)
         )
     (let ((s5-0 (new 'stack-no-clear 'rigid-body-impact)))
-      (rigid-body-object-method-84 this)
-      (if (logtest? #x40000 (the-as int (-> arg1 info inv-inertial-tensor fvec z)))
-          (set! (-> s5-0 velocity quad) (-> arg1 info cm-offset-joint quad))
+      (rigid-body-object-method-84 this s5-0 arg2)
+      (if (logtest? (attack-mask attacker-velocity) (-> arg1 mask))
+          (set! (-> s5-0 velocity quad) (-> arg1 attacker-velocity quad))
           (vector-! (-> s5-0 velocity) (-> s5-0 point) (-> arg0 root trans))
           )
-      (rigid-body-object-method-79 this)
-      (rigid-body-object-method-76 this)
+      (rigid-body-object-method-79 this s5-0 arg1)
+      (on-impact this)
       (let ((s3-1 (new 'stack-no-clear 'vector)))
         (set! (-> s3-1 quad) (-> s5-0 velocity quad))
         (cond
@@ -1635,8 +1619,8 @@
         (set! (-> s5-0 point quad) (-> this root trans quad))
         (apply-impact! (-> this rbody) (-> s5-0 point) s3-1)
         )
-      (rigid-body-control-method-12 (-> this rbody) 1.0)
-      (rigid-body-control-method-13 (-> this rbody))
+      (integrate-momentum! (-> this rbody) 1.0)
+      (init-velocities! (-> this rbody))
       (rigid-body-object-method-80 this s5-0)
       )
     (set! (-> this set-angular-velocity) (the-as basic #t))
@@ -1648,47 +1632,16 @@
 ;; definition for method 94 of type coli-atlas-globe
 ;; INFO: Used lq/sq
 (defmethod coli-atlas-globe-method-94 ((this coli-atlas-globe))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 (new 'stack-no-clear 'vector)))
-      (vector-! v1-0 (-> this rbody position) (-> this last-position))
-      (let ((a3-1 (-> this blend-position)))
-        (let ((a1-2 (-> this blend-position))
-              (a2-2 v1-0)
-              )
-          (.lvf vf4 (&-> a1-2 quad))
-          (.lvf vf5 (&-> a2-2 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a3-1 quad) vf6)
-        )
-      (set! (-> this last-position quad) (-> this rbody position quad))
-      (vector-! v1-0 (-> this rbody position) (-> this blend-position))
-      (let ((a2-8 (-> this blend-position)))
-        (let ((a1-6 (-> this blend-position)))
-          (let ((a3-5 (fmin 1.0 (seconds-per-frame))))
-            (.mov vf7 a3-5)
-            )
-          (.lvf vf5 (&-> v1-0 quad))
-          (.lvf vf4 (&-> a1-6 quad))
-          )
-        (.add.x.vf.w vf6 vf0 vf0)
-        (.mul.x.vf.xyz acc vf5 vf7)
-        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-        (.svf (&-> a2-8 quad) vf6)
-        )
-      )
-    (let ((v0-0 (-> this root trans)))
-      (set! (-> v0-0 quad) (-> this blend-position quad))
-      v0-0
-      )
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector-! v1-0 (-> this rbody position) (-> this last-position))
+    (vector+! (-> this blend-position) (-> this blend-position) v1-0)
+    (set! (-> this last-position quad) (-> this rbody position quad))
+    (vector-! v1-0 (-> this rbody position) (-> this blend-position))
+    (vector+*! (-> this blend-position) (-> this blend-position) v1-0 (fmin 1.0 (seconds-per-frame)))
+    )
+  (let ((v0-0 (-> this root trans)))
+    (set! (-> v0-0 quad) (-> this blend-position quad))
+    v0-0
     )
   )
 
@@ -1751,7 +1704,7 @@
             )
           )
          (else
-           (let ((v1-34 (make-sound-instance (-> *sound-info* 529) 0 #f)))
+           (let ((v1-34 (make-sound-instance (-> *sound-info* 529) (new 'static 'sound-id) #f)))
              (set! (-> this rolling-sound)
                    (the-as uint (cond
                                   (v1-34
@@ -1800,9 +1753,9 @@
       )
     (fill-using-line-sphere *collide-cache* (-> v1-42 0))
     )
-  ((method-of-object this rigid-body-object-method-63))
+  (rigid-body-object-method-63 this)
   (rigid-body-object-method-70 this)
-  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (update-rbody-transform! (-> this rbody) (-> this root))
   (if (< 1024000.0 (-> this root trans y))
       (set! (-> this rbody lin-momentum y) (fmin 0.0 (-> this rbody lin-momentum y)))
       )
@@ -1827,7 +1780,7 @@
         (quaternion*! (-> this orientation) (the-as quaternion (-> s5-0 2)) (-> this orientation))
         )
       (quaternion-normalize! (-> this orientation))
-      (quaternion-copy! (the-as quaternion (-> this root rot)) (-> this orientation))
+      (quaternion-copy! (-> this root rotation) (-> this orientation))
       (if (and (coli-atlas-globe-method-93 this) (process-nettable-method-22 this))
           (coli-atlas-globe-method-90 this)
           )
@@ -1844,6 +1797,7 @@
   )
 
 ;; definition for method 66 of type coli-atlas-globe
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-66 ((this coli-atlas-globe))
   (set! (-> this roll-sound-stop-time) (the-as int (current-time)))
   (rigid-body-object-method-64 this *coli-atlas-ball-constants*)
@@ -1852,7 +1806,8 @@
     (art-group-get-by-name *level* "skel-coli-atlas-globe" (the-as (pointer level) #f))
     0
     )
-  0.0
+  0
+  (none)
   )
 
 ;; definition of type coli-atlas-statue-break-a

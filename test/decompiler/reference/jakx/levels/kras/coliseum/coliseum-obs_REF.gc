@@ -52,104 +52,85 @@
 ;; definition for method 66 of type coli-center-arch
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-center-arch))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 506) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 506) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
+        )
+      (else
+        0
         )
       )
-    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (set! (-> s5-0 gravity) -409600.0)
-      (set! (-> s5-0 rot-speed) 4.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (new 'static 'vector :x -61440.0 :y 40960.0 :z -61440.0 :w 1.0))
-              (a0-6 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-6 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-9 (new 'static 'vector :x 61440.0 :y 81920.0 :z 61440.0 :w 1.0))
-              (a0-7 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-9 quad))
-          (.lvf vf5 (&-> a0-7 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
+    )
+  (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (set! (-> s5-0 gravity) -409600.0)
+    (set! (-> s5-0 rot-speed) 4.0)
+    (vector+!
+      (-> s5-0 fountain-rand-transv-lo)
+      (new 'static 'vector :x -61440.0 :y 40960.0 :z -61440.0 :w 1.0)
+      (-> this impact-velocity)
+      )
+    (vector+!
+      (-> s5-0 fountain-rand-transv-hi)
+      (new 'static 'vector :x 61440.0 :y 81920.0 :z 61440.0 :w 1.0)
+      (-> this impact-velocity)
+      )
+    (process-spawn
+      joint-exploder
+      (art-group-get-by-name *level* "skel-coli-center-arch-explode" (the-as (pointer level) #f))
+      5
+      s5-0
+      *coli-center-arch-explode-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
+      )
+    )
+  (when (type? (-> this root) collide-shape)
+    (let ((v1-17 (-> this root root-prim)))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (if (type? (-> this root) collide-shape)
+      (transform-post)
+      )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 335))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 0 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 335 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
         )
       (process-spawn
-        joint-exploder
-        (art-group-get-by-name *level* "skel-coli-center-arch-explode" (the-as (pointer level) #f))
-        5
-        s5-0
-        *coli-center-arch-explode-params*
-        :name "joint-exploder"
-        :to this
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
         :unk 0
         )
       )
-    (when (type? (-> this root) collide-shape)
-      (let ((v1-17 (-> this root root-prim)))
-        (set! (-> v1-17 prim-core collide-as) (collide-spec))
-        (set! (-> v1-17 prim-core collide-with) (collide-spec))
-        )
-      0
-      )
-    (logior! (-> this draw status) (draw-control-status no-draw))
-    (if (type? (-> this root) collide-shape)
-        (transform-post)
-        )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 335))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 0 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 335 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
-    )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-center-arch

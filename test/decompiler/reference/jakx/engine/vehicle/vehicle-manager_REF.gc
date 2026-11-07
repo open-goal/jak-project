@@ -282,16 +282,11 @@
                                           )
                                  )
         )
-  (let* ((a0-8 (-> self main-thread))
-         (t9-0 (method-of-object a0-8 stack-size-set!))
-         (a1-1 16)
-         )
-    (t9-0 a0-8 a1-1)
-    (logior! (-> self mask) (process-mask vehicle))
-    (rigid-body-object-method-65 self (the-as vector a1-1))
-    )
+  (stack-size-set! (-> self main-thread) 16)
+  (logior! (-> self mask) (process-mask vehicle))
+  (init-collision! self)
   (set! (-> self root trans quad) (-> arg1 position quad))
-  (quaternion-copy! (the-as quaternion (-> self root rot)) (-> arg1 rotation))
+  (quaternion-copy! (-> self root rotation) (-> arg1 rotation))
   (set! (-> self root transv quad) (-> arg1 velocity quad))
   (set! (-> self behavior) (-> arg1 behavior))
   (set! (-> self impact-callback) (-> arg1 impact-callback))
@@ -303,7 +298,7 @@
       )
   (set! (-> self player-id) (-> arg1 player-id))
   (rigid-body-object-method-66 self)
-  (rigid-body-queue-method-11 *rigid-body-queue* self)
+  (add-to-queue *rigid-body-queue* self)
   (if (and *net-process-mgr* (nonzero? (-> arg1 behavior)))
       (vehicle-method-184 self)
       (set! (-> self player-id) -1)
@@ -368,113 +363,97 @@
   )
 
 ;; definition for function vehicle-spawn
-;; WARN: Return type mismatch process vs vehicle.
 (defun vehicle-spawn ((arg0 vehicle-type) (arg1 vehicle-spawn-params))
-  (local-vars (v1-19 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
+  (cond
+    ((and (>= (-> arg1 player-id) 0) *net-world*)
+     (when (!= (-> *net-world* player-to-vehicle-slot-map-s8 (-> arg1 player-id)) -1)
+       (set! (-> arg1 level-slot) (+ (-> *net-world* player-to-vehicle-slot-map-s8 (-> arg1 player-id)) 6))
+       (set! (-> arg1 driver-slot)
+             (the-as uint (+ (-> *net-world* player-to-vehicle-slot-map-s8 (-> arg1 player-id)) 12))
+             )
+       )
+     )
+    (else
+      (format 0 "*** warning - vehicle did not have valid player-id~%")
+      )
+    )
+  (if (not *vehicle-manager*)
+      (vehicle-manager-start (the-as process *entity-pool*))
+      )
+  (let ((s5-0 (the-as vehicle #f)))
     (cond
-      ((and (>= (-> arg1 player-id) 0) *net-world*)
-       (when (!= (-> *net-world* player-to-vehicle-slot-map (-> arg1 player-id)) -1)
-         (set! (-> arg1 level-slot) (+ (-> *net-world* player-to-vehicle-slot-map (-> arg1 player-id)) 6))
-         (set! (-> arg1 driver-slot)
-               (the-as uint (+ (-> *net-world* player-to-vehicle-slot-map (-> arg1 player-id)) 12))
-               )
+      ((or (< (square 67108864.0) (vector-length-squared (-> arg1 position)))
+           (< 1.1 (quaternion-norm (-> arg1 rotation)))
+           )
+       (when *debug-segment*
+         (format 0 "vehicle-spawn: bad position or rotation passed~%")
+         (format
+           0
+           "vehicle-spawn: position (~M ~M ~M)~%"
+           (-> arg1 position x)
+           (-> arg1 position y)
+           (-> arg1 position z)
+           )
+         (format
+           0
+           "vehicle-spawn: rotation (~f ~f ~f ~f)~%"
+           (-> arg1 rotation x)
+           (-> arg1 rotation y)
+           (-> arg1 rotation z)
+           (-> arg1 rotation w)
+           )
+         (break!)
+         0
          )
        )
-      (else
-        (format 0 "*** warning - vehicle did not have valid player-id~%")
-        )
-      )
-    (if (not *vehicle-manager*)
-        (vehicle-manager-start (the-as process *entity-pool*))
-        )
-    (let ((s5-0 (the-as process #f)))
-      (let ((f0-2 (square 67108864.0)))
-        (.lvf vf1 (&-> (-> arg1 position) quad))
-        (.add.w.vf.x vf2 vf0 vf0)
-        (.mul.vf vf1 vf1 vf1)
-        (.mul.x.vf.x acc vf2 vf1)
-        (.add.mul.y.vf.x acc vf2 vf1 acc)
-        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-        (.mov v1-19 vf1)
-        (cond
-          ((or (< f0-2 v1-19) (< 1.1 (quaternion-norm (-> arg1 rotation))))
-           (when *debug-segment*
-             (format 0 "vehicle-spawn: bad position or rotation passed~%")
-             (format
-               0
-               "vehicle-spawn: position (~M ~M ~M)~%"
-               (-> arg1 position x)
-               (-> arg1 position y)
-               (-> arg1 position z)
-               )
-             (format
-               0
-               "vehicle-spawn: rotation (~f ~f ~f ~f)~%"
-               (-> arg1 rotation x)
-               (-> arg1 rotation y)
-               (-> arg1 rotation z)
-               (-> arg1 rotation w)
-               )
-             (break!)
+      ((begin
+         (cond
+           ((and (or (= arg0 (vehicle-type drone))
+                     (= arg0 (vehicle-type vehicle-type-16))
+                     (vehicle-in-level? arg0 (-> *level* level (-> arg1 level-slot)))
+                     )
+                 (or (= (-> *level* level (-> arg1 level-slot) status) 'active)
+                     (= (-> *level* level (-> arg1 level-slot) status) 'loaded)
+                     )
+                 *vehicle-manager*
+                 )
+            (let* ((a1-11 (type-from-vehicle-type arg0))
+                   (s3-0 (get-process *default-dead-pool* a1-11 #x8000 1))
+                   (v1-42 (when s3-0
+                            (let ((t9-9 (method-of-type process activate)))
+                              (t9-9 s3-0 *vehicle-manager* "vehicle" (the-as pointer #x70004000))
+                              )
+                            (run-now-in-process s3-0 vehicle-init-by-other arg0 arg1)
+                            (-> s3-0 ppointer)
+                            )
+                          )
+                   )
+              (if v1-42
+                  (set! s5-0 (the-as vehicle (-> v1-42 0)))
+                  )
+              )
+            )
+           (else
              0
              )
            )
-          ((begin
-             (cond
-               ((and (or (= arg0 (vehicle-type drone))
-                         (= arg0 (vehicle-type vehicle-type-16))
-                         (vehicle-in-level? arg0 (-> *level* level (-> arg1 level-slot)))
-                         )
-                     (or (= (-> *level* level (-> arg1 level-slot) status) 'active)
-                         (= (-> *level* level (-> arg1 level-slot) status) 'loaded)
-                         )
-                     *vehicle-manager*
-                     )
-                (let* ((a1-11 (type-from-vehicle-type arg0))
-                       (s3-0 (get-process *default-dead-pool* a1-11 #x8000 1))
-                       (v1-42 (when s3-0
-                                (let ((t9-9 (method-of-type process activate)))
-                                  (t9-9 s3-0 *vehicle-manager* "vehicle" (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process s3-0 vehicle-init-by-other arg0 arg1)
-                                (-> s3-0 ppointer)
-                                )
-                              )
-                       )
-                  (if v1-42
-                      (set! s5-0 (-> v1-42 0))
-                      )
-                  )
-                )
-               (else
-                 0
-                 )
-               )
-             s5-0
+         s5-0
+         )
+       (when (logtest? (-> arg1 flags) 1)
+         (type-from-driver-type (-> arg1 driver-type))
+         (if (driver-spawn (-> arg1 driver-type) s5-0 (-> arg1 driver-slot-unsigned))
+             (vehicle-method-106 s5-0 0)
              )
-           (when (logtest? (-> arg1 flags) 1)
-             (type-from-driver-type (-> arg1 driver-type))
-             (if (driver-spawn (-> arg1 driver-type) s5-0 (the-as uint (-> arg1 driver-slot-unsigned)))
-                 (vehicle-method-106 (the-as vehicle s5-0) 0)
-                 )
-             )
-           (if (logtest? (-> arg1 flags) 16)
-               (helmet-garage-spawn (the-as vehicle s5-0))
-               )
-           (if (= (-> arg1 behavior) 4)
-               (vehicle-respawn-invul-spawn (the-as vehicle s5-0))
-               )
+         )
+       (if (logtest? (-> arg1 flags) 16)
+           (helmet-garage-spawn s5-0)
            )
-          )
-        )
-      (the-as vehicle s5-0)
+       (if (= (-> arg1 behavior) 4)
+           (vehicle-respawn-invul-spawn s5-0)
+           )
+       )
       )
+    s5-0
     )
   )
 
@@ -497,3 +476,7 @@
     (the-as vehicle v0-0)
     )
   )
+
+
+
+

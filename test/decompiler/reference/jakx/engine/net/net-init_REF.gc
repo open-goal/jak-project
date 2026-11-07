@@ -1,0 +1,610 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+'knet-scert-function-0-args
+
+;; failed to figure out what this is:
+'knet-scert-function-1-args
+
+;; failed to figure out what this is:
+'knet-scert-function-2-args
+
+;; failed to figure out what this is:
+'knet-scert-function-3-args
+
+;; failed to figure out what this is:
+'knet-scert-function-4-args
+
+;; failed to figure out what this is:
+'knet-scert-function-5-args
+
+;; failed to figure out what this is:
+'knet-scert-function-6-args
+
+;; failed to figure out what this is:
+'knet-scert-function-7-args
+
+;; failed to figure out what this is:
+'knet-scert-function-8-args
+
+;; failed to figure out what this is:
+'knet-scert-function-9-args
+
+;; failed to figure out what this is:
+'knet-scert-function-10-args
+
+;; failed to figure out what this is:
+'knet-scert-get-extra-params
+
+;; failed to figure out what this is:
+'*scert-function-id*
+
+;; failed to figure out what this is:
+'knet-test
+
+;; failed to figure out what this is:
+'knet-get-local-rtc
+
+;; failed to figure out what this is:
+'knet-file-erase
+
+;; failed to figure out what this is:
+'knet-lg-init
+
+;; failed to figure out what this is:
+'knet-lg-read
+
+;; failed to figure out what this is:
+'knet-lg-write
+
+;; failed to figure out what this is:
+'knet-lg-tick
+
+;; failed to figure out what this is:
+'knet-lg-got-headset
+
+;; failed to figure out what this is:
+'knet-lg-set-recording
+
+;; failed to figure out what this is:
+'knet-lg-set-playback
+
+;; failed to figure out what this is:
+'knet-lg-bytes-avail
+
+;; failed to figure out what this is:
+'knet-lg-bytes-in-playback-queue
+
+;; failed to figure out what this is:
+'knet-lg-aread
+
+;; failed to figure out what this is:
+'knet-lg-awrite
+
+;; failed to figure out what this is:
+'knet-lg-async
+
+;; failed to figure out what this is:
+'knet-yield
+
+;; definition of type sce-stat
+(deftype sce-stat (structure)
+  ((mode     uint32)
+   (attr     int32)
+   (size     int32)
+   (ctime    uint8   8)
+   (atime    uint8   8)
+   (mtime    uint8   8)
+   (hisize   int32)
+   (private  uint32  6)
+   )
+  )
+
+;; definition for method 3 of type sce-stat
+(defmethod inspect ((this sce-stat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sce-stat)
+  (format #t "~1Tmode: ~D~%" (-> this mode))
+  (format #t "~1Tattr: ~D~%" (-> this attr))
+  (format #t "~1Tsize: ~D~%" (-> this size))
+  (format #t "~1Tctime[8] @ #x~X~%" (-> this ctime))
+  (format #t "~1Tatime[8] @ #x~X~%" (-> this atime))
+  (format #t "~1Tmtime[8] @ #x~X~%" (-> this mtime))
+  (format #t "~1Thisize: ~D~%" (-> this hisize))
+  (format #t "~1Tprivate[6] @ #x~X~%" (-> this private))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type sce-dirent
+(deftype sce-dirent (structure)
+  ((stat     sce-stat  :inline)
+   (name     uint8     256)
+   (private  pointer)
+   )
+  )
+
+;; definition for method 3 of type sce-dirent
+(defmethod inspect ((this sce-dirent))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sce-dirent)
+  (format #t "~1Tstat: #<sce-stat @ #x~X>~%" (-> this stat))
+  (format #t "~1Tname[256] @ #x~X~%" (-> this name))
+  (format #t "~1Tprivate: ~A~%" (-> this private))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+'knet-dopen
+
+;; failed to figure out what this is:
+'knet-dclose
+
+;; failed to figure out what this is:
+'knet-dread
+
+;; failed to figure out what this is:
+'knet-mkdir
+
+;; definition for function simple-dir-test
+;; WARN: Swapped fp-relative label and field offsets for "host0:"
+;; WARN: Return type mismatch int vs object.
+(defun simple-dir-test ()
+  (let ((gp-0 (new 'stack-no-clear 'sce-dirent))
+        (s5-0 (knet-dopen (-> "host0:" data)))
+        )
+    (when (>= s5-0 0)
+      (let ((v1-2 (knet-dread s5-0 (the-as pointer (-> gp-0 stat)))))
+        (while (> v1-2 0)
+          (format 0 "~G~%" (-> gp-0 name))
+          (set! v1-2 (knet-dread s5-0 (the-as pointer (-> gp-0 stat))))
+          )
+        )
+      (knet-dclose s5-0)
+      )
+    )
+  0
+  )
+
+;; definition of type eznet-combination
+(deftype eznet-combination (structure)
+  ((status    int32)
+   (iftype    int32)
+   (name      uint8  64)
+   (ifc-name  uint8  64)
+   (dev-name  uint8  64)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type eznet-combination
+(defmethod inspect ((this eznet-combination))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'eznet-combination)
+  (format #t "~1Tstatus: ~D~%" (-> this status))
+  (format #t "~1Tiftype: ~D~%" (-> this iftype))
+  (format #t "~1Tname[64] @ #x~X~%" (-> this name))
+  (format #t "~1Tifc-name[64] @ #x~X~%" (-> this ifc-name))
+  (format #t "~1Tdev-name[64] @ #x~X~%" (-> this dev-name))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type eznet-combination-list
+(deftype eznet-combination-list (structure)
+  ((length       int32)
+   (default      int32)
+   (netdb-order  uint32             10)
+   (list         eznet-combination  10 :inline)
+   )
+  )
+
+;; definition for method 3 of type eznet-combination-list
+(defmethod inspect ((this eznet-combination-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'eznet-combination-list)
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tdefault: ~D~%" (-> this default))
+  (format #t "~1Tnetdb-order[10] @ #x~X~%" (-> this netdb-order))
+  (format #t "~1Tlist[10] @ #x~X~%" (-> this list))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type sce-dnas2-unique-id
+(deftype sce-dnas2-unique-id (structure)
+  ((category  uint32)
+   (ptr       uint32)
+   (sizep     uint32)
+   (result    int32)
+   )
+  )
+
+;; definition for method 3 of type sce-dnas2-unique-id
+(defmethod inspect ((this sce-dnas2-unique-id))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sce-dnas2-unique-id)
+  (format #t "~1Tcategory: ~D~%" (-> this category))
+  (format #t "~1Tptr: #x~X~%" (-> this ptr))
+  (format #t "~1Tsizep: #x~X~%" (-> this sizep))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type sce-dnas2-status
+(deftype sce-dnas2-status (structure)
+  ((code      int32)
+   (sub-code  int32)
+   (progress  int32)
+   (optional  uint32)
+   )
+  )
+
+;; definition for method 3 of type sce-dnas2-status
+(defmethod inspect ((this sce-dnas2-status))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sce-dnas2-status)
+  (format #t "~1Tcode: ~D~%" (-> this code))
+  (format #t "~1Tsub-code: ~D~%" (-> this sub-code))
+  (format #t "~1Tprogress: ~D~%" (-> this progress))
+  (format #t "~1Toptional: #x~X~%" (-> this optional))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+'knet-nm-init
+
+;; failed to figure out what this is:
+'knet-nm-encode
+
+;; failed to figure out what this is:
+'knet-nm-decode
+
+;; failed to figure out what this is:
+'knet-nm-decode3
+
+;; failed to figure out what this is:
+'knet-nm-decode4
+
+;; failed to figure out what this is:
+'knet-nm-decoder-needs-input
+
+;; failed to figure out what this is:
+'knet-nm-reset-encoder
+
+;; failed to figure out what this is:
+'knet-nm-reset-decoder
+
+;; failed to figure out what this is:
+'knet-eenet-bytes-used
+
+;; failed to figure out what this is:
+'knet-eenet-get-mac
+
+;; failed to figure out what this is:
+'knet-eenet-get-configname
+
+;; failed to figure out what this is:
+'knet-eenet-get-config-list
+
+;; failed to figure out what this is:
+'knet-eenet-dns-start
+
+;; failed to figure out what this is:
+'knet-eenet-dns-poll
+
+;; failed to figure out what this is:
+'knet-eenet-get-dns-addr
+
+;; failed to figure out what this is:
+'knet-eenet-start-hw
+
+;; failed to figure out what this is:
+'knet-dev9-present
+
+;; failed to figure out what this is:
+'knet-eenet-poll-is-started
+
+;; failed to figure out what this is:
+'knet-eenet-shutdown
+
+;; failed to figure out what this is:
+'knet-eenet-poll-is-shutdown
+
+;; failed to figure out what this is:
+'knet-eenet-get-config-list
+
+;; failed to figure out what this is:
+'knet-eenet-set-filter
+
+;; failed to figure out what this is:
+'knet-udp-socket-open
+
+;; failed to figure out what this is:
+'knet-udp-socket-close
+
+;; failed to figure out what this is:
+'knet-udp-socket-sendto
+
+;; failed to figure out what this is:
+'knet-udp-socket-recvfrom
+
+;; failed to figure out what this is:
+'knet-udp-errno
+
+;; failed to figure out what this is:
+'knet-tcp-socket-connect
+
+;; failed to figure out what this is:
+'knet-tcp-socket-poll
+
+;; failed to figure out what this is:
+'knet-tcp-set-sockopt
+
+;; failed to figure out what this is:
+'knet-tcp-socket-open
+
+;; failed to figure out what this is:
+'knet-tcp-socket-close
+
+;; failed to figure out what this is:
+'knet-tcp-socket-send
+
+;; failed to figure out what this is:
+'knet-tcp-socket-recv
+
+;; failed to figure out what this is:
+'knet-tcp-errno
+
+;; definition of type patch-hdr
+(deftype patch-hdr (structure)
+  ((magic          uint32)
+   (this-len       uint32)
+   (uncomp-len     uint32)
+   (src-file-len   uint32)
+   (dest-file-len  uint32)
+   (src-hash       uint32)
+   (dest-hash      uint32)
+   )
+  )
+
+;; definition for method 3 of type patch-hdr
+(defmethod inspect ((this patch-hdr))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'patch-hdr)
+  (format #t "~1Tmagic: ~D~%" (-> this magic))
+  (format #t "~1Tthis-len: ~D~%" (-> this this-len))
+  (format #t "~1Tuncomp-len: ~D~%" (-> this uncomp-len))
+  (format #t "~1Tsrc-file-len: ~D~%" (-> this src-file-len))
+  (format #t "~1Tdest-file-len: ~D~%" (-> this dest-file-len))
+  (format #t "~1Tsrc-hash: ~D~%" (-> this src-hash))
+  (format #t "~1Tdest-hash: ~D~%" (-> this dest-hash))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type patch-group-entry
+(deftype patch-group-entry (structure)
+  ((name-hash  uint32)
+   (offset     uint32)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type patch-group-entry
+(defmethod inspect ((this patch-group-entry))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'patch-group-entry)
+  (format #t "~1Tname-hash: ~D~%" (-> this name-hash))
+  (format #t "~1Toffset: ~D~%" (-> this offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type patch-group
+(deftype patch-group (structure)
+  ((patch-ct  uint32)
+   (data      patch-group-entry  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type patch-group
+(defmethod inspect ((this patch-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'patch-group)
+  (format #t "~1Tpatch-ct: ~D~%" (-> this patch-ct))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+'knet-patch
+
+;; failed to figure out what this is:
+'knet-patch-hash
+
+;; failed to figure out what this is:
+'knet-get-static-patches
+
+;; failed to figure out what this is:
+'knet-get-dynamic-patches
+
+;; failed to figure out what this is:
+'knet-get-kernel-version-string
+
+;; failed to figure out what this is:
+'knet-scert-net-get-nat-service
+
+;; failed to figure out what this is:
+(network-bootstrap)
+
+;; failed to figure out what this is:
+(knet-lg-init mem-alloc-lgaud mem-free-lgaud)
+
+;; failed to figure out what this is:
+(knet-nm-init mem-alloc-nelly mem-free-nelly)
+
+;; definition for symbol *scert-extra-params*, type (pointer uint32)
+(define *scert-extra-params* (knet-scert-get-extra-params))
+
+;; failed to figure out what this is:
+'fmv-get-mem-requirements
+
+;; failed to figure out what this is:
+'fmv-player-init
+
+;; failed to figure out what this is:
+'fmv-player-start
+
+;; failed to figure out what this is:
+'fmv-player-stop
+
+;; failed to figure out what this is:
+'fmv-player-set-pause
+
+;; failed to figure out what this is:
+'fmv-player-work
+
+;; failed to figure out what this is:
+'fmv-player-idle
+
+;; failed to figure out what this is:
+'fmv-player-set-caption
+
+;; failed to figure out what this is:
+'fmv-player-get-caption
+
+;; failed to figure out what this is:
+'fmv-player-get-texture
+
+;; failed to figure out what this is:
+'fmv-player-rewind
+
+;; failed to figure out what this is:
+'fmv-player-terminate
+
+;; failed to figure out what this is:
+'mc-save-common
+
+;; failed to figure out what this is:
+'mc-save-patch
+
+;; failed to figure out what this is:
+'mc-save-ghost
+
+;; failed to figure out what this is:
+'mc-load-common
+
+;; failed to figure out what this is:
+'mc-load-patch
+
+;; failed to figure out what this is:
+'mc-load-ghost
+
+;; failed to figure out what this is:
+'mc-get-secrets
+
+;; failed to figure out what this is:
+'psplink-start
+
+;; failed to figure out what this is:
+'psplink-stop
+
+;; failed to figure out what this is:
+'psplink-poll
+
+;; failed to figure out what this is:
+'psplink-swap-data
+
+;; failed to figure out what this is:
+'psplink-check-swap-data
+
+;; failed to figure out what this is:
+'kget-audio-language-mask
+
+;; failed to figure out what this is:
+'dnas-load
+
+;; failed to figure out what this is:
+'dnas-unload
+
+;; failed to figure out what this is:
+'dnas-init
+
+;; failed to figure out what this is:
+'dnas-shutdown
+
+;; failed to figure out what this is:
+'dnas-abort
+
+;; failed to figure out what this is:
+'dnas-auth-net-start
+
+;; failed to figure out what this is:
+'dnas-auth-get-unique-id
+
+;; failed to figure out what this is:
+'dnas-auth-install
+
+;; failed to figure out what this is:
+'dnas-get-status
+
+;; failed to figure out what this is:
+'dnas-inst-init-mc
+
+;; failed to figure out what this is:
+'dnas-inst-shutdown-mc
+
+;; failed to figure out what this is:
+'dnas-inst-personalize-data-length-mc
+
+;; failed to figure out what this is:
+'dnas-inst-personalize-data-mc
+
+;; failed to figure out what this is:
+'knet-get-disc-flags
+
+;; failed to figure out what this is:
+'knet-crc
+
+;; failed to figure out what this is:
+'knet-get-scus
+
+;; failed to figure out what this is:
+0
+
+
+
+

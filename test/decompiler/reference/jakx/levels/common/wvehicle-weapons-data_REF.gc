@@ -1,0 +1,520 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol V_YELLOW_GUIDED_MISSILE_STANDOFF_TIME, type time-frame
+(define V_YELLOW_GUIDED_MISSILE_STANDOFF_TIME (seconds 1))
+
+;; definition for symbol V_WPN_SHIELD_COLOR_LEVEL_I, type vector
+(define V_WPN_SHIELD_COLOR_LEVEL_I (new 'static 'vector :x 0.75 :w 1.0))
+
+;; definition for symbol V_WPN_SHIELD_COLOR_LEVEL_II, type vector
+(define V_WPN_SHIELD_COLOR_LEVEL_II (new 'static 'vector :x 0.25 :z 1.0 :w 1.0))
+
+;; definition for symbol *v-wpn-available-yellow*, type (array uint8)
+(define *v-wpn-available-yellow* (new 'static 'boxed-array :type uint8 #x2 #x3 #x4 #x5 #xf))
+
+;; definition for symbol *v-wpn-available-red*, type (array uint8)
+(define *v-wpn-available-red* (new 'static 'boxed-array :type uint8 #x8 #xb #xc #x9 #xd #xa))
+
+;; definition for symbol *v-wpn-available-purple*, type (array uint8)
+(define *v-wpn-available-purple* (new 'static 'boxed-array :type uint8 #xa))
+
+;; definition for symbol *weapon-select-table-yellow-even*, type v-wpn-ptable
+(define *weapon-select-table-yellow-even* (new 'static 'v-wpn-ptable
+                                            :entries-count 4
+                                            :total-chance #x4
+                                            :entries-array (new 'static 'inline-array v-wpn-ptable-entry 4
+                                              (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x2)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x3)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x5)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x4)
+                                              )
+                                            )
+        )
+
+;; definition for symbol *weapon-select-table-red-even*, type v-wpn-ptable
+(define *weapon-select-table-red-even* (new 'static 'v-wpn-ptable
+                                         :entries-count 7
+                                         :total-chance #x7
+                                         :entries-array (new 'static 'inline-array v-wpn-ptable-entry 7
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x8)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xa)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xb)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+                                           (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xe)
+                                           )
+                                         )
+        )
+
+;; definition for symbol *weapon-select-table-yellow-default*, type v-wpn-ptable
+(define *weapon-select-table-yellow-default*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #x6
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x4)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-default*, type v-wpn-ptable
+(define *weapon-select-table-red-default* (new 'static 'v-wpn-ptable
+                                            :entries-count 5
+                                            :total-chance #xd
+                                            :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+                                              (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x8)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #xa)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #xc)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x9)
+                                              (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+                                              )
+                                            )
+        )
+
+;; definition for symbol *weapon-select-table-yellow-training*, type v-wpn-ptable
+(define *weapon-select-table-yellow-training*
+  (new 'static 'v-wpn-ptable
+    :entries-count 1
+    :total-chance #x1
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 1
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x4)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-training*, type v-wpn-ptable
+(define *weapon-select-table-red-training* (new 'static 'v-wpn-ptable
+                                             :entries-count 1
+                                             :total-chance #x1
+                                             :entries-array (new 'static 'inline-array v-wpn-ptable-entry 1
+                                               (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x8)
+                                               )
+                                             )
+        )
+
+;; definition for symbol *weapon-select-table-red-deathrace*, type v-wpn-ptable
+(define *weapon-select-table-red-deathrace*
+  (new 'static 'v-wpn-ptable
+    :entries-count 5
+    :total-chance #x5
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x8)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xa)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-yellow-deathrace*, type v-wpn-ptable
+(define *weapon-select-table-yellow-deathrace*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #xf
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x5 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x5 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x5 :weapon-type #x4)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-14 (new 'static 'v-wpn-ptable
+                :entries-count 3
+                :total-chance #x5
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x2)
+                  (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x3)
+                  (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x4)
+                  )
+                )
+              )
+       (a0-0 v1-14)
+       (a1-0 v1-14)
+       (a2-0 a0-0)
+       )
+  (set! *weapon-select-table-yellow-race-first* (new 'static 'v-wpn-ptable-quad :behind-threshold -4096.0))
+  (let ((a3-1 *weapon-select-table-yellow-race-first*))
+    (set! (-> a3-1 base) v1-14)
+    (set! (-> a3-1 last-lap) a0-0)
+    (set! (-> a3-1 base-behind) a1-0)
+    (set! (-> a3-1 last-lap-behind) a2-0)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-15 (new 'static 'v-wpn-ptable
+                :entries-count 6
+                :total-chance #x14
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 6
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x8)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xa)
+                  (new 'static 'v-wpn-ptable-entry :chance #x5 :weapon-type #xb)
+                  (new 'static 'v-wpn-ptable-entry :chance #x5 :weapon-type #xc)
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x9)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x6)
+                  )
+                )
+              )
+       (a0-1 v1-15)
+       (a1-1 v1-15)
+       (a2-1 a0-1)
+       )
+  (set! *weapon-select-table-red-race-first* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-3 *weapon-select-table-red-race-first*))
+    (set! (-> a3-3 base) v1-15)
+    (set! (-> a3-3 last-lap) a0-1)
+    (set! (-> a3-3 base-behind) a1-1)
+    (set! (-> a3-3 last-lap-behind) a2-1)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-16 (new 'static 'v-wpn-ptable
+                :entries-count 5
+                :total-chance #x64
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+                  (new 'static 'v-wpn-ptable-entry :chance #x1a :weapon-type #x2)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1b :weapon-type #x5)
+                  (new 'static 'v-wpn-ptable-entry :chance #x10 :weapon-type #x3)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1b :weapon-type #x4)
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #xf)
+                  )
+                )
+              )
+       (a0-2 v1-16)
+       (a1-2 v1-16)
+       (a2-2 a0-2)
+       )
+  (set! *weapon-select-table-yellow-race-second* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-5 *weapon-select-table-yellow-race-second*))
+    (set! (-> a3-5 base) v1-16)
+    (set! (-> a3-5 last-lap) a0-2)
+    (set! (-> a3-5 base-behind) a1-2)
+    (set! (-> a3-5 last-lap-behind) a2-2)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-17 (new 'static 'v-wpn-ptable
+                :entries-count 8
+                :total-chance #xc8
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 8
+                  (new 'static 'v-wpn-ptable-entry :chance #x17 :weapon-type #x8)
+                  (new 'static 'v-wpn-ptable-entry :chance #x11 :weapon-type #xa)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1c :weapon-type #xb)
+                  (new 'static 'v-wpn-ptable-entry :chance #x17 :weapon-type #xc)
+                  (new 'static 'v-wpn-ptable-entry :chance #x17 :weapon-type #x6)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1c :weapon-type #x9)
+                  (new 'static 'v-wpn-ptable-entry :chance #x12 :weapon-type #xd)
+                  (new 'static 'v-wpn-ptable-entry :chance #x28 :weapon-type #xe)
+                  )
+                )
+              )
+       (a0-3 v1-17)
+       (a1-3 v1-17)
+       (a2-3 a0-3)
+       )
+  (set! *weapon-select-table-red-race-second* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-7 *weapon-select-table-red-race-second*))
+    (set! (-> a3-7 base) v1-17)
+    (set! (-> a3-7 last-lap) a0-3)
+    (set! (-> a3-7 base-behind) a1-3)
+    (set! (-> a3-7 last-lap-behind) a2-3)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-18 (new 'static 'v-wpn-ptable
+                :entries-count 5
+                :total-chance #x64
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+                  (new 'static 'v-wpn-ptable-entry :chance #x18 :weapon-type #x2)
+                  (new 'static 'v-wpn-ptable-entry :chance #x9 :weapon-type #x5)
+                  (new 'static 'v-wpn-ptable-entry :chance #x17 :weapon-type #x3)
+                  (new 'static 'v-wpn-ptable-entry :chance #x26 :weapon-type #x4)
+                  (new 'static 'v-wpn-ptable-entry :chance #x6 :weapon-type #xf)
+                  )
+                )
+              )
+       (a0-4 v1-18)
+       (a1-4 v1-18)
+       (a2-4 a0-4)
+       )
+  (set! *weapon-select-table-yellow-race-middle* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-9 *weapon-select-table-yellow-race-middle*))
+    (set! (-> a3-9 base) v1-18)
+    (set! (-> a3-9 last-lap) a0-4)
+    (set! (-> a3-9 base-behind) a1-4)
+    (set! (-> a3-9 last-lap-behind) a2-4)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-19 (new 'static 'v-wpn-ptable
+                :entries-count 8
+                :total-chance #x8
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 8
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x8)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xa)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xb)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x6)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xe)
+                  )
+                )
+              )
+       (a0-5 v1-19)
+       (a1-5 v1-19)
+       (a2-5 a0-5)
+       )
+  (set! *weapon-select-table-red-race-middle* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-11 *weapon-select-table-red-race-middle*))
+    (set! (-> a3-11 base) v1-19)
+    (set! (-> a3-11 last-lap) a0-5)
+    (set! (-> a3-11 base-behind) a1-5)
+    (set! (-> a3-11 last-lap-behind) a2-5)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-20
+         (new 'static 'v-wpn-ptable
+           :entries-count 5
+           :total-chance #x64
+           :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+             (new 'static 'v-wpn-ptable-entry :chance #xa :weapon-type #x2)
+             (new 'static 'v-wpn-ptable-entry :chance #x19 :weapon-type #x5)
+             (new 'static 'v-wpn-ptable-entry :chance #x14 :weapon-type #x3)
+             (new 'static 'v-wpn-ptable-entry :chance #x23 :weapon-type #x4)
+             (new 'static 'v-wpn-ptable-entry :chance #xa :weapon-type #xf)
+             )
+           )
+         )
+       (a0-6 v1-20)
+       (a1-6 v1-20)
+       (a2-6 a0-6)
+       )
+  (set! *weapon-select-table-yellow-race-penultimate*
+        (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0)
+        )
+  (let ((a3-13 *weapon-select-table-yellow-race-penultimate*))
+    (set! (-> a3-13 base) v1-20)
+    (set! (-> a3-13 last-lap) a0-6)
+    (set! (-> a3-13 base-behind) a1-6)
+    (set! (-> a3-13 last-lap-behind) a2-6)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-21 (new 'static 'v-wpn-ptable
+                :entries-count 8
+                :total-chance #x42
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 8
+                  (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x8)
+                  (new 'static 'v-wpn-ptable-entry :chance #x6 :weapon-type #xa)
+                  (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #xb)
+                  (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #xc)
+                  (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x9)
+                  (new 'static 'v-wpn-ptable-entry :chance #xc :weapon-type #xd)
+                  (new 'static 'v-wpn-ptable-entry :chance #x6 :weapon-type #x6)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1e :weapon-type #xe)
+                  )
+                )
+              )
+       (a0-7 v1-21)
+       (a1-7 v1-21)
+       (a2-7 a0-7)
+       )
+  (set! *weapon-select-table-red-race-penultimate* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-15 *weapon-select-table-red-race-penultimate*))
+    (set! (-> a3-15 base) v1-21)
+    (set! (-> a3-15 last-lap) a0-7)
+    (set! (-> a3-15 base-behind) a1-7)
+    (set! (-> a3-15 last-lap-behind) a2-7)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-22 (new 'static 'v-wpn-ptable
+                :entries-count 5
+                :total-chance #x64
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+                  (new 'static 'v-wpn-ptable-entry :chance #xb :weapon-type #x2)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1e :weapon-type #x5)
+                  (new 'static 'v-wpn-ptable-entry :chance #xc :weapon-type #x3)
+                  (new 'static 'v-wpn-ptable-entry :chance #x20 :weapon-type #x4)
+                  (new 'static 'v-wpn-ptable-entry :chance #xf :weapon-type #xf)
+                  )
+                )
+              )
+       (a0-8 (new 'static 'v-wpn-ptable
+               :entries-count 5
+               :total-chance #x64
+               :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+                 (new 'static 'v-wpn-ptable-entry :chance #xa :weapon-type #x2)
+                 (new 'static 'v-wpn-ptable-entry :chance #x1e :weapon-type #x5)
+                 (new 'static 'v-wpn-ptable-entry :chance #xa :weapon-type #x3)
+                 (new 'static 'v-wpn-ptable-entry :chance #x1e :weapon-type #x4)
+                 (new 'static 'v-wpn-ptable-entry :chance #x14 :weapon-type #xf)
+                 )
+               )
+             )
+       (a1-8 v1-22)
+       (a2-8 a0-8)
+       )
+  (set! *weapon-select-table-yellow-race-last* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-17 *weapon-select-table-yellow-race-last*))
+    (set! (-> a3-17 base) v1-22)
+    (set! (-> a3-17 last-lap) a0-8)
+    (set! (-> a3-17 base-behind) a1-8)
+    (set! (-> a3-17 last-lap-behind) a2-8)
+    )
+  )
+
+;; failed to figure out what this is:
+(let* ((v1-23 (new 'static 'v-wpn-ptable
+                :entries-count 6
+                :total-chance #x64
+                :entries-array (new 'static 'inline-array v-wpn-ptable-entry 6
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x8)
+                  (new 'static 'v-wpn-ptable-entry :chance #x7 :weapon-type #xa)
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x9)
+                  (new 'static 'v-wpn-ptable-entry :chance #x1b :weapon-type #xd)
+                  (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x6)
+                  (new 'static 'v-wpn-ptable-entry :chance #x36 :weapon-type #xe)
+                  )
+                )
+              )
+       (a0-9 v1-23)
+       (a1-9 v1-23)
+       (a2-9 a0-9)
+       )
+  (set! *weapon-select-table-red-race-last* (new 'static 'v-wpn-ptable-quad :behind-threshold 4096000.0))
+  (let ((a3-19 *weapon-select-table-red-race-last*))
+    (set! (-> a3-19 base) v1-23)
+    (set! (-> a3-19 last-lap) a0-9)
+    (set! (-> a3-19 base-behind) a1-9)
+    (set! (-> a3-19 last-lap-behind) a2-9)
+    )
+  )
+
+;; definition for symbol *weapon-select-table-yellow-deathmatch-leading*, type v-wpn-ptable
+(define *weapon-select-table-yellow-deathmatch-leading*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #x9
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x4)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-deathmatch-leading*, type v-wpn-ptable
+(define *weapon-select-table-red-deathmatch-leading*
+  (new 'static 'v-wpn-ptable
+    :entries-count 5
+    :total-chance #x7
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x8)
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #xa)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-yellow-deathmatch-middle*, type v-wpn-ptable
+(define *weapon-select-table-yellow-deathmatch-middle*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #xa
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x4)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-deathmatch-middle*, type v-wpn-ptable
+(define *weapon-select-table-red-deathmatch-middle*
+  (new 'static 'v-wpn-ptable
+    :entries-count 5
+    :total-chance #x7
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x8)
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #xa)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-yellow-deathmatch-tailing*, type v-wpn-ptable
+(define *weapon-select-table-yellow-deathmatch-tailing*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #xc
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x6 :weapon-type #x4)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-deathmatch-tailing*, type v-wpn-ptable
+(define *weapon-select-table-red-deathmatch-tailing*
+  (new 'static 'v-wpn-ptable
+    :entries-count 5
+    :total-chance #x7
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x8)
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #xa)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xc)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #x9)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xd)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-red-boss-battle*, type v-wpn-ptable
+(define *weapon-select-table-red-boss-battle*
+  (new 'static 'v-wpn-ptable
+    :entries-count 5
+    :total-chance #xf
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 5
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x8)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #xc)
+      (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #xd)
+      (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x6)
+      (new 'static 'v-wpn-ptable-entry :chance #x1 :weapon-type #xb)
+      )
+    )
+  )
+
+;; definition for symbol *weapon-select-table-yellow-boss-battle*, type v-wpn-ptable
+(define *weapon-select-table-yellow-boss-battle*
+  (new 'static 'v-wpn-ptable
+    :entries-count 3
+    :total-chance #x9
+    :entries-array (new 'static 'inline-array v-wpn-ptable-entry 3
+      (new 'static 'v-wpn-ptable-entry :chance #x2 :weapon-type #x2)
+      (new 'static 'v-wpn-ptable-entry :chance #x4 :weapon-type #x3)
+      (new 'static 'v-wpn-ptable-entry :chance #x3 :weapon-type #x4)
+      )
+    )
+  )
