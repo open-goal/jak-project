@@ -810,9 +810,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
       {
           // jakx::cspace_parented_transformq_joint::link
       }},
-     {"foreground",
-      {jakx::foreground_check_longest_edge_asm::link, jakx::foreground_generic_merc::link,
-       jakx::foreground_merc::link, jakx::foreground_draw_hud::link}},
      {"particle-curves", {jakx::live_func_curve::link, jakx::birth_func_curve::link}},
      {"collide-hash",
       {jakx::method_11_collide_hash::link, jakx::method_12_collide_hash::link,
