@@ -16590,6 +16590,7 @@
   :size-assert         #x820
   :flag-assert         #xc00000820
   (:methods
+    (new (symbol type) _type_) ;; 0
     (viewport-array-method-9 (_type_ viewport) none) ;; 9
     (set-current-viewport (_type_ uint) viewport) ;; 10
     (get-current-viewport (_type_) viewport) ;; 11
@@ -24179,6 +24180,7 @@
   ;; field p-local-connect-callback-data uses ~A with a signed load. field p-local-disconnect-callback-data uses ~A with a signed load. field p-remote-client-connect-callback-data uses ~A with a signed load. field p-remote-client-disconnect-callback-data uses ~A with a signed load. field p-host-change-callback-data uses ~A with a signed load. field p-system-status-callback-data uses ~A with a signed load.
   )
 
+;; added
 (deftype net-connect-params (structure)
   "(code joining aux-voice-mgr)"
   ((in  net-connect-in-params  :inline)
@@ -31786,12 +31788,12 @@
     (get-search-info-flag (_type_) search-info-flag) ;; 50
     (get-trans "Get the `trans` for this process." (_type_ int) vector) ;; 51
     (get-quat "Get the quaternion for this process." (_type_ int) quaternion) ;; 52
-    (process-focusable-method-53 () none) ;; 53
-    (process-focusable-method-54 () none) ;; 54
+    (get-vel (_type_) vector) ;; 53
+    (process-focusable-method-54 (_type_) object) ;; 54
     (get-water-height "Get the height of the water that we're in." (_type_) meters) ;; 55
     (get-notice-time (_type_) time-frame) ;; 56
     (process-focusable-method-57 (_type_) float) ;; 57
-    (process-focusable-method-58 () none) ;; 58
+    (process-focusable-method-58 (_type_) float) ;; 58
     )
   )
 
@@ -36838,7 +36840,7 @@
 (define-extern current-str-status (function sound-id stream-status))
 (define-extern *dnas-is-running* symbol)
 (define-extern is-cd-in? (function symbol)) ;; 
-(define-extern new-sound-id (function sound-id)) ;; 
+(define-extern new-sound-id (function sound-id))
 (define-extern check-irx-version (function int))
 (define-extern sound-bank-load (function sound-name int int sound-id))
 (define-extern sound-bank-unload (function sound-name int))
@@ -38755,7 +38757,7 @@
 (define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
 (define-extern sp-copy-to-spr (function int pointer int none))
 (define-extern sp-copy-from-spr (function int pointer int none))
-(define-extern memcpy (function pointer pointer none))
+(define-extern memcpy (function pointer pointer uint int))
 (define-extern sp-process-block (function sparticle-system int sprite-array-2d int none))
 (define-extern sp-process-particle-system (function sparticle-system int sprite-array-2d none))
 (define-extern *particles-flag* symbol) ;; 
@@ -43045,7 +43047,7 @@
 (define-extern *footstep-surface* pat-surface)
 (define-extern *debug-effect-control* symbol)
 (define-extern sound-name-with-material (function string pat-surface string sound-name))
-(define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec)) ;; 
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-part                     ;;
@@ -45852,6 +45854,9 @@
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
 
 (deftype rapid-fire-params (structure)
@@ -45980,7 +45985,7 @@
 (define-extern weapon-mask->type (function int int))
 (define-extern *weapon-suppression-table* (pointer (array symbol)))
 ;; (define-extern v-wpn-base-common-trans function)
-;; (define-extern v-wpn-event-base function)
+;; (define-extern v-wpn-event-base (function process int symbol event-message-block object :behavior vehicle-weapon-slot))
 (define-extern *cheat-defaultgun-in-race* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46492,7 +46497,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype vehicle-load-parts (uint64)
-  (
+  ((bit0 uint8 :offset 0  :size 3)
+   (bit1 uint8 :offset 3  :size 3)
+   (bit2 uint8 :offset 6  :size 3)
+   (bit3 uint8 :offset 9  :size 3)
+   (bit4 uint8 :offset 12 :size 3)
+   (bit5 uint8 :offset 15 :size 3)
+   (bit6 uint8 :offset 18 :size 3)
+   (bit7 uint8 :offset 21 :size 3)
+   (bit8 uint8 :offset 24 :size 5)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -46684,8 +46697,8 @@
 
 (deftype net-vehicle (structure)
   ((id         uint32           :offset-assert 0)
-   (name       string           :offset-assert 4)
-   (levname    string           :offset-assert 8)
+   (name       symbol           :offset-assert 4)
+   (levname    symbol           :offset-assert 8)
    (vt         vehicle-type-u8  :offset-assert 12)
    (ct         car-type         :offset-assert 13)
    (tex-name   string           :offset-assert 16)
@@ -46702,7 +46715,7 @@
 
 (deftype net-driver (structure)
   ((id            uint32          :offset-assert 0)
-   (levname       string          :offset-assert 4)
+   (levname       symbol          :offset-assert 4)
    (dt            driver-type     :offset-assert 8)
    (tex-name      string          :offset-assert 12)
    (picture-part1 uint32          :offset-assert 16)
@@ -46739,11 +46752,11 @@
 (define-extern net-play-mode-race? (function net-play-mode symbol))
 (define-extern get-task-node-id-from-location-and-event (function task-level net-play-mode int))
 (define-extern *default-vehicle-load-parts* int) ;; TODO - likely an enum
-;; (define-extern encode-green-room-stats function)
-;; (define-extern decode-green-room-stats function)
+(define-extern encode-green-room-stats (function green-room-stats mem-buffer object))
+(define-extern decode-green-room-stats (function green-room-stats mem-buffer object))
 (define-extern encode-net-world-state (function net-world-state mem-buffer object))
-;; (define-extern decode-net-world-state function)
-;; (define-extern net-world-init-remote function)
+(define-extern decode-net-world-state (function net-world-state mem-buffer object))
+(define-extern net-world-init-remote (function mem-buffer object :behavior net-world))
 (define-extern *msg-map-net-world* (array symbol))
 (define-extern *net-process-class-info-net-world* net-process-class-info)
 (define-extern *net-world* net-world)
@@ -47778,12 +47791,13 @@
   )
 
 (deftype menu-option-info (structure)
-  ((display-name-id uint32  :offset-assert 0)
-   (sym             basic   :offset-assert 4)
-   (extra           basic   :offset-assert 8)
-   (extra-object    basic   :offset 8)
+  ((display-name-id text-id :offset-assert 0)
+   (sym             symbol  :offset-assert 4)
+   (extra           basic   :offset-assert 8 :score -1)
+   (extra-object    basic   :offset 8 :score -1)
    (extra-int       int32   :offset 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -47804,9 +47818,9 @@
   )
 
 (deftype menu-selection-struct (structure)
-  ((array-ptr       basic  :offset-assert 0)
+  ((array-ptr       (array menu-option-info)  :offset-assert 0)
    (selection-index int32  :offset-assert 4)
-   (last-sym        basic  :offset-assert 8)
+   (last-sym        symbol :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -47876,21 +47890,23 @@
   :method-count-assert 65
   :size-assert         #x218
   :flag-assert         #x4101900218
+  (:state-methods
+    wait-enter ;; 50
+    enter ;; 51
+    running ;; 52
+    hide ;; 53
+    __empty__ ;; 54
+    exit ;; 55
+    die ;; 56
+    dummy ;; 57
+    )
   (:methods
-    (base-menu-method-50 () none) ;; 50
-    (base-menu-method-51 () none) ;; 51
-    (base-menu-method-52 () none) ;; 52
-    (base-menu-method-53 () none) ;; 53
-    (base-menu-method-54 () none) ;; 54
-    (base-menu-method-55 () none) ;; 55
-    (base-menu-method-56 () none) ;; 56
-    (base-menu-method-57 () none) ;; 57
     (base-menu-method-58 () none) ;; 58
     (base-menu-method-59 () none) ;; 59
     (base-menu-method-60 () none) ;; 60
     (base-menu-method-61 () none) ;; 61
     (base-menu-method-62 () none) ;; 62
-    (base-menu-method-63 () none) ;; 63
+    (base-menu-method-63 (_type_) none) ;; 63
     (base-menu-method-64 () none) ;; 64
     )
   )
@@ -48348,7 +48364,6 @@
   )
 |#
 
-#|
 (deftype selection-cache (structure)
   ((state          basic  :offset-assert 0)
    (selection-type basic  :offset-assert 4)
@@ -48357,7 +48372,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 ;; (define-extern *menu-level-info-array* array)
 ;; (define-extern *menu-level-info-beta-array* array)
@@ -48463,8 +48477,8 @@
 ;; (define-extern *player-6-extra* object)
 ;; (define-extern get-extra-player-string function)
 ;; (define-extern set-index function)
-;; (define-extern *selection-cache-array* object)
-;; (define-extern *selection-cache-index* object)
+(define-extern *selection-cache-array* (inline-array selection-cache))
+(define-extern *selection-cache-index* int)
 ;; (define-extern *last-lobby-state* object)
 ;; (define-extern insert-selection-cache function)
 
@@ -48545,6 +48559,20 @@
 ;; lobby-menu-manager-h           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++lobby-menu-manager-h:lobby-vehicle-flag
+(defenum lobby-vehicle-flag
+  :type uint64
+  :bitfield #t
+  (reload 0)
+  (destroy 1)
+  (spawn-when-ready 2)
+  (load-when-offscreen 3)
+  (no-turntable 4)
+  (no-vehicle-selection 5)
+  (fade-part 6)
+  )
+;; ---lobby-menu-manager-h:lobby-vehicle-flag
+
 (deftype lobby-menu-manager (process)
   ((game-type                  uint32    :offset-assert 144)
    (menu-handles               handle  8 :offset-assert 152)
@@ -48560,7 +48588,7 @@
    (game-connection-type       uint8     :offset-assert 256)
    (vehicle-handle             handle    :offset-assert 264)
    (vehicle-selected           uint8     :offset-assert 272)
-   (vehicle-flags              uint64    :offset-assert 280)
+   (vehicle-flags              lobby-vehicle-flag    :offset-assert 280)
    (vehicle-paint-mode         uint64    :offset-assert 288)
    (tuning-type-selected       uint64    :offset-assert 296)
    (all-ready?                 symbol    :offset-assert 304)
@@ -48765,8 +48793,8 @@
     (lobby-menu-manager-method-181 () none) ;; 181
     (lobby-menu-manager-method-182 () none) ;; 182
     (lobby-menu-manager-method-183 () none) ;; 183
-    (lobby-menu-manager-method-184 () none) ;; 184
-    (lobby-menu-manager-method-185 () none) ;; 185
+    (lobby-menu-manager-method-184 (_type_) base-menu) ;; 184
+    (lobby-menu-manager-method-185 (_type_) none) ;; 185
     (lobby-menu-manager-method-186 () none) ;; 186
     (lobby-menu-manager-method-187 () none) ;; 187
     (lobby-menu-manager-method-188 () none) ;; 188
@@ -48779,48 +48807,48 @@
     )
   )
 
-;; (define-extern lobby-vehicle-flag->string function)
+(define-extern lobby-vehicle-flag->string (function lobby-vehicle-flag object))
 (define-extern *lobby-reset-mode* symbol)
-;; (define-extern *net-mgr-finish-mode* object)
+(define-extern *net-mgr-finish-mode* symbol)
 (define-extern *lobby-menu-manager* lobby-menu-manager)
 (define-extern get-selected-local-player-count (function int))
-;; (define-extern kiosk-code? function)
-;; (define-extern min-max-wrap-around function) ;; (function int int int int)
-;; (define-extern *lobby-last-selected-task-index* object)
+(define-extern kiosk-code? (function symbol))
+(define-extern min-max-wrap-around (function int int int int))
+(define-extern *lobby-last-selected-task-index* int)
 (define-extern *last-selected-human-ct* int)
-;; (define-extern *last-selected-ai-ct* object)
-;; (define-extern *last-selected-buddy-ct* object)
-;; (define-extern *last-selected-clan-ct* object)
-;; (define-extern *lobby-menu-manager-game-connection-type* object)
-;; (define-extern *lobby-handling-db-error* object)
-;; (define-extern *no-net-hw-warning-shown* object)
-;; (define-extern *ready-room-human-ct* object)
-;; (define-extern *ready-room-ai-ct* object)
-;; (define-extern *game-launched-from-room* object)
+(define-extern *last-selected-ai-ct* int)
+(define-extern *last-selected-buddy-ct* int)
+(define-extern *last-selected-clan-ct* int)
+(define-extern *lobby-menu-manager-game-connection-type* int)
+(define-extern *lobby-handling-db-error* symbol)
+(define-extern *no-net-hw-warning-shown* symbol)
+(define-extern *ready-room-human-ct* int)
+(define-extern *ready-room-ai-ct* int)
+(define-extern *game-launched-from-room* symbol)
 (define-extern camera-seek-time float)
 (define-extern real-camera-seek-time float)
-;; (define-extern set-lobby-camera-seek-time! function)
-;; (define-extern *class-mode* object)
-;; (define-extern restore-selection-index function)
-;; (define-extern *lobby-timetrial-lock-mode* object)
+(define-extern set-lobby-camera-seek-time! (function float float))
+(define-extern *class-mode* int)
+(define-extern restore-selection-index (function object))
+(define-extern *lobby-timetrial-lock-mode* symbol)
 (define-extern *vehicle-class-data* (array menu-option-info))
-(define-extern *vehicle-class* net-process-class-info)
+(define-extern *vehicle-class* menu-selection-struct)
 (define-extern *time-of-day-data* (array menu-option-info))
-;; (define-extern *time-of-day-array* object)
-;; (define-extern *ready-room-host-id* object)
-;; (define-extern *keyboard-buf* object)
-;; (define-extern kbd-auto-activate function)
-;; (define-extern *return-to-secrets* object)
-;; (define-extern *this-create-menu-state-name* object)
-;; (define-extern *prev-create-menu-state-name* object)
-;; (define-extern *lobby-fast-connect* object)
-;; (define-extern *lobby-body-parts-return-state-name* object)
-;; (define-extern *eligible-for-body-part-award* object)
+(define-extern *time-of-day-array* menu-selection-struct)
+(define-extern *ready-room-host-id* int)
+(define-extern *keyboard-buf* (pointer uint8))
+(define-extern kbd-auto-activate (function symbol))
+(define-extern *return-to-secrets* symbol)
+(define-extern *this-create-menu-state-name* string)
+(define-extern *prev-create-menu-state-name* string)
+(define-extern *lobby-fast-connect* symbol)
+(define-extern *lobby-body-parts-return-state-name* string)
+(define-extern *eligible-for-body-part-award* symbol)
 (define-extern *pending-op* (function object object object object object object object object object))
 (define-extern *pending-op-serial* uint)
 (define-extern *pending-op-arg-ct* int)
-(define-extern *pending-op-args* (pointer object))
-;; (define-extern teams-valid-to-start-game? function)
+(define-extern *pending-op-args* (pointer uint8))
+(define-extern teams-valid-to-start-game? (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hostnames                      ;;
@@ -48976,7 +49004,7 @@
 ;; (define-extern purge-top-chat-msg function)
 ;; (define-extern purge-all-chat-msgs function)
 ;; (define-extern get-top-chat-msg function)
-(define-extern add-raw-popup-msg (function object))
+(define-extern add-raw-popup-msg (function (pointer uint8) int symbol object))
 ;; (define-extern *magic-chat* array)
 (define-extern handle-chat-msg (function medius-chat-fwd-message symbol object))
 ;; (define-extern fake-chat-msg function)
@@ -49236,13 +49264,13 @@
 (define-extern knet-get-scus (function (pointer uint8)))
 (define-extern knet-crc (function pointer int uint))
 (define-extern knet-scert-function-0-args "returns the app-id, one for each serial, plus some testing ones" (function int))
-(define-extern knet-get-kernel-version-string (function (pointer int32) string int pointer))
+(define-extern knet-get-kernel-version-string (function (pointer uint8) (pointer uint8) pointer))
 
 (define-extern *net-universe-is-ngs* symbol)
 (define-extern *jakx-patch-file* string)
-(define-extern *jakx-patch-tmp* (pointer uint32))
-(define-extern *net-patch-url* (pointer uint32))
-(define-extern *net-patch-version* (pointer uint32))
+(define-extern *jakx-patch-tmp* (pointer uint8))
+(define-extern *net-patch-url* (pointer uint8))
+(define-extern *net-patch-version* (pointer uint8))
 (define-extern *medius-muis-hostname* string)
 (define-extern *medius-muis-port* int)
 (define-extern *medius-muis-id* int)
@@ -50494,7 +50522,7 @@
 
 (define-extern knet-scert-net-get-nat-service (function pointer int))
 (define-extern knet-udp-socket-open (function int int))
-(define-extern knet-udp-socket-sendto (function int pointer int uint int int))
+(define-extern knet-udp-socket-sendto (function int pointer int int int int))
 (define-extern knet-udp-socket-recvfrom (function int pointer int (pointer uint32) (pointer int32) int))
 (define-extern knet-udp-socket-close (function int int))
 
@@ -50566,7 +50594,7 @@
     (client-joined (_type_ int) none) ;; 11
     (client-left (_type_ int) none) ;; 12
     (update (_type_) none) ;; 13
-    (send-ping (_type_ udp-message uint int) none) ;; 14
+    (send-ping (_type_ udp-message int int) none) ;; 14
     (send-data (_type_ udp-message (pointer uint8) int) none) ;; 15
     (udp-layer-method-16 (_type_) int) ;; 16
     (set-callback (_type_ (function pointer int int int)) none) ;; 17
@@ -54548,7 +54576,7 @@
 ;; wvehicle-weapons-data          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern V_YELLOW_GUIDED_MISSILE_STANDOFF_TIME time-frame)
+(define-extern V_YELLOW_GUIDED_MISSILE_STANDOFF_TIME int)
 (define-extern V_WPN_SHIELD_COLOR_LEVEL_I vector)
 (define-extern V_WPN_SHIELD_COLOR_LEVEL_II vector)
 (define-extern *v-wpn-available-yellow* (array uint8))
@@ -59184,7 +59212,7 @@
 ;; atoll-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *atoll-water-texture-anim-array* texture-anim-array)
+(define-extern *atoll-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; atoll-part                     ;;
@@ -60036,9 +60064,9 @@
 ;; canyon-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *canyona-water-texture-anim-array* texture-anim-array)
-(define-extern *canyonc-water-texture-anim-array* texture-anim-array)
-(define-extern *canyone-water-texture-anim-array* texture-anim-array)
+(define-extern *canyona-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *canyonc-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *canyone-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-time-box                   ;;
@@ -60219,7 +60247,7 @@
 ;; cliffs-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *cliffs-water-texture-anim-array* texture-anim-array)
+(define-extern *cliffs-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cliffs-ocean                   ;;
@@ -60952,7 +60980,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collectoid-draw (powerup-draw)
-  ((base-y float  :offset-assert 264)
+  ((root   collide-shape :override)
+   (base-y float         :offset-assert 264)
    )
   :method-count-assert 57
   :size-assert         #x10c
@@ -60980,7 +61009,7 @@
 (define-extern collectoid-init-remote (function int collectoid :behavior collectoid))
 (define-extern *msg-map-collectoid* (array symbol))
 (define-extern *net-process-class-info-collectoid* net-process-class-info)
-(define-extern *desclct-pris-texture-anim-array* texture-anim-array)
+(define-extern *desclct-pris-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; credits-h                      ;;
@@ -61074,7 +61103,7 @@
 ;; kras-effects                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *kras-alpha-texture-anim-array* texture-anim-array)
+(define-extern *kras-alpha-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; train-obs                      ;;
@@ -61375,7 +61404,7 @@
   )
 
 (define-extern update-mood-drome (function mood-context float int none :behavior time-of-day-proc))
-(define-extern *dromec-water-texture-anim-array* texture-anim-array)
+(define-extern *dromec-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drome-part                     ;;
@@ -61424,7 +61453,7 @@
 ;; desisle-effects                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *desisle-water-texture-anim-array* texture-anim-array)
+(define-extern *desisle-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desisle-part                   ;;
@@ -61703,7 +61732,7 @@
   )
 
 (define-extern update-mood-desarena (function mood-context float int none :behavior time-of-day-proc))
-(define-extern *desarena-water-texture-anim-array* texture-anim-array)
+(define-extern *desarena-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; garage-part                    ;;
@@ -61725,8 +61754,8 @@
 ;; haven-effects                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *havend-alpha-texture-anim-array* texture-anim-array)
-(define-extern *havend-water-texture-anim-array* texture-anim-array)
+(define-extern *havend-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *havend-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; haven-part                     ;;
@@ -61942,17 +61971,17 @@
 ;; jungle-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *junglea-water-texture-anim-array* texture-anim-array)
-(define-extern *jungleb-water-texture-anim-array* texture-anim-array)
-(define-extern *jungley-water-texture-anim-array* texture-anim-array)
+(define-extern *junglea-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *jungleb-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *jungley-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; havjung-effects                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *junglee-water-texture-anim-array* texture-anim-array)
-(define-extern *junglef-alpha-texture-anim-array* texture-anim-array)
-(define-extern *havjung-water-texture-anim-array* texture-anim-array)
+(define-extern *junglee-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *junglef-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *havjung-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; havsew-effects                 ;;
@@ -61963,9 +61992,9 @@
   )
 
 (define-extern update-mood-havsewx (function mood-context float int none :behavior time-of-day-proc))
-(define-extern *havsewx-water-texture-anim-array* texture-anim-array)
-(define-extern *havsewy-alpha-texture-anim-array* texture-anim-array)
-(define-extern *havsewy-water-texture-anim-array* texture-anim-array)
+(define-extern *havsewx-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *havsewy-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *havsewy-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-effects                  ;;
@@ -61985,12 +62014,12 @@
 
 (define-extern update-mood-sewer (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-mood-sewerx (function mood-context float int none :behavior time-of-day-proc))
-(define-extern *sewb-water-texture-anim-array* texture-anim-array)
-(define-extern *sewc-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-(define-extern *sewd-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-(define-extern *sewe-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-(define-extern *sewf-water-texture-anim-array* texture-anim-array)
-(define-extern *sewx-water-texture-anim-array* texture-anim-array)
+(define-extern *sewb-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *sewc-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *sewd-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *sewe-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *sewf-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *sewx-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-part                     ;;
@@ -62178,7 +62207,7 @@
 ;; kcross-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *kcross-water-texture-anim-array* texture-anim-array)
+(define-extern *kcross-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-keira                   ;;
@@ -62359,10 +62388,8 @@
   :method-count-assert 77
   :size-assert         #x268
   :flag-assert         #x4d01e00268
-  (:state-methods
-    running ;; 52
-    )
   (:methods
+    (scrolling-menu-method-70 () none) ;; 70
     (scrolling-menu-method-71 () none) ;; 71
     (scrolling-menu-method-72 () none) ;; 72
     (scrolling-menu-method-73 () none) ;; 73
@@ -64189,13 +64216,13 @@
 ;; temple-effects                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *templec-alpha-texture-anim-array* texture-anim-array)
-(define-extern *templed-alpha-texture-anim-array* texture-anim-array)
-(define-extern *templed-water-texture-anim-array* texture-anim-array)
-(define-extern *templee-alpha-texture-anim-array* texture-anim-array)
-(define-extern *templex-alpha-texture-anim-array* texture-anim-array)
-(define-extern *templex-water-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
-(define-extern *templey-water-texture-anim-array* texture-anim-array)
+(define-extern *templec-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *templed-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *templed-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *templee-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *templex-alpha-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *templex-water-texture-anim-array* (texture-anim-array texture-anim)) ;; (texture-anim-array texture-anim)
+(define-extern *templey-water-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; temple-ocean                   ;;
