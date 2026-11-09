@@ -54,7 +54,7 @@
     (client-joined (_type_ int) none)
     (client-left (_type_ int) none)
     (update (_type_) none)
-    (send-ping (_type_ udp-message uint int) none)
+    (send-ping (_type_ udp-message int int) none)
     (send-data (_type_ udp-message (pointer uint8) int) none)
     (udp-layer-method-16 (_type_) int)
     (set-callback (_type_ (function pointer int int int)) none)
@@ -1265,7 +1265,7 @@
                    (announce-address this -2)
                    )
                  (if (= s2-0 (udp-message ping))
-                     (send-ping this (udp-message pong) arg0 arg1)
+                     (send-ping this (udp-message pong) (the-as int arg0) arg1)
                      )
                  )
                )
@@ -1281,7 +1281,7 @@
 
 ;; definition for method 14 of type udp-layer
 ;; WARN: Return type mismatch int vs none.
-(defmethod send-ping ((this udp-layer) (arg0 udp-message) (arg1 uint) (arg2 int))
+(defmethod send-ping ((this udp-layer) (arg0 udp-message) (arg1 int) (arg2 int))
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'mem-buffer 2)))
     (set-buffer! (-> gp-0 0) *udp-buffer* 1024)
     (write-int8 (-> gp-0 0) (the-as int arg0))
@@ -1290,7 +1290,7 @@
                                 0
                                 )
                 )
-    (write-int32 (-> gp-0 0) (the-as int arg1))
+    (write-int32 (-> gp-0 0) arg1)
     (write-int16 (-> gp-0 0) arg2)
     (set! (-> gp-0 1 base)
           (the-as pointer (knet-udp-socket-sendto (-> this socket) (-> gp-0 0 base) (bytes-used (-> gp-0 0)) arg1 arg2))
@@ -1389,7 +1389,7 @@
           (-> this socket)
           (-> s5-0 0 base)
           (bytes-used (-> s5-0 0))
-          (-> this nat-discovery-ip)
+          (the-as int (-> this nat-discovery-ip))
           (-> this nat-discovery-port)
           )
         )
@@ -1440,7 +1440,7 @@
            )
          (else
            (format 0 "udp-layer: sending ping to unknown client ~D : ~X:~D~%" (-> this idx) (-> this scert-ip) #x2b5c)
-           (send-ping *udp-layer* (udp-message ping) (-> this scert-ip) #x2b5c)
+           (send-ping *udp-layer* (udp-message ping) (the-as int (-> this scert-ip)) #x2b5c)
            )
          )
        )
@@ -1457,12 +1457,12 @@
              (-> this reachable-ip)
              (-> this reachable-port)
              )
-           (send-ping *udp-layer* (udp-message ping) (-> this reachable-ip) (-> this reachable-port))
+           (send-ping *udp-layer* (udp-message ping) (the-as int (-> this reachable-ip)) (-> this reachable-port))
            )
          )
        )
       (((udp-machine-state known-reachable))
-       (send-ping *udp-layer* (udp-message ping) (-> this reachable-ip) (-> this reachable-port))
+       (send-ping *udp-layer* (udp-message ping) (the-as int (-> this reachable-ip)) (-> this reachable-port))
        (+! (-> this last-time) 2700)
        (if (< (seconds 30) (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this last-reply-time))))
            (state-change! this (udp-machine-state lost))
@@ -1525,7 +1525,7 @@
                                              (-> this socket)
                                              (-> s4-0 0 base)
                                              (bytes-used (-> s4-0 0))
-                                             (-> this machines arg0 reachable-ip)
+                                             (the-as int (-> this machines arg0 reachable-ip))
                                              (-> this machines arg0 reachable-port)
                                              )
                                    )
@@ -1597,7 +1597,13 @@
       (write-int8 (-> s5-0 0) 228)
       (write-int8 (-> s5-0 0) 0)
       (let ((s1-0 (parse-ip (-> "160.33.44.222" data))))
-        (knet-udp-socket-sendto (the-as int (-> gp-0 0 base)) (-> s5-0 0 base) (bytes-used (-> s5-0 0)) s1-0 #x2756)
+        (knet-udp-socket-sendto
+          (the-as int (-> gp-0 0 base))
+          (-> s5-0 0 base)
+          (bytes-used (-> s5-0 0))
+          (the-as int s1-0)
+          #x2756
+          )
         )
       )
     (dotimes (s4-1 #x186a0)
@@ -1625,3 +1631,7 @@
     )
   0
   )
+
+
+
+
