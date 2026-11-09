@@ -23,7 +23,7 @@
 
 (defun update-math-camera ((arg0 math-camera) (arg1 symbol) (arg2 symbol) (arg3 float))
   (set-aspect-ratio arg2)
-  (let ((s5-0 (viewport-array-method-11 *viewport-array*)))
+  (let ((s5-0 (get-current-viewport *viewport-array*)))
     (set! (-> arg0 x-ratio) (tan (/ arg3 2)))
     (cond
       (*camera-no-mip-correction*
@@ -108,8 +108,8 @@
           (set! (-> arg0 perspective fvec w) (* (/ f1-26 (-> arg0 d)) f0-30))
           (set! (-> arg0 perspective trans z) (* -2.0 f5-19 (-> arg0 f) (-> arg0 d) f1-26))
           )
-        (let ((f5-23 (the float (-> s5-0 data 0 screen-hx)))
-              (f6-29 (the float (-> s5-0 data 0 screen-hy)))
+        (let ((f5-23 (the float (-> s5-0 screen-cx)))
+              (f6-29 (the float (-> s5-0 screen-cy)))
               (f1-33 (/ (- (* (-> *math-camera-fog-correction* fog-end) (-> arg0 fog-max))
                            (* (-> *math-camera-fog-correction* fog-start) (-> arg0 fog-min))
                            )
@@ -201,8 +201,8 @@
         (set! (-> a0-48 3) (the-as vis-gif-tag #x303ec000))
         )
       )
-    (if (and (nonzero? sprite-distorter-generate-tables) (zero? (-> s5-0 data 0 motion-vector y)))
-        (sprite-distorter-generate-tables)
+    (if (and (nonzero? sprite-distorter-generate-tables) (zero? (-> s5-0 index)))
+        (sprite-distorter-generate-tables arg0 s5-0)
         )
     )
   arg0
@@ -277,75 +277,62 @@
   )
 
 (defun move-target-from-pad ((arg0 transformq) (arg1 int))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s4-0 (new-stack-vector0)))
-      (set! (-> s4-0 x) (cond
-                          ((cpad-hold? arg1 circle)
-                           -80.0
-                           )
-                          ((cpad-hold? arg1 square)
-                           80.0
-                           )
-                          (else
-                            0.0
-                            )
+  (let ((s4-0 (new-stack-vector0)))
+    (set! (-> s4-0 x) (cond
+                        ((cpad-hold? arg1 circle)
+                         -80.0
+                         )
+                        ((cpad-hold? arg1 square)
+                         80.0
+                         )
+                        (else
+                          0.0
                           )
-            )
-      (set! (-> s4-0 y) 0.0)
-      (set! (-> s4-0 z) (cond
-                          ((cpad-hold? arg1 down)
-                           -80.0
-                           )
-                          ((cpad-hold? arg1 up)
-                           80.0
-                           )
-                          (else
-                            0.0
-                            )
+                        )
+          )
+    (set! (-> s4-0 y) 0.0)
+    (set! (-> s4-0 z) (cond
+                        ((cpad-hold? arg1 down)
+                         -80.0
+                         )
+                        ((cpad-hold? arg1 up)
+                         80.0
+                         )
+                        (else
+                          0.0
                           )
-            )
-      (set! (-> s4-0 w) 1.0)
-      (let ((a0-5 (new-stack-vector0))
-            (s3-0 (new-stack-matrix0))
-            )
-        (vector-negate! a0-5 (-> arg0 rot))
-        (matrix-rotate-zyx! s3-0 (-> arg0 rot))
-        (vector-matrix*! s4-0 s4-0 s3-0)
-        )
-      (let ((a0-8 (-> arg0 trans)))
-        (.lvf vf4 (&-> (-> arg0 trans) quad))
-        (.lvf vf5 (&-> s4-0 quad))
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a0-8 quad) vf6)
-        )
+                        )
+          )
+    (set! (-> s4-0 w) 1.0)
+    (let ((a0-5 (new-stack-vector0))
+          (s3-0 (new-stack-matrix0))
+          )
+      (vector-negate! a0-5 (-> arg0 rot))
+      (matrix-rotate-zyx! s3-0 (-> arg0 rot))
+      (vector-matrix*! s4-0 s4-0 s3-0)
       )
-    (set! (-> arg0 trans w) 1.0)
-    (if (cpad-hold? arg1 r1)
-        (+! (-> arg0 trans y) 80.0)
-        )
-    (if (cpad-hold? arg1 r2)
-        (+! (-> arg0 trans y) -80.0)
-        )
-    (if (cpad-hold? arg1 x)
-        (+! (-> arg0 rot x) 546.13336)
-        )
-    (if (cpad-hold? arg1 triangle)
-        (+! (-> arg0 rot x) -546.13336)
-        )
-    (if (cpad-hold? arg1 left)
-        (+! (-> arg0 rot y) 546.13336)
-        )
-    (if (cpad-hold? arg1 right)
-        (+! (-> arg0 rot y) -546.13336)
-        )
-    arg0
+    (vector+! (-> arg0 trans) (-> arg0 trans) s4-0)
     )
+  (set! (-> arg0 trans w) 1.0)
+  (if (cpad-hold? arg1 r1)
+      (+! (-> arg0 trans y) 80.0)
+      )
+  (if (cpad-hold? arg1 r2)
+      (+! (-> arg0 trans y) -80.0)
+      )
+  (if (cpad-hold? arg1 x)
+      (+! (-> arg0 rot x) 546.13336)
+      )
+  (if (cpad-hold? arg1 triangle)
+      (+! (-> arg0 rot x) -546.13336)
+      )
+  (if (cpad-hold? arg1 left)
+      (+! (-> arg0 rot y) 546.13336)
+      )
+  (if (cpad-hold? arg1 right)
+      (+! (-> arg0 rot y) -546.13336)
+      )
+  arg0
   )
 
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]

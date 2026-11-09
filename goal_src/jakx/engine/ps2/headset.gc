@@ -7,3 +7,3953 @@
 
 ;; DECOMP BEGINS
 
+(define *headset-op-size* 0)
+
+(define *headset-result* 0)
+
+(defmethod init! ((this headset-queue) (arg0 (pointer uint8)) (arg1 int))
+  (set! (-> this data) arg0)
+  (set! (-> this size) arg1)
+  (reset! this)
+  0
+  (none)
+  )
+
+(defmethod headset-queue-method-10 ((this headset-queue) (arg0 (pointer uint8)) (arg1 int))
+  (let ((v1-1 (- (-> this size) (-> this bytes))))
+    0
+    (let* ((s3-1 (min arg1 v1-1))
+           (s5-0 s3-1)
+           )
+      (let ((s2-1 (min s3-1 (- (-> this size) (-> this write-offset)))))
+        (mem-copy! (&+ (-> this data) (-> this write-offset)) arg0 s2-1)
+        (set! (-> this write-offset) (mod (+ (-> this write-offset) s2-1) (-> this size)))
+        (let ((a1-2 (&+ arg0 s2-1))
+              (s4-1 (- s3-1 s2-1))
+              )
+          (when (> s4-1 0)
+            (mem-copy! (&+ (-> this data) (-> this write-offset)) a1-2 s4-1)
+            (+! (-> this write-offset) s4-1)
+            )
+          )
+        )
+      (+! (-> this bytes) s5-0)
+      s5-0
+      )
+    )
+  )
+
+(defmethod headset-queue-method-11 ((this headset-queue) (arg0 (pointer uint8)) (arg1 int))
+  0
+  (let* ((s3-1 (min arg1 (-> this bytes)))
+         (s5-0 s3-1)
+         )
+    (let ((s2-1 (min s3-1 (- (-> this size) (-> this read-offset)))))
+      (mem-copy! arg0 (&+ (-> this data) (-> this read-offset)) s2-1)
+      (set! (-> this read-offset) (mod (+ (-> this read-offset) s2-1) (-> this size)))
+      (let ((a0-4 (&+ arg0 s2-1))
+            (s4-1 (- s3-1 s2-1))
+            )
+        (when (> s4-1 0)
+          (mem-copy! a0-4 (&+ (-> this data) (-> this read-offset)) s4-1)
+          (+! (-> this read-offset) s4-1)
+          )
+        )
+      )
+    (set! (-> this bytes) (- (-> this bytes) s5-0))
+    s5-0
+    )
+  )
+
+(defmethod reset! ((this headset-queue))
+  (set! (-> this bytes) 0)
+  (set! (-> this read-offset) 0)
+  (set! (-> this write-offset) 0)
+  0
+  (none)
+  )
+
+(define *decoder-queue-3-buf* (new 'static 'array uint8 800
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                )
+        )
+
+(define *decoder-queue-2-buf* (new 'static 'array uint8 800
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                )
+        )
+
+(define *decoder-queue-1-buf* (new 'static 'array uint8 800
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                )
+        )
+
+(define *decoder-queue-0-buf* (new 'static 'array uint8 800
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                #x0
+                                )
+        )
+
+(define *decoder-queue-buffers* (new 'static 'boxed-array :type object :length 0 :allocated-length 4))
+
+(set! (-> *decoder-queue-buffers* 3) *decoder-queue-3-buf*)
+
+(set! (-> *decoder-queue-buffers* 2) *decoder-queue-2-buf*)
+
+(set! (-> *decoder-queue-buffers* 1) *decoder-queue-1-buf*)
+
+(set! (-> *decoder-queue-buffers* 0) *decoder-queue-0-buf*)
+
+;; WARN: Return type mismatch process vs headset.
+(defmethod relocate ((this headset) (offset int))
+  (set! *headset* this)
+  (if *headset*
+      (set! *headset* (&+ *headset* offset))
+      )
+  (the-as headset ((method-of-type process relocate) this offset))
+  )
+
+(defmethod deactivate ((this headset))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *headset* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+(defbehavior headset-init-by-other headset ()
+  (logclear! (-> self mask) (process-mask pause menu))
+  (setup! self)
+  (go-virtual active)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun headset-activate ()
+  (if (not *headset*)
+      (set! *headset*
+            (the-as headset (ppointer->process (process-spawn headset :name "headset" :stack *kernel-dram-stack*)))
+            )
+      )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun headset-deactivate ()
+  (send-event *headset* 'go-die)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun headset-audio-msg-callback ((arg0 mem-buffer) (arg1 int))
+  (if (not (and *headset* (logtest? (-> *headset* flags) (headset-flag connected))))
+      (return (the-as object #f))
+      )
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (let ((s3-0 (read-int8 arg0)))
+    (get-voice *headset* (-> arg0 ptr) (the-as int (bytes-remaining arg0)) arg1 s3-0)
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 4 handler-func) headset-audio-msg-callback)
+
+(defun headset-udp-callback ((arg0 pointer) (arg1 int) (arg2 int))
+  (if *headset*
+      (get-voice *headset* arg0 arg1 arg2 0)
+      )
+  0
+  )
+
+(defmethod setup! ((this headset))
+  (with-pp
+    (stack-size-set! (-> this main-thread) 512)
+    (set! (-> this flags) (headset-flag))
+    (logior! (-> this flags) (headset-flag hf1))
+    (init this)
+    (init! *udp-layer*)
+    (set-callback *udp-layer* headset-udp-callback)
+    (remove-from-process (-> *net-mgr* notify) pp)
+    (net-mgr-notify-connect this 8)
+    0
+    (none)
+    )
+  )
+
+(defmethod update-status ((this headset))
+  (knet-lg-tick)
+  (let ((s5-0 (= (knet-lg-got-headset) 1)))
+    (when (!= s5-0 (logtest? (-> this flags) (headset-flag connected)))
+      (format 0 "headset status change!~%")
+      (cond
+        (s5-0
+          (format 0 "new headset~%")
+          (logior! (-> this flags) (headset-flag connected))
+          (init this)
+          0
+          )
+        (else
+          (logclear! (-> this flags) (headset-flag connected))
+          0
+          )
+        )
+      (send-event *net-world* 'headset-changed (logtest? (-> this flags) (headset-flag connected)))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init ((this headset))
+  (format 0 "initting new headset~%")
+  (logclear! (-> this flags) (headset-flag playback recording))
+  (knet-lg-set-recording 0)
+  (knet-lg-set-playback 0)
+  (format 0 "flags ~D~%" (-> this flags))
+  (set! (-> this bytes-in-playback-queue) 0)
+  (set! (-> this last-speech-time) (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30))))
+  (dotimes (s5-0 4)
+    (set! (-> this decoders s5-0 client-idx) -1)
+    (let ((a1-2 (-> *decoder-queue-buffers* s5-0)))
+      (init! (-> this decoders s5-0 cmp-queue) (the-as (pointer uint8) a1-2) 800)
+      )
+    (set! (-> this decoders s5-0 last-time) (the-as int (-> *display* real-clock frame-counter)))
+    (set! (-> this decoders s5-0 id) s5-0)
+    )
+  (dotimes (v1-20 16)
+    (set! (-> this client-to-decoder v1-20) (the-as uint -1))
+    )
+  (set! *headset-input-bytes* 0)
+  (set! *headset-output-bytes* 0)
+  (set! *headset-output-offset* 0)
+  (set! (-> this prev-operation) #f)
+  0
+  (none)
+  )
+
+(defstate active (headset)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-die)
+       (go-virtual die)
+       )
+      (('client-joined)
+       (client-joined *udp-layer* (the-as int (-> block param 0)))
+       )
+      (('client-left)
+       (client-left *udp-layer* (the-as int (-> block param 0)))
+       )
+      )
+    )
+  :exit (behavior ()
+    (close! *udp-layer*)
+    )
+  :trans (behavior ()
+    (when *debug-segment*
+      'headset
+      (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-8 'headset)
+            (s5-0 (shl #x80ff 16))
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-0 (-> gp-0 data (-> gp-0 count))))
+            (let ((s3-0 (-> gp-0 base-time)))
+              (set! (-> s4-0 name) v1-8)
+              (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+              )
+            (set! (-> s4-0 depth) (the-as uint (-> gp-0 depth)))
+            (set! (-> s4-0 color) (the-as rgba s5-0))
+            (set! (-> gp-0 segment (-> gp-0 depth)) s4-0)
+            )
+          (set! (-> gp-0 count) (min 2099 (+ (-> gp-0 count) 1)))
+          (+! (-> gp-0 depth) 1)
+          (set! (-> gp-0 max-depth) (max (-> gp-0 max-depth) (-> gp-0 depth)))
+          )
+        )
+      0
+      )
+    (update self)
+    (when *debug-segment*
+      (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-33 (+ (-> gp-1 depth) -1))
+                 (s5-1 (-> gp-1 segment v1-33))
+                 (s4-1 (-> gp-1 base-time))
+                 )
+            (when (>= v1-33 0)
+              (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
+              (+! (-> gp-1 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    )
+  :code sleep-code
+  )
+
+(defstate die (headset)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+;; WARN: Function (method 20 headset) has a return type of none, but the expression builder found a return statement.
+(defmethod update ((this headset))
+  (dotimes (v1-0 16)
+    (set! (-> this client-talking v1-0) (the-as uint (max 0 (+ (-> this client-talking-s8 v1-0) -10))))
+    )
+  (update *udp-layer*)
+  (update-status this)
+  (if (not (logtest? (-> this flags) (headset-flag connected)))
+      (return #f)
+      )
+  (when (not (logtest? (-> this flags) (headset-flag recording)))
+    (let ((a2-0 (knet-lg-set-recording 1)))
+      (format 0 "recording rc: ~D~%" a2-0)
+      )
+    (logior! (-> this flags) (headset-flag recording))
+    )
+  (when (not (logtest? (-> this flags) (headset-flag playback)))
+    (let ((a2-1 (knet-lg-set-playback 1)))
+      (format 0 "playback rc: ~D~%" a2-1)
+      )
+    (knet-lg-set-playback 1)
+    (logior! (-> this flags) (headset-flag playback))
+    )
+  (set! *headset-result* 0)
+  (when (-> this prev-operation)
+    (let ((a2-2 (knet-lg-async 0 (the-as (pointer int32) (&-> '*headset-result* value)))))
+      (when (or (nonzero? a2-2) (nonzero? *headset-result*))
+        (format *stdebug* "headset:  ~D ~8X~%" a2-2 *headset-result*)
+        (return #f)
+        )
+      )
+    )
+  (case (-> this prev-operation)
+    (('playback)
+     (process-playback this)
+     )
+    (('record)
+     (process-recorded this)
+     )
+    ((#f)
+     (set! *headset-op-size* 0)
+     (process-recorded this)
+     )
+    )
+  0
+  (none)
+  )
+
+(defmethod process-recorded ((this headset))
+  (set! *headset-input-bytes* (+ *headset-input-bytes* *headset-op-size*))
+  (let ((s4-0 (/ *headset-input-bytes* 320))
+        (s5-0 *headset-input-buffer*)
+        )
+    (let ((v1-6 (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this last-speech-time)))))
+      (logclear! (-> this flags) (headset-flag talking))
+      (if (< v1-6 (seconds 0.5))
+          (logior! (-> this flags) (headset-flag talking))
+          )
+      )
+    (dotimes (s3-0 s4-0)
+      0
+      (let ((a0-6 s5-0)
+            (v1-11 0)
+            )
+        0
+        (countdown (a1-2 160)
+          (let ((a2-0 (-> a0-6 0)))
+            (+! v1-11 (* a2-0 a2-0))
+            )
+          (set! a0-6 (&-> a0-6 1))
+          )
+        (when (< #x1c9c380 v1-11)
+          (set! (-> this last-speech-time) (the-as int (-> *display* real-clock frame-counter)))
+          (when (not (logtest? (-> this flags) (headset-flag talking)))
+            (logior! (-> this flags) (headset-flag talking))
+            (set! (-> this frame-ct) 0)
+            (set! (-> this first-send) #t)
+            )
+          )
+        (let* ((a1-3 (/ (the int (sqrtf (the float v1-11))) 100))
+               (v1-14 (max 0 (min 255 a1-3)))
+               )
+          (when (logtest? (-> this flags) (headset-flag talking))
+            (set! (-> this client-talking (if *net-mgr*
+                                              (-> *net-mgr* game-state local-machine-idx)
+                                              0
+                                              )
+                      )
+                  (the-as uint (/ v1-14 2))
+                  )
+            (set! (-> this encoder-io nelly-buffer) (&+ *headset-cmp-out-buffer* (* *headset-cmp-out-frames* 8)))
+            (set! (-> this encoder-io nelly-buffer-size) (the-as uint 8))
+            (set! (-> this encoder-io nelly-buffer-read-byte-offset) (the-as uint 0))
+            (set! (-> this encoder-io nelly-buffer-read-bit-offset) (the-as uint 0))
+            (set! (-> this encoder-io nelly-buffer-write-byte-offset) (the-as uint 0))
+            (set! (-> this encoder-io nelly-buffer-write-bit-offset) (the-as uint 0))
+            (set! (-> this encoder-io pcm-buffer) s5-0)
+            (set! (-> this encoder-io samples-in-pcm-buffer) 160)
+            (knet-nm-encode (-> this encoder-io))
+            (set! *headset-cmp-out-frames* (+ *headset-cmp-out-frames* 1))
+            (if (>= *headset-cmp-out-frames* 16)
+                (send-voice this 0)
+                )
+            )
+          )
+        )
+      (set! s5-0 (&-> s5-0 160))
+      )
+    (if (and (> *headset-cmp-out-frames* 0) (not (logtest? (-> this flags) (headset-flag talking))))
+        (send-voice this 2)
+        )
+    (when (logtest? (-> this flags) (headset-flag talking))
+      (when (not (paused?))
+        )
+      )
+    (let ((s3-1 (- *headset-input-bytes* (* 320 s4-0))))
+      (if (and (nonzero? s3-1) (nonzero? s4-0))
+          (mem-copy! *headset-input-buffer* s5-0 s3-1)
+          )
+      (set! *headset-input-bytes* s3-1)
+      )
+    )
+  (start-playback this)
+  0
+  (none)
+  )
+
+(defmethod process-playback ((this headset))
+  (set! *headset-output-bytes* (- *headset-output-bytes* *headset-op-size*))
+  (cond
+    ((nonzero? *headset-output-bytes*)
+     (set! *headset-output-offset* (+ *headset-output-offset* *headset-op-size*))
+     )
+    (else
+      (set! *headset-output-offset* 0)
+      (set! *headset-output-bytes* 0)
+      (dotimes (s5-0 4)
+        (decode-output-frame this (the-as (pointer uint16) (&+ *headset-output-buffer* *headset-output-bytes*)))
+        (set! *headset-output-bytes* (+ *headset-output-bytes* 320))
+        )
+      )
+    )
+  (start-record this)
+  0
+  (none)
+  )
+
+(defmethod start-playback ((this headset))
+  (set! *headset-op-size* *headset-output-bytes*)
+  (knet-lg-awrite
+    (&+ *headset-output-buffer* *headset-output-offset*)
+    (the-as (pointer int32) (&-> '*headset-op-size* value))
+    0
+    )
+  (set! (-> this prev-operation) 'playback)
+  0
+  (none)
+  )
+
+(defmethod start-record ((this headset))
+  (set! *headset-op-size* (- 2048 *headset-input-bytes*))
+  (knet-lg-aread
+    (&+ *headset-input-buffer* *headset-input-bytes*)
+    (the-as (pointer int32) (&-> '*headset-op-size* value))
+    0
+    )
+  (set! (-> this prev-operation) 'record)
+  0
+  (none)
+  )
+
+(defun should-talk-to ((arg0 int))
+  (when *net-world*
+    (if (not (logtest? (-> *net-world* net-state players arg0 flags) (net-world-staging-player-flag nwspf0)))
+        (return #f)
+        )
+    0
+    )
+  #t
+  )
+
+(defmethod send-voice ((this headset) (arg0 int))
+  (when (-> this first-send)
+    (set! arg0 (logior arg0 1))
+    (set! (-> this first-send) #f)
+    )
+  (let ((s5-0 0))
+    0
+    (cond
+      (*aux-voice-mgr*
+        (set! s5-0 (-> *aux-voice-mgr* bitfield))
+        )
+      (else
+        (dotimes (s4-0 16)
+          (when (and (!= s4-0 (if *net-mgr*
+                                  (-> *net-mgr* game-state local-machine-idx)
+                                  0
+                                  )
+                         )
+                     (logtest? (-> *net-mgr* game-state connected-bitfield) (ash 1 s4-0))
+                     )
+            (dotimes (s3-0 2)
+              (let ((a0-5 (+ s3-0 (* s4-0 2))))
+                (if (should-talk-to a0-5)
+                    (set! s5-0 (logior s5-0 (ash 1 s4-0)))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((s4-1 (logand s5-0 (udp-layer-method-16 *udp-layer*))))
+      (dotimes (s3-1 16)
+        (if (logtest? s4-1 (ash 1 s3-1))
+            (send-data *udp-layer* (the-as udp-message s3-1) *headset-cmp-out-buffer* (* *headset-cmp-out-frames* 8))
+            )
+        )
+      (let ((s5-1 (logclear s5-0 s4-1)))
+        (cond
+          ((and *net-mgr* (nonzero? (-> *net-mgr* game-state connect-handle)))
+           (let ((s4-2 (alloc-msg-buffer)))
+             (write-int8 s4-2 0)
+             (write-int8 s4-2 0)
+             (write-int8 s4-2 4)
+             (write-int8 s4-2 arg0)
+             (write-bytes s4-2 *headset-cmp-out-buffer* (* *headset-cmp-out-frames* 8))
+             (set! (-> (the-as (pointer int8) (-> s4-2 base)) 1) (+ (bytes-used s4-2) -1))
+             (net-send-msg 128 s4-2 s5-1)
+             (free-msg-buffer s4-2)
+             )
+           )
+          ((and *aux-voice-mgr* (= (-> *aux-voice-mgr* state name) 'active))
+           (let ((s4-3 (alloc-msg-buffer)))
+             (write-int8 s4-3 0)
+             (write-int8 s4-3 0)
+             (write-int8 s4-3 4)
+             (write-int8 s4-3 arg0)
+             (write-bytes s4-3 *headset-cmp-out-buffer* (* *headset-cmp-out-frames* 8))
+             (set! (-> (the-as (pointer int8) (-> s4-3 base)) 1) (+ (bytes-used s4-3) -1))
+             (aux-voice-send *aux-voice-mgr* s4-3 s5-1 0)
+             (free-msg-buffer s4-3)
+             )
+           )
+          )
+        )
+      )
+    )
+  (set! *headset-cmp-out-frames* 0)
+  0
+  (none)
+  )
+
+;; WARN: Function (method 26 headset) has a return type of none, but the expression builder found a return statement.
+(defmethod get-voice ((this headset) (arg0 pointer) (arg1 int) (arg2 int) (arg3 int))
+  (let ((s1-0 -1))
+    (if (and *net-mgr* *net-process-mgr* (nonzero? (-> *net-mgr* lobby-state connect-handle)))
+        (set! s1-0 (-> *net-process-mgr* machines arg2 acct-id))
+        )
+    (if (and *aux-voice-mgr* (-> *aux-voice-mgr* next-state) (= (-> *aux-voice-mgr* next-state name) 'active))
+        (set! s1-0 (-> *aux-voice-acct-ids* arg2))
+        )
+    (if (medius-cache-index-array-method-9 *medius-mute-list* s1-0)
+        (return #f)
+        )
+    (if (medius-cache-index-array-method-9 *medius-ignores* s1-0)
+        (return #f)
+        )
+    )
+  (let ((v1-28 (-> this client-to-decoder-s8 arg2)))
+    (let ((a0-8 #f))
+      (when (= v1-28 -1)
+        (dotimes (a1-5 4)
+          (let* ((a2-4 (-> this decoders a1-5))
+                 (a3-1 (-> a2-4 client-idx))
+                 )
+            (when (!= a3-1 -1)
+              (when (< (seconds 3) (- (-> *display* real-clock frame-counter) (the-as time-frame (-> a2-4 last-time))))
+                (set! (-> this client-to-decoder a3-1) (the-as uint -1))
+                (set! (-> a2-4 client-idx) -1)
+                (set! a3-1 -1)
+                )
+              )
+            (when (= a3-1 -1)
+              (set! v1-28 a1-5)
+              (set! a0-8 #t)
+              (set! (-> a2-4 client-idx) arg2)
+              (set! (-> this client-to-decoder arg2) (the-as uint a1-5))
+              (goto cfg-31)
+              )
+            )
+          )
+        )
+      (label cfg-31)
+      (if (= v1-28 -1)
+          (return #f)
+          )
+      (if (logtest? arg3 1)
+          (set! a0-8 #t)
+          )
+      (when a0-8
+        )
+      )
+    (let ((s4-1 (-> this decoders v1-28)))
+      (headset-queue-method-10 (-> s4-1 cmp-queue) (the-as (pointer uint8) arg0) arg1)
+      (set! (-> s4-1 last-time) (the-as int (-> *display* real-clock frame-counter)))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod decode-frame ((this headset) (arg0 int) (arg1 object) (arg2 object))
+  (let ((s0-0 #t)
+        (gp-0 0)
+        )
+    (let ((s1-0 (-> this decoders arg0 io)))
+      (set! (-> s1-0 pcm-buffer) (the-as (pointer int16) *headset-scratch-buffer*))
+      (while s0-0
+        (knet-nm-decode s1-0 arg0)
+        (let ((s0-1 (* (-> s1-0 samples-in-pcm-buffer) 2)))
+          (when (> s0-1 0)
+            (if arg2
+                (headset-method-31 this (the-as (pointer int16) arg1) (-> s1-0 pcm-buffer) (/ s0-1 2))
+                (mem-copy! (the-as pointer arg1) (-> s1-0 pcm-buffer) s0-1)
+                )
+            (set! arg1 (+ (the-as uint arg1) s0-1))
+            (+! gp-0 s0-1)
+            )
+          )
+        (set! s0-0 (zero? (knet-nm-decoder-needs-input arg0)))
+        )
+      )
+    (if (!= gp-0 320)
+        (format 0 "unexpected output size!~%")
+        )
+    gp-0
+    )
+  )
+
+(defmethod decode-frames ((this headset)
+                         (arg0 (pointer nci-codec-io-block))
+                         (arg1 (pointer int32))
+                         (arg2 (pointer int16))
+                         (arg3 symbol)
+                         (arg4 (function (pointer nci-codec-io-block) (pointer int32) none))
+                         )
+  (local-vars (v1-13 symbol))
+  (let ((sv-16 #t)
+        (gp-0 0)
+        )
+    (set! (-> arg0 0 pcm-buffer) (the-as (pointer int16) *headset-scratch-buffer*))
+    (while sv-16
+      (arg4 arg0 arg1)
+      (let* ((a3-1 (-> arg0 0 samples-in-pcm-buffer))
+             (sv-32 (* a3-1 2))
+             )
+        (when (> a3-1 0)
+          (if arg3
+              (headset-method-31 this arg2 (-> arg0 0 pcm-buffer) a3-1)
+              (mem-copy! arg2 (-> arg0 0 pcm-buffer) sv-32)
+              )
+          (&+! arg2 sv-32)
+          (+! gp-0 sv-32)
+          )
+        )
+      (let ((v1-12 #t))
+        (set! sv-16 v1-12)
+        (let ((v0-3 (the-as int (knet-nm-decoder-needs-input (-> arg1 0)))))
+          ;; og:preserve-this
+          (cmove-#f-nonzero v1-13 v0-3 v1-12)
+          )
+        )
+      (set! sv-16 v1-13)
+      )
+    (if (!= gp-0 320)
+        (format 0 "unexpected output size!~%")
+        )
+    gp-0
+    )
+  )
+
+(defmethod headset-method-31 ((this headset) (arg0 (pointer int16)) (arg1 (pointer int16)) (arg2 int))
+  0
+  (while (> arg2 0)
+    (let* ((a0-2 (+ (-> arg0 0) (-> arg1 0)))
+           (v1-3 (max -32767 a0-2))
+           )
+      (set! (-> arg0 0) (min #x7fff v1-3))
+      )
+    (set! arg0 (&-> arg0 1))
+    (set! arg1 (&-> arg1 1))
+    (set! arg2 (+ arg2 -1))
+    )
+  0
+  (none)
+  )
+
+(defmethod decode-output-frame ((this headset) (arg0 (pointer uint16)))
+  (let ((s4-0 0))
+    (dotimes (v1-0 4)
+      (when (> (-> this decoders v1-0 cmp-queue bytes) 0)
+        (set! (-> *headset-decoder-ids* s4-0) v1-0)
+        (set! (-> *headset-decoder-ptrs* s4-0) (-> this decoders v1-0 io))
+        (+! s4-0 1)
+        )
+      )
+    (when (zero? s4-0)
+      (mem-clear! arg0 640)
+      (return #t)
+      )
+    (set! *headset-buffers-decoded* (+ *headset-buffers-decoded* 1))
+    (dotimes (s3-0 s4-0)
+      (let ((s2-0 (-> *headset-decoder-ids* s3-0)))
+        (headset-queue-method-11 (-> this decoders s2-0 cmp-queue) (-> this decoders s2-0 scratch) 8)
+        (set! (-> this decoders s2-0 io nelly-buffer) (-> this decoders s2-0 scratch))
+        (set! (-> this decoders s2-0 io nelly-buffer-size) (the-as uint 8))
+        (set! (-> this decoders s2-0 io nelly-buffer-read-byte-offset) (the-as uint 0))
+        (set! (-> this decoders s2-0 io nelly-buffer-read-bit-offset) (the-as uint 0))
+        (set! (-> this decoders s2-0 io nelly-buffer-write-byte-offset) (the-as uint 0))
+        (set! (-> this decoders s2-0 io nelly-buffer-write-bit-offset) (the-as uint 0))
+        (set! (-> this decoders s2-0 io pcm-buffer) (the-as (pointer int16) *headset-scratch-buffer*))
+        (set! (-> this client-talking (-> this decoders s2-0 client-idx)) (the-as uint 100))
+        )
+      )
+    (cond
+      ((= s4-0 1)
+       (decode-frame this (-> *headset-decoder-ids* 0) arg0 #f)
+       )
+      ((= s4-0 2)
+       (decode-frame this (-> *headset-decoder-ids* 0) arg0 #f)
+       (decode-frame this (-> *headset-decoder-ids* 1) arg0 #t)
+       )
+      ((= s4-0 3)
+       (decode-frames
+         this
+         (-> *headset-decoder-ptrs* data)
+         *headset-decoder-ids*
+         (the-as (pointer int16) arg0)
+         #f
+         (the-as (function (pointer nci-codec-io-block) (pointer int32) none) knet-nm-decode3)
+         )
+       )
+      ((= s4-0 4)
+       (decode-frames
+         this
+         (-> *headset-decoder-ptrs* data)
+         *headset-decoder-ids*
+         (the-as (pointer int16) arg0)
+         #f
+         (the-as (function (pointer nci-codec-io-block) (pointer int32) none) knet-nm-decode4)
+         )
+       )
+      )
+    )
+  #t
+  )
+
+(defmethod headset-method-32 ((this headset))
+  0
+  (none)
+  )

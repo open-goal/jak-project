@@ -7,3 +7,450 @@
 
 ;; DECOMP BEGINS
 
+(defmethod process-focusable-method-57 ((this rigid-body-object))
+  (-> this info info inv-mass)
+  )
+
+(defmethod rigid-body-object-method-68 ((this rigid-body-object) (arg0 rigid-body-info) (arg1 symbol))
+  (set! (-> this info) (the-as rigid-body-object-constants arg0))
+  (set! (-> this rbody info) (the-as rigid-body-object-constants (&-> arg0 max-time-step)))
+  (if arg1
+      (init-inertia! (-> this info info))
+      )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-69 ((this rigid-body-object))
+  (let ((a1-0 (get-sym-val (-> this info))))
+    (if (and a1-0 (!= a1-0 (-> this info)))
+        (rigid-body-object-method-68 this (-> a1-0 info) #t)
+        )
+    )
+  (set! (-> this rbody force-callback) (method-of-object this rigid-body-object-method-62))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-62 ((this rigid-body-object) (arg0 float))
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (vector-reset! a1-1)
+    (set! (-> a1-1 y) (* -1.0 (-> this info info gravity) (-> this rbody info info mass)))
+    (add-force! (-> this rbody) a1-1)
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-63 ((this rigid-body-object))
+  (simulate! (-> this rbody) this (seconds-per-frame) (-> this max-time-step))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-85 ((this rigid-body-object))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-86 ((this rigid-body-object))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-87 ((this rigid-body-object))
+  (simulate! (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-88 ((this rigid-body-object))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-67 ((this rigid-body-object))
+  (go (method-of-object this idle))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-64 ((this rigid-body-object) (arg0 rigid-body-object-constants))
+  (set! (-> this info) arg0)
+  (set! (-> this rbody) (new 'process 'rigid-body-control this))
+  (update-transforms (-> this root))
+  (init!
+    (-> this rbody)
+    (-> arg0 info)
+    (-> this root trans)
+    (-> this root rotation)
+    (method-of-object this rigid-body-object-method-62)
+    )
+  (rigid-body-object-method-68 this (-> arg0 info) #t)
+  (rigid-body-object-method-69 this)
+  (set! (-> this max-time-step) (-> arg0 info max-time-step))
+  (set! (-> this root max-iteration-count) (the-as uint 4))
+  (when (nonzero? (-> this skel))
+    (let ((v1-17 (-> this skel root-channel 0)))
+      (set! (-> v1-17 num-func) num-func-identity)
+      (set! (-> v1-17 frame-num) 0.0)
+      )
+    (ja-post)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-collision! ((this rigid-body-object))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(define *rigid-body-object-constants* (new 'static 'rigid-body-object-constants
+                                        :info (new 'static 'rigid-body-info
+                                          :max-time-step 0.033333335
+                                          :mass 2.0
+                                          :inv-mass 0.5
+                                          :bounce-factor 0.5
+                                          :friction-factor 0.1
+                                          :cm-offset-joint (new 'static 'vector :w 1.0)
+                                          :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 4) (meters 4))
+                                          :gravity 163840.0
+                                          )
+                                        :name '*rigid-body-object-constants*
+                                        )
+        )
+
+(defmethod rigid-body-object-method-66 ((this rigid-body-object))
+  (rigid-body-object-method-64 this *rigid-body-object-constants*)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this rigid-body-object) (arg0 entity-actor))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (rigid-body-object-method-66 this)
+  (rigid-body-object-method-67 this)
+  0
+  )
+
+(defmethod rigid-body-object-method-70 ((this rigid-body-object))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-61 ((this rigid-body-object))
+  (ja-post)
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-71 ((this rigid-body-object))
+  (rigid-body-object-method-63 this)
+  (rigid-body-object-method-70 this)
+  (update-rbody-transform! (-> this rbody) (-> this root))
+  (rigid-body-object-method-61 this)
+  (update-transforms (-> this root))
+  0
+  (none)
+  )
+
+(defmethod enable-collision ((this rigid-body-object))
+  (logior! (-> this flags) (rigid-body-object-flag enable-collision))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (-> this root backup-collide-as))
+    (set! (-> v1-3 prim-core collide-with) (-> this root backup-collide-with))
+    )
+  0
+  (none)
+  )
+
+(defmethod disable-collision ((this rigid-body-object))
+  (logclear! (-> this flags) (rigid-body-object-flag enable-collision))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (collide-spec))
+    (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod enable-physics ((this rigid-body-object))
+  (when (not (logtest? (-> this rbody flags) (rigid-body-flag enable-physics)))
+    (logior! (-> this rbody flags) (rigid-body-flag enable-physics))
+    (set-transform! (-> this rbody) (-> this root trans) (-> this root rotation))
+    (vector-float*! (-> this rbody lin-momentum) (-> this root transv) (-> this info info mass))
+    (vector-reset! (-> this rbody ang-momentum))
+    )
+  0
+  (none)
+  )
+
+(defmethod disable-physics ((this rigid-body-object))
+  (logclear! (-> this rbody flags) (rigid-body-flag enable-physics))
+  0
+  (none)
+  )
+
+(defmethod on-impact ((this rigid-body-object))
+  (logior! (-> this flags) (rigid-body-object-flag disturbed))
+  (set! (-> this disturbed-time) (the-as uint (current-time)))
+  (if (not (logtest? (-> this rbody flags) (rigid-body-flag enable-physics)))
+      (enable-physics this)
+      )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-77 ((this rigid-body-object))
+  (go (method-of-object this active))
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-78 ((this rigid-body-object))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs symbol.
+(defmethod rigid-body-object-method-80 ((this rigid-body-object) (arg0 rigid-body-impact))
+  (the-as symbol 0)
+  )
+
+(defmethod rigid-body-object-method-84 ((this rigid-body-object) (arg0 rigid-body-impact) (arg1 touching-shapes-entry))
+  (set! (-> arg0 process) #f)
+  (set! (-> arg0 prim-id) (the-as uint 0))
+  (vector-reset! (-> arg0 normal))
+  (vector-reset! (-> arg0 velocity))
+  (set! (-> arg0 point quad) (-> this root trans quad))
+  (when arg1
+    (let ((s3-0 (-> arg1 head)))
+      (when s3-0
+        (get-intersect-point (-> arg0 point) s3-0 (-> this root) arg1)
+        (let ((s5-1 (get-touched-prim s3-0 (-> this root) arg1)))
+          (when s5-1
+            (set! (-> arg0 prim-id) (-> s5-1 prim-id))
+            (vector-! (-> arg0 normal) (-> arg0 point) (-> s5-1 prim-core world-sphere))
+            (vector-normalize! (-> arg0 normal) 1.0)
+            (vector+float*!
+              (-> arg0 point)
+              (-> s5-1 prim-core world-sphere)
+              (-> arg0 normal)
+              (-> s5-1 prim-core world-sphere w)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-79 ((this rigid-body-object) (arg0 rigid-body-impact) (arg1 attack-info))
+  (local-vars (f1-1 number))
+  0.0
+  (let ((f0-1 0.0))
+    (cond
+      ((logtest? (attack-mask vehicle-damage-factor) (-> arg1 mask))
+       (set! f1-1 (* (-> arg1 damage) (-> arg1 vehicle-damage-factor)))
+       (if (logtest? (attack-mask vehicle-impulse-factor) (-> arg1 mask))
+           (set! f0-1 (* 49152.0 (-> arg1 vehicle-impulse-factor) (-> arg1 damage)))
+           )
+       0
+       )
+      (else
+        (set! f0-1 8192.0)
+        (set! f1-1 2.0)
+        )
+      )
+    (set! (-> arg0 impulse) f0-1)
+    )
+  (rigid-body-object-method-78 this)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defmethod attack-handler ((this rigid-body-object)
+                          (arg0 process-focusable)
+                          (arg1 attack-info)
+                          (arg2 touching-shapes-entry)
+                          (arg3 penetrate)
+                          )
+  (when arg2
+    (let ((s5-0 (new 'stack-no-clear 'rigid-body-impact)))
+      (rigid-body-object-method-84 this s5-0 arg2)
+      (if (logtest? (attack-mask attacker-velocity) (-> arg1 mask))
+          (set! (-> s5-0 velocity quad) (-> arg1 attacker-velocity quad))
+          (vector-! (-> s5-0 velocity) (-> s5-0 point) (-> arg0 root trans))
+          )
+      (rigid-body-object-method-79 this s5-0 arg1)
+      (on-impact this)
+      (let ((s4-1 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-1 quad) (-> s5-0 velocity quad))
+        (vector-normalize! s4-1 1.0)
+        (vector-float*! s4-1 s4-1 (-> s5-0 impulse))
+        (apply-impact! (-> this rbody) (-> s5-0 point) s4-1)
+        (integrate-momentum! (-> this rbody) 1.0)
+        (init-velocities! (-> this rbody))
+        (when #f
+          (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 point) *color-blue*)
+          (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> s5-0 point) s4-1 (meters 0.00024414062) *color-blue*)
+          )
+        )
+      (rigid-body-object-method-80 this s5-0)
+      )
+    (if (and (-> this next-state) (= (-> this next-state name) 'idle))
+        (rigid-body-object-method-77 this)
+        )
+    #t
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defmethod touch-handler ((this rigid-body-object) (arg0 process-focusable) (arg1 touching-shapes-entry))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'rigid-body-impact 2)))
+    (set! (-> s5-0 1 velocity x) (process-focusable-method-57 arg0))
+    (rigid-body-object-method-84 this (-> s5-0 0) arg1)
+    (if (logtest? (-> this rbody flags) (rigid-body-flag enable-physics))
+        (get-velocity-at-point (-> this rbody) (-> s5-0 0 point) (-> s5-0 0 velocity))
+        (set! (-> s5-0 0 velocity quad) (-> this root transv quad))
+        )
+    (let ((v1-10 (-> arg0 root)))
+      (set! (-> s5-0 1 point quad) (-> v1-10 transv quad))
+      (vector-! (-> s5-0 0 velocity) (-> v1-10 transv) (-> s5-0 0 velocity))
+      )
+    (let ((f0-2 (vector-dot (-> s5-0 0 velocity) (-> s5-0 0 normal))))
+      (when (< f0-2 0.0)
+        (set! (-> s5-0 0 impulse) (/ f0-2 (+ (-> s5-0 1 velocity x) (-> this info info inv-mass))))
+        (vector+float*!
+          (-> s5-0 1 point)
+          (-> s5-0 1 point)
+          (-> s5-0 0 normal)
+          (* -3.1 (-> s5-0 1 velocity x) (-> s5-0 0 impulse))
+          )
+        (set! (-> s5-0 1 point y) (fmax (* 49152.0 (-> s5-0 1 velocity x)) (-> s5-0 1 point y)))
+        (on-impact this)
+        (vector-float*! (-> s5-0 1 normal) (-> s5-0 0 normal) (-> s5-0 0 impulse))
+        (apply-impact! (-> this rbody) (-> s5-0 0 point) (-> s5-0 1 normal))
+        (integrate-momentum! (-> this rbody) 1.0)
+        (init-velocities! (-> this rbody))
+        (when #f
+          (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 0 point) *color-blue*)
+          (add-debug-vector
+            #t
+            (bucket-id debug-no-zbuf1)
+            (-> s5-0 0 point)
+            (-> s5-0 0 normal)
+            (- (-> s5-0 0 impulse))
+            *color-blue*
+            )
+          )
+        (rigid-body-object-method-80 this (-> s5-0 0))
+        (if (and (-> this next-state) (= (-> this next-state name) 'idle))
+            (rigid-body-object-method-77 this)
+            )
+        )
+      )
+    )
+  #t
+  )
+
+(defmethod rigid-body-object-method-81 ((this rigid-body-object) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('impact-impulse)
+     (let ((s5-1 (-> arg3 param 0)))
+       (if (!= this arg0)
+           (on-impact this)
+           )
+       (rigid-body-object-method-80 this (the-as rigid-body-impact s5-1))
+       )
+     (if (and (-> this next-state) (= (-> this next-state name) 'idle))
+         (rigid-body-object-method-77 this)
+         )
+     #t
+     )
+    (('touched)
+     (if (= this *debug-actor*)
+         (format *stdcon* "rigid-body-object got touched~%")
+         )
+     (when (zero? (-> (the-as process-focusable arg0) rbody))
+       (let ((a1-4 (as-type arg0 process-focusable)))
+         (if a1-4
+             (touch-handler this (the-as process-focusable a1-4) (the-as touching-shapes-entry (-> arg3 param 0)))
+             )
+         )
+       )
+     )
+    (('attack)
+     (let ((s3-0 (the-as object (-> arg3 param 1)))
+           (t0-1 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3))
+           )
+       (when (!= (-> (the-as attack-info s3-0) id) (-> this incoming-attack-id))
+         (set! (-> this incoming-attack-id) (-> (the-as attack-info s3-0) id))
+         (attack-handler
+           this
+           (the-as process-focusable arg0)
+           (the-as attack-info s3-0)
+           (the-as touching-shapes-entry (-> arg3 param 0))
+           t0-1
+           )
+         )
+       )
+     )
+    (('enable-physics)
+     (on-impact this)
+     #t
+     )
+    )
+  )
+
+(defbehavior rigid-body-object-event-handler rigid-body-object ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (rigid-body-object-method-81 self arg0 arg1 arg2 arg3)
+  )
+
+(defstate idle (rigid-body-object)
+  :virtual #t
+  :event rigid-body-object-event-handler
+  :code sleep-code
+  )
+
+(defstate active (rigid-body-object)
+  :virtual #t
+  :event rigid-body-object-event-handler
+  :enter (behavior ()
+    (logior! (-> self rbody flags) (rigid-body-flag debug-active))
+    )
+  :code sleep-code
+  :post (behavior ()
+    (rigid-body-object-method-71 self)
+    )
+  )

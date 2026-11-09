@@ -50,6 +50,7 @@
     die
     )
   (:methods
+    (init-collision! (_type_ vehicle-wheel-init-params) none :replace)
     (vehicle-wheel-method-92 (_type_ int int) none)
     )
   )
@@ -61,7 +62,7 @@
   (none)
   )
 
-(defmethod rigid-body-object-method-65 ((this vehicle-wheel) (arg0 vector))
+(defmethod init-collision! ((this vehicle-wheel) (arg0 vehicle-wheel-init-params))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -72,7 +73,7 @@
     (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> v1-7 prim-core action) (collide-action solid))
       (set! (-> v1-7 transform-index) 0)
-      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 (-> arg0 w))
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 (-> arg0 radius))
       (set! (-> s5-0 total-prims) (the-as uint 1))
       (set! (-> s5-0 root-prim) v1-7)
       )
@@ -123,7 +124,8 @@
   (set! (-> this focus-status)
         (the-as focus-status (logior (focus-status gun-no-target) (-> this focus-status)))
         )
-  0.0
+  0
+  (none)
   )
 
 (defmethod rigid-body-object-method-61 ((this vehicle-wheel))
@@ -174,7 +176,7 @@
   (if *display-collide-cache*
       (debug-draw *collide-cache*)
       )
-  (rigid-body-control-method-10 (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
+  (simulate! (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
   0
   (none)
   )
@@ -185,7 +187,7 @@
       (go (method-of-object this die))
       )
   (rigid-body-object-method-70 this)
-  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (update-rbody-transform! (-> this rbody) (-> this root))
   (rigid-body-object-method-61 this)
   0
   (none)
@@ -199,7 +201,7 @@
 (defmethod rigid-body-object-method-80 ((this vehicle-wheel) (arg0 rigid-body-impact))
   (when (< 40960.0 (-> arg0 impulse))
     (let ((f30-0 (* 0.000024414063 (+ -40960.0 (-> arg0 impulse))))
-          (v1-5 (make-sound-instance (-> *sound-info* 625) 0 #f))
+          (v1-5 (make-sound-instance (-> *sound-info* 625) (new 'static 'sound-id) #f))
           )
       (cond
         (v1-5
@@ -214,7 +216,7 @@
       )
     (when (< 81920.0 (-> arg0 impulse))
       (let ((f30-1 (* 0.000024414063 (+ -81920.0 (-> arg0 impulse))))
-            (v1-13 (make-sound-instance (-> *sound-info* 624) 0 #f))
+            (v1-13 (make-sound-instance (-> *sound-info* 624) (new 'static 'sound-id) #f))
             )
         (cond
           (v1-13
@@ -244,13 +246,13 @@
          (vector-float*! (the-as vector a0-3) (the-as vector a0-3) 0.25)
          )
        (set! (-> self rbody position quad) (-> self root trans quad))
-       (quaternion-copy! (the-as quaternion (-> self rbody rot)) (the-as quaternion (-> self root rot)))
+       (quaternion-copy! (the-as quaternion (-> self rbody rot)) (-> self root rotation))
        (let ((a1-3 (-> block param 0))
              (gp-1 (-> block param 1))
              )
          (when (and a1-3 gp-1)
-           (rigid-body-control-method-31 (-> self rbody) (the-as vector a1-3))
-           (rigid-body-control-method-32 (-> self rbody) (the-as vector gp-1))
+           (set-lin-velocity! (-> self rbody) (the-as vector a1-3))
+           (set-ang-velocity! (-> self rbody) (the-as matrix gp-1))
            (go-virtual explode)
            )
          )
@@ -338,7 +340,7 @@
         )
       )
     (logior! (-> self rbody flags) (rigid-body-flag enable-physics enable-penetrate-mode))
-    (rigid-body-queue-method-11 *rigid-body-queue* self)
+    (add-to-queue *rigid-body-queue* self)
     (let ((v1-42 (-> self root root-prim)))
       (set! (-> v1-42 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-42 prim-core collide-with) (-> self root backup-collide-with))
@@ -383,9 +385,9 @@
   )
 
 (defbehavior vehicle-wheel-init-by-other vehicle-wheel ((arg0 vehicle-wheel-init-params))
-  (rigid-body-object-method-65 self (the-as vector arg0))
+  (init-collision! self arg0)
   (set! (-> self root trans quad) (-> arg0 position quad))
-  (quaternion-copy! (the-as quaternion (-> self root rot)) (-> arg0 rotation))
+  (quaternion-copy! (-> self root rotation) (-> arg0 rotation))
   (set! (-> self root scale quad) (-> arg0 scale quad))
   (set! (-> self level) (the-as level (-> arg0 level)))
   (process-drawable-method-42 self (-> arg0 skel) 0)
