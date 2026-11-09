@@ -5,10 +5,21 @@
 ;; name in dgo: net-mgr-h
 ;; dgos: ENGINE, GAME
 
+(define-extern *net-log-write* symbol)
+(define-extern *net-keypair-valid* symbol)
+(define-extern *net-local-rsa-keypair* rsa-keypair)
+(define-extern *net-app-rsa-keypair* rsa-keypair)
+(define-extern *net-app-msg-id* int)
+(define-extern *aux-voice-msg-id* int)
+
+(define-extern net-log-msg (function pointer int int int int object))
+(define-extern get-player-name (function int string))
+(define-extern pause-check (function int))
+
 ;; DECOMP BEGINS
 
 (deftype net-aux-msg-handler (structure)
-  ((handler-func  function)
+  ((handler-func  (function mem-buffer int object))
    )
   )
 
@@ -30,16 +41,16 @@
         )
 
 (deftype net-mgr-game-state (structure)
-  ((connect-handle      basic)
+  ((connect-handle      pointer)
    (local-machine-idx   int32)
    (session-master-idx  int32)
    (host-idx            int32)
    (connected-bitfield  int32)
    (time                int32)
-   (first-time-host     basic)
-   (locked              basic)
-   (kicked              basic)
-   (sm-eligible         basic)
+   (first-time-host     symbol)
+   (locked              symbol)
+   (kicked              symbol)
+   (sm-eligible         symbol)
    )
   :pack-me
   )
@@ -83,52 +94,52 @@
    (skip-policy     symbol)
    )
   (:state-methods
-    net-mgr-state-1
-    net-mgr-state-2
+    idle
+    die
     getting-universe-information
-    (dns-lookup net-mgr-game-state)
-    net-mgr-state-3
-    net-mgr-state-4
-    net-mgr-state-5
-    net-mgr-state-6
-    net-mgr-state-7
-    net-mgr-state-8
-    net-mgr-state-9
-    net-mgr-state-10
-    net-mgr-state-11
-    net-mgr-state-12
-    net-mgr-state-13
-    net-mgr-state-14
-    net-mgr-state-15
-    net-mgr-state-16
-    net-mgr-state-17
-    net-mgr-state-18
-    net-mgr-state-19
+    (dns-lookup string)
+    connecting-to-mas
+    beginning-session
+    getting-policy-1
+    getting-policy-2
+    logging-in
+    registering-account
+    (connecting-to-lobby symbol)
+    __empty__
+    lobby-idle
+    leaving-lobby
+    (refreshing-games int)
+    creating-game-world
+    refreshing-lan-games
+    (verifying-lan-game net-connection-info)
+    (joining-game-world int symbol)
+    starting-sp-game
+    playing-sp-game
     starting-playback-game
     playing-playback-game
+    hosting-game
+    (connecting-to-game net-connection-info)
+    joining-game
+    playing-game
+    (leaving-game symbol)
+    (disconnecting symbol symbol symbol symbol)
     )
   (:methods
-    (net-mgr-method-38 () none)
-    (net-mgr-method-39 () none)
-    (net-mgr-method-40 () none)
-    (net-mgr-method-41 () none)
-    (net-mgr-method-42 () none)
-    (net-mgr-method-43 () none)
     (net-mgr-method-44 () none)
-    (net-mgr-method-45 () none)
+    (init-dme (_type_) symbol)
     (net-mgr-method-46 (_type_) symbol)
     (net-mgr-method-47 () none)
     (net-mgr-method-48 () none)
     (net-mgr-method-49 () none)
     (net-mgr-method-50 () none)
     (net-mgr-method-51 () none)
-    (net-mgr-method-52 () none)
+    (update (_type_) none)
     (net-mgr-method-53 () none)
     (net-mgr-method-54 () none)
     (net-mgr-method-55 () none)
     (net-mgr-method-56 () none)
-    (net-mgr-method-57 () none)
-    (net-mgr-method-58 () none)
+    (net-mgr-method-57 (_type_ string) none)
+    (update-lan-find (_type_) none)
     (net-mgr-method-59 () none)
     )
   )
@@ -153,7 +164,7 @@
    (player-count  uint8)
    (min-players   uint8)
    (max-players   uint8)
-   (in-staging    basic)
+   (in-staging    symbol)
    (event         uint8)
    (location      uint8)
    (task-node     uint8)
@@ -172,46 +183,46 @@
 
 
 (defun encode-net-available-game-info ((arg0 net-available-game-info) (arg1 mem-buffer))
-  (mem-buffer-method-31 arg1 (-> arg0 game-name) 64)
-  (mem-buffer-method-18 arg1 (the-as int (-> arg0 player-count)))
-  (mem-buffer-method-18 arg1 (the-as int (-> arg0 min-players)))
-  (mem-buffer-method-18 arg1 (the-as int (-> arg0 max-players)))
-  (mem-buffer-method-29 arg1 (the-as symbol (-> arg0 in-staging)))
-  (mem-buffer-method-14 arg1 (the-as int (-> arg0 event)))
-  (mem-buffer-method-14 arg1 (the-as int (-> arg0 location)))
-  (mem-buffer-method-18 arg1 (the-as int (-> arg0 task-node)))
-  (mem-buffer-method-16 arg1 (-> arg0 generic-1))
-  (mem-buffer-method-20 arg1 (the-as int (-> arg0 burn-version)))
-  (mem-buffer-method-16 arg1 (-> arg0 generic-2))
-  (mem-buffer-method-16 arg1 (-> arg0 generic-2))
-  (mem-buffer-method-16 arg1 (-> arg0 generic-3))
-  (mem-buffer-method-16 arg1 (-> arg0 generic-3))
-  (mem-buffer-method-16 arg1 (-> arg0 clan-1))
-  (mem-buffer-method-16 arg1 (-> arg0 clan-2))
-  (mem-buffer-method-16 arg1 (-> arg0 skill-level))
-  (mem-buffer-method-16 arg1 (-> arg0 avg-ping))
+  (write-bytes arg1 (-> arg0 game-name) 64)
+  (write-uint8 arg1 (-> arg0 player-count))
+  (write-uint8 arg1 (-> arg0 min-players))
+  (write-uint8 arg1 (-> arg0 max-players))
+  (write-bool arg1 (-> arg0 in-staging))
+  (write-int8 arg1 (the-as int (-> arg0 event)))
+  (write-int8 arg1 (the-as int (-> arg0 location)))
+  (write-uint8 arg1 (-> arg0 task-node))
+  (write-int32 arg1 (-> arg0 generic-1))
+  (write-uint32 arg1 (-> arg0 burn-version))
+  (write-int32 arg1 (-> arg0 generic-2))
+  (write-int32 arg1 (-> arg0 generic-2))
+  (write-int32 arg1 (-> arg0 generic-3))
+  (write-int32 arg1 (-> arg0 generic-3))
+  (write-int32 arg1 (-> arg0 clan-1))
+  (write-int32 arg1 (-> arg0 clan-2))
+  (write-int32 arg1 (-> arg0 skill-level))
+  (write-int32 arg1 (-> arg0 avg-ping))
   (none)
   )
 
 (defun decode-net-available-game-info ((arg0 net-available-game-info) (arg1 mem-buffer))
-  (mem-buffer-method-48 arg1 (-> arg0 game-name) 64)
-  (set! (-> arg0 player-count) (mem-buffer-method-36 arg1))
-  (set! (-> arg0 min-players) (mem-buffer-method-36 arg1))
-  (set! (-> arg0 max-players) (mem-buffer-method-36 arg1))
-  (set! (-> arg0 in-staging) (the-as basic (mem-buffer-method-46 arg1)))
-  (set! (-> arg0 event) (the-as uint (mem-buffer-method-32 arg1)))
-  (set! (-> arg0 location) (the-as uint (mem-buffer-method-32 arg1)))
-  (set! (-> arg0 task-node) (mem-buffer-method-36 arg1))
-  (set! (-> arg0 generic-1) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 generic-1) (the-as int (mem-buffer-method-38 arg1)))
-  (set! (-> arg0 generic-2) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 generic-2) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 generic-3) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 generic-3) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 clan-1) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 clan-2) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 skill-level) (mem-buffer-method-34 arg1))
-  (set! (-> arg0 avg-ping) (mem-buffer-method-34 arg1))
+  (read-bytes arg1 (-> arg0 game-name) 64)
+  (set! (-> arg0 player-count) (read-uint8 arg1))
+  (set! (-> arg0 min-players) (read-uint8 arg1))
+  (set! (-> arg0 max-players) (read-uint8 arg1))
+  (set! (-> arg0 in-staging) (read-bool arg1))
+  (set! (-> arg0 event) (the-as uint (read-int8 arg1)))
+  (set! (-> arg0 location) (the-as uint (read-int8 arg1)))
+  (set! (-> arg0 task-node) (read-uint8 arg1))
+  (set! (-> arg0 generic-1) (read-int32 arg1))
+  (set! (-> arg0 generic-1) (the-as int (read-uint32 arg1)))
+  (set! (-> arg0 generic-2) (read-int32 arg1))
+  (set! (-> arg0 generic-2) (read-int32 arg1))
+  (set! (-> arg0 generic-3) (read-int32 arg1))
+  (set! (-> arg0 generic-3) (read-int32 arg1))
+  (set! (-> arg0 clan-1) (read-int32 arg1))
+  (set! (-> arg0 clan-2) (read-int32 arg1))
+  (set! (-> arg0 skill-level) (read-int32 arg1))
+  (set! (-> arg0 avg-ping) (read-int32 arg1))
   (none)
   )
 
@@ -224,10 +235,10 @@
   (:methods
     (net-available-game-method-9 () none)
     (net-available-game-method-10 () none)
-    (net-available-game-method-11 () none)
-    (net-available-game-method-12 () none)
-    (net-available-game-method-13 () none)
-    (net-available-game-method-14 () none)
+    (init-from-lanfind! (_type_ net-lanfind-callback-data-args) none)
+    (init-from-local-game! (_type_) none)
+    (format-game-name! (_type_) none)
+    (valid? (_type_) symbol)
     )
   )
 

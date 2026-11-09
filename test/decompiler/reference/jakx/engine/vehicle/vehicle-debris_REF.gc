@@ -67,7 +67,7 @@
     die
     )
   (:methods
-    (rigid-body-object-method-65 (_type_ vehicle-debris-init-params) none :replace)
+    (init-collision! (_type_ vehicle-debris-init-params) none :replace)
     )
   )
 
@@ -89,7 +89,7 @@
 ;; definition for method 65 of type vehicle-debris
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-65 ((this vehicle-debris) (arg0 vehicle-debris-init-params))
+(defmethod init-collision! ((this vehicle-debris) (arg0 vehicle-debris-init-params))
   (let ((s5-0 (new 'stack-no-clear 'vehicle-hardpoint-info)))
     (set! (-> s5-0 flag-attach quad) (-> arg0 info info cm-offset-joint quad))
     (set! (-> s5-0 antenna-attach x) (the-as float #x7f800000))
@@ -305,14 +305,16 @@
   )
 
 ;; definition for method 66 of type vehicle-debris
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-66 ((this vehicle-debris))
   (set! (-> this root max-iteration-count) (the-as uint 3))
   (set! (-> this max-time-step) 0.05)
   (set! (-> this focus-status)
         (the-as focus-status (logior (focus-status gun-no-target) (-> this focus-status)))
         )
-  (set! (-> this rbody max-ang-momentum) (/ (-> this rbody info max-ang-momentum) 2))
-  0.0
+  (set! (-> this rbody max-ang-momentum) (/ (-> this rbody info info max-ang-momentum) 2))
+  0
+  (none)
   )
 
 ;; definition for method 61 of type vehicle-debris
@@ -330,7 +332,7 @@
 (defmethod rigid-body-object-method-80 ((this vehicle-debris) (arg0 rigid-body-impact))
   (when (< 20480.0 (-> arg0 impulse))
     (let ((f30-0 (fmin 1.0 (* 0.000048828126 (+ -20480.0 (-> arg0 impulse)))))
-          (v1-8 (make-sound-instance (-> *sound-info* (-> this impact-sound)) 0 #f))
+          (v1-8 (make-sound-instance (-> *sound-info* (-> this impact-sound)) (new 'static 'sound-id) #f))
           )
       (cond
         (v1-8
@@ -388,7 +390,7 @@
       )
     (fill-using-line-sphere *collide-cache* (-> v1-0 0))
     )
-  (rigid-body-control-method-10 (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
+  (simulate! (-> this rbody) this (-> this rbody time-remaining) (-> this max-time-step))
   0
   (none)
   )
@@ -396,35 +398,20 @@
 ;; definition for method 88 of type vehicle-debris
 ;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-88 ((this vehicle-debris))
-  (local-vars (v1-8 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (set! (-> this camera-dist) (find-nearest-camera-distance (-> this rbody position)))
-    (if (< 901120.0 (-> this camera-dist))
-        (go (method-of-object this die))
-        )
-    (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
-    (.add.w.vf.x vf2 vf0 vf0)
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf.x acc vf2 vf1)
-    (.add.mul.y.vf.x acc vf2 vf1 acc)
-    (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-    (.mov v1-8 vf1)
-    (let ((f0-2 v1-8))
-      (if (< (square 24.0) f0-2)
-          (vector-float*! (-> this rbody ang-momentum) (-> this rbody ang-momentum) (/ 24.0 (sqrtf f0-2)))
-          )
+  (set! (-> this camera-dist) (find-nearest-camera-distance (-> this rbody position)))
+  (if (< 901120.0 (-> this camera-dist))
+      (go (method-of-object this die))
       )
-    (rigid-body-object-method-70 this)
-    (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
-    (rigid-body-object-method-61 this)
-    0
-    (none)
+  (let ((f0-2 (vector-length-squared (-> this rbody ang-velocity))))
+    (if (< (square 24.0) f0-2)
+        (vector-float*! (-> this rbody ang-momentum) (-> this rbody ang-momentum) (/ 24.0 (sqrtf f0-2)))
+        )
     )
+  (rigid-body-object-method-70 this)
+  (update-rbody-transform! (-> this rbody) (-> this root))
+  (rigid-body-object-method-61 this)
+  0
+  (none)
   )
 
 ;; definition for method 71 of type vehicle-debris
@@ -504,7 +491,7 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior vehicle-debris-init-by-other vehicle-debris ((arg0 vehicle-debris-init-params))
   (logior! (-> self mask) (process-mask vehicle))
-  (rigid-body-object-method-65 self arg0)
+  (init-collision! self arg0)
   (matrix->transformq (the-as transformq (-> self root trans)) (-> arg0 mat))
   (if (and (-> arg0 has-particles) (let* ((f30-0 0.5)
                                           (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -531,10 +518,10 @@
   (set! (-> self impact-sound) (-> arg0 impact-sound))
   (rigid-body-object-method-64 self (-> arg0 info))
   (rigid-body-object-method-66 self)
-  (rigid-body-queue-method-11 *rigid-body-queue* self)
+  (add-to-queue *rigid-body-queue* self)
   (let ((s5-0 (-> self rbody)))
-    (rigid-body-control-method-31 s5-0 (-> arg0 velocity))
-    (rigid-body-control-method-32 s5-0 (-> arg0 ang-velocity))
+    (set-lin-velocity! s5-0 (-> arg0 velocity))
+    (set-ang-velocity! s5-0 (the-as matrix (-> arg0 ang-velocity)))
     )
   (go-virtual explode)
   (none)

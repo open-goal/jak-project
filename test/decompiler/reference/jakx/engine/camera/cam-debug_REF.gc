@@ -277,7 +277,7 @@
           )
         (dma-bucket-insert-tag
           (-> *display* frames (-> *display* on-screen) bucket-group)
-          (bucket-id bucket785)
+          (bucket-id debug-no-zbuf1)
           a2-0
           (the-as (pointer dma-tag) a3-16)
           )
@@ -456,47 +456,21 @@
 
 ;; definition for function camera-line-rel
 (defun camera-line-rel ((arg0 vector) (arg1 vector) (arg2 vector4w))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((a3-1 (-> (the-as cam-dbg-scratch #x70000000) rel-vec)))
-      (.lvf vf4 (&-> arg0 quad))
-      (.lvf vf5 (&-> arg1 quad))
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a3-1 quad) vf6)
-      )
-    (camera-line arg0 (the-as vector (+ 112 #x70000000)) arg2)
-    (none)
-    )
+  (vector+! (-> (the-as cam-dbg-scratch #x70000000) rel-vec) arg0 arg1)
+  (camera-line arg0 (-> (the-as cam-dbg-scratch #x70000000) rel-vec) arg2)
+  (none)
   )
 
 ;; definition for function camera-line-rel-len
 (defun camera-line-rel-len ((arg0 vector) (arg1 vector) (arg2 float) (arg3 vector4w))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (vector-normalize-copy! (-> (the-as cam-dbg-scratch #x70000000) rel-vec) arg1 arg2)
-    (let ((v1-2 (-> (the-as cam-dbg-scratch #x70000000) rel-vec)))
-      (let ((a0-5 (-> (the-as cam-dbg-scratch #x70000000) rel-vec))
-            (a1-2 arg0)
-            )
-        (.lvf vf4 (&-> a0-5 quad))
-        (.lvf vf5 (&-> a1-2 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> v1-2 quad) vf6)
-      )
-    (camera-line arg0 (the-as vector (+ 112 #x70000000)) arg3)
-    (none)
+  (vector-normalize-copy! (-> (the-as cam-dbg-scratch #x70000000) rel-vec) arg1 arg2)
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) rel-vec)
+    (-> (the-as cam-dbg-scratch #x70000000) rel-vec)
+    arg0
     )
+  (camera-line arg0 (-> (the-as cam-dbg-scratch #x70000000) rel-vec) arg3)
+  (none)
   )
 
 ;; definition for function camera-sphere
@@ -552,86 +526,65 @@
 
 ;; definition for function camera-cross
 (defun camera-cross ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector4w) (arg4 meters))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (vector-normalize-copy! (the-as vector (+ 192 #x70000000)) arg0 arg4)
-    (let ((a0-4 (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)))
-      (let ((v1-2 arg2)
-            (a1-3 (-> (the-as cam-dbg-scratch #x70000000) crossvec))
-            )
-        (.lvf vf4 (&-> v1-2 quad))
-        (.lvf vf5 (&-> a1-3 0 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a0-4 quad) vf6)
-      )
-    (vector-!
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
-      arg2
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      )
-    (camera-line (-> (the-as cam-dbg-scratch #x70000000) crossvec 1) (the-as vector (+ 224 #x70000000)) arg3)
-    (vector-cross!
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      arg1
-      )
-    (vector-normalize! (the-as vector (+ 192 #x70000000)) arg4)
-    (let ((a0-16 (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)))
-      (let ((v1-12 arg2)
-            (a1-11 (-> (the-as cam-dbg-scratch #x70000000) crossvec))
-            )
-        (.lvf vf4 (&-> v1-12 quad))
-        (.lvf vf5 (&-> a1-11 0 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a0-16 quad) vf6)
-      )
-    (vector-!
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
-      arg2
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      )
-    (camera-line
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
-      arg3
-      )
-    (vector-cross!
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      arg0
-      )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) crossvec 0) arg4)
-    (let ((a0-28 (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)))
-      (let ((v1-22 arg2)
-            (a1-19 (-> (the-as cam-dbg-scratch #x70000000) crossvec))
-            )
-        (.lvf vf4 (&-> v1-22 quad))
-        (.lvf vf5 (&-> a1-19 0 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a0-28 quad) vf6)
-      )
-    (vector-!
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
-      arg2
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
-      )
-    (camera-line
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
-      (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
-      arg3
-      )
-    (none)
+  (vector-normalize-copy! (-> (the-as cam-dbg-scratch #x70000000) crossvec 0) arg0 arg4)
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
     )
+  (vector-!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    )
+  (camera-line
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg3
+    )
+  (vector-cross!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    arg1
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) crossvec 0) arg4)
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    )
+  (vector-!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    )
+  (camera-line
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg3
+    )
+  (vector-cross!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    arg0
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) crossvec 0) arg4)
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    )
+  (vector-!
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg2
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 0)
+    )
+  (camera-line
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 1)
+    (-> (the-as cam-dbg-scratch #x70000000) crossvec 2)
+    arg3
+    )
+  (none)
   )
 
 ;; definition for function camera-bounding-box-draw
@@ -836,143 +789,100 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs symbol.
 (defun camera-fov-frame ((arg0 matrix) (arg1 vector) (arg2 float) (arg3 float) (arg4 float) (arg5 vector4w))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (vector-float*! (-> (the-as cam-dbg-scratch #x70000000) fov-vert) (-> arg0 uvec) (* arg3 (tan arg2)))
-    (vector-float*! (-> (the-as cam-dbg-scratch #x70000000) fov-horz) (-> arg0 rvec) (* arg4 (tan arg2)))
-    (let ((a0-6 (-> (the-as cam-dbg-scratch #x70000000) fov-src)))
-      (let ((v1-3 (-> arg0 fvec))
-            (a1-2 (-> (the-as cam-dbg-scratch #x70000000) fov-src))
-            )
-        (let ((a2-3 (-> (the-as cam-dbg-scratch #x70000000) fov-vert))
-              (a3-3 (-> (the-as cam-dbg-scratch #x70000000) fov-horz))
-              )
-          (.lvf vf4 (&-> a2-3 quad))
-          (.lvf vf5 (&-> a3-3 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-2 quad) vf6)
-        (.lvf vf4 (&-> v1-3 quad))
-        (.lvf vf5 (&-> a1-2 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a0-6 quad) vf6)
+  (vector-float*! (-> (the-as cam-dbg-scratch #x70000000) fov-vert) (-> arg0 uvec) (* arg3 (tan arg2)))
+  (vector-float*! (-> (the-as cam-dbg-scratch #x70000000) fov-horz) (-> arg0 rvec) (* arg4 (tan arg2)))
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) fov-src)
+    (-> arg0 fvec)
+    (vector+!
+      (-> (the-as cam-dbg-scratch #x70000000) fov-src)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
       )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-src) 1.0)
-    (let ((a0-10 (-> (the-as cam-dbg-scratch #x70000000) fov-dest)))
-      (let ((v1-6 (-> arg0 fvec))
-            (a1-6
-              (vector-!
-                (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
-                (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
-                (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
-                )
-              )
-            )
-        (.lvf vf4 (&-> v1-6 quad))
-        (.lvf vf5 (&-> a1-6 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a0-10 quad) vf6)
-      )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
-    (camera-fov-draw
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-      arg1
-      4096.0
-      20480.0
-      arg5
-      )
-    (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
-          (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
-          )
-    (let ((a0-20 (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-          (v1-13 (-> arg0 fvec))
-          (a1-12 (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-          )
-      (let ((a2-10 (-> (the-as cam-dbg-scratch #x70000000) fov-vert))
-            (a3-10 (-> (the-as cam-dbg-scratch #x70000000) fov-horz))
-            )
-        (.lvf vf4 (&-> a2-10 quad))
-        (.lvf vf5 (&-> a3-10 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> a1-12 quad) vf6)
-      (vector-! a0-20 v1-13 a1-12)
-      )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
-    (camera-fov-draw
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-      arg1
-      4096.0
-      20480.0
-      arg5
-      )
-    (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
-          (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
-          )
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-src) 1.0)
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+    (-> arg0 fvec)
     (vector-!
       (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
-      (-> arg0 fvec)
-      (vector-!
-        (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
-        (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
-        (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
-        )
+      (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
       )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
-    (camera-fov-draw
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
-      (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-      arg1
-      4096.0
-      20480.0
-      arg5
-      )
-    (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
-          (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
-          )
-    (let ((v1-27 (-> (the-as cam-dbg-scratch #x70000000) fov-dest)))
-      (let ((a0-42 (-> arg0 fvec))
-            (a1-25 (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-            )
-        (let ((a2-18 (-> (the-as cam-dbg-scratch #x70000000) fov-vert))
-              (a3-18 (-> (the-as cam-dbg-scratch #x70000000) fov-horz))
-              )
-          (.lvf vf4 (&-> a2-18 quad))
-          (.lvf vf5 (&-> a3-18 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-25 quad) vf6)
-        (.lvf vf4 (&-> a0-42 quad))
-        (.lvf vf5 (&-> a1-25 quad))
-        )
-      (.mov.vf.w vf6 vf0)
-      (.add.vf.xyz vf6 vf4 vf5)
-      (.svf (&-> v1-27 quad) vf6)
-      )
-    (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
-    (the-as symbol (camera-fov-draw
-                     (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
-                     (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
-                     arg1
-                     4096.0
-                     20480.0
-                     arg5
-                     )
-            )
     )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
+  (camera-fov-draw
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
+    arg1
+    4096.0
+    20480.0
+    arg5
+    )
+  (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
+        (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
+        )
+  (vector-!
+    (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+    (-> arg0 fvec)
+    (vector+!
+      (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
+      )
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
+  (camera-fov-draw
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
+    arg1
+    4096.0
+    20480.0
+    arg5
+    )
+  (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
+        (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
+        )
+  (vector-!
+    (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+    (-> arg0 fvec)
+    (vector-!
+      (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
+      )
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
+  (camera-fov-draw
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
+    (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
+    arg1
+    4096.0
+    20480.0
+    arg5
+    )
+  (set! (-> (the-as cam-dbg-scratch #x70000000) fov-src quad)
+        (-> (the-as cam-dbg-scratch #x70000000) fov-dest quad)
+        )
+  (vector+!
+    (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+    (-> arg0 fvec)
+    (vector+!
+      (-> (the-as cam-dbg-scratch #x70000000) fov-dest)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-vert)
+      (-> (the-as cam-dbg-scratch #x70000000) fov-horz)
+      )
+    )
+  (vector-normalize! (-> (the-as cam-dbg-scratch #x70000000) fov-dest) 1.0)
+  (the-as symbol (camera-fov-draw
+                   (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-src))
+                   (the-as int (-> (the-as cam-dbg-scratch #x70000000) fov-dest))
+                   arg1
+                   4096.0
+                   20480.0
+                   arg5
+                   )
+          )
   )
 
 ;; definition for method 11 of type tracking-spline
@@ -1163,349 +1073,294 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun camera-slave-debug ((arg0 camera-slave))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((t9-0 view-push-context)
-          (v1-0 (-> arg0 view))
+  (let ((t9-0 view-push-context)
+        (v1-0 (-> arg0 view))
+        )
+    (t9-0 (if v1-0
+              (-> v1-0 index)
+              -1
+              )
           )
-      (t9-0 (if v1-0
-                (-> v1-0 index)
-                -1
-                )
-            )
+    )
+  (when *display-camera-marks*
+    (if (-> (the-as camera-master (view-get-active-camera)) settings use-point-of-interest)
+        (camera-cross
+          (new 'static 'vector :y 1024.0)
+          (new 'static 'vector :z 1024.0)
+          (-> (the-as camera-master (view-get-active-camera)) settings point-of-interest)
+          (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
+          (meters 0.25)
+          )
+        )
+    (let ((f30-1 (/ (-> (the-as camera-combiner (view-get-active-camera-combiner)) fov) 2)))
+      (camera-fov-frame
+        (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot)
+        (camera-pos)
+        f30-1
+        0.75
+        1.0
+        (new 'static 'vector4w :z #xff :w #x80)
+        )
       )
-    (when *display-camera-marks*
-      (if (-> (the-as camera-master (view-get-active-camera)) settings use-point-of-interest)
-          (camera-cross
-            (new 'static 'vector :y 1024.0)
-            (new 'static 'vector :z 1024.0)
-            (-> (the-as camera-master (view-get-active-camera)) settings point-of-interest)
-            (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
-            (meters 0.25)
-            )
-          )
-      (let ((f30-1 (/ (-> (the-as camera-combiner (view-get-active-camera-combiner)) fov) 2)))
-        (camera-fov-frame
-          (-> (the-as camera-combiner (view-get-active-camera-combiner)) inv-camera-rot)
-          (camera-pos)
-          f30-1
-          0.75
-          1.0
-          (new 'static 'vector4w :z #xff :w #x80)
-          )
-        )
-      (cond
-        ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-         (let ((f30-2 (/ (-> arg0 fov) 2)))
-           (camera-fov-frame
-             (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking inv-mat)
-             (-> arg0 trans)
-             f30-2
-             0.75
-             1.0
-             (new 'static 'vector4w :y #xff :w #x80)
-             )
-           )
-         )
-        (else
-          (let ((f0-3 (/ (-> arg0 fov) 2)))
-            (camera-fov-frame
-              (-> arg0 tracking inv-mat)
-              (-> arg0 trans)
-              f0-3
-              0.75
-              1.0
-              (new 'static 'vector4w :y #xff :w #x80)
-              )
-            )
-          )
-        )
-      (debug-draw-spline (-> arg0 position-spline))
-      (let ((s5-3 (new-stack-vector0)))
-        (let ((s4-2 (new-stack-vector0)))
-          (new-stack-matrix0)
-          (cond
-            ((and (-> arg0 next-state) (let ((v1-20 (-> arg0 next-state name)))
-                                         (or (= v1-20 'cam-fixed) (= v1-20 'cam-point-watch) (= v1-20 'cam-free-floating))
-                                         )
-                  )
-             (vector+float*! s5-3 (-> arg0 trans) (the-as vector (&-> (view-get-active-camera) stack 160)) 4096.0)
-             (camera-line (-> arg0 trans) s5-3 (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80))
-             )
-            ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-             (camera-line
-               (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
-               (-> arg0 trans)
-               (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
-               )
-             (vector+float*!
-               s5-3
-               (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
-               (the-as vector (&-> (view-get-active-camera) stack 160))
-               4096.0
-               )
-             (camera-line
-               (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
-               s5-3
-               (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
-               )
-             )
-            (else
-              (camera-line
-                (-> arg0 tracking follow-pt)
-                (-> arg0 trans)
-                (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
-                )
-              (vector+float*!
-                s5-3
-                (-> arg0 tracking follow-pt)
-                (the-as vector (&-> (view-get-active-camera) stack 160))
-                4096.0
-                )
-              (camera-line (-> arg0 tracking follow-pt) s5-3 (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80))
-              )
-            )
-          (set! (-> s4-2 quad) (-> (the-as vector (-> arg0 trans)) quad))
-          (cond
-            ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-             (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 160)) 2048.0)
-             (camera-line s4-2 s5-3 (new 'static 'vector4w :x #xff :w #x80))
-             (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 176)) 2048.0)
-             (camera-line s4-2 s5-3 (new 'static 'vector4w :y #xff :w #x80))
-             (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 192)) 2048.0)
-             (camera-line s4-2 s5-3 (new 'static 'vector4w :z #xff :w #x80))
-             )
-            (else
-              (vector+float*! s5-3 s4-2 (the-as vector (-> arg0 tracking)) 2048.0)
-              (camera-line s4-2 s5-3 (new 'static 'vector4w :x #xff :w #x80))
-              (vector+float*! s5-3 s4-2 (-> arg0 tracking inv-mat uvec) 2048.0)
-              (camera-line s4-2 s5-3 (new 'static 'vector4w :y #xff :w #x80))
-              (vector+float*! s5-3 s4-2 (-> arg0 tracking inv-mat fvec) 2048.0)
-              (camera-line s4-2 s5-3 (new 'static 'vector4w :z #xff :w #x80))
-              )
-            )
-          )
-        (vector--float*!
-          s5-3
-          (the-as vector (&-> (view-get-active-camera) stack 368))
-          (the-as vector (&-> (view-get-active-camera) stack 160))
-          (-> (the-as camera-master (view-get-active-camera)) settings foot-offset)
-          )
-        (camera-sphere s5-3 512.0 (new 'static 'vector4w :y #xff :w #x80))
-        (vector--float*!
-          s5-3
-          (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
-          (-> (the-as camera-master (view-get-active-camera)) local-down)
-          (-> (the-as camera-master (view-get-active-camera)) settings head-offset)
-          )
-        (camera-sphere s5-3 512.0 (new 'static 'vector4w :y #xff :w #x80))
-        )
-      (cond
-        ((and (-> arg0 next-state) (= (-> arg0 next-state name) 'cam-string))
-         (camera-sphere (-> arg0 desired-pos) 512.0 (new 'static 'vector4w :z #xff :w #x80))
-         (camera-line-rel
-           (the-as vector (&-> (view-get-active-camera) stack 400))
-           (-> arg0 view-flat)
-           (new 'static 'vector4w :z #xff :w #x80)
-           )
-         (camera-line
-           (-> arg0 string-trans)
-           (the-as vector (&+ (&-> (view-get-active-camera) stack 464) (* 48 (-> arg0 los-tgt-spline-pt))))
+    (cond
+      ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
+       (let ((f30-2 (/ (-> arg0 fov) 2)))
+         (camera-fov-frame
+           (-> (the-as camera-combiner (view-get-active-camera-combiner)) tracking inv-mat)
+           (-> arg0 trans)
+           f30-2
+           0.75
+           1.0
            (new 'static 'vector4w :y #xff :w #x80)
            )
-         (camera-line
-           (-> arg0 los-last-pos)
-           (the-as vector (&+ (&-> (view-get-active-camera) stack 464) (* 48 (-> arg0 los-tgt-spline-pt))))
-           (new 'static 'vector4w :x #xff :w #x80)
-           )
          )
-        ((and (-> arg0 next-state) (= (-> arg0 next-state name) 'cam-spline))
-         (let ((s5-7 (new 'stack 'curve))
-               (s4-7 (res-lump-struct (-> arg0 cam-entity) 'spline-offset vector))
-               )
-           (if (not s4-7)
-               (set! s4-7 (new-stack-vector0))
-               )
-           (when (get-curve-data! (-> arg0 cam-entity) s5-7 'campath 'campath-k -1000000000.0)
-             (let ((s3-21 (new-stack-vector0))
-                   (s2-8 (new-stack-vector0))
-                   (gp-1 (res-lump-data (-> arg0 cam-entity) 'campoints pointer :time 1.0))
-                   )
-               (curve-get-pos! s2-8 0.0 s5-7)
-               (let ((a1-35 s2-8))
-                 (let ((v1-62 s2-8)
-                       (a0-54 s4-7)
-                       )
-                   (.lvf vf4 (&-> v1-62 quad))
-                   (.lvf vf5 (&-> a0-54 quad))
-                   )
-                 (.mov.vf.w vf6 vf0)
-                 (.add.vf.xyz vf6 vf4 vf5)
-                 (.svf (&-> a1-35 quad) vf6)
+       )
+      (else
+        (let ((f0-3 (/ (-> arg0 fov) 2)))
+          (camera-fov-frame
+            (-> arg0 tracking inv-mat)
+            (-> arg0 trans)
+            f0-3
+            0.75
+            1.0
+            (new 'static 'vector4w :y #xff :w #x80)
+            )
+          )
+        )
+      )
+    (debug-draw-spline (-> arg0 position-spline))
+    (let ((s5-3 (new-stack-vector0)))
+      (let ((s4-2 (new-stack-vector0)))
+        (new-stack-matrix0)
+        (cond
+          ((and (-> arg0 next-state) (let ((v1-20 (-> arg0 next-state name)))
+                                       (or (= v1-20 'cam-fixed) (= v1-20 'cam-point-watch) (= v1-20 'cam-free-floating))
+                                       )
+                )
+           (vector+float*! s5-3 (-> arg0 trans) (the-as vector (&-> (view-get-active-camera) stack 160)) 4096.0)
+           (camera-line (-> arg0 trans) s5-3 (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80))
+           )
+          ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
+           (camera-line
+             (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
+             (-> arg0 trans)
+             (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
+             )
+           (vector+float*!
+             s5-3
+             (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
+             (the-as vector (&-> (view-get-active-camera) stack 160))
+             4096.0
+             )
+           (camera-line
+             (the-as vector (&-> (view-get-active-camera-combiner) stack 240))
+             s5-3
+             (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
+             )
+           )
+          (else
+            (camera-line
+              (-> arg0 tracking follow-pt)
+              (-> arg0 trans)
+              (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
+              )
+            (vector+float*!
+              s5-3
+              (-> arg0 tracking follow-pt)
+              (the-as vector (&-> (view-get-active-camera) stack 160))
+              4096.0
+              )
+            (camera-line (-> arg0 tracking follow-pt) s5-3 (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80))
+            )
+          )
+        (set! (-> s4-2 quad) (-> (the-as vector (-> arg0 trans)) quad))
+        (cond
+          ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
+           (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 160)) 2048.0)
+           (camera-line s4-2 s5-3 (new 'static 'vector4w :x #xff :w #x80))
+           (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 176)) 2048.0)
+           (camera-line s4-2 s5-3 (new 'static 'vector4w :y #xff :w #x80))
+           (vector+float*! s5-3 s4-2 (the-as vector (&-> (view-get-active-camera-combiner) stack 192)) 2048.0)
+           (camera-line s4-2 s5-3 (new 'static 'vector4w :z #xff :w #x80))
+           )
+          (else
+            (vector+float*! s5-3 s4-2 (the-as vector (-> arg0 tracking)) 2048.0)
+            (camera-line s4-2 s5-3 (new 'static 'vector4w :x #xff :w #x80))
+            (vector+float*! s5-3 s4-2 (-> arg0 tracking inv-mat uvec) 2048.0)
+            (camera-line s4-2 s5-3 (new 'static 'vector4w :y #xff :w #x80))
+            (vector+float*! s5-3 s4-2 (-> arg0 tracking inv-mat fvec) 2048.0)
+            (camera-line s4-2 s5-3 (new 'static 'vector4w :z #xff :w #x80))
+            )
+          )
+        )
+      (vector--float*!
+        s5-3
+        (the-as vector (&-> (view-get-active-camera) stack 368))
+        (the-as vector (&-> (view-get-active-camera) stack 160))
+        (-> (the-as camera-master (view-get-active-camera)) settings foot-offset)
+        )
+      (camera-sphere s5-3 512.0 (new 'static 'vector4w :y #xff :w #x80))
+      (vector--float*!
+        s5-3
+        (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+        (-> (the-as camera-master (view-get-active-camera)) local-down)
+        (-> (the-as camera-master (view-get-active-camera)) settings head-offset)
+        )
+      (camera-sphere s5-3 512.0 (new 'static 'vector4w :y #xff :w #x80))
+      )
+    (cond
+      ((and (-> arg0 next-state) (= (-> arg0 next-state name) 'cam-string))
+       (camera-sphere (-> arg0 desired-pos) 512.0 (new 'static 'vector4w :z #xff :w #x80))
+       (camera-line-rel
+         (the-as vector (&-> (view-get-active-camera) stack 400))
+         (-> arg0 view-flat)
+         (new 'static 'vector4w :z #xff :w #x80)
+         )
+       (camera-line
+         (-> arg0 string-trans)
+         (the-as vector (&+ (&-> (view-get-active-camera) stack 464) (* 48 (-> arg0 los-tgt-spline-pt))))
+         (new 'static 'vector4w :y #xff :w #x80)
+         )
+       (camera-line
+         (-> arg0 los-last-pos)
+         (the-as vector (&+ (&-> (view-get-active-camera) stack 464) (* 48 (-> arg0 los-tgt-spline-pt))))
+         (new 'static 'vector4w :x #xff :w #x80)
+         )
+       )
+      ((and (-> arg0 next-state) (= (-> arg0 next-state name) 'cam-spline))
+       (let ((s5-7 (new 'stack 'curve))
+             (s4-7 (res-lump-struct (-> arg0 cam-entity) 'spline-offset vector))
+             )
+         (if (not s4-7)
+             (set! s4-7 (new-stack-vector0))
+             )
+         (when (get-curve-data! (-> arg0 cam-entity) s5-7 'campath 'campath-k -1000000000.0)
+           (let ((s3-21 (new-stack-vector0))
+                 (s2-8 (new-stack-vector0))
+                 (gp-1 (res-lump-data (-> arg0 cam-entity) 'campoints pointer :time 1.0))
                  )
-               (dotimes (s1-2 8)
-                 (set! (-> s3-21 quad) (-> s2-8 quad))
-                 (curve-get-pos! s2-8 (* 0.125 (the float (+ s1-2 1))) s5-7)
-                 (let ((a1-37 s2-8))
-                   (let ((v1-66 s2-8)
-                         (a0-58 s4-7)
-                         )
-                     (.lvf vf4 (&-> v1-66 quad))
-                     (.lvf vf5 (&-> a0-58 quad))
-                     )
-                   (.mov.vf.w vf6 vf0)
-                   (.add.vf.xyz vf6 vf4 vf5)
-                   (.svf (&-> a1-37 quad) vf6)
-                   )
-                 (camera-line s3-21 s2-8 (new 'static 'vector4w :x #xff :y #xff :w #x80))
-                 )
-               (dotimes (s1-3 (-> s5-7 num-cverts))
-                 (let ((v1-69 s3-21))
-                   (let ((a0-61 (-> s5-7 cverts s1-3))
-                         (a1-40 s4-7)
-                         )
-                     (.lvf vf4 (&-> a0-61 quad))
-                     (.lvf vf5 (&-> a1-40 quad))
-                     )
-                   (.mov.vf.w vf6 vf0)
-                   (.add.vf.xyz vf6 vf4 vf5)
-                   (.svf (&-> v1-69 quad) vf6)
-                   )
-                 (let ((v1-70 s2-8))
-                   (let ((a0-63 (-> s5-7 cverts (mod (+ s1-3 1) (-> s5-7 num-cverts))))
-                         (a1-44 s4-7)
-                         )
-                     (.lvf vf4 (&-> a0-63 quad))
-                     (.lvf vf5 (&-> a1-44 quad))
-                     )
-                   (.mov.vf.w vf6 vf0)
-                   (.add.vf.xyz vf6 vf4 vf5)
-                   (.svf (&-> v1-70 quad) vf6)
-                   )
-                 (camera-line s3-21 s2-8 (new 'static 'vector4w :y #xff :z #xff :w #x80))
-                 )
-               (if gp-1
-                   (camera-line
-                     (the-as vector (&+ gp-1 0))
-                     (the-as vector (&+ gp-1 16))
-                     (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
-                     )
-                   (camera-line
-                     (-> s5-7 cverts 0)
-                     (-> s5-7 cverts (+ (-> s5-7 num-cverts) -1))
-                     (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
-                     )
-                   )
+             (curve-get-pos! s2-8 0.0 s5-7)
+             (vector+! s2-8 s2-8 s4-7)
+             (dotimes (s1-2 8)
+               (set! (-> s3-21 quad) (-> s2-8 quad))
+               (curve-get-pos! s2-8 (* 0.125 (the float (+ s1-2 1))) s5-7)
+               (vector+! s2-8 s2-8 s4-7)
+               (camera-line s3-21 s2-8 (new 'static 'vector4w :x #xff :y #xff :w #x80))
                )
+             (dotimes (s1-3 (-> s5-7 num-cverts))
+               (vector+! s3-21 (-> s5-7 cverts s1-3) s4-7)
+               (vector+! s2-8 (-> s5-7 cverts (mod (+ s1-3 1) (-> s5-7 num-cverts))) s4-7)
+               (camera-line s3-21 s2-8 (new 'static 'vector4w :y #xff :z #xff :w #x80))
+               )
+             (if gp-1
+                 (camera-line
+                   (the-as vector (&+ gp-1 0))
+                   (the-as vector (&+ gp-1 16))
+                   (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
+                   )
+                 (camera-line
+                   (-> s5-7 cverts 0)
+                   (-> s5-7 cverts (+ (-> s5-7 num-cverts) -1))
+                   (new 'static 'vector4w :x #xff :y #xff :z #xff :w #x80)
+                   )
+                 )
              )
            )
          )
-        )
+       )
       )
-    (view-pop-context)
-    0
-    (none)
     )
+  (view-pop-context)
+  0
+  (none)
   )
 
 ;; definition for function master-draw-coordinates
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun master-draw-coordinates ((arg0 vector))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (new-stack-vector0))
-          (gp-0 (new-stack-vector0))
-          )
-      (let ((a0-1 (new-stack-matrix0)))
-        (set-vector! s5-0 0.0 8192.0 0.0 1.0)
-        (matrix-rotate-yxz! a0-1 s5-0)
+  (let ((s5-0 (new-stack-vector0))
+        (gp-0 (new-stack-vector0))
         )
-      (position-in-front-of-camera! gp-0 24576.0 0.0)
-      (let ((a1-4 s5-0))
-        (let ((v1-1 gp-0)
-              (a0-3 s5-0)
-              )
-          (set! (-> a0-3 x) 4096.0)
-          (set! (-> a0-3 y) 0.0)
-          (set! (-> a0-3 z) 0.0)
-          (set! (-> a0-3 w) 1.0)
-          (.lvf vf4 (&-> v1-1 quad))
-          (.lvf vf5 (&-> a0-3 quad))
+    (let ((a0-1 (new-stack-matrix0)))
+      (set-vector! s5-0 0.0 8192.0 0.0 1.0)
+      (matrix-rotate-yxz! a0-1 s5-0)
+      )
+    (position-in-front-of-camera! gp-0 24576.0 0.0)
+    (let ((a1-4 s5-0)
+          (v1-1 gp-0)
+          (a0-3 s5-0)
           )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-4 quad) vf6)
-        )
-      (add-debug-line #t (bucket-id bucket785) gp-0 s5-0 (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))
-      (let ((a1-6 s5-0))
-        (let ((v1-2 gp-0)
-              (a0-5 s5-0)
-              )
-          (set! (-> a0-5 x) 0.0)
-          (set! (-> a0-5 y) 4096.0)
-          (set! (-> a0-5 z) 0.0)
-          (set! (-> a0-5 w) 1.0)
-          (.lvf vf4 (&-> v1-2 quad))
-          (.lvf vf5 (&-> a0-5 quad))
+      (set! (-> a0-3 x) 4096.0)
+      (set! (-> a0-3 y) 0.0)
+      (set! (-> a0-3 z) 0.0)
+      (set! (-> a0-3 w) 1.0)
+      (vector+! a1-4 v1-1 a0-3)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      gp-0
+      s5-0
+      (new 'static 'rgba :r #xff :a #x80)
+      #f
+      (the-as rgba -1)
+      )
+    (let ((a1-7 s5-0)
+          (v1-2 gp-0)
+          (a0-5 s5-0)
           )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (add-debug-line #t (bucket-id bucket785) gp-0 s5-0 (new 'static 'rgba :g #xff :a #x80) #f (the-as rgba -1))
-      (let ((a1-8 s5-0))
-        (let ((v1-3 gp-0)
-              (a0-7 s5-0)
-              )
-          (set! (-> a0-7 x) 0.0)
-          (set! (-> a0-7 y) 0.0)
-          (set! (-> a0-7 z) 4096.0)
-          (set! (-> a0-7 w) 1.0)
-          (.lvf vf4 (&-> v1-3 quad))
-          (.lvf vf5 (&-> a0-7 quad))
+      (set! (-> a0-5 x) 0.0)
+      (set! (-> a0-5 y) 4096.0)
+      (set! (-> a0-5 z) 0.0)
+      (set! (-> a0-5 w) 1.0)
+      (vector+! a1-7 v1-2 a0-5)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      gp-0
+      s5-0
+      (new 'static 'rgba :g #xff :a #x80)
+      #f
+      (the-as rgba -1)
+      )
+    (let ((a1-10 s5-0)
+          (v1-3 gp-0)
+          (a0-7 s5-0)
           )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-8 quad) vf6)
-        )
-      (add-debug-line #t (bucket-id bucket785) gp-0 s5-0 (new 'static 'rgba :b #xff :a #x80) #f (the-as rgba -1))
-      (when arg0
-        (set! (-> s5-0 quad) (-> arg0 quad))
-        (vector-normalize! s5-0 4096.0)
-        (let ((a1-11 s5-0))
-          (let ((v1-7 gp-0)
-                (a0-11 s5-0)
-                )
-            (.lvf vf4 (&-> v1-7 quad))
-            (.lvf vf5 (&-> a0-11 quad))
-            )
-          (.mov.vf.w vf6 vf0)
-          (.add.vf.xyz vf6 vf4 vf5)
-          (.svf (&-> a1-11 quad) vf6)
-          )
-        (add-debug-line
-          #t
-          (bucket-id bucket785)
-          gp-0
-          s5-0
-          (new 'static 'rgba :r #x7f :g #x7f :a #x80)
-          #f
-          (the-as rgba -1)
-          )
+      (set! (-> a0-7 x) 0.0)
+      (set! (-> a0-7 y) 0.0)
+      (set! (-> a0-7 z) 4096.0)
+      (set! (-> a0-7 w) 1.0)
+      (vector+! a1-10 v1-3 a0-7)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      gp-0
+      s5-0
+      (new 'static 'rgba :b #xff :a #x80)
+      #f
+      (the-as rgba -1)
+      )
+    (when arg0
+      (set! (-> s5-0 quad) (-> arg0 quad))
+      (vector-normalize! s5-0 4096.0)
+      (vector+! s5-0 gp-0 s5-0)
+      (add-debug-line
+        #t
+        (bucket-id debug-no-zbuf1)
+        gp-0
+        s5-0
+        (new 'static 'rgba :r #x7f :g #x7f :a #x80)
+        #f
+        (the-as rgba -1)
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition of type cam-collision-record

@@ -279,9 +279,9 @@
     )
   (when (nonzero? (-> this neck))
     (when (logtest? (-> this enemy-flags) (enemy-flag look-at-focus))
-      (let ((a0-7 (handle->process (-> this focus handle))))
+      (let ((a0-7 (the-as process-focusable (handle->process (-> this focus handle)))))
         (if a0-7
-            (target-set! (-> this neck) (get-trans (the-as process-focusable a0-7) 2))
+            (target-set! (-> this neck) (get-trans a0-7 2))
             )
         )
       )
@@ -316,7 +316,7 @@
 (defmethod clear-stale-victory ((this enemy))
   "Remove victory flag if needed."
   (if (or (time-elapsed? (-> this hit-focus-time) (seconds 2))
-          (and (handle->process (-> this focus handle))
+          (and (the-as process-focusable (handle->process (-> this focus handle)))
                (not (logtest? (-> (the-as process-focusable (handle->process (-> this focus handle))) focus-status)
                               (focus-status disable dead ignore grabbed)
                               )
@@ -352,19 +352,13 @@
   (penetrate generic-attack)
   )
 
-;; WARN: Return type mismatch process vs process-focusable.
 (defmethod get-focus! ((this enemy))
   "If we're focusing on something alive, return it."
-  (let ((v0-0 (handle->process (-> this focus handle))))
-    (if (and v0-0
-             (not (and v0-0
-                       (not (logtest? (-> (the-as process-focusable v0-0) focus-status) (focus-status disable dead ignore grabbed)))
-                       )
-                  )
-             )
-        (set! v0-0 (the-as process #f))
+  (let ((v0-0 (the-as process-focusable (handle->process (-> this focus handle)))))
+    (if (and v0-0 (not (and v0-0 (not (logtest? (-> v0-0 focus-status) (focus-status disable dead ignore grabbed))))))
+        (set! v0-0 (the-as process-focusable #f))
         )
-    (the-as process-focusable v0-0)
+    v0-0
     )
   )
 
@@ -594,13 +588,10 @@
 
 (defmethod pointing-toward-focus? ((this enemy) (arg0 float) (arg1 symbol))
   "Is this enemy pointing toward its focused process?"
-  (let ((a0-2 (handle->process (-> this focus handle))))
+  (let ((a0-2 (the-as process-focusable (handle->process (-> this focus handle)))))
     (cond
       (a0-2
-        (let ((s4-1
-                (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-2) 0) (-> this root trans))
-                )
-              )
+        (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (get-trans a0-2 0) (-> this root trans))))
           (heading-matches-direction? this s4-1 arg0)
           )
         )
@@ -651,7 +642,7 @@
     )
   (let ((s5-0 (as-type arg0 process-focusable)))
     (when (can-focus-on? this s5-0)
-      (let ((v1-10 (handle->process (-> this focus handle))))
+      (let ((v1-10 (the-as process-focusable (handle->process (-> this focus handle)))))
         (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
                                       (or (not v1-10) (not (logtest? (-> this focus flags) (enemy-flag look-at-focus))))
                                       )
@@ -1336,11 +1327,11 @@
 (defmethod update-focus ((this enemy))
   "Potentially update the focus, if there is something better to focus on."
   (let ((gp-0 (-> this focus)))
-    (let ((a1-0 (handle->process (-> gp-0 handle))))
+    (let ((a1-0 (the-as process-focusable (handle->process (-> gp-0 handle)))))
       (when a1-0
         (let ((v1-4 (-> this enemy-flags)))
           (cond
-            ((and a1-0 (not (logtest? (-> (the-as process-focusable a1-0) focus-status) (focus-status disable dead))))
+            ((and a1-0 (not (logtest? (-> a1-0 focus-status) (focus-status disable dead))))
              (when (and (logtest? (enemy-flag multi-focus) v1-4)
                         (not (logtest? (enemy-flag lock-focus) v1-4))
                         (not (logtest? (-> gp-0 flags) (enemy-flag look-at-focus)))
@@ -1348,12 +1339,7 @@
                (find-best-focus this)
                (return (the-as process #f))
                )
-             (let ((v1-14 (modify-awareness
-                            this
-                            (get-awareness-of-proc this (the-as process-focusable a1-0) (the-as enemy-best-focus #f))
-                            )
-                          )
-                   )
+             (let ((v1-14 (modify-awareness this (get-awareness-of-proc this a1-0 (the-as enemy-best-focus #f)))))
                (set! (-> gp-0 aware) v1-14)
                (if (>= 1 (the-as int v1-14))
                    (logclear! (-> gp-0 flags) (enemy-flag look-at-focus))
@@ -2695,9 +2681,9 @@
   (let ((f30-0 (quaternion-y-angle (-> this root quat))))
     (case (-> this incoming knocked-type)
       (((knocked-type yellow-shot) (knocked-type blue-shot))
-       (let ((a0-5 (handle->process (-> this focus handle))))
+       (let ((a0-5 (the-as process-focusable (handle->process (-> this focus handle)))))
          (when a0-5
-           (let ((v1-9 (get-trans (the-as process-focusable a0-5) 0)))
+           (let ((v1-9 (get-trans a0-5 0)))
              (set! f30-0 (atan (- (-> v1-9 x) (-> this root trans x)) (- (-> v1-9 z) (-> this root trans z))))
              )
            )

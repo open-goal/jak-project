@@ -270,49 +270,40 @@
           (f28-0 0.0)
           )
       (let ((gp-0 22))
-        (let ((v1-2 (ja-group)))
-          (cond
-            ((and v1-2 (= v1-2 flut-wild-idle-ja))
-             (set! gp-0 60)
+        (cond
+          ((ja-group? flut-wild-idle-ja)
+           (set! gp-0 60)
+           )
+          ((ja-group? flut-wild-jump-ja flut-wild-jump-loop-ja)
+           (ja-channel-push! 1 (seconds 0.08))
+           (ja-no-eval :group! flut-wild-run-squash-ja :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
              )
-            ((let ((v1-9 (ja-group)))
-               (and v1-9 (or (= v1-9 flut-wild-jump-ja) (= v1-9 flut-wild-jump-loop-ja)))
-               )
-             (ja-channel-push! 1 (seconds 0.08))
-             (ja-no-eval :group! flut-wild-run-squash-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))
-               )
-             )
-            )
+           )
           )
-        (let ((v1-39 (ja-group)))
-          (set! f28-0
-                (cond
-                  ((and v1-39 (= v1-39 flut-wild-run-squash-ja))
-                   (ja-channel-set! 3)
-                   (set! f30-0 1.0)
-                   1.0
-                   )
-                  (else
-                    (let ((v1-47 (ja-group)))
-                      (cond
-                        ((and v1-47 (= v1-47 flut-wild-walk-ja))
-                         (set! f26-0 (ja-frame-num 0))
-                         (set! f30-0 (-> self skel root-channel 1 frame-interp (-> self skel active-frame-interp)))
-                         (-> self skel root-channel 2 frame-interp (-> self skel active-frame-interp))
-                         )
-                        (else
-                          (ja-channel-push! 3 (the-as time-frame gp-0))
-                          f28-0
+        (set! f28-0 (cond
+                      ((ja-group? flut-wild-run-squash-ja)
+                       (ja-channel-set! 3)
+                       (set! f30-0 1.0)
+                       1.0
+                       )
+                      (else
+                        (cond
+                          ((ja-group? flut-wild-walk-ja)
+                           (set! f26-0 (ja-frame-num 0))
+                           (set! f30-0 (-> self skel root-channel 1 frame-interp (-> self skel active-frame-interp)))
+                           (-> self skel root-channel 2 frame-interp (-> self skel active-frame-interp))
+                           )
+                          (else
+                            (ja-channel-push! 3 (the-as time-frame gp-0))
+                            f28-0
+                            )
                           )
                         )
                       )
-                    )
-                  )
-                )
-          )
+              )
         )
       (ja-no-eval :group! flut-wild-walk-ja :num! (loop!) :dist 20480.0 :frame-num f26-0)
       (ja-no-eval :chan 1

@@ -5,10 +5,19 @@
 ;; name in dgo: task-control-h
 ;; dgos: ENGINE, GAME
 
+(define-extern *cty-faction-manager* process)
+(define-extern *cty-attack-controller* process)
+(define-extern *minimap* minimap)
+
 (define-extern update-task-masks (function symbol int))
 (define-extern task-node-reset (function symbol int))
 (define-extern game-task-node->string (function game-task-node string))
 (define-extern task-close! (function string symbol))
+(define-extern setup-city-task-faction (function none))
+(define-extern cty-faction-evaluate-commands (function none))
+(define-extern cty-attack-reset (function symbol symbol symbol none))
+(define-extern task-node-open? (function game-task-node symbol))
+(define-extern task-node-open! (function game-task-node symbol int))
 
 ;; DECOMP BEGINS
 
@@ -1216,9 +1225,9 @@
    (time-of-day                         int32)
    (task-sound-description              string)
    (ipu                                 string)
-   (gold-array                          uint32                      2)
-   (silver-array                        uint32                      2)
-   (bronze-array                        uint32                      2)
+   (gold-array                          float                       2)
+   (silver-array                        float                       2)
+   (bronze-array                        float                       2)
    (gold                                float                         :overlay-at (-> gold-array 0))
    (silver                              float                         :overlay-at (-> silver-array 0))
    (bronze                              float                         :overlay-at (-> bronze-array 0))
@@ -1251,11 +1260,11 @@
    (high-scores                         (array float))
    )
   (:methods
-    (game-task-node-info-method-9 () none)
+    (get-idx-in-task-list (_type_) int)
     (game-task-node-info-method-10 (_type_ symbol) none)
-    (game-task-node-info-method-11 () none)
+    (game-task-node-info-method-11 (_type_ symbol) none)
     (game-task-node-info-method-12 (_type_) symbol)
-    (game-task-node-info-method-13 () none)
+    (game-task-node-info-method-13 (_type_) none)
     )
   )
 
@@ -1268,13 +1277,13 @@
    (single-player               symbol)
    (kiosk-play-node             uint16)
    (play-node                   uint16)
-   (play-continue               string)
-   (split-continue              string)
-   (kiosk-play-continue         string)
-   (kiosk-online-play-continue  string)
+   (play-continue               object)
+   (split-continue              object)
+   (kiosk-play-continue         object)
+   (kiosk-online-play-continue  object)
    )
   (:methods
-    (game-task-info-method-9 () none)
+    (game-task-info-method-9 (_type_) int)
     )
   )
 
@@ -1286,8 +1295,8 @@
    (current-event  game-task-event)
    )
   (:methods
-    (new (symbol type) _type_)
-    (game-task-control-method-9 () none)
+    (new (symbol type game-task-actor) _type_)
+    (get-current-task-event (_type_) game-task-event)
     )
   )
 

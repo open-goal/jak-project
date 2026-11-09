@@ -226,7 +226,8 @@ class TypeSystem {
                         int offset_override = -1,
                         bool skip_in_static_decomp = false,
                         double score = 0.0,
-                        const std::optional<TypeSpec> decomp_as_ts = std::nullopt);
+                        const std::optional<TypeSpec> decomp_as_ts = std::nullopt,
+                        const std::optional<TypeSpec> handle_ts = std::nullopt);
 
   void add_builtin_types(GameVersion version);
 

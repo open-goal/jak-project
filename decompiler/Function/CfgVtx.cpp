@@ -1130,6 +1130,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       b1->succ_branch = nullptr;
       b1->end_branch.has_branch = false;
       b1->remove_pred(b1);
+      m_blocks.at(b1->get_first_block_id())->needs_label = true;
       replaced = true;
       return false;
     }

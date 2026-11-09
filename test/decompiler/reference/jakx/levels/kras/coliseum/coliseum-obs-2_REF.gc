@@ -157,99 +157,72 @@
 ;; definition for method 66 of type coli-pillar-break
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-pillar-break))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 505) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 505) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-pillar-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 346))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 346 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-pillar-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 346))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 346 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-pillar-break
@@ -419,98 +392,71 @@
 ;; definition for method 66 of type coli-gate-a-straight
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-gate-a-straight))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 506) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 506) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-gate-a-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 345))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 345 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-gate-a-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 345))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 345 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-gate-a-straight
@@ -642,98 +588,71 @@
 ;; definition for method 66 of type coli-gate-b-curved
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-gate-b-curved))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 506) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 506) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-gate-b-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 345))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 345 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-gate-b-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 345))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 345 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-gate-b-curved
@@ -913,98 +832,71 @@
 ;; definition for method 66 of type coli-stands-rail-a
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-stands-rail-a))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 507) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 507) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-stands-rail-a-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-stands-rail-a-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-stands-rail-a
@@ -1165,98 +1057,71 @@
 ;; definition for method 66 of type coli-stands-rail-b
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-stands-rail-b))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 507) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 507) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-stands-rail-b-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-stands-rail-b-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-stands-rail-b
@@ -1417,98 +1282,71 @@
 ;; definition for method 66 of type coli-stands-rail-c
 ;; INFO: Used lq/sq
 (defmethod net-simple-destruct-method-66 ((this coli-stands-rail-c))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-1 (make-sound-instance (-> *sound-info* 507) 0 #f)))
-      (cond
-        (v1-1
-          (set! (-> v1-1 trans quad) (-> this root trans quad))
-          (logior! (-> v1-1 flags) 96)
-          (-> v1-1 id)
-          )
-        (else
-          0
-          )
+  (let ((v1-1 (make-sound-instance (-> *sound-info* 507) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-1
+        (set! (-> v1-1 trans quad) (-> this root trans quad))
+        (logior! (-> v1-1 flags) 96)
+        (-> v1-1 id)
         )
-      )
-    (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
-      (set! (-> s5-0 scale-rand-lo) 1.0)
-      (set! (-> s5-0 scale-rand-hi) 1.0)
-      (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-      (let ((a1-5 (-> s5-0 fountain-rand-transv-lo)))
-        (let ((v1-8 (-> s5-0 fountain-rand-transv-lo))
-              (a0-10 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-8 quad))
-          (.lvf vf5 (&-> a0-10 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-5 quad) vf6)
-        )
-      (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-      (let ((a1-6 (-> s5-0 fountain-rand-transv-hi)))
-        (let ((v1-10 (-> s5-0 fountain-rand-transv-hi))
-              (a0-15 (-> this impact-velocity))
-              )
-          (.lvf vf4 (&-> v1-10 quad))
-          (.lvf vf5 (&-> a0-15 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a1-6 quad) vf6)
-        )
-      (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
-      (set! (-> s5-0 duration) (the-as uint 600))
-      (when (type? (-> this root) collide-shape)
-        (let ((v1-15 (-> this root root-prim)))
-          (set! (-> v1-15 prim-core collide-as) (collide-spec))
-          (set! (-> v1-15 prim-core collide-with) (collide-spec))
-          )
+      (else
         0
         )
-      (logior! (-> this draw status) (draw-control-status no-draw))
-      (if (type? (-> this root) collide-shape)
-          (transform-post)
-          )
-      (debris-spawn this s5-0 *coli-stands-rail-c-debris-params* (the-as process-drawable #f))
       )
-    (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
-    (vector-reset! (-> *part-tracker-params-default* local-offset))
-    (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
-    (set! (-> *part-tracker-params-default* callback) #f)
-    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-    (set! (-> *part-tracker-params-default* target) #f)
-    (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
-    (set! (-> *part-tracker-params-default* local-space-param) 0)
-    (set! (-> *part-tracker-params-default* local-space-callback) #f)
-    (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-    *part-tracker-params-default*
-    (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
-        (process-spawn
-          part-tracker-subsampler
-          :init part-tracker-subsampler-init
-          *part-tracker-params-default*
-          :name "part-tracker-subsampler"
-          :to *entity-pool*
-          :unk 0
-          )
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          *part-tracker-params-default*
-          :name "part-tracker"
-          :to *entity-pool*
-          :unk 0
-          )
-        )
-    ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
-    (none)
     )
+  (let ((s5-0 (new 'stack 'debris-tuning (the-as uint 0))))
+    (set! (-> s5-0 scale-rand-lo) 1.0)
+    (set! (-> s5-0 scale-rand-hi) 1.0)
+    (set-vector! (-> s5-0 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-lo) (-> s5-0 fountain-rand-transv-lo) (-> this impact-velocity))
+    (set-vector! (-> s5-0 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+    (vector+! (-> s5-0 fountain-rand-transv-hi) (-> s5-0 fountain-rand-transv-hi) (-> this impact-velocity))
+    (set! (-> s5-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> s5-0 duration) (the-as uint 600))
+    (when (type? (-> this root) collide-shape)
+      (let ((v1-15 (-> this root root-prim)))
+        (set! (-> v1-15 prim-core collide-as) (collide-spec))
+        (set! (-> v1-15 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> this draw status) (draw-control-status no-draw))
+    (if (type? (-> this root) collide-shape)
+        (transform-post)
+        )
+    (debris-spawn this s5-0 *coli-stands-rail-c-debris-params* (the-as process-drawable #f))
+    )
+  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 344))
+  (vector-reset! (-> *part-tracker-params-default* local-offset))
+  (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+  (set! (-> *part-tracker-params-default* callback) #f)
+  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  (set! (-> *part-tracker-params-default* target) #f)
+  (set! (-> *part-tracker-params-default* mat-joint) (-> this node-list data 3 bone transform))
+  (set! (-> *part-tracker-params-default* local-space-param) 0)
+  (set! (-> *part-tracker-params-default* local-space-callback) #f)
+  (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+  *part-tracker-params-default*
+  (if (logtest? (-> *part-group-id-table* 344 flags) (sp-group-flag sp13))
+      (process-spawn
+        part-tracker-subsampler
+        :init part-tracker-subsampler-init
+        *part-tracker-params-default*
+        :name "part-tracker-subsampler"
+        :to *entity-pool*
+        :unk 0
+        )
+      (process-spawn
+        part-tracker
+        :init part-tracker-init
+        *part-tracker-params-default*
+        :name "part-tracker"
+        :to *entity-pool*
+        :unk 0
+        )
+      )
+  ((method-of-type net-simple-destruct net-simple-destruct-method-66) this)
+  (none)
   )
 
 ;; definition for method 11 of type coli-stands-rail-c

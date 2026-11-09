@@ -40,7 +40,7 @@ This is used to make jak look toward an enemy, for example."
    )
   (:methods
     (new (symbol type joint-mod-mode process-drawable int) _type_)
-    (mode-set! (_type_ joint-mod-mode) none)
+    (mode-set! (_type_ joint-mod-mode) _type_)
     (target-set! (_type_ vector) none)
     (look-at! (_type_ vector symbol process) none)
     (reset-blend! (_type_) _type_)
@@ -142,7 +142,7 @@ This is used to make jak look toward an enemy, for example."
 ;; definition (debug) for function joint-mod-debug-draw
 ;; WARN: Return type mismatch int vs none.
 (defun-debug joint-mod-debug-draw ((arg0 joint-mod))
-  (add-debug-matrix #t (bucket-id bucket785) (-> arg0 joint bone transform) (meters 2))
+  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> arg0 joint bone transform) (meters 2))
   0
   (none)
   )
@@ -356,29 +356,12 @@ This is used to make jak look toward an enemy, for example."
 
 ;; definition for function joint-mod-trans-rot-local-callback
 (defun joint-mod-trans-rot-local-callback ((arg0 cspace) (arg1 transformq))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 (the-as joint-mod-trans-rot-local (-> arg0 param1))))
-      (let ((a2-0 (-> arg1 trans)))
-        (let ((a0-1 (-> arg1 trans))
-              (a1-1 (-> v1-0 trans))
-              )
-          (.lvf vf4 (&-> a0-1 quad))
-          (.lvf vf5 (&-> a1-1 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a2-0 quad) vf6)
-        )
-      (quaternion*! (the-as quaternion (-> arg1 rot)) (the-as quaternion (-> arg1 rot)) (-> v1-0 rot))
-      )
-    (cspace<-parented-transformq-joint! arg0 arg1)
-    (none)
+  (let ((v1-0 (the-as joint-mod-trans-rot-local (-> arg0 param1))))
+    (vector+! (-> arg1 trans) (-> arg1 trans) (-> v1-0 trans))
+    (quaternion*! (the-as quaternion (-> arg1 rot)) (the-as quaternion (-> arg1 rot)) (-> v1-0 rot))
     )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
   )
 
 ;; definition for method 9 of type joint-mod-trans-rot-local
@@ -548,41 +531,24 @@ Unlike jak 2, this actually multiplies the scale, instead of adding."
 
 ;; definition for function joint-mod-add-local-callback
 (defun joint-mod-add-local-callback ((arg0 cspace) (arg1 transformq))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
-      (when (logtest? (-> s4-0 flags) (joint-mod-base-flags trans))
-        (let ((a1-1 (-> arg1 trans)))
-          (let ((v1-3 (-> arg1 trans))
-                (a0-1 (-> s4-0 transform))
-                )
-            (.lvf vf4 (&-> v1-3 quad))
-            (.lvf vf5 (&-> a0-1 trans quad))
-            )
-          (.mov.vf.w vf6 vf0)
-          (.add.vf.xyz vf6 vf4 vf5)
-          (.svf (&-> a1-1 quad) vf6)
-          )
+  (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
+    (if (logtest? (-> s4-0 flags) (joint-mod-base-flags trans))
+        (vector+! (-> arg1 trans) (-> arg1 trans) (-> s4-0 transform trans))
         )
-      (when (logtest? (-> s4-0 flags) (joint-mod-base-flags quat))
-        (quaternion*!
-          (the-as quaternion (-> arg1 rot))
-          (the-as quaternion (-> arg1 rot))
-          (the-as quaternion (-> s4-0 transform rot))
-          )
-        (quaternion-normalize! (the-as quaternion (-> arg1 rot)))
+    (when (logtest? (-> s4-0 flags) (joint-mod-base-flags quat))
+      (quaternion*!
+        (the-as quaternion (-> arg1 rot))
+        (the-as quaternion (-> arg1 rot))
+        (the-as quaternion (-> s4-0 transform rot))
         )
-      (if (logtest? (-> s4-0 flags) (joint-mod-base-flags scale))
-          (vector*! (-> arg1 scale) (-> arg1 scale) (-> s4-0 transform scale))
-          )
+      (quaternion-normalize! (the-as quaternion (-> arg1 rot)))
       )
-    (cspace<-parented-transformq-joint! arg0 arg1)
-    (none)
+    (if (logtest? (-> s4-0 flags) (joint-mod-base-flags scale))
+        (vector*! (-> arg1 scale) (-> arg1 scale) (-> s4-0 transform scale))
+        )
     )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
   )
 
 ;; definition for method 9 of type joint-mod-add-local
@@ -987,7 +953,3 @@ Then, apply the normal parented transform."
 
 ;; failed to figure out what this is:
 0
-
-
-
-

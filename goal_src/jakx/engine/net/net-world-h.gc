@@ -35,240 +35,1168 @@
 )
 ;; ---net-vehicle-type
 
+
+(define-extern get-total-humans (function int))
+(define-extern get-total-skill-level (function int))
+
 ;; DECOMP BEGINS
 
-(deftype vehicle-load-parts (uint64)
-  (
-   )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
+(define *ghost-info-ptr* (the-as pointer #f))
+
+(defun net-play-mode-race? ((arg0 net-play-mode))
+  (or (= arg0 (net-play-mode race))
+      (= arg0 (net-play-mode deathrace))
+      (= arg0 (net-play-mode timebox))
+      (= arg0 (net-play-mode timetrial))
+      (= arg0 (net-play-mode football))
+      (= arg0 (net-play-mode rushhour))
+      (= arg0 (net-play-mode boss-battle))
+      )
   )
+
+(defun get-task-node-id-from-location-and-event ((arg0 task-level) (arg1 net-play-mode))
+  (dotimes (s4-0 (length (-> *game-info* sub-task-list)))
+    (let ((v1-2 (-> *game-info* sub-task-list s4-0)))
+      (if (and (= (-> *game-info* play-list (-> v1-2 task) task-level) arg0) (= (-> v1-2 net-play-mode) arg1))
+          (return s4-0)
+          )
+      )
+    )
+  -1
+  )
+
+(deftype vehicle-load-parts (uint64)
+  ((bit0 uint8 :offset   0 :size   3)
+   (bit1 uint8 :offset   3 :size   3)
+   (bit2 uint8 :offset   6 :size   3)
+   (bit3 uint8 :offset   9 :size   3)
+   (bit4 uint8 :offset  12 :size   3)
+   (bit5 uint8 :offset  15 :size   3)
+   (bit6 uint8 :offset  18 :size   3)
+   (bit7 uint8 :offset  21 :size   3)
+   (bit8 uint8 :offset  24 :size   5)
+   )
+  )
+
+(define *default-vehicle-load-parts* #x1249249)
+
+;; WARN: Return type mismatch object vs vehicle-load-parts.
 
 (deftype net-world-game-options (structure)
-  ((advanced-options game-task-advanced-options :inline :offset-assert 0)
+  ((advanced-options  game-task-advanced-options  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
+
 (deftype net-world-staging-player (structure)
-  ((vehicle-load-parts       vehicle-load-parts  :offset-assert 0)
-   (vehicle-tuning-info      uint32  :offset-assert 8)
-   (vehicle-selection        int8    :offset-assert 12)
-   (desired-driver-selection int8    :offset-assert 13)
-   (flags                    net-world-staging-player-flag   :offset-assert 14)
-   (team-id                  uint8   :offset-assert 15)
-   (player-num               int8    :offset-assert 16)
-   (base-color               uint32  :offset-assert 20)
-   (stripe-color             uint32  :offset-assert 24)
-   (skill-level              int32   :offset-assert 28)
+  ((vehicle-load-parts        vehicle-load-parts)
+   (vehicle-tuning-info       uint32)
+   (vehicle-selection         int8)
+   (desired-driver-selection  int8)
+   (flags                     net-world-staging-player-flag)
+   (team-id                   uint8)
+   (player-num                int8)
+   (base-color                uint32)
+   (stripe-color              uint32)
+   (skill-level               int32)
    )
   :pack-me
-  :method-count-assert 10
-  :size-assert         #x20
-  :flag-assert         #xa00000020
   (:methods
-    (net-world-staging-player-method-9 () none) ;; 9
+    (net-world-staging-player-method-9 () none)
     )
   )
 
+
 (deftype green-room-stats (structure)
-  ((intro-end-time        int32     :offset-assert 0)
-   (scheduled-finish-time int32     :offset-assert 4)
-   (scores                uint16 6 :offset-assert 8)
-   (laps                  uint8 6 :offset-assert 20)
+  ((intro-end-time         int32)
+   (scheduled-finish-time  int32)
+   (scores                 uint16  6)
+   (laps                   uint8   6)
    )
-  :method-count-assert 9
-  :size-assert         #x1a
-  :flag-assert         #x90000001a
+  )
+
+
+;; WARN: Return type mismatch none vs object.
+(defun encode-green-room-stats ((arg0 green-room-stats) (arg1 mem-buffer))
+  (write-int32 arg1 (-> arg0 intro-end-time))
+  (write-int32 arg1 (-> arg0 scheduled-finish-time))
+  (write-bytes arg1 (-> arg0 scores) 12)
+  (write-bytes arg1 (-> arg0 laps) 6)
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defun decode-green-room-stats ((arg0 green-room-stats) (arg1 mem-buffer))
+  (set! (-> arg0 intro-end-time) (read-int32 arg1))
+  (set! (-> arg0 scheduled-finish-time) (read-int32 arg1))
+  (read-bytes arg1 (-> arg0 scores) 12)
+  (read-bytes arg1 (-> arg0 laps) 6)
   )
 
 (deftype net-world-state (structure)
-  ((players            net-world-staging-player                24    :inline  :offset-assert 0)
-   (assigned-drivers   uint8                24      :offset-assert 768)
-   (game-creator-ip    uint32                         :offset-assert 792)
-   (game-creation-time uint32                         :offset-assert 796)
-   (game-start-time    int32                          :offset-assert 800)
-   (total-pause-time   int32                          :offset-assert 804)
-   (task-node-name     uint8                32      :offset-assert 808)
-   (player-ready-flags uint8                          :offset-assert 840)
-   (flags              int8                           :offset-assert 841)
-   (max-humans         int8                           :offset-assert 842)
-   (buddy-slots        int8                           :offset-assert 843)
-   (clan-slots         int8                           :offset-assert 844)
-   (ai-slots           int8                           :offset-assert 845)
-   (vehicle-class      int8                           :offset-assert 846)
-   (options            net-world-game-options :inline :offset-assert 848)
-   (clan-ids           uint32                2       :offset-assert 856)
-   (green-room-stats   green-room-stats       :inline :offset-assert 864)
-   (time-of-day        int8                           :offset-assert 890)
+  ((players             net-world-staging-player  24 :inline)
+   (assigned-drivers    uint8                     24)
+   (game-creator-ip     uint32)
+   (game-creation-time  uint32)
+   (game-start-time     int32)
+   (total-pause-time    int32)
+   (task-node-name      uint8                     32)
+   (player-ready-flags  uint8)
+   (flags               int8)
+   (max-humans          int8)
+   (buddy-slots         int8)
+   (clan-slots          int8)
+   (ai-slots            int8)
+   (vehicle-class       int8)
+   (options             net-world-game-options    :inline)
+   (clan-ids            uint32                    2)
+   (green-room-stats    green-room-stats          :inline)
+   (time-of-day         int8)
    )
-  :method-count-assert 9
-  :size-assert         #x37b
-  :flag-assert         #x90000037b
   )
-(deftype net-world (process-nettable)
-  ((net-state                  net-world-state :inline :offset-assert 192)
-   (is-late-join               basic                   :offset-assert 1084)
-   (need-start-load            basic                   :offset-assert 1088)
-   (current-garage-player      int32                   :offset-assert 1092)
-   (current-garage-spare-slot  int32                   :offset-assert 1096)
-   (cont                       basic                   :offset-assert 1100)
-   (task                       uint8                   :offset-assert 1104)
-   (task-node                  uint16                  :offset-assert 1106)
-   (task-info                  game-task-info                   :offset-assert 1108)
-   (task-node-info             game-task-node-info                   :offset-assert 1112)
-   (player-to-vehicle-slot-map int8         24      :offset-assert 1116)
-   (vehicle-slot-to-player-map uint8         6       :offset-assert 1140)
-   )
-  :method-count-assert 87
-  :size-assert         #x47a
-  :flag-assert         #x5703f0047a
-  (:methods
-    (net-world-method-42 () none) ;; 42
-    (net-world-method-43 () none) ;; 43
-    (net-world-method-44 () none) ;; 44
-    (net-world-method-45 () none) ;; 45
-    (net-world-method-46 () none) ;; 46
-    (net-world-method-47 () none) ;; 47
-    (net-world-method-48 () none) ;; 48
-    (net-world-method-49 () none) ;; 49
-    (net-world-method-50 () none) ;; 50
-    (net-world-method-51 () none) ;; 51
-    (net-world-method-52 () none) ;; 52
-    (net-world-method-53 () none) ;; 53
-    (net-world-method-54 () none) ;; 54
-    (net-world-method-55 () none) ;; 55
-    (net-world-method-56 () none) ;; 56
-    (net-world-method-57 () none) ;; 57
-    (net-world-method-58 () none) ;; 58
-    (net-world-method-59 () none) ;; 59
-    (net-world-method-60 () none) ;; 60
-    (net-world-method-61 () none) ;; 61
-    (net-world-method-62 () none) ;; 62
-    (net-world-method-63 () none) ;; 63
-    (net-world-method-64 () none) ;; 64
-    (net-world-method-65 () none) ;; 65
-    (net-world-method-66 () none) ;; 66
-    (net-world-method-67 () none) ;; 67
-    (net-world-method-68 () none) ;; 68
-    (net-world-method-69 () none) ;; 69
-    (net-world-method-70 () none) ;; 70
-    (net-world-method-71 () none) ;; 71
-    (net-world-method-72 () none) ;; 72
-    (net-world-method-73 () none) ;; 73
-    (net-world-method-74 () none) ;; 74
-    (net-world-method-75 () none) ;; 75
-    (net-world-method-76 () none) ;; 76
-    (net-world-method-77 () none) ;; 77
-    (net-world-method-78 () none) ;; 78
-    (net-world-method-79 () none) ;; 79
-    (net-world-method-80 () none) ;; 80
-    (net-world-method-81 () none) ;; 81
-    (net-world-method-82 () none) ;; 82
-    (net-world-method-83 () none) ;; 83
-    (net-world-method-84 () none) ;; 84
-    (net-world-method-85 () none) ;; 85
-    (net-world-method-86 () none) ;; 86
+
+
+;; WARN: Return type mismatch none vs object.
+(defun encode-net-world-state ((arg0 net-world-state) (arg1 mem-buffer))
+  (write-bytes arg1 (-> arg0 assigned-drivers) 24)
+  (write-uint32 arg1 (-> arg0 game-creator-ip))
+  (write-uint32 arg1 (-> arg0 game-creation-time))
+  (write-int32 arg1 (-> arg0 game-start-time))
+  (write-int32 arg1 (-> arg0 total-pause-time))
+  (write-bytes arg1 (-> arg0 task-node-name) 32)
+  (write-uint8 arg1 (-> arg0 player-ready-flags))
+  (write-int8 arg1 (-> arg0 flags))
+  (write-int8 arg1 (-> arg0 max-humans))
+  (write-int8 arg1 (-> arg0 buddy-slots))
+  (write-int8 arg1 (-> arg0 clan-slots))
+  (write-int8 arg1 (-> arg0 ai-slots))
+  (write-int8 arg1 (-> arg0 vehicle-class))
+  (write-bytes arg1 (the-as pointer (-> arg0 options)) 8)
+  (write-bytes arg1 (-> arg0 clan-ids) 8)
+  (write-bytes arg1 (the-as pointer (-> arg0 green-room-stats)) 26)
+  (write-int8 arg1 (-> arg0 time-of-day))
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun decode-net-world-state ((arg0 net-world-state) (arg1 mem-buffer))
+  (read-bytes arg1 (-> arg0 assigned-drivers) 24)
+  (set! (-> arg0 game-creator-ip) (read-uint32 arg1))
+  (set! (-> arg0 game-creation-time) (read-uint32 arg1))
+  (set! (-> arg0 game-start-time) (read-int32 arg1))
+  (set! (-> arg0 total-pause-time) (read-int32 arg1))
+  (read-bytes arg1 (-> arg0 task-node-name) 32)
+  (set! (-> arg0 player-ready-flags) (read-uint8 arg1))
+  (set! (-> arg0 flags) (read-int8 arg1))
+  (set! (-> arg0 max-humans) (read-int8 arg1))
+  (set! (-> arg0 buddy-slots) (read-int8 arg1))
+  (set! (-> arg0 clan-slots) (read-int8 arg1))
+  (set! (-> arg0 ai-slots) (read-int8 arg1))
+  (set! (-> arg0 vehicle-class) (read-int8 arg1))
+  (read-bytes arg1 (the-as pointer (-> arg0 options)) 8)
+  (read-bytes arg1 (-> arg0 clan-ids) 8)
+  (read-bytes arg1 (the-as pointer (-> arg0 green-room-stats)) 26)
+  (let ((v0-16 (read-int8 arg1)))
+    (set! (-> arg0 time-of-day) v0-16)
+    v0-16
     )
   )
+
+(deftype net-world (process-nettable)
+  ((net-state                      net-world-state  :inline)
+   (is-late-join                   symbol)
+   (need-start-load                symbol)
+   (current-garage-player          int32)
+   (current-garage-spare-slot      int32)
+   (cont                           basic)
+   (task                           uint8)
+   (task-node                      uint16)
+   (task-info                      game-task-info)
+   (task-node-info                 game-task-node-info)
+   (player-to-vehicle-slot-map     uint8            24)
+   (player-to-vehicle-slot-map-s8  int8             24 :overlay-at (-> player-to-vehicle-slot-map 0))
+   (vehicle-slot-to-player-map     uint8            6)
+   )
+  (:methods
+    (net-world-method-42 () none)
+    (net-world-method-43 () none)
+    (net-world-method-44 () none)
+    (net-world-method-45 () none)
+    (net-world-method-46 () none)
+    (net-world-method-47 () none)
+    (net-world-method-48 () none)
+    (net-world-method-49 () none)
+    (net-world-method-50 () none)
+    (net-world-method-51 () none)
+    (net-world-method-52 () none)
+    (net-world-method-53 () none)
+    (net-world-method-54 () none)
+    (net-world-method-55 () none)
+    (net-world-method-56 () none)
+    (net-world-method-57 () none)
+    (net-world-method-58 () none)
+    (net-world-method-59 () none)
+    (net-world-method-60 () none)
+    (net-world-method-61 () none)
+    (net-world-method-62 () none)
+    (net-world-method-63 () none)
+    (net-world-method-64 () none)
+    (net-world-method-65 () none)
+    (net-world-method-66 () none)
+    (net-world-method-67 () none)
+    (net-world-method-68 () none)
+    (net-world-method-69 () none)
+    (net-world-method-70 () none)
+    (net-world-method-71 () none)
+    (net-world-method-72 () none)
+    (net-world-method-73 () none)
+    (net-world-method-74 () none)
+    (net-world-method-75 () none)
+    (net-world-method-76 () none)
+    (net-world-method-77 () none)
+    (net-world-method-78 () none)
+    (net-world-method-79 () none)
+    (net-world-method-80 () none)
+    (net-world-method-81 () none)
+    (net-world-method-82 () none)
+    (net-world-method-83 () none)
+    (net-world-method-84 () none)
+    (net-world-method-85 () none)
+    (net-world-method-86 () none)
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-world-init-remote net-world ((arg0 mem-buffer))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  )
+
+(defmethod process-nettable-method-41 ((this net-world) (arg0 mem-buffer))
+  (ppointer->process (process-spawn net-world :init net-world-init-remote arg0 :name "net-world"))
+  )
+
+(defmethod process-nettable-method-37 ((this net-world) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-task)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-player-info)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'lock)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'ready)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'start-game)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-player-name)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-options)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'entity-hash)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'assigned-drivers)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'late-join-continue)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'green-room-stats)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'green-room-player-stats)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'headset-flag)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-net-world* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-world* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-world* msg-map) *msg-map-net-world*)
+
+(write-msg-map-rec net-world *net-process-class-info-net-world*)
+
+(set! (-> *net-process-class-info-net-world* owner-type) net-world)
+
+(net-process-class-register *net-process-class-info-net-world*)
+
+(defmethod process-nettable-method-40 ((this net-world))
+  *net-process-class-info-net-world*
+  )
+
+(define *net-world* (the-as net-world #f))
 
 (deftype net-player-name (structure)
-  ((name        uint8 32 :offset-assert 0)
-   (format-name uint8 64 :offset-assert 32)
+  ((name         uint8  32)
+   (format-name  uint8  64)
    )
-  :method-count-assert 10
-  :size-assert         #x60
-  :flag-assert         #xa00000060
   (:methods
-    (net-player-name-method-9 () none) ;; 9
+    (net-player-name-method-9 () none)
     )
   )
 
+
+(define *net-player-names* (new 'static 'inline-array net-player-name 24
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             (new 'static 'net-player-name)
+                             )
+        )
+
 (deftype prebuilt-ai-vehicle (structure)
-  ((levname    symbol            :offset-assert 0)
-   (v-type     vehicle-type-u8   :offset-assert 4)
-   (load-parts uint64            :offset-assert 8)
+  ((levname     symbol)
+   (v-type      vehicle-type-u8)
+   (load-parts  uint64)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
-;; +++net-world-h:net-vehicle-type
-(defenum net-vehicle-type
-  :type int8
-  (falcon 0)
-  (possum 1)
-  (bobcat 2)
-  (cougar 3)
-  (wombat 4)
-  (leopard 5)
-  (wolf 6)
-  (panther 7)
-  (tiger 8)
-  (bear 9)
-  (gila 10)
-  (cheetah 11)
-  (snake 12)
-  (mongoose 13)
-  (daxtermobile 14)
-)
-;; ---net-world-h:net-vehicle-type
+
+(define *prebuilt-ai-vehicles*
+  (new 'static 'boxed-array :type prebuilt-ai-vehicle
+    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl :v-type (vehicle-type-u8 tiger) :load-parts #x56200e2)
+    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl2 :v-type (vehicle-type-u8 falcon) :load-parts #xeb68140)
+    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl3 :v-type (vehicle-type-u8 wombat) :load-parts #x14528150)
+    (new 'static 'prebuilt-ai-vehicle :levname 'razvl :v-type (vehicle-type-u8 cheetah) :load-parts #xb618153)
+    (new 'static 'prebuilt-ai-vehicle :levname 'klevl :v-type (vehicle-type-u8 panther) :load-parts #x9608680)
+    (new 'static 'prebuilt-ai-vehicle :levname 'klevl2 :v-type (vehicle-type-u8 bear) :load-parts #xd4e8118)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thavl :v-type (vehicle-type-u8 possum) :load-parts #x30e0142)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thavl2 :v-type (vehicle-type-u8 panther) :load-parts #xfa28b40)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thavl3 :v-type (vehicle-type-u8 gila) :load-parts #xfa40813)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl :v-type (vehicle-type-u8 cougar) :load-parts #x70182d3)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl2 :v-type (vehicle-type-u8 leopard) :load-parts #x5a1814d)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl3 :v-type (vehicle-type-u8 gila) :load-parts #x10500a2c)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl :v-type (vehicle-type-u8 wombat) :load-parts #x44180ca)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl2 :v-type (vehicle-type-u8 falcon) :load-parts #x126980a8)
+    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl3 :v-type (vehicle-type-u8 cheetah) :load-parts #xe82011a)
+    (new 'static 'prebuilt-ai-vehicle :levname 'torvl :v-type (vehicle-type-u8 tiger) :load-parts #x8808113)
+    (new 'static 'prebuilt-ai-vehicle :levname 'torvl2 :v-type (vehicle-type-u8 possum) :load-parts #x31280c5)
+    (new 'static 'prebuilt-ai-vehicle :levname 'torvl3 :v-type (vehicle-type-u8 wolf) :load-parts #x1402a480)
+    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl :v-type (vehicle-type-u8 leopard) :load-parts #xa010092)
+    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl2 :v-type (vehicle-type-u8 cougar) :load-parts #x15020b64)
+    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl3 :v-type (vehicle-type-u8 bear) :load-parts #xcb580e8)
+    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl :v-type (vehicle-type-u8 bear) :load-parts #x9290090)
+    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl2 :v-type (vehicle-type-u8 bobcat) :load-parts #x13a0012b)
+    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl3 :v-type (vehicle-type-u8 wolf) :load-parts #x1181c6c0)
+    (new 'static 'prebuilt-ai-vehicle :levname 'rayvl :v-type (vehicle-type-u8 wolf) :load-parts #x9819300)
+    (new 'static 'prebuilt-ai-vehicle :levname 'rayvl2 :v-type (vehicle-type-u8 tiger) :load-parts #x1a28148)
+    (new 'static 'prebuilt-ai-vehicle :levname 'gtbvl :v-type (vehicle-type-u8 falcon) :load-parts #xb2d0088)
+    (new 'static 'prebuilt-ai-vehicle :levname 'kievl :v-type (vehicle-type-u8 bobcat) :load-parts #x181811a)
+    (new 'static 'prebuilt-ai-vehicle :levname 'jakvl :v-type (vehicle-type-u8 falcon) :load-parts #x8249249)
+    (new 'static 'prebuilt-ai-vehicle :levname 'pecvl :v-type (vehicle-type-u8 bobcat) :load-parts #x466132d)
+    )
+  )
 
 (deftype net-vehicle (structure)
-  ((id         uint32           :offset-assert 0)
-   (name       string           :offset-assert 4)
-   (levname    string           :offset-assert 8)
-   (vt         vehicle-type-u8  :offset-assert 12)
-   (ct         car-type         :offset-assert 13)
-   (tex-name   string           :offset-assert 16)
-   (sound-bank symbol           :offset-assert 20)
-   (index      net-vehicle-type :offset-assert 24)
-   (cup-mask   uint32           :offset-assert 28)
-   (id-variant uint32           :offset-assert 32)
-   (ai-levels  (array prebuilt-ai-vehicle)   :offset-assert 36) ;; une supposition, should it be (array symbol) like master made it?
+  ((id          uint32)
+   (name        symbol)
+   (levname     symbol)
+   (vt          vehicle-type-u8)
+   (ct          car-type)
+   (tex-name    string)
+   (sound-bank  symbol)
+   (index       net-vehicle-type)
+   (cup-mask    uint32)
+   (id-variant  uint32)
+   (ai-levels   (array prebuilt-ai-vehicle))
    )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
+  )
+
+
+(define *net-vehicles* (new 'static 'boxed-array :type net-vehicle
+                         (new 'static 'net-vehicle
+                           :id #x600
+                           :name 'falcon
+                           :levname 'falcl
+                           :vt (vehicle-type-u8 falcon)
+                           :ct (car-type falcon)
+                           :tex-name "icon-car-falcon-01"
+                           :sound-bank 'falc
+                           :cup-mask #x80
+                           :id-variant #xcf0
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x719
+                           :name 'possum
+                           :levname 'possl
+                           :vt (vehicle-type-u8 possum)
+                           :ct (car-type possum)
+                           :tex-name "icon-car-possum-01"
+                           :sound-bank 'poss
+                           :index (net-vehicle-type possum)
+                           :cup-mask #x80
+                           :id-variant #xcf9
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x715
+                           :name 'bobcat
+                           :levname 'bobcl
+                           :vt (vehicle-type-u8 bobcat)
+                           :ct (car-type bobcat)
+                           :tex-name "icon-car-bobcat-01"
+                           :sound-bank 'bobc
+                           :index (net-vehicle-type bobcat)
+                           :cup-mask #x80
+                           :id-variant #xced
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x716
+                           :name 'cougar
+                           :levname 'cougl
+                           :vt (vehicle-type-u8 cougar)
+                           :ct (car-type cougar)
+                           :tex-name "icon-car-cougar-01"
+                           :sound-bank 'coug
+                           :index (net-vehicle-type cougar)
+                           :cup-mask #x80
+                           :id-variant #xcef
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x60e
+                           :name 'wombat
+                           :levname 'wombl
+                           :vt (vehicle-type-u8 wombat)
+                           :ct (car-type wombat)
+                           :tex-name "icon-car-wombat-01"
+                           :sound-bank 'womb
+                           :index (net-vehicle-type wombat)
+                           :cup-mask #x100
+                           :id-variant #xd02
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x709
+                           :name 'leopard
+                           :levname 'leopl
+                           :vt (vehicle-type-u8 leopard)
+                           :ct (car-type leopard)
+                           :tex-name "icon-car-leopard-01"
+                           :sound-bank 'leop
+                           :index (net-vehicle-type leopard)
+                           :cup-mask #x100
+                           :id-variant #xcf4
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x717
+                           :name 'wolf
+                           :levname 'wolfl
+                           :vt (vehicle-type-u8 wolf)
+                           :ct (car-type wolf)
+                           :tex-name "icon-car-wolf-01"
+                           :sound-bank 'wolf
+                           :index (net-vehicle-type wolf)
+                           :cup-mask #x100
+                           :id-variant #xd01
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x70a
+                           :name 'panther
+                           :levname 'pantl
+                           :vt (vehicle-type-u8 panther)
+                           :ct (car-type panther)
+                           :tex-name "icon-car-panther-01"
+                           :sound-bank 'pant
+                           :index (net-vehicle-type panther)
+                           :cup-mask #x100
+                           :id-variant #xcf7
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x70b
+                           :name 'tiger
+                           :levname 'tigel
+                           :vt (vehicle-type-u8 tiger)
+                           :ct (car-type tiger)
+                           :tex-name "icon-car-tiger-01"
+                           :sound-bank 'tige
+                           :index (net-vehicle-type tiger)
+                           :cup-mask #x200
+                           :id-variant #xcfd
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x718
+                           :name 'bear
+                           :levname 'bearl
+                           :vt (vehicle-type-u8 bear)
+                           :ct (car-type bear)
+                           :tex-name "icon-car-bear-01"
+                           :sound-bank 'bear
+                           :index (net-vehicle-type bear)
+                           :cup-mask #x200
+                           :id-variant #xcec
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #xd2f
+                           :name 'gila
+                           :levname 'gilal
+                           :vt (vehicle-type-u8 gila)
+                           :ct (car-type gila)
+                           :tex-name "icon-car-gila-01"
+                           :sound-bank 'gila
+                           :index (net-vehicle-type gila)
+                           :cup-mask #x200
+                           :id-variant #xd30
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x70c
+                           :name 'cheetah
+                           :levname 'cheel
+                           :vt (vehicle-type-u8 cheetah)
+                           :ct (car-type cheetah)
+                           :tex-name "icon-car-cheetah-01"
+                           :sound-bank 'chee
+                           :index (net-vehicle-type cheetah)
+                           :cup-mask #x200
+                           :id-variant #xcee
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x70f
+                           :name 'snake
+                           :levname 'snakl
+                           :vt (vehicle-type-u8 snake)
+                           :ct (car-type snake)
+                           :tex-name "icon-car-snake-01"
+                           :sound-bank 'snak
+                           :index (net-vehicle-type snake)
+                           :cup-mask #x400
+                           :id-variant #xcfb
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #x5ff
+                           :name 'mongoose
+                           :levname 'mongl
+                           :tex-name "icon-car-mongoose-01"
+                           :sound-bank 'mong
+                           :index (net-vehicle-type mongoose)
+                           :cup-mask #x400
+                           :id-variant #xcf6
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         (new 'static 'net-vehicle
+                           :id #xe3b
+                           :name 'daxtermobile
+                           :levname 'daxtl
+                           :vt (vehicle-type-u8 daxtermobile)
+                           :ct (car-type daxtermobile)
+                           :tex-name "icon-car-daxtermobile-01"
+                           :sound-bank 'daxt
+                           :index (net-vehicle-type daxtermobile)
+                           :cup-mask #x400
+                           :id-variant #xe3c
+                           :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
+                           )
+                         )
+        )
+
+(defun find-vehicle-info ((arg0 symbol))
+  (let* ((v1-1 (-> *net-vehicles* length))
+         (a1-0 0)
+         (a2-2 (-> *net-vehicles* a1-0))
+         )
+    (while (< a1-0 v1-1)
+      (if (= (-> a2-2 vt) arg0)
+          (return a2-2)
+          )
+      (+! a1-0 1)
+      (set! a2-2 (-> *net-vehicles* a1-0))
+      )
+    )
+  (the-as net-vehicle #f)
+  )
+
+(defun find-prebuilt-ai-vehicle ((arg0 symbol))
+  (let* ((v1-1 (-> *prebuilt-ai-vehicles* length))
+         (a1-0 0)
+         (a2-2 (-> *prebuilt-ai-vehicles* a1-0))
+         )
+    (while (< a1-0 v1-1)
+      (if (= (-> a2-2 levname) arg0)
+          (return a2-2)
+          )
+      (+! a1-0 1)
+      (set! a2-2 (-> *prebuilt-ai-vehicles* a1-0))
+      )
+    )
+  (the-as prebuilt-ai-vehicle #f)
+  )
+
+(let* ((v1-27 (-> *net-vehicles* length))
+       (a0-25 0)
+       (a1-24 (-> *net-vehicles* a0-25))
+       )
+  (while (< a0-25 v1-27)
+    (set! (-> a1-24 ai-levels length) 0)
+    (+! a0-25 1)
+    (set! a1-24 (-> *net-vehicles* a0-25))
+    )
+  )
+
+(let* ((gp-0 (-> *prebuilt-ai-vehicles* length))
+       (s5-0 0)
+       (s3-0 (-> *prebuilt-ai-vehicles* s5-0))
+       )
+  (while (< s5-0 gp-0)
+    (let ((s4-0 (find-vehicle-info (the-as symbol (-> s3-0 v-type)))))
+      (when (not s4-0)
+        (break!)
+        0
+        )
+      (set! (-> s4-0 ai-levels (length (-> s4-0 ai-levels))) (the-as prebuilt-ai-vehicle (-> s3-0 levname)))
+      (+! (-> s4-0 ai-levels length) 1)
+      )
+    (+! s5-0 1)
+    (set! s3-0 (-> *prebuilt-ai-vehicles* s5-0))
+    )
   )
 
 (deftype net-driver (structure)
-  ((id            uint32          :offset-assert 0)
-   (levname       string          :offset-assert 4)
-   (dt            driver-type     :offset-assert 8)
-   (tex-name      string          :offset-assert 12)
-   (picture-part1 uint32          :offset-assert 16)
-   (picture-part2 uint32          :offset-assert 20)
-   (icon-part1    uint32          :offset-assert 24)
-   (icon-part2    uint32          :offset-assert 28)
-   (base-color    uint32          :offset-assert 32)
-   (stripe-color  uint32          :offset-assert 36)
-   (ai-car-levels (array symbol)  :offset-assert 40)
-   (driver-name   string          :offset-assert 44)
-   (sex           int8            :offset-assert 48)
-   (height        int8            :offset-assert 49)
-   (weight        int16           :offset-assert 50)
-   (eyes          basic           :offset-assert 52)
-   (age           int8            :offset-assert 56)
-   (helmet-scale  float           :offset-assert 60)
-   (no-ai         symbol          :offset-assert 64)
+  ((id             uint32)
+   (levname        symbol)
+   (dt             driver-type)
+   (tex-name       string)
+   (picture-part1  uint32)
+   (picture-part2  uint32)
+   (icon-part1     uint32)
+   (icon-part2     uint32)
+   (base-color     uint32)
+   (stripe-color   uint32)
+   (ai-car-levels  (array symbol))
+   (driver-name    string)
+   (sex            int8)
+   (height         int8)
+   (weight         int16)
+   (eyes           basic)
+   (age            int8)
+   (helmet-scale   float)
+   (no-ai          symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
+
+
+(define *net-drivers* (new 'static 'boxed-array :type net-driver
+                        (new 'static 'net-driver
+                          :id #x601
+                          :levname 'jaklev
+                          :tex-name "jak"
+                          :picture-part1 #xe6e00200
+                          :picture-part2 #xe6e00300
+                          :icon-part1 #xe6e00000
+                          :icon-part2 #xe6e00100
+                          :base-color #x80120f6d
+                          :stripe-color #x80808080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'jakvl 'jakvl 'jakvl 'jakvl)
+                          :driver-name "JAK"
+                          :height 70
+                          :weight #xb9
+                          :eyes "CERULEAN"
+                          :age 19
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x602
+                          :levname 'ashlev
+                          :dt (driver-type d-ashelin)
+                          :tex-name "ashelin"
+                          :picture-part1 #xe6b00200
+                          :picture-part2 #xe6b00300
+                          :icon-part1 #xe6b00400
+                          :icon-part2 #xe6b00100
+                          :base-color #x80180d70
+                          :stripe-color #x802f1d1f
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl2 'ashvl3 'ashvl 'ashvl)
+                          :driver-name "ASHELIN"
+                          :sex 1
+                          :height 72
+                          :weight #x91
+                          :eyes "JADE"
+                          :age 24
+                          :helmet-scale 0.7
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x640
+                          :levname 'razlev
+                          :dt (driver-type d-razer)
+                          :tex-name "razer"
+                          :picture-part1 #xe7700000
+                          :picture-part2 #xe7700100
+                          :icon-part1 #xe7700200
+                          :icon-part2 #xe7700300
+                          :base-color #x80000000
+                          :stripe-color #x8014106d
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'razvl 'razvl 'razvl 'razvl)
+                          :driver-name "RAZER"
+                          :height 74
+                          :weight #xa2
+                          :eyes "LIME"
+                          :age 31
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x64f
+                          :levname 'klelev
+                          :dt (driver-type d-klever)
+                          :tex-name "kleiver"
+                          :picture-part1 #xe7400200
+                          :picture-part2 #xe7400300
+                          :icon-part1 #xe7400000
+                          :icon-part2 #xe7400100
+                          :base-color #x801f4246
+                          :stripe-color #x801c1f2b
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'klevl 'klevl 'klevl2 'klevl)
+                          :driver-name "KLEIVER"
+                          :height 76
+                          :weight #x15e
+                          :eyes "GREY"
+                          :age 51
+                          :helmet-scale 1.0
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x6c1
+                          :levname 'kielev
+                          :dt (driver-type d-kiera)
+                          :tex-name "kiera"
+                          :picture-part1 #xe8300200
+                          :picture-part2 #xe8300300
+                          :icon-part1 #xe8300000
+                          :icon-part2 #xe8300100
+                          :base-color #x802e1d30
+                          :stripe-color #x801e2c1f
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'kievl 'kievl 'kievl 'kievl)
+                          :driver-name "KEIRA"
+                          :sex 1
+                          :height 66
+                          :weight #x78
+                          :eyes "SAGE"
+                          :age 18
+                          :helmet-scale 0.7
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x6c2
+                          :levname 'thalev
+                          :dt (driver-type d-thug-a)
+                          :tex-name "thug-a"
+                          :picture-part1 #xe7a00200
+                          :picture-part2 #xe7a00300
+                          :icon-part1 #xe7a00000
+                          :icon-part2 #xe7a00100
+                          :base-color #x80123268
+                          :stripe-color #x80344850
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'thavl 'thavl2 'thavl3 'thavl)
+                          :driver-name "SHIV"
+                          :height 72
+                          :weight #xf5
+                          :eyes "CHARCOAL"
+                          :age 29
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x7e6
+                          :levname 'thblev
+                          :dt (driver-type d-thug-b)
+                          :tex-name "thug-b"
+                          :picture-part1 #xe7b00200
+                          :picture-part2 #xe7b00300
+                          :icon-part1 #xe7b00000
+                          :icon-part2 #xe7b00100
+                          :base-color #x80272620
+                          :stripe-color #x8022242d
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'thbvl 'thbvl2 'thbvl3 'thbvl)
+                          :driver-name "EDJE"
+                          :height 74
+                          :weight #x109
+                          :eyes "RUST"
+                          :age 31
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #xd55
+                          :levname 'thclev
+                          :dt (driver-type d-thug-c)
+                          :tex-name "thug-c"
+                          :picture-part1 #xe7c00200
+                          :picture-part2 #xe7c00300
+                          :icon-part1 #xe7c00000
+                          :icon-part2 #xe7c00100
+                          :base-color #x8048647e
+                          :stripe-color #x80000000
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'thcvl2 'thcvl 'thcvl3 'thcvl)
+                          :driver-name "CUTTER"
+                          :height 73
+                          :weight #x101
+                          :eyes "LICHEN"
+                          :age 30
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x72b
+                          :levname 'tarlev
+                          :dt (driver-type d-taryn)
+                          :tex-name "taryn"
+                          :picture-part1 #xe7900000
+                          :picture-part2 #xe7900100
+                          :icon-part1 #xe7900200
+                          :icon-part2 #xe7900300
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "TARYN"
+                          :sex 1
+                          :height 70
+                          :weight #x8c
+                          :eyes "GREEN"
+                          :age 18
+                          :helmet-scale 0.7
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #x7e3
+                          :levname 'torlev
+                          :dt (driver-type d-torn)
+                          :tex-name "torn"
+                          :picture-part1 #xe7d00000
+                          :picture-part2 #xe7d00100
+                          :icon-part1 #xe7d00200
+                          :icon-part2 #xe7d00300
+                          :base-color #x80444040
+                          :stripe-color #x804e512a
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'torvl2 'torvl3 'torvl 'torvl)
+                          :driver-name "TORN"
+                          :height 73
+                          :weight #xb4
+                          :eyes "TEAL"
+                          :age 30
+                          :helmet-scale 0.8
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x7e4
+                          :levname 'siglev
+                          :dt (driver-type d-sig)
+                          :tex-name "sig"
+                          :picture-part1 #xe7800200
+                          :picture-part2 #xe7800300
+                          :icon-part1 #xe7800000
+                          :icon-part2 #xe7800100
+                          :base-color #x801c1e2c
+                          :stripe-color #x803c2d1f
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'sigvl2 'sigvl 'sigvl3 'sigvl)
+                          :driver-name "SIG"
+                          :height 78
+                          :weight #x10e
+                          :eyes "VIRIDIAN"
+                          :age 28
+                          :helmet-scale 1.0
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #x7e5
+                          :levname 'ur8lev
+                          :dt (driver-type d-ur-86)
+                          :tex-name "ur-86"
+                          :picture-part1 #xe7e00200
+                          :picture-part2 #xe7e00300
+                          :icon-part1 #xe7e00000
+                          :icon-part2 #xe7e00100
+                          :base-color #x80808080
+                          :stripe-color #x80070778
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ur8vl2 'ur8vl3 'ur8vl 'ur8vl)
+                          :driver-name "UR-86"
+                          :sex -1
+                          :height 78
+                          :weight #x1c2
+                          :eyes "YELLOW"
+                          :age 3
+                          :helmet-scale 0.9
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #xd56
+                          :levname 'kaelev
+                          :dt (driver-type d-kaeden)
+                          :tex-name "kaeden"
+                          :picture-part1 #xe7200200
+                          :picture-part2 #xe7200300
+                          :icon-part1 #xe7200000
+                          :icon-part2 #xe7200100
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "KAEDEN"
+                          :height 70
+                          :weight #x200
+                          :eyes "SLATE"
+                          :age -123
+                          :helmet-scale 1.2
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xd64
+                          :levname 'raylev
+                          :dt (driver-type d-rayn)
+                          :tex-name "rayn"
+                          :picture-part1 #xe7600200
+                          :picture-part2 #xe7600300
+                          :icon-part1 #xe7600000
+                          :icon-part2 #xe7600100
+                          :base-color #x80273327
+                          :stripe-color #x803d8062
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'rayvl 'rayvl 'rayvl2 'rayvl)
+                          :driver-name "RAYN"
+                          :sex 1
+                          :height 68
+                          :weight #x87
+                          :eyes "AMBER"
+                          :age 20
+                          :helmet-scale 0.6
+                          :no-ai #f
+                          )
+                        (new 'static 'net-driver
+                          :id #xd65
+                          :levname 'ratlev
+                          :dt (driver-type d-ratchet)
+                          :tex-name "ratchet"
+                          :picture-part1 #xe7500000
+                          :picture-part2 #xe7500100
+                          :icon-part1 #xe7500200
+                          :icon-part2 #xe7500300
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "RATCHET"
+                          :height 60
+                          :weight #x96
+                          :eyes "AQUA"
+                          :age 18
+                          :helmet-scale 0.9
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xd66
+                          :levname 'jkalev
+                          :dt (driver-type d-jaka)
+                          :tex-name "jak1"
+                          :picture-part1 #xe6f00000
+                          :picture-part2 #xe6f00100
+                          :icon-part1 #xe6f00200
+                          :icon-part2 #xe6f00300
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "JAK 1"
+                          :height 66
+                          :weight #x91
+                          :eyes "CERULEAN"
+                          :age 15
+                          :helmet-scale 0.9
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xd67
+                          :levname 'jkblev
+                          :dt (driver-type d-jakb)
+                          :tex-name "jak2"
+                          :picture-part1 #xe7000000
+                          :picture-part2 #xe7000100
+                          :icon-part1 #xe7000200
+                          :icon-part2 #xe7000300
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "JAK II"
+                          :height 68
+                          :weight #xa5
+                          :eyes "CERULEAN"
+                          :age 17
+                          :helmet-scale 0.9
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xd68
+                          :levname 'jkclev
+                          :dt (driver-type d-jakc)
+                          :tex-name "jak3"
+                          :picture-part1 #xe7100000
+                          :picture-part2 #xe7100100
+                          :icon-part1 #xe7100200
+                          :icon-part2 #xe7100300
+                          :base-color #x80402080
+                          :stripe-color #x20408080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "JAK3"
+                          :height 69
+                          :weight #xaf
+                          :eyes "CERULEAN"
+                          :age 18
+                          :helmet-scale 0.9
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xd94
+                          :levname 'daxlev
+                          :dt (driver-type d-daxter)
+                          :tex-name "daxter"
+                          :picture-part1 #xe6c00200
+                          :picture-part2 #xe6c00300
+                          :icon-part1 #xe6c00000
+                          :icon-part2 #xe6c00100
+                          :base-color #x80808080
+                          :stripe-color #x80808080
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'daxtl 'daxtl 'daxtl 'daxtl)
+                          :driver-name "DAXTER"
+                          :height 34
+                          :weight 48
+                          :eyes "CERULEAN"
+                          :age 19
+                          :helmet-scale 0.5
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xda0
+                          :levname 'gtblev
+                          :dt (driver-type d-gtblitz)
+                          :tex-name "gtblitz"
+                          :picture-part1 #xe6d00000
+                          :picture-part2 #xe6d00100
+                          :icon-part1 #xe6d00200
+                          :icon-part2 #xe6d00300
+                          :base-color #x8066163f
+                          :stripe-color #x80153d6b
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'gtbvl 'gtbvl 'gtbvl 'gtbvl)
+                          :driver-name "G.T. BLITZ"
+                          :height 74
+                          :weight #xbf
+                          :eyes "INDIGO"
+                          :age 38
+                          :helmet-scale 0.9
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xe99
+                          :levname 'peclev
+                          :dt (driver-type d-pecker)
+                          :tex-name "pecker"
+                          :picture-part1 #xec400200
+                          :picture-part2 #xec400300
+                          :icon-part1 #xec400000
+                          :icon-part2 #xec400100
+                          :base-color #x801b5f6d
+                          :stripe-color #x801d1670
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'pecvl 'pecvl 'pecvl 'pecvl)
+                          :driver-name "PECKER"
+                          :height 32
+                          :weight 42
+                          :eyes "RAVEN"
+                          :age -118
+                          :helmet-scale 0.5
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xe9c
+                          :levname 'ximlev
+                          :dt (driver-type d-ximon)
+                          :tex-name "ximon"
+                          :picture-part1 #xe7f00000
+                          :picture-part2 #xe7f00100
+                          :icon-part1 #xe7f00200
+                          :icon-part2 #xe7f00300
+                          :base-color #x8066163f
+                          :stripe-color #x80153d6b
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "XIMON"
+                          :height 75
+                          :weight #x7a
+                          :eyes "LEAD"
+                          :age 22
+                          :helmet-scale 0.8
+                          :no-ai #t
+                          )
+                        (new 'static 'net-driver
+                          :id #xe9e
+                          :levname 'osmlev
+                          :dt (driver-type d-osmo)
+                          :tex-name "osmo"
+                          :picture-part1 #xe8000200
+                          :picture-part2 #xe8000300
+                          :icon-part1 #xe8000000
+                          :icon-part2 #xe8000100
+                          :base-color #x8066163f
+                          :stripe-color #x80153d6b
+                          :ai-car-levels (new 'static 'boxed-array :type symbol 'ashvl 'ashvl 'ashvl 'ashvl)
+                          :driver-name "OSMO"
+                          :height 64
+                          :weight #xa0
+                          :eyes "AQUA"
+                          :age 87
+                          :helmet-scale 1.0
+                          :no-ai #t
+                          )
+                        )
+        )
+
+(defun get-vehicle-name ((arg0 net-vehicle-type))
+  (if (< (the-as int arg0) (length *net-vehicles*))
+      (lookup-text! *common-text* (the-as text-id (-> *net-vehicles* arg0 id)) #f)
+      ""
+      )
+  )
+
+(define *protect-vehicle-slot-1* #f)
+
+(defun protect-vehicle-slot-1 ((arg0 symbol))
+  (set! *protect-vehicle-slot-1* arg0)
+  (when (and *net-world* (not arg0))
+    (let ((t9-0 (method-of-object *net-world* net-world-method-76)))
+      (t9-0)
+      )
+    )
+  0
+  )
+
+(define *in-end-of-race-preload* #f)
+
+(define *race-end-camera-pos-valid* #f)
+
+(define *race-end-camera-pos* (new 'static 'vector))
 
 (deftype race-end-cam (process)
   ()
-  :method-count-assert 15
-  :size-assert         #x90
-  :flag-assert         #xf00000090
-  (:methods
-    )
   )
-
-(define-extern *net-world* net-world)

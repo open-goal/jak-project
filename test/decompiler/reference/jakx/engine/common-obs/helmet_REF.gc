@@ -1,0 +1,326 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type helmet
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this helmet) (arg0 process-drawable) (arg1 skeleton-group) (arg2 int))
+  (set! (-> this node-index) arg2)
+  (set! (-> arg0 level) (-> *level* level-default))
+  (let ((v1-2 (skeleton-group->draw-control arg0 arg1 (&-> this node-list))))
+    (vector-reset! (-> v1-2 skeleton bones 0 transform trans))
+    (logior! (-> v1-2 status) (draw-control-status force-vu1))
+    (set! (-> this draw) v1-2)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type helmet
+;; WARN: Return type mismatch int vs none.
+(defmethod copy-lights-and-scale ((this helmet) (arg0 process-drawable) (arg1 float))
+  (set! (-> this draw lights) (-> arg0 draw lights))
+  (set! (-> this scale) arg1)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type helmet
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod helmet-method-11 ((this helmet) (arg0 process-drawable))
+  (when (nonzero? (-> this draw))
+    (let ((s5-0 (new 'stack-no-clear 'inline-array 'matrix 2))
+          (gp-0 (-> this draw))
+          )
+      (let ((a0-3 (-> arg0 node-list data (-> this node-index) bone transform)))
+        (logclear! (-> gp-0 status) (draw-control-status no-draw-temp uninited))
+        (set! (-> gp-0 global-effect) (-> arg0 draw global-effect))
+        (matrix-copy! (-> s5-0 0) a0-3)
+        (matrix<-scale a0-3 *zero-vector*)
+        )
+      (let ((f0-0 (-> this scale))
+            (t9-1 matrix<-scale)
+            (a0-4 (-> s5-0 0))
+            (a1-3 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a1-3 x) f0-0)
+        (set! (-> a1-3 y) f0-0)
+        (set! (-> a1-3 z) f0-0)
+        (set! (-> a1-3 w) 1.0)
+        (t9-1 a0-4 a1-3)
+        )
+      (let* ((a2-2 (-> gp-0 skeleton bones 3))
+             (a3-1 (-> s5-0 0))
+             (v1-13 (-> a3-1 rvec quad))
+             (a0-5 (-> a3-1 uvec quad))
+             (a1-4 (-> a3-1 fvec quad))
+             (a3-2 (-> a3-1 trans quad))
+             )
+        (set! (-> a2-2 transform rvec quad) v1-13)
+        (set! (-> a2-2 transform uvec quad) a0-5)
+        (set! (-> a2-2 transform fvec quad) a1-4)
+        (set! (-> a2-2 transform trans quad) a3-2)
+        )
+      (set! (-> s5-0 1 rvec quad) (-> gp-0 bounds quad))
+      (set! (-> s5-0 1 rvec w) 1.0)
+      (vector-matrix*! (-> gp-0 origin) (-> s5-0 1 rvec) (-> s5-0 0))
+      (set! (-> gp-0 origin w) (-> gp-0 bounds w))
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type helmet
+(defmethod relocate ((this helmet) (offset int))
+  (when (nonzero? (-> this draw))
+    (if (nonzero? (-> this node-list))
+        (&+! (-> this node-list) offset)
+        )
+    (if (nonzero? (-> this draw))
+        (&+! (-> this draw) offset)
+        )
+    )
+  this
+  )
+
+;; definition of type helmet-hud
+(deftype helmet-hud (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  (:methods
+    (rotate! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type helmet-hud
+(defmethod inspect ((this helmet-hud))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type helmet-garage
+(deftype helmet-garage (process-drawable)
+  ((offset         vector  :inline)
+   (hud-handle     handle)
+   (vehicle-level  level)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (helmet-garage-method-51 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type helmet-garage
+(defmethod inspect ((this helmet-garage))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Toffset: #<vector @ #x~X>~%" (-> this offset))
+  (format #t "~2Thud-handle: ~D~%" (-> this hud-handle))
+  (format #t "~2Tvehicle-level: ~A~%" (-> this vehicle-level))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (helmet-hud)
+  :virtual #t
+  :trans (behavior ()
+    (rotate! self)
+    )
+  :code sleep-code
+  :post ja-post
+  )
+
+;; definition for method 51 of type helmet-hud
+;; WARN: Return type mismatch int vs none.
+(defmethod rotate! ((this helmet-hud))
+  (position-in-front-of-screen! (-> this root trans) 16384.0 (new 'static 'vector :x 150.0 :y -120.0 :w 1.0))
+  (quaternion-rotate-local-y!
+    (-> this root rotation)
+    *unity-quaternion*
+    (* 45.511112 (the float (current-time)))
+    )
+  0
+  (none)
+  )
+
+;; definition for function helmet-hud-init-by-other
+(defbehavior helmet-hud-init-by-other helmet-hud ((arg0 object) (arg1 skeleton-group))
+  (set! (-> self level) (-> *level* level-default))
+  (set! (-> self root) (new 'process 'trsqv))
+  (process-drawable-method-42 self arg1 0)
+  (set! (-> self draw global-effect) (draw-control-global-effect title-light))
+  (set-time! (-> self state-time))
+  (rotate! self)
+  (ja :group! (ja-group) :num! min)
+  (ja-post)
+  (go-virtual idle)
+  )
+
+;; definition for function helmet-hud-spawn
+;; WARN: Return type mismatch process vs helmet-hud.
+(defun helmet-hud-spawn ((arg0 helmet-garage))
+  (let ((s4-0 (the-as process #f)))
+    (let ((s5-0 (-> arg0 vehicle-level)))
+      (when s5-0
+        (let ((s3-0 (the-as art-group #f)))
+          (case (-> *car-level-array* data (+ (-> s5-0 slot) -6) current-parts 10)
+            ((1)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-a" (the-as (pointer level) #f)))
+             )
+            ((2)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-b" (the-as (pointer level) #f)))
+             )
+            ((3)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-c" (the-as (pointer level) #f)))
+             )
+            ((4)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-d" (the-as (pointer level) #f)))
+             )
+            ((5)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-e" (the-as (pointer level) #f)))
+             )
+            ((6)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-f" (the-as (pointer level) #f)))
+             )
+            )
+          (when s3-0
+            (let ((v1-21 (process-spawn helmet-hud s5-0 s3-0 :name "helmet-hud" :to arg0)))
+              (if v1-21
+                  (set! s4-0 (-> v1-21 0))
+                  )
+              )
+            )
+          )
+        )
+      )
+    (the-as helmet-hud s4-0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (helmet-garage)
+  :virtual #t
+  :trans (behavior ()
+    (helmet-garage-method-51 self)
+    )
+  :code sleep-code
+  :post ja-post
+  )
+
+;; definition for method 51 of type helmet-garage
+;; WARN: Return type mismatch int vs none.
+(defmethod helmet-garage-method-51 ((this helmet-garage))
+  (let ((s4-0 (new 'stack-no-clear 'matrix))
+        (s5-0 (ppointer->process (-> this parent)))
+        )
+    (when s5-0
+      (matrix<-transformq! s4-0 (the-as transformq (-> (the-as process-drawable s5-0) root trans)))
+      (vector-matrix*! (-> this root trans) (-> this offset) s4-0)
+      (quaternion-copy! (-> this root rotation) (the-as quaternion (-> (the-as process-drawable s5-0) rbody rot)))
+      )
+    )
+  (let ((a0-5 (the-as helmet-hud (handle->process (-> this hud-handle)))))
+    (cond
+      (a0-5
+        (if (not (and (-> *lobby-menu-manager* next-state)
+                      (= (-> *lobby-menu-manager* next-state name) 'customize-accessories-selection)
+                      )
+                 )
+            (deactivate a0-5)
+            )
+        )
+      ((and (and (-> *lobby-menu-manager* next-state)
+                 (= (-> *lobby-menu-manager* next-state name) 'customize-accessories-selection)
+                 )
+            (= (-> *lobby-menu-manager* car-part-type-selected) 10)
+            )
+       (let ((a0-11 (helmet-hud-spawn this)))
+         (if a0-11
+             (set! (-> this hud-handle) (process->handle a0-11))
+             )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function helmet-garage-init-by-other
+;; INFO: Used lq/sq
+(defbehavior helmet-garage-init-by-other helmet-garage ((arg0 vector) (arg1 level) (arg2 skeleton-group))
+  (set! (-> self vehicle-level) arg1)
+  (set! (-> self level) (-> *level* level-default))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self offset quad) (-> arg0 quad))
+  (process-drawable-method-42 self arg2 0)
+  (set! (-> self hud-handle) (the-as handle #f))
+  (helmet-garage-method-51 self)
+  (ja :group! (ja-group) :num! min)
+  (ja-post)
+  (go-virtual idle)
+  )
+
+;; definition for function helmet-garage-spawn
+;; WARN: Return type mismatch process vs helmet-garage.
+(defun helmet-garage-spawn ((arg0 vehicle))
+  (let ((s5-0 (the-as process #f)))
+    (let ((gp-0 (-> arg0 level)))
+      (when gp-0
+        (let ((s3-0 (the-as art-group #f)))
+          (case (-> *car-level-array* data (+ (-> gp-0 slot) -6) current-parts 10)
+            ((1)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-a" (the-as (pointer level) #f)))
+             )
+            ((2)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-b" (the-as (pointer level) #f)))
+             )
+            ((3)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-c" (the-as (pointer level) #f)))
+             )
+            ((4)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-d" (the-as (pointer level) #f)))
+             )
+            ((5)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-e" (the-as (pointer level) #f)))
+             )
+            ((6)
+             (set! s3-0 (art-group-get-by-name *level* "skel-helmet-f" (the-as (pointer level) #f)))
+             )
+            )
+          (when s3-0
+            (let ((v1-21 (process-spawn helmet-garage (-> arg0 info helmet-offset) gp-0 s3-0 :name "helmet-garage" :to arg0)))
+              (if v1-21
+                  (set! s5-0 (-> v1-21 0))
+                  )
+              )
+            )
+          )
+        )
+      )
+    (the-as helmet-garage s5-0)
+    )
+  )
+
+
+
+

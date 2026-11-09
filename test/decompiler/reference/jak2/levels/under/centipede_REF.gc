@@ -279,7 +279,7 @@
           (set! (-> centipede-cam dir y) -0.474)
           )
       (vector-normalize! (-> centipede-cam dir) 1.0)
-      (let ((proc (handle->process (-> this focus handle)))
+      (let ((proc (the-as process-focusable (handle->process (-> this focus handle))))
             (s3-0 #f)
             )
         (when (and proc (not (and (-> this next-state) (let ((v1-27 (-> this next-state name)))
@@ -289,7 +289,7 @@
                              )
                    )
           (let ((s2-0 (new 'stack-no-clear 'vector)))
-            (vector-! s2-0 (get-trans (the-as process-focusable proc) 0) (-> this root trans))
+            (vector-! s2-0 (get-trans proc 0) (-> this root trans))
             (vector-normalize! s2-0 1.0)
             (when (>= (vector-dot s2-0 (-> centipede-cam dir)) 0.342)
               (let ((f0-23 (fmax
@@ -500,7 +500,7 @@
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (vector-z-quaternion! s5-0 (-> this root quat))
     (vector-normalize! s5-0 1.0)
-    (let ((s3-0 (handle->process (-> this focus handle)))
+    (let ((s3-0 (the-as process-focusable (handle->process (-> this focus handle))))
           (s4-0 #f)
           )
       (cond
@@ -509,7 +509,7 @@
             (countdown (v1-7 (min 14 s2-0))
               (set! (-> this focus-pos-hist (+ v1-7 1) quad) (-> this focus-pos-hist v1-7 quad))
               )
-            (set! (-> this focus-pos-hist 0 quad) (-> (get-trans (the-as process-focusable s3-0) 0) quad))
+            (set! (-> this focus-pos-hist 0 quad) (-> (get-trans s3-0 0) quad))
             (if (< s2-0 15)
                 (set! (-> this focus-pos-hist-count) (+ s2-0 1))
                 )
@@ -593,14 +593,13 @@
   )
 
 ;; definition for method 107 of type centipede
-;; WARN: Return type mismatch process vs process-focusable.
 (defmethod get-enemy-target ((this centipede))
   "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
-  (let ((v0-0 (handle->process (-> this focus handle))))
-    (if (and v0-0 (focus-test? (the-as process-focusable v0-0) disable dead grabbed))
-        (set! v0-0 (the-as process #f))
+  (let ((v0-0 (the-as process-focusable (handle->process (-> this focus handle)))))
+    (if (and v0-0 (focus-test? v0-0 disable dead grabbed))
+        (set! v0-0 (the-as process-focusable #f))
         )
-    (the-as process-focusable v0-0)
+    v0-0
     )
   )
 
@@ -678,9 +677,9 @@
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
-  (let ((a0-3 (handle->process (-> this focus handle))))
+  (let ((a0-3 (the-as process-focusable (handle->process (-> this focus handle)))))
     (when a0-3
-      (let ((f0-0 (-> (get-trans (the-as process-focusable a0-3) 1) y)))
+      (let ((f0-0 (-> (get-trans a0-3 1) y)))
         (if (!= f0-0 -40959590.0)
             (set! (-> this focus-gnd-height) f0-0)
             )
@@ -975,8 +974,8 @@
     )
   :trans (behavior ()
     (when (time-elapsed? (-> self state-time) (seconds 0.5))
-      (let ((v1-6 (handle->process (-> self focus handle))))
-        (if (or (not v1-6) (focus-test? (the-as process-focusable v1-6) dead))
+      (let ((v1-6 (the-as process-focusable (handle->process (-> self focus handle)))))
+        (if (or (not v1-6) (focus-test? v1-6 dead))
             (go-virtual stop-chase)
             )
         )
@@ -993,10 +992,10 @@
   :code sleep-code
   :post (behavior ()
     (centipede-method-188 self)
-    (let ((a0-2 (handle->process (-> self focus handle))))
+    (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when a0-2
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-2) 0) quad))
+          (set! (-> gp-0 quad) (-> (get-trans a0-2 0) quad))
           (set! (-> gp-0 y) (-> self root trans y))
           (let ((v1-12 (-> self nav state)))
             (logclear! (-> v1-12 flags) (nav-state-flag directional-mode))
@@ -1047,9 +1046,9 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod centipede-method-186 ((this centipede))
-  (let ((proc (handle->process (-> this focus handle))))
+  (let ((proc (the-as process-focusable (handle->process (-> this focus handle)))))
     (when proc
-      (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable proc) 0) quad))
+      (set! (-> this focus-pos quad) (-> (get-trans proc 0) quad))
       (when (and (not (-> this grabbed-focus?)) (= (-> proc type) target) (>= (ja-frame-num 0) 5.0))
         (if (send-event proc 'attack-invinc #f (static-attack-info ((id (new-attack-id)) (mode 'centipede))))
             (set! (-> this grabbed-focus?) #t)
@@ -1105,11 +1104,11 @@
     (set! (-> self grabbed-focus?) #f)
     (vector-reset! (-> self root transv))
     (set! (-> self desired-talking-volume) 0.0)
-    (let ((gp-0 (handle->process (-> self focus handle))))
+    (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if (not gp-0)
           (go-hostile self)
           )
-      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      (set! (-> self focus-pos quad) (-> (get-trans gp-0 0) quad))
       )
     (quaternion-copy! (-> self src-quat) (-> self root quat))
     (quaternion-copy! (-> self dest-quat) (-> self src-quat))
@@ -1119,14 +1118,9 @@
     )
   :trans (behavior ()
     (when (-> self grabbed-focus?)
-      (let ((v1-3 (handle->process (-> self focus handle))))
+      (let ((v1-3 (the-as process-focusable (handle->process (-> self focus handle)))))
         (if v1-3
-            (vector-seek-3d-smooth!
-              (-> (the-as process-focusable v1-3) root trans)
-              (-> self root trans)
-              (* 28672.0 (seconds-per-frame))
-              0.8
-              )
+            (vector-seek-3d-smooth! (-> v1-3 root trans) (-> self root trans) (* 28672.0 (seconds-per-frame)) 0.8)
             )
         )
       )

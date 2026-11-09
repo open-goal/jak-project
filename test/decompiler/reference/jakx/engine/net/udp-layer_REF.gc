@@ -1,0 +1,1637 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type udp-layer-machine
+(deftype udp-layer-machine (structure)
+  ((idx               int8)
+   (state             udp-machine-state)
+   (state-enter-time  int32)
+   (last-time         int32)
+   (last-reply-time   int32)
+   (reachable-ip      uint32)
+   (reachable-port    int32)
+   (scert-ip          uint32)
+   )
+  (:methods
+    (reset! (_type_ int) none)
+    (update (_type_) none)
+    (state-change! (_type_ udp-machine-state) none)
+    )
+  )
+
+;; definition for method 3 of type udp-layer-machine
+(defmethod inspect ((this udp-layer-machine))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'udp-layer-machine)
+  (format #t "~1Tidx: ~D~%" (-> this idx))
+  (format #t "~1Tstate: ~D~%" (-> this state))
+  (format #t "~1Tstate-enter-time: ~D~%" (-> this state-enter-time))
+  (format #t "~1Tlast-time: ~D~%" (-> this last-time))
+  (format #t "~1Tlast-reply-time: ~D~%" (-> this last-reply-time))
+  (format #t "~1Treachable-ip: ~D~%" (-> this reachable-ip))
+  (format #t "~1Treachable-port: ~D~%" (-> this reachable-port))
+  (format #t "~1Tscert-ip: ~D~%" (-> this scert-ip))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type udp-layer
+(deftype udp-layer (structure)
+  ((machines             udp-layer-machine  8 :inline)
+   (socket               int32)
+   (data-cb              (function pointer int int int))
+   (nat-discovery-time   int32)
+   (nat-discovery-tries  int32)
+   (nat-discovery-ip     uint32)
+   (nat-discovery-port   int32)
+   )
+  (:methods
+    (init! (_type_) none)
+    (close! (_type_) none)
+    (client-joined (_type_ int) none)
+    (client-left (_type_ int) none)
+    (update (_type_) none)
+    (send-ping (_type_ udp-message int int) none)
+    (send-data (_type_ udp-message (pointer uint8) int) none)
+    (udp-layer-method-16 (_type_) int)
+    (set-callback (_type_ (function pointer int int int)) none)
+    (handle-packet (_type_ uint int pointer int) none)
+    (announce-address (_type_ int) none)
+    )
+  )
+
+;; definition for method 3 of type udp-layer
+(defmethod inspect ((this udp-layer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'udp-layer)
+  (format #t "~1Tmachines[8] @ #x~X~%" (-> this machines))
+  (format #t "~1Tsocket: ~D~%" (-> this socket))
+  (format #t "~1Tdata-cb: ~A~%" (-> this data-cb))
+  (format #t "~1Tnat-discovery-time: ~D~%" (-> this nat-discovery-time))
+  (format #t "~1Tnat-discovery-tries: ~D~%" (-> this nat-discovery-tries))
+  (format #t "~1Tnat-discovery-ip: ~D~%" (-> this nat-discovery-ip))
+  (format #t "~1Tnat-discovery-port: ~D~%" (-> this nat-discovery-port))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *udp-buffer*, type (pointer uint8)
+(define *udp-buffer* (new 'static 'array uint8 1024
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       )
+        )
+
+;; definition for symbol *udp-layer*, type udp-layer
+(define *udp-layer* (new 'static 'udp-layer))
+
+;; definition for symbol *nat-addr*, type net-address
+(define *nat-addr* (the-as net-address 0))
+
+;; definition for method 9 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 9 udp-layer) has a return type of none, but the expression builder found a return statement.
+(defmethod init! ((this udp-layer))
+  (dotimes (s5-0 8)
+    (reset! (-> this machines s5-0) s5-0)
+    )
+  (set! (-> this data-cb) #f)
+  (set! (-> this socket) -1)
+  (let ((v1-7 (knet-udp-socket-open #x2b5c)))
+    (if (> v1-7 0)
+        (set! (-> this socket) v1-7)
+        )
+    )
+  (when (< (-> this socket) 0)
+    (format 0 "unable to obtain UDP socket~%")
+    (set! (-> this
+              machines
+              (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              state
+              )
+          (udp-machine-state lost)
+          )
+    (return #f)
+    )
+  (set! (-> this
+            machines
+            (if *net-mgr*
+                (-> *net-mgr* game-state local-machine-idx)
+                0
+                )
+            state
+            )
+        (udp-machine-state unknown)
+        )
+  (set! (-> this nat-discovery-tries) 0)
+  (set! (-> this nat-discovery-time) (the-as int (+ (-> *display* real-clock frame-counter) (seconds -5))))
+  (when (and (or *aux-voice-mgr* (or (= (-> *net-mgr* game-type) 1) (= (-> *net-mgr* game-type) 3)))
+             (zero? (knet-scert-net-get-nat-service (&-> '*nat-addr* value)))
+             )
+    (set! (-> this nat-discovery-ip) (parse-ip (the-as (pointer uint8) (-> *nat-addr* address))))
+    (set! (-> this nat-discovery-port) (the-as int (-> *nat-addr* port)))
+    (set! (-> this nat-discovery-tries) 5)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod close! ((this udp-layer))
+  (if (> (-> this socket) 0)
+      (knet-udp-socket-close (-> this socket))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 18 of type udp-layer
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 18 udp-layer) has a return type of none, but the expression builder found a return statement.
+(defmethod handle-packet ((this udp-layer) (arg0 uint) (arg1 int) (arg2 pointer) (arg3 int))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+    (set-buffer! (-> s3-0 0) arg2 arg3)
+    (when (and (= arg0 (-> this nat-discovery-ip)) (= arg1 (-> this nat-discovery-port)))
+      (format 0 "udp-layer: got nat response~%")
+      (let* ((s5-1 0)
+             (s4-1 0)
+             (s5-5 (+ s5-1
+                      (shl (read-uint8 (-> s3-0 0)) 24)
+                      (shl (read-uint8 (-> s3-0 0)) 16)
+                      (* (read-uint8 (-> s3-0 0)) 256)
+                      (read-uint8 (-> s3-0 0))
+                      )
+                   )
+             (s4-3 (+ s4-1 (* (read-uint8 (-> s3-0 0)) 256) (read-uint8 (-> s3-0 0))))
+             )
+        (format 0 "udp-layer: NAT response: ~X ~D~%" s5-5 s4-3)
+        (set! (-> this nat-discovery-tries) 0)
+        (let ((s3-1 (-> this machines (if *net-mgr*
+                                          (-> *net-mgr* game-state local-machine-idx)
+                                          0
+                                          )
+                        )
+                    )
+              )
+          (when (= (-> s3-1 state) (udp-machine-state unknown))
+            (set! (-> s3-1 reachable-ip) s5-5)
+            (set! (-> s3-1 reachable-port) (the-as int s4-3))
+            (announce-address this -2)
+            (set! (-> s3-1 state) (udp-machine-state announced))
+            )
+          )
+        )
+      (return #f)
+      )
+    (let ((s2-0 (the-as udp-message (read-int8 (-> s3-0 0)))))
+      (case s2-0
+        (((udp-message data))
+         (let ((s4-4 (read-int8 (-> s3-0 0))))
+           (when (and (>= s4-4 0) (< s4-4 8))
+             (let ((a0-18 (-> this machines s4-4)))
+               (when (= arg0 (-> a0-18 scert-ip))
+                 (set! (-> a0-18 last-reply-time) (the-as int (-> *display* real-clock frame-counter)))
+                 (if (-> this data-cb)
+                     ((-> this data-cb) (-> s3-0 0 ptr) (the-as int (bytes-remaining (-> s3-0 0))) s4-4)
+                     )
+                 )
+               )
+             )
+           )
+         )
+        (((udp-message ping) (udp-message pong))
+         (let ((s0-0 (read-int8 (-> s3-0 0)))
+               (s1-0 (read-int32 (-> s3-0 0)))
+               (s3-2 (read-int16 (-> s3-0 0)))
+               )
+           (when (!= (-> this machines s0-0 state) (udp-machine-state known-reachable))
+             (format 0 "udp-layer: packet is from client ~D - src:~X:~D~%" s0-0 arg0 arg1)
+             (format 0 "           my-ip=~X, my-port=~D~%" s1-0 s3-2)
+             )
+           (when (and (>= s0-0 0) (< s0-0 8))
+             (let ((sv-32 (-> this machines s0-0))
+                   (s0-1 (-> this machines (if *net-mgr*
+                                               (-> *net-mgr* game-state local-machine-idx)
+                                               0
+                                               )
+                             )
+                         )
+                   )
+               (when (= arg0 (-> sv-32 scert-ip))
+                 (set! (-> sv-32 last-reply-time) (the-as int (-> *display* real-clock frame-counter)))
+                 (when (!= (-> sv-32 state) (udp-machine-state known-reachable))
+                   (format 0 "udp-layer: setting machine to known-reachable~%")
+                   (state-change! sv-32 (udp-machine-state known-reachable))
+                   (set! (-> sv-32 reachable-ip) arg0)
+                   (set! (-> sv-32 reachable-port) arg1)
+                   )
+                 (when (!= (-> s0-1 state) (udp-machine-state known-reachable))
+                   (state-change! s0-1 (udp-machine-state known-reachable))
+                   (set! (-> s0-1 reachable-ip) (the-as uint s1-0))
+                   (set! (-> s0-1 reachable-port) s3-2)
+                   (announce-address this -2)
+                   )
+                 (if (= s2-0 (udp-message ping))
+                     (send-ping this (udp-message pong) (the-as int arg0) arg1)
+                     )
+                 )
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod send-ping ((this udp-layer) (arg0 udp-message) (arg1 int) (arg2 int))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'mem-buffer 2)))
+    (set-buffer! (-> gp-0 0) *udp-buffer* 1024)
+    (write-int8 (-> gp-0 0) (the-as int arg0))
+    (write-int8 (-> gp-0 0) (if *net-mgr*
+                                (-> *net-mgr* game-state local-machine-idx)
+                                0
+                                )
+                )
+    (write-int32 (-> gp-0 0) arg1)
+    (write-int16 (-> gp-0 0) arg2)
+    (set! (-> gp-0 1 base)
+          (the-as pointer (knet-udp-socket-sendto (-> this socket) (-> gp-0 0 base) (bytes-used (-> gp-0 0)) arg1 arg2))
+          )
+    (if (!= (-> gp-0 1 base) (bytes-used (-> gp-0 0)))
+        (format 0 "udp send failed: rc=~D~%" (-> gp-0 1 base))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 19 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod announce-address ((this udp-layer) (arg0 int))
+  (let ((s5-0 (-> this machines (if *net-mgr*
+                                    (-> *net-mgr* game-state local-machine-idx)
+                                    0
+                                    )
+                  )
+              )
+        )
+    (format 0 "udp-layer: announcing ~X:~D to ~D~%" (-> s5-0 reachable-ip) (-> s5-0 reachable-port) arg0)
+    (cond
+      ((and *aux-voice-mgr* (= (-> *aux-voice-mgr* state name) 'active))
+       (let ((s4-0 (alloc-msg-buffer)))
+         (write-int8 s4-0 0)
+         (write-int8 s4-0 0)
+         (write-int8 s4-0 8)
+         (write-int32 s4-0 (the-as int (-> s5-0 reachable-ip)))
+         (write-int16 s4-0 (-> s5-0 reachable-port))
+         (set! (-> (the-as (pointer int8) (-> s4-0 base)) 1) (+ (bytes-used s4-0) -1))
+         (format 0 "sending udp layer msg~%")
+         (aux-voice-send *aux-voice-mgr* s4-0 arg0 0)
+         (free-msg-buffer s4-0)
+         )
+       )
+      (*net-mgr*
+        (let ((s4-1 (alloc-msg-buffer)))
+          (write-int8 s4-1 0)
+          (write-int8 s4-1 0)
+          (write-int8 s4-1 8)
+          (write-int32 s4-1 (the-as int (-> s5-0 reachable-ip)))
+          (write-int16 s4-1 (-> s5-0 reachable-port))
+          (set! (-> (the-as (pointer int8) (-> s4-1 base)) 1) (+ (bytes-used s4-1) -1))
+          (net-send-msg 64 s4-1 arg0)
+          (free-msg-buffer s4-1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type udp-layer-machine
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! ((this udp-layer-machine) (arg0 int))
+  (mem-clear! (the-as pointer this) 28)
+  (set! (-> this idx) arg0)
+  (set! (-> this last-time) (the-as int (-> *display* real-clock frame-counter)))
+  (set! (-> this last-reply-time) (the-as int (-> *display* real-clock frame-counter)))
+  (set! (-> this scert-ip) (net-get-client-ip (-> this idx)))
+  (if (zero? (-> this scert-ip))
+      (state-change! this (udp-machine-state none))
+      (state-change! this (udp-machine-state unknown))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type udp-layer-machine
+;; WARN: Return type mismatch int vs none.
+(defmethod state-change! ((this udp-layer-machine) (arg0 udp-machine-state))
+  (format 0 "udp-layer: machine[~D] state-change ~D -> ~D~%" (-> this idx) (-> this state) arg0)
+  (set! (-> this state) arg0)
+  (set! (-> this state-enter-time) (the-as int (-> *display* real-clock frame-counter)))
+  0
+  (none)
+  )
+
+;; definition for method 13 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 13 udp-layer) has a return type of none, but the expression builder found a return statement.
+(defmethod update ((this udp-layer))
+  (if (<= (-> this socket) 0)
+      (return #f)
+      )
+  (when (> (-> this nat-discovery-tries) 0)
+    (when (> (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this nat-discovery-time))) 0)
+      (let ((s5-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+        (set-buffer! (-> s5-0 0) *udp-buffer* 1024)
+        (write-uint32 (-> s5-0 0) (the-as uint #xe40000))
+        (format 0 "udp-layer: nat-ping to ~X : ~D~%" (-> this nat-discovery-ip) (-> this nat-discovery-port))
+        (knet-udp-socket-sendto
+          (-> this socket)
+          (-> s5-0 0 base)
+          (bytes-used (-> s5-0 0))
+          (the-as int (-> this nat-discovery-ip))
+          (-> this nat-discovery-port)
+          )
+        )
+      (set! (-> this nat-discovery-time) (the-as int (+ (-> *display* real-clock frame-counter) (seconds 0.5))))
+      (+! (-> this nat-discovery-tries) -1)
+      )
+    )
+  (dotimes (s5-1 8)
+    (if (!= s5-1 (if *net-mgr*
+                     (-> *net-mgr* game-state local-machine-idx)
+                     0
+                     )
+            )
+        (update (-> this machines s5-1))
+        )
+    )
+  (let* ((s5-2 (new 'stack-no-clear 'udp-address))
+         (t0-2 (knet-udp-socket-recvfrom (-> this socket) *udp-buffer* 1024 (&-> s5-2 ip) (&-> s5-2 port)))
+         )
+    (if (> t0-2 0)
+        (handle-packet this (-> s5-2 ip) (-> s5-2 port) *udp-buffer* t0-2)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type udp-layer-machine
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 10 udp-layer-machine) has a return type of none, but the expression builder found a return statement.
+(defmethod update ((this udp-layer-machine))
+  (if (or (= (-> this last-time) -1)
+          (= (-> this state) (udp-machine-state none))
+          (< (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this last-time))) (seconds 1))
+          )
+      (return #f)
+      )
+  (set! (-> this last-time) (the-as int (-> *display* real-clock frame-counter)))
+  (let ((v1-13 #f))
+    (if (< (seconds 5) (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this state-enter-time))))
+        (set! v1-13 #t)
+        )
+    (case (-> this state)
+      (((udp-machine-state unknown))
+       (cond
+         (v1-13
+           (state-change! this (udp-machine-state unreachable))
+           )
+         (else
+           (format 0 "udp-layer: sending ping to unknown client ~D : ~X:~D~%" (-> this idx) (-> this scert-ip) #x2b5c)
+           (send-ping *udp-layer* (udp-message ping) (the-as int (-> this scert-ip)) #x2b5c)
+           )
+         )
+       )
+      (((udp-machine-state announced))
+       (cond
+         (v1-13
+           (state-change! this (udp-machine-state lost))
+           )
+         (else
+           (format
+             0
+             "udp-layer: sending ping to declared client ~D : ~X:~D~%"
+             (-> this idx)
+             (-> this reachable-ip)
+             (-> this reachable-port)
+             )
+           (send-ping *udp-layer* (udp-message ping) (the-as int (-> this reachable-ip)) (-> this reachable-port))
+           )
+         )
+       )
+      (((udp-machine-state known-reachable))
+       (send-ping *udp-layer* (udp-message ping) (the-as int (-> this reachable-ip)) (-> this reachable-port))
+       (+! (-> this last-time) 2700)
+       (if (< (seconds 30) (- (-> *display* real-clock frame-counter) (the-as time-frame (-> this last-reply-time))))
+           (state-change! this (udp-machine-state lost))
+           )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod client-joined ((this udp-layer) (arg0 int))
+  (let ((a0-1 (-> this machines arg0))
+        (s4-0 (-> this machines (if *net-mgr*
+                                    (-> *net-mgr* game-state local-machine-idx)
+                                    0
+                                    )
+                  )
+              )
+        )
+    (reset! a0-1 arg0)
+    (if (or (= (-> s4-0 state) (udp-machine-state known-reachable)) (= (-> s4-0 state) (udp-machine-state announced)))
+        (announce-address this (ash 1 arg0))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod client-left ((this udp-layer) (arg0 int))
+  (state-change! (-> this machines arg0) (udp-machine-state none))
+  0
+  (none)
+  )
+
+;; definition for method 15 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 15 udp-layer) has a return type of none, but the expression builder found a return statement.
+(defmethod send-data ((this udp-layer) (arg0 udp-message) (arg1 (pointer uint8)) (arg2 int))
+  (let ((v1-2 (-> this machines arg0)))
+    (if (!= (-> v1-2 state) (udp-machine-state known-reachable))
+        (return #f)
+        )
+    (set! (-> v1-2 last-time) (the-as int (-> *display* real-clock frame-counter)))
+    )
+  (let ((s4-0 (new 'stack-no-clear 'inline-array 'mem-buffer 2)))
+    (set-buffer! (-> s4-0 0) *udp-buffer* 1024)
+    (write-int8 (-> s4-0 0) 121)
+    (write-int8 (-> s4-0 0) (if *net-mgr*
+                                (-> *net-mgr* game-state local-machine-idx)
+                                0
+                                )
+                )
+    (write-bytes (-> s4-0 0) arg1 arg2)
+    (set! (-> s4-0 1 base) (the-as pointer (knet-udp-socket-sendto
+                                             (-> this socket)
+                                             (-> s4-0 0 base)
+                                             (bytes-used (-> s4-0 0))
+                                             (the-as int (-> this machines arg0 reachable-ip))
+                                             (-> this machines arg0 reachable-port)
+                                             )
+                                   )
+          )
+    (if (!= (-> s4-0 1 base) (bytes-used (-> s4-0 0)))
+        (format 0 "udp data send failed: rc=~D~%" (-> s4-0 1 base))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type udp-layer
+;; WARN: Return type mismatch int vs none.
+(defmethod set-callback ((this udp-layer) (arg0 (function pointer int int int)))
+  (set! (-> this data-cb) arg0)
+  0
+  (none)
+  )
+
+;; definition for function udp-announce-msg-callback
+;; WARN: Return type mismatch int vs object.
+(defun udp-announce-msg-callback ((arg0 mem-buffer) (arg1 int))
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (let ((s4-0 (-> *udp-layer* machines arg1))
+        (s3-0 (read-uint32 arg0))
+        (s5-1 (read-int16 arg0))
+        )
+    (format 0 "udp-layer: announcement from client ~D: ~X:~D~%" arg1 s3-0 s5-1)
+    (when (!= (-> s4-0 state) (udp-machine-state known-reachable))
+      (state-change! s4-0 (udp-machine-state announced))
+      (set! (-> s4-0 reachable-ip) s3-0)
+      (set! (-> s4-0 reachable-port) s5-1)
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *net-aux-msg-handlers* 8 handler-func) udp-announce-msg-callback)
+
+;; definition for method 16 of type udp-layer
+(defmethod udp-layer-method-16 ((this udp-layer))
+  (let ((v0-0 0))
+    (dotimes (v1-0 8)
+      (if (= (-> this machines v1-0 state) (udp-machine-state known-reachable))
+          (set! v0-0 (logior v0-0 (ash 1 v1-0)))
+          )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function fw-test-2
+;; WARN: Swapped fp-relative label and field offsets for "160.33.44.222"
+;; WARN: Return type mismatch int vs object.
+(defun fw-test-2 ()
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+    (set! (-> gp-0 0 base) (the-as pointer (knet-udp-socket-open #x2b5c)))
+    (when (<= (the-as int (-> gp-0 0 base)) 0)
+      (format 0 "can't open 2 sockets~%")
+      (return (the-as object #f))
+      )
+    (let ((s5-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+      (set-buffer! (-> s5-0 0) *udp-buffer* 1024)
+      (write-int8 (-> s5-0 0) 0)
+      (write-int8 (-> s5-0 0) 0)
+      (write-int8 (-> s5-0 0) 228)
+      (write-int8 (-> s5-0 0) 0)
+      (let ((s1-0 (parse-ip (-> "160.33.44.222" data))))
+        (knet-udp-socket-sendto
+          (the-as int (-> gp-0 0 base))
+          (-> s5-0 0 base)
+          (bytes-used (-> s5-0 0))
+          (the-as int s1-0)
+          #x2756
+          )
+        )
+      )
+    (dotimes (s4-1 #x186a0)
+      (let ((s5-1 (knet-udp-socket-recvfrom
+                    (the-as int (-> gp-0 0 base))
+                    *udp-buffer*
+                    1024
+                    (&-> gp-0 0 limit)
+                    (the-as (pointer int32) (&-> gp-0 0 in-use))
+                    )
+                  )
+            )
+        (when (> s5-1 0)
+          (format 0 "received ~D bytes from ~X:~D~%" s5-1 (-> gp-0 0 limit) (-> gp-0 0 in-use))
+          (dotimes (s4-2 s5-1)
+            (format 0 "  ~X" (logand (-> (the-as (pointer int8) (&+ *udp-buffer* s4-2))) 255))
+            )
+          (format 0 "~%")
+          (goto cfg-13)
+          )
+        )
+      )
+    (label cfg-13)
+    (knet-udp-socket-close (the-as int (-> gp-0 0 base)))
+    )
+  0
+  )
+
+
+
+

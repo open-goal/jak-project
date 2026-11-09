@@ -5,5 +5,1613 @@
 ;; name in dgo: net-mgr-dme
 ;; dgos: ENGINE, GAME
 
+;; +++net-send-msg-stack
+(deftype net-send-message-params (structure)
+  "net-send-msg"
+  ((in  net-send-message-in-params  :inline)
+   (out net-send-message-out-params :inline)
+   )
+  )
+;; ---net-send-msg-stack
+
+
+(define-extern *net-player-names* (inline-array net-player-name))
+
+(define-extern game-connect-failed (function object))
+(define-extern net-send-msg (function int mem-buffer int object))
+(define-extern net-log-client (function net-log-event-type int object))
+(define-extern net-log-remove-lock (function object))
+(define-extern add-raw-popup-msg (function (pointer uint8) int symbol object))
+(define-extern aux-voice-msg-callback (function mem-buffer object int (pointer uint8) object))
+(define-extern net-lanfind-exchange-callback (function net-lanfind-exchange-callback-in-args net-lanfind-exchange-callback-out-args object))
+
 ;; DECOMP BEGINS
 
+(define *dme-init-in* (new 'static 'net-initialize-in-params))
+
+(define *dme-init-out* (new 'static 'net-initialize-out-params))
+
+(define *dme-connect-in* (new 'static 'net-connect-in-params))
+
+(define *dme-connect-out* (new 'static 'net-connect-out-params))
+
+(define *dme-host-in* (new 'static 'net-host-peer-to-peer-in-params))
+
+(define *dme-host-out* (new 'static 'net-host-peer-to-peer-out-params))
+
+(define *dme-join-in* (new 'static 'net-join-in-params))
+
+(define *dme-join-out* (new 'static 'net-join-out-params))
+
+(define *dme-disconnect* (new 'static 'net-disconnect-params))
+
+(define *net-lan-find-in-params* (new 'static 'net-lanfind-in-params))
+
+(define *net-local-ip* (new 'static 'sz-ipaddress))
+
+(define *net-external-ip* (new 'static 'sz-ipaddress))
+
+(define *medius-joined-game-info* (new 'static 'medius-game-info-response))
+
+(define *net-app-name* "JakX")
+
+(define *net-last-packet-recv-times* (new 'static 'array int32 8 0 0 0 0 0 0 0 0))
+
+(defun net-packet-recv-time-reset-client ((arg0 int))
+  (set! (-> *net-last-packet-recv-times* arg0) (-> *net-mgr* game-state time))
+  0
+  )
+
+(defun net-packet-recv-time-reset-all ()
+  (let ((v1-1 (-> *net-mgr* game-state time)))
+    (dotimes (a0-0 8)
+      (set! (-> *net-last-packet-recv-times* a0-0) v1-1)
+      )
+    )
+  0
+  )
+
+(defun net-packet-recv-time-trouble ()
+  (let ((v0-0 #f))
+    (let ((v1-1 (-> *net-mgr* game-state time)))
+      (dotimes (a0-0 8)
+        (if (and (logtest? (-> *net-mgr* game-state connected-bitfield) (ash 1 a0-0))
+                 (and (!= a0-0 (if *net-mgr*
+                                   (-> *net-mgr* game-state local-machine-idx)
+                                   0
+                                   )
+                          )
+                      (< 3000 (- v1-1 (-> *net-last-packet-recv-times* a0-0)))
+                      )
+                 )
+            (set! v0-0 #t)
+            )
+        )
+      )
+    v0-0
+    )
+  )
+
+(deftype fake-msg (structure)
+  ((data  uint8  512)
+   )
+  )
+
+
+(define *fake-msg-count* 0)
+
+(define *fake-msg-read* 0)
+
+(define *fake-msgs* (new 'static 'inline-array fake-msg 32
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      (new 'static 'fake-msg)
+                      )
+        )
+
+(define *in-msg-callback* #f)
+
+(define *cb-buf* (new 'static 'mem-buffer))
+
+(defun do-net-app-msg-callback ((arg0 int) (arg1 int) (arg2 int) (arg3 (pointer uint8)))
+  (with-pp
+    (when *in-msg-callback*
+      (format 0 "doh! net-app-msg-callback re-entered... we probably did a go!~%")
+      0
+      )
+    (set! *in-msg-callback* #t)
+    (let ((s4-0 (the-as int (-> arg3 0))))
+      (let ((s5-0 pp))
+        (set! pp *net-mgr*)
+        (net-packet-recv-time-reset-client arg2)
+        (set-buffer! *cb-buf* arg3 (the-as int (-> arg3 0)))
+        (cond
+          ((zero? (the-as uint s4-0))
+           (set! s4-0 (the-as int (+ (-> arg3 1) 1)))
+           (if *net-log-write*
+               (net-log-msg arg3 s4-0 arg2 0 1)
+               )
+           (let ((s3-1 (&-> arg3 1)))
+             (set-buffer! *cb-buf* s3-1 (the-as int (-> s3-1 0)))
+             (let* ((a0-6 (-> s3-1 1))
+                    (v1-13 (-> *net-aux-msg-handlers* a0-6))
+                    )
+               (if (nonzero? (-> v1-13 handler-func))
+                   ((the-as (function mem-buffer int object) (-> v1-13 handler-func)) *cb-buf* arg2)
+                   )
+               )
+             )
+           )
+          (else
+            (case (read-uint8 *cb-buf*)
+              ((255)
+               (format 0 "processing jumbo msg~%")
+               (set! s4-0 (read-int16 *cb-buf*))
+               (if *net-log-write*
+                   (net-log-msg arg3 s4-0 arg2 0 1)
+                   )
+               (set-buffer! *cb-buf* (&-> arg3 3) (+ s4-0 -3))
+               (net-process-msg-handler *cb-buf* arg2)
+               )
+              (else
+                (if *net-log-write*
+                    (net-log-msg arg3 s4-0 arg2 0 1)
+                    )
+                (net-process-msg-handler *cb-buf* arg2)
+                )
+              )
+            )
+          )
+        (set! pp s5-0)
+        )
+      (set! *in-msg-callback* #f)
+      s4-0
+      )
+    )
+  )
+
+(defun net-app-msg-callback ((arg0 int) (arg1 int) (arg2 int) (arg3 (pointer uint8)))
+  (do-net-app-msg-callback arg0 arg1 arg2 arg3)
+  )
+
+(defun lan-game-find-callback ((arg0 net-lanfind-callback-data-args))
+  (format 0 "game-find callback~%")
+  (when (< *net-available-game-ct* 16)
+    (let ((s5-0 (&+ *net-available-games* (* 336 *net-available-game-ct*))))
+      (mem-clear! s5-0 328)
+      ((method-of-type net-available-game init-from-lanfind!) (the-as net-available-game s5-0) arg0)
+      (if ((method-of-type net-available-game valid?) (the-as net-available-game s5-0))
+          (set! *net-available-game-ct* (+ *net-available-game-ct* 1))
+          )
+      )
+    )
+  0
+  )
+
+(defmethod init-from-lanfind! ((this net-available-game) (arg0 net-lanfind-callback-data-args))
+  (mem-copy!
+    (the-as pointer (-> this connect-info address-list))
+    (the-as pointer (-> arg0 peer-desc peer-address))
+    24
+    )
+  (set! (-> this connect-info world-id) -1)
+  (set! (-> this connect-info e-type) 2)
+  (let ((s4-0 (new 'stack-no-clear 'mem-buffer)))
+    ((method-of-type mem-buffer set-buffer!)
+     (the-as mem-buffer (&-> s4-0 base))
+     (the-as pointer (-> arg0 details p-data))
+     (-> arg0 details n-size)
+     )
+    (decode-net-available-game-info (-> this info) (the-as mem-buffer (&-> s4-0 base)))
+    )
+  (format-game-name! this)
+  0
+  (none)
+  )
+
+(defmethod update-lan-find ((this net-mgr))
+  (cond
+    ((and (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+          (and (-> this next-state) (= (-> this next-state name) 'playing-game))
+          (and (nonzero? (-> this game-state connect-handle))
+               (not (logtest? (shl #x8000 16) (-> *medius-joined-game-info* generic-field1)))
+               (zero? (-> this lobby-state connect-handle))
+               )
+          )
+     (format 0 "ENABLING LAN FIND~%")
+     (set! *scert-function-id* (scert-function net-lanfind-set-exchange-callback))
+     (knet-scert-function-3-args 1 net-lanfind-exchange-callback #f)
+     )
+    (else
+      (format 0 "DISABLING LAN FIND~%")
+      (set! *scert-function-id* (scert-function net-lanfind-set-exchange-callback))
+      (knet-scert-function-3-args 0 0 #f)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun net-sys-msg-callback ((arg0 net-type-system-message-data))
+  (format 0 "SYSMSG!!~%")
+  (inspect arg0)
+  (format 0 "~G~%" (-> arg0 p-message))
+  (handle-sys-msg arg0)
+  0
+  )
+
+(defbehavior kick-machines net-mgr ((arg0 int) (arg1 symbol))
+  (format 0 "   kicking: ~A~%" arg1)
+  (let ((gp-0 self))
+    (set! self *net-mgr*)
+    (let ((s5-0 (alloc-msg-buffer)))
+      (write-int8 s5-0 0)
+      (write-int8 s5-0 0)
+      (write-int8 s5-0 5)
+      (write-symbol s5-0 arg1)
+      (set! (-> (the-as (pointer int8) (-> s5-0 base)) 1) (+ (bytes-used s5-0) -1))
+      (net-send-msg 192 s5-0 arg0)
+      (free-msg-buffer s5-0)
+      )
+    (set! self gp-0)
+    )
+  0
+  )
+
+(defun write-init-complete-msg ((arg0 mem-buffer))
+  (cond
+    ((nonzero? (-> *net-mgr* lobby-state connect-handle))
+     (write-int32 arg0 (-> *net-mgr* lobby-state my-account-id))
+     (write-int32 arg0 (-> *medius-my-clan* medius-id))
+     (write-int8 arg0 (get-selected-local-player-count))
+     )
+    (else
+      (write-int32 arg0 0)
+      (write-int32 arg0 0)
+      (write-int8 arg0 (get-selected-local-player-count))
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun handle-machine-connect ((arg0 int))
+  (format 0 "handle-machine-connect [~D]~%" arg0)
+  (when (-> *net-mgr* game-state locked)
+    (kick-machines (ash 1 arg0) 'game-unavailable)
+    (return (the-as object #f))
+    )
+  (when (and *net-mgr* (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-game))
+    (let ((s5-0 (alloc-msg-buffer)))
+      (write-int8 s5-0 0)
+      (write-int8 s5-0 0)
+      (write-int8 s5-0 0)
+      (write-init-complete-msg s5-0)
+      (set! (-> (the-as (pointer int8) (-> s5-0 base)) 1) (+ (bytes-used s5-0) -1))
+      (net-send-msg 192 s5-0 (ash 1 arg0))
+      (free-msg-buffer s5-0)
+      )
+    )
+  0
+  )
+
+(defun handle-machine-disconnect ((arg0 int))
+  (let* ((a0-1 (* arg0 2))
+         (v1-1 (-> *net-player-names* a0-1))
+         )
+    (when (nonzero? (-> v1-1 name 0))
+      (when (and *net-world* (logtest? (-> *net-world* net-state flags) 1))
+        (expand-text-to-charp! *common-text* (-> *chat-msg-string2* data) (-> v1-1 name))
+        (format (clear *chat-msg-string*) (lookup-text! *common-text* (text-id text-id-3161) #f) *chat-msg-string2*)
+        (add-raw-popup-msg (-> *chat-msg-string* data) -1 #f)
+        )
+      )
+    )
+  (format 0 "handle-machine-disconnect [~D]~%" arg0)
+  (logand!
+    (-> *net-mgr* game-state connected-bitfield)
+    (logxor (the-as uint #xffffffff) (the-as uint (ash 1 arg0)))
+    )
+  (if *net-log-write*
+      (net-log-client (net-log-event-type client-leave) arg0)
+      )
+  (format 0 "net-mgr-notify: ~A~%" 'client-left)
+  (let ((a0-21 (-> *net-mgr* notify alive-list next0)))
+    (-> *net-mgr* notify)
+    (let ((s5-1 (-> a0-21 next0)))
+      (while (!= a0-21 (-> *net-mgr* notify alive-list-end))
+        (if (logtest? (the-as int (-> (the-as connection a0-21) param1)) 8)
+            (send-event
+              ((method-of-type connection get-process) (the-as connection a0-21))
+              'client-left
+              :from *net-mgr*
+              arg0
+              )
+            )
+        (set! a0-21 s5-1)
+        (-> *net-mgr* notify)
+        (set! s5-1 (-> s5-1 next0))
+        )
+      )
+    )
+  (when (and *net-mgr*
+             (and *lobby-menu-manager*
+                  (not (and (-> *lobby-menu-manager* next-state) (= (-> *lobby-menu-manager* next-state name) 'die)))
+                  )
+             )
+    (when (= arg0 (-> *net-mgr* game-state session-master-idx))
+      (let ((gp-1 #t))
+        (when (and *net-world* (-> *net-world* is-late-join))
+          (dotimes (s5-2 16)
+            (if (and (!= (/ s5-2 2) (if *net-mgr*
+                                        (-> *net-mgr* game-state local-machine-idx)
+                                        0
+                                        )
+                         )
+                     ((method-of-object *net-world* net-world-method-64))
+                     )
+                (set! gp-1 #f)
+                )
+            )
+          )
+        (when gp-1
+          (format 0 "we're in the lobby and the session-master just left - quitting out~%")
+          (if (not (-> *net-mgr* game-state kicked))
+              (set! (-> *net-mgr* game-state kicked) 'game-disbanded)
+              )
+          )
+        )
+      )
+    )
+  0
+  )
+
+(defun remote-client-connect-callback ((arg0 net-type-client-connect-callback-data))
+  (format 0 "remote-client-connect: ~D~%" (-> arg0 client-index))
+  (handle-machine-connect (-> arg0 client-index))
+  )
+
+(defun remote-client-disconnect-callback ((arg0 net-type-client-connect-callback-data))
+  (format 0 "remote-client-disconnect: ~D~%" (-> arg0 client-index))
+  (handle-machine-disconnect (-> arg0 client-index))
+  )
+
+(defun remote-client-event-callback ((arg0 net-remote-client-event-data))
+  (let ((v1-0 (-> arg0 event-type)))
+    (cond
+      ((zero? v1-0)
+       (format 0 "*** client join: ~D~%" (-> arg0 client-index))
+       0
+       )
+      ((= v1-0 1)
+       (format 0 "*** client leave: ~D~%" (-> arg0 client-index))
+       0
+       )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun init-complete-msg-handler ((arg0 mem-buffer) (arg1 int))
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (let ((s5-0 (read-int32 arg0))
+        (s4-0 (read-int32 arg0))
+        (s3-1 (read-int8 arg0))
+        )
+    (format 0 "---> got init-complete from ~D: acct=~D~%" arg1 s5-0)
+    (logior! (-> *net-mgr* game-state connected-bitfield) (ash 1 arg1))
+    (if *net-log-write*
+        (net-log-client (net-log-event-type client-join) arg1)
+        )
+    (net-packet-recv-time-reset-client arg1)
+    (when #f
+      (when (-> *net-mgr* game-state locked)
+        (kick-machines (ash 1 arg1) 'game-unavailable)
+        (return (the-as object #f))
+        )
+      )
+    (format 0 "net-mgr-notify: ~A~%" 'client-joined)
+    (let ((a0-15 (-> *net-mgr* notify alive-list next0)))
+      (-> *net-mgr* notify)
+      (let ((s2-0 (-> a0-15 next0)))
+        (while (!= a0-15 (-> *net-mgr* notify alive-list-end))
+          (if (logtest? (the-as int (-> (the-as connection a0-15) param1)) 8)
+              (send-event
+                ((method-of-type connection get-process) (the-as connection a0-15))
+                'client-joined
+                :from *net-mgr*
+                arg1
+                s5-0
+                s4-0
+                s3-1
+                )
+              )
+          (set! a0-15 s2-0)
+          (-> *net-mgr* notify)
+          (set! s2-0 (-> s2-0 next0))
+          )
+        )
+      )
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 0 handler-func) init-complete-msg-handler)
+
+(defun chat-msg-handler ((arg0 mem-buffer) (arg1 int))
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (let ((gp-0 (new 'stack-no-clear 'medius-chat-fwd-message)))
+    (mem-clear! (-> gp-0 message-id) 128)
+    (let ((s3-1 (min 64 (strlen (-> arg0 ptr)))))
+      (mem-copy! (-> gp-0 message) (-> arg0 ptr) s3-1)
+      (set! (-> gp-0 message s3-1) (the-as uint 0))
+      )
+    0
+    (let ((s4-2 (min 32 (strlen (the-as pointer (-> *net-player-names* (* arg1 2)))))))
+      (mem-copy! (-> gp-0 originator-account-name) (the-as pointer (-> *net-player-names* (* arg1 2))) s4-2)
+      (set! (-> gp-0 originator-account-name s4-2) (the-as uint 0))
+      )
+    0
+    (set! (-> gp-0 message-type) 1)
+    (handle-chat-msg (the-as medius-chat-fwd-message (-> gp-0 message-id)) #f)
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 11 handler-func) chat-msg-handler)
+
+(defun session-master-change-callback ((arg0 net-smchange-data))
+  (format 0 "session-master-change-callback: ~D~%" (-> arg0 smclient-index))
+  (if *net-log-write*
+      (net-log-client (net-log-event-type session-master-change) (-> arg0 smclient-index))
+      )
+  (set! (-> *net-mgr* game-state session-master-idx) (-> arg0 smclient-index))
+  (format 0 "net-mgr-notify: ~A~%" 'session-master-change)
+  (let ((a0-5 (-> *net-mgr* notify alive-list next0)))
+    (-> *net-mgr* notify)
+    (let ((s5-0 (-> a0-5 next0)))
+      (while (!= a0-5 (-> *net-mgr* notify alive-list-end))
+        (if (logtest? (the-as int (-> (the-as connection a0-5) param1)) 8)
+            (send-event
+              ((method-of-type connection get-process) (the-as connection a0-5))
+              'session-master-change
+              :from *net-mgr*
+              (-> arg0 smclient-index)
+              )
+            )
+        (set! a0-5 s5-0)
+        (-> *net-mgr* notify)
+        (set! s5-0 (-> s5-0 next0))
+        )
+      )
+    )
+  (update-lan-find *net-mgr*)
+  0
+  )
+
+(defun dme-token-callback ((arg0 net-token-ownership-notify-data))
+  (let ((s5-0 (-> arg0 token-id))
+        (gp-0 (-> arg0 owner-client-index))
+        )
+    (format 0 "token ~D ownership changed to ~D~%" s5-0 gp-0)
+    (when (zero? s5-0)
+      (cond
+        ((= gp-0 #xffff)
+         )
+        (else
+          (format 0 "SM is now ~D~%" gp-0)
+          (let ((v1-3 (new 'stack-no-clear 'net-smchange-data)))
+            (set! (-> v1-3 smclient-index) gp-0)
+            (session-master-change-callback (the-as net-smchange-data (&-> v1-3 connection-handle)))
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+(define *last-ping-latency* -1)
+
+(define *last-ping-time* 0)
+
+(define *avg-ping* -1)
+
+(defun ping-report-msg-handler ((arg0 mem-buffer) (arg1 int))
+  (when *net-process-mgr*
+    (read-int8 arg0)
+    (read-int8 arg0)
+    (set! (-> *net-process-mgr* machines arg1 reported-ping) (read-int32 arg0))
+    (set! *avg-ping* 0)
+    (let ((v1-8 0))
+      (dotimes (a0-6 8)
+        (when (>= (-> *net-process-mgr* machines a0-6 reported-ping) 0)
+          (set! *avg-ping* (+ *avg-ping* (-> *net-process-mgr* machines a0-6 reported-ping)))
+          (+! v1-8 1)
+          )
+        )
+      (if (> v1-8 0)
+          (set! *avg-ping* (/ *avg-ping* v1-8))
+          (set! *avg-ping* -1)
+          )
+      )
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 10 handler-func) ping-report-msg-handler)
+
+(defun cb-server-ping ((arg0 int) (arg1 int) (arg2 int))
+  (if (zero? arg0)
+      (set! *last-ping-latency* arg2)
+      )
+  0
+  )
+
+(defbehavior consider-server-ping net-mgr ()
+  (when (and (and (-> self next-state) (= (-> self next-state name) 'playing-game))
+             (nonzero? (-> self lobby-state connect-handle))
+             )
+    (let ((gp-0 (- (-> *display* real-clock frame-counter) (the-as time-frame *last-ping-time*))))
+      (when (or (< gp-0 0) (< (seconds 15) gp-0))
+        (set! *last-ping-time* (the-as int (-> *display* real-clock frame-counter)))
+        (set! *scert-function-id* (scert-function net-ping-client))
+        (knet-scert-function-3-args (-> self game-state connect-handle) #xffff cb-server-ping)
+        (when (and (>= *last-ping-latency* 0)
+                   (>= gp-0 0)
+                   (-> *net-mgr* next-state)
+                   (= (-> *net-mgr* next-state name) 'playing-game)
+                   )
+          (let ((gp-1 (alloc-msg-buffer)))
+            (write-int8 gp-1 0)
+            (write-int8 gp-1 0)
+            (write-int8 gp-1 10)
+            (write-int32 gp-1 *last-ping-latency*)
+            (set! (-> (the-as (pointer int8) (-> gp-1 base)) 1) (+ (bytes-used gp-1) -1))
+            (net-send-msg 0 gp-1 -1)
+            (free-msg-buffer gp-1)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+(defun dummy-callback ()
+  (format 0 "dummy-callback triggered~%")
+  )
+
+(define *lanfind-scratch* (new 'static 'array uint8 256
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            )
+        )
+
+(define *lanfind-scratch-buf* (new 'static 'mem-buffer))
+
+;; WARN: Return type mismatch int vs object.
+(defun net-lanfind-exchange-callback ((arg0 net-lanfind-exchange-callback-in-args) (arg1 net-lanfind-exchange-callback-out-args))
+  (format 0 "net-game-find-exchange-callback~%")
+  (set! *scert-function-id* (scert-function get-application-id))
+  (when (!= (-> arg0 peer-desc application-id) (knet-scert-function-0-args))
+    (set! (-> arg1 b-respond-to-sender) 0)
+    (return (the-as object #f))
+    )
+  (when (-> *net-mgr* game-state locked)
+    (set! (-> arg1 b-respond-to-sender) 0)
+    (return (the-as object #f))
+    )
+  (if (not *net-mgr*)
+      (return (the-as object 0))
+      )
+  (if (!= (-> *net-mgr* game-type) 2)
+      (return (the-as object 0))
+      )
+  (if (not *net-world*)
+      (return (the-as object 0))
+      )
+  (init-from-local-game! *net-active-game*)
+  (set-buffer! *lanfind-scratch-buf* *lanfind-scratch* 256)
+  (encode-net-available-game-info (-> *net-active-game* info) *lanfind-scratch-buf*)
+  (format 0 "size of user data is : ~D~%" (bytes-used *lanfind-scratch-buf*))
+  (set! (-> arg1 b-respond-to-sender) 1)
+  (set! (-> arg1 details n-size) (bytes-used *lanfind-scratch-buf*))
+  (set! (-> arg1 details p-data) (the-as basic (-> *lanfind-scratch-buf* base)))
+  0
+  )
+
+(defmethod init-from-local-game! ((this net-available-game))
+  (mem-clear! (the-as pointer this) 328)
+  (let ((s5-0 (-> this info)))
+    (copy-charp<-charp (-> s5-0 game-name) (-> (get-player-name 0) data))
+    (set! (-> s5-0 player-count) (the-as uint (get-total-humans)))
+    (when *net-world*
+      (set! (-> s5-0 task-node) (-> *net-world* task-node))
+      (let ((v1-8 (-> *game-info* sub-task-list (-> *net-world* task-node))))
+        (set! (-> s5-0 location) (the-as uint (-> *game-info* play-list (-> v1-8 task) task-level)))
+        (set! (-> s5-0 event) (the-as uint (-> v1-8 net-play-mode)))
+        )
+      )
+    (set! (-> s5-0 min-players) (the-as uint 1))
+    (set! (-> s5-0 max-players) (the-as uint *last-selected-human-ct*))
+    (set! (-> s5-0 in-staging) (= *medius-world-status* 1))
+    (set! (-> s5-0 generic-1) 15)
+    (set! (-> s5-0 skill-level) (get-total-skill-level))
+    (set! (-> s5-0 avg-ping) *avg-ping*)
+    )
+  (format-game-name! this)
+  0
+  (none)
+  )
+
+(defun kick-msg-handler ((arg0 mem-buffer) (arg1 int))
+  (when *net-mgr*
+    (read-int8 arg0)
+    (read-int8 arg0)
+    (set! (-> *net-mgr* game-state kicked) (read-symbol arg0))
+    (format 0 "received kick msg: ~A~%" (-> *net-mgr* game-state kicked))
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 5 handler-func) kick-msg-handler)
+
+(define *rsa-key-dont-use-this-for-release* (new 'static 'rsa-keypair
+                                              :public-key (new 'static 'rsa-key :key (new 'static 'array uint32 16
+                                                                           #x89361ccb
+                                                                           #xfdef1780
+                                                                           #xce6579bf
+                                                                           #x8129f0ba
+                                                                           #x111fed21
+                                                                           #x6002fac0
+                                                                           #x9e70e436
+                                                                           #xe72b0431
+                                                                           #x6abc90cb
+                                                                           #x4d9588d4
+                                                                           #x4f9be030
+                                                                           #x96c6a013
+                                                                           #x129575c5
+                                                                           #x49d616
+                                                                           #x69cd8aea
+                                                                           #xc3c7a01e
+                                                                           )
+                                                                    )
+                                              :private-key (new 'static 'rsa-key :key (new 'static 'array uint32 16
+                                                                           #x189bfe71
+                                                                           #xcc2dd10f
+                                                                           #x30656693
+                                                                           #x7d1e3f3c
+                                                                           #xf88fb522
+                                                                           #x6e4ae33e
+                                                                           #x623d1b32
+                                                                           #xa423f487
+                                                                           #x6fbd5fa9
+                                                                           #x688168a2
+                                                                           #x791cd89d
+                                                                           #xaf88d4c3
+                                                                           #x779f782d
+                                                                           #x1e5694a7
+                                                                           #xe77f0fe0
+                                                                           #x95b6c5bc
+                                                                           )
+                                                                    )
+                                              )
+        )
+
+(defmethod init-dme ((this net-mgr))
+  (format 0 "init-dme~%")
+  (mem-clear! (the-as pointer *dme-init-in*) 120)
+  (mem-clear! (the-as pointer *dme-init-out*) 24)
+  (set! *scert-function-id* (scert-function net-initialize-in-params-defaults))
+  (knet-scert-function-1-args *dme-init-in*)
+  (set! *scert-function-id* (scert-function get-application-id))
+  (set! (-> *dme-init-in* application-id) (knet-scert-function-0-args))
+  (copy-charp<-charp (-> *dme-init-in* application-name) (-> *net-app-name* data))
+  (when (not *net-keypair-valid*)
+    (set! *scert-function-id* (scert-function get-app-rsa-keypair))
+    (knet-scert-function-2-args (-> *net-app-rsa-keypair* public-key) (-> *net-app-rsa-keypair* private-key))
+    (format 0 "generate RSA keypair~%")
+    (set! *scert-function-id* (scert-function generate-rsa-keypair))
+    (knet-scert-function-2-args (-> *net-local-rsa-keypair* public-key) (-> *net-local-rsa-keypair* private-key))
+    (set! *net-keypair-valid* #t)
+    )
+  (set! (-> *dme-init-in* p-application-key-pair) *net-app-rsa-keypair*)
+  (set! (-> *dme-init-in* p-local-key-pair) *net-local-rsa-keypair*)
+  (set! (-> *dme-init-in* pf-system-message-callback) net-sys-msg-callback)
+  (set! (-> *dme-init-in* connectivity-type) 2)
+  (set! (-> *dme-init-in* b-enable-lanbroadcast-comms) 1)
+  (format 0 "calling net-initialize...~%")
+  (set! *scert-function-id* (scert-function net-initialize))
+  (set! *net-error* (knet-scert-function-2-args *dme-init-in* *dme-init-out*))
+  (when (nonzero? *net-error*)
+    (format 0 "net-initialize returned ~D~%" *net-error*)
+    (return #f)
+    )
+  (format 0 "done net-initialize...~%")
+  (set! *dme-initted* #t)
+  (set! *scert-function-id* (scert-function net-register-message-callback))
+  (knet-scert-function-2-args (&-> '*net-app-msg-id* value) net-app-msg-callback)
+  (set! *scert-function-id* (scert-function net-register-message-callback))
+  (knet-scert-function-2-args (&-> '*aux-voice-msg-id* value) aux-voice-msg-callback)
+  (net-log-remove-lock)
+  #t
+  )
+
+(define *headset-buffers-received* 0)
+
+(define *headset-buffers-played* 0)
+
+(define *headset-buffers-decoded* 0)
+
+(define *iop-mem-stats* (new 'global 'mc-slot-info))
+
+(define *real-sm* 0)
+
+(define bw-metrics (new 'static 'net-bandwidth-info))
+
+(defmethod update ((this net-mgr))
+  (with-pp
+    (consider-server-ping)
+    (when *debug-segment*
+      'net-mgr-tick
+      (let ((s5-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-8 'net-mgr-tick)
+            (s4-0 (the-as uint #x8030ffff))
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-0 (-> s5-0 data (-> s5-0 count))))
+            (let ((s2-0 (-> s5-0 base-time)))
+              (set! (-> s3-0 name) v1-8)
+              (set! (-> s3-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-0))))
+              )
+            (set! (-> s3-0 depth) (the-as uint (-> s5-0 depth)))
+            (set! (-> s3-0 color) (the-as rgba s4-0))
+            (set! (-> s5-0 segment (-> s5-0 depth)) s3-0)
+            )
+          (set! (-> s5-0 count) (min 2099 (+ (-> s5-0 count) 1)))
+          (+! (-> s5-0 depth) 1)
+          (set! (-> s5-0 max-depth) (max (-> s5-0 max-depth) (-> s5-0 depth)))
+          )
+        )
+      0
+      )
+    (knet-yield 1)
+    (pause-check)
+    (cond
+      ((and (-> this next-state) (= (-> this next-state name) 'playing-sp-game))
+       (set! (-> this game-state time) (the-as int (-> *display* entity-clock frame-counter)))
+       )
+      (else
+        (set! *scert-function-id* (scert-function net-get-time))
+        (knet-scert-function-2-args (-> this game-state connect-handle) (&-> this game-state time))
+        (set! (-> this game-state time) (/ (* 3 (-> this game-state time)) 10))
+        )
+      )
+    (let ((s5-1 *fake-msg-count*))
+      0
+      (dotimes (s4-1 s5-1)
+        (let ((v1-35 (logand (+ *fake-msg-read* s4-1) 31))
+              (s3-1 pp)
+              )
+          (set! pp *net-mgr*)
+          (net-app-msg-callback 0 0 (-> *net-mgr* game-state local-machine-idx) (-> *fake-msgs* v1-35 data))
+          (set! pp s3-1)
+          )
+        )
+      (set! *fake-msg-read* (logand (+ *fake-msg-read* s5-1) 31))
+      (set! *fake-msg-count* (- *fake-msg-count* s5-1))
+      )
+    (when (-> this scert-initted)
+      (set! *scert-function-id* (scert-function net-update))
+      (let ((s5-2 (knet-scert-function-0-args)))
+        (when (nonzero? s5-2)
+          (format 0 "net-update returned ~D~%" s5-2)
+          (when (= s5-2 12)
+            (format 0 "ignoring...~%")
+            (set! s5-2 0)
+            )
+          (set! *net-error* s5-2)
+          (set! (-> this lobby-state last-dme-error) s5-2)
+          )
+        )
+      )
+    (set! *real-sm* -1)
+    (when (-> this scert-initted)
+      (let ((s5-3 (new 'stack-no-clear 'array 'int32 4)))
+        (set! *scert-function-id* (scert-function net-tokens-ready))
+        (set! (-> s5-3 2) (knet-scert-function-2-args (-> this game-state connect-handle) (&-> s5-3 0)))
+        (when (and (zero? (-> s5-3 2)) (nonzero? (-> s5-3 0)))
+          (set! *scert-function-id* (scert-function net-get-token-owner))
+          (set! (-> s5-3 2) (knet-scert-function-3-args (-> this game-state connect-handle) 0 (&-> s5-3 1)))
+          (when (zero? (-> s5-3 2))
+            (set! *real-sm* (-> s5-3 1))
+            (when (= (-> s5-3 1) #xffff)
+              (when (-> this game-state sm-eligible)
+                (set! *scert-function-id* (scert-function net-request-token))
+                (knet-scert-function-2-args (-> this game-state connect-handle) 0)
+                )
+              )
+            )
+          )
+        )
+      )
+    (when *debug-segment*
+      (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-83 (+ (-> gp-1 depth) -1))
+                 (s5-4 (-> gp-1 segment v1-83))
+                 (s4-2 (-> gp-1 base-time))
+                 )
+            (when (>= v1-83 0)
+              (set! (-> s5-4 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-2))))
+              (+! (-> gp-1 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    0
+    (none)
+    )
+  )
+
+(defstate refreshing-lan-games (net-mgr)
+  :virtual #t
+  :code (behavior ()
+    (refresh-lan-games)
+    (format 0 "net-mgr-notify: ~A~%" 'game-list-ready)
+    (let ((a0-1 (-> *net-mgr* notify alive-list next0)))
+      (-> *net-mgr* notify)
+      (let ((gp-0 (-> a0-1 next0)))
+        (while (!= a0-1 (-> *net-mgr* notify alive-list-end))
+          (if (logtest? (the-as int (-> (the-as connection a0-1) param1)) 2)
+              (send-event
+                ((method-of-type connection get-process) (the-as connection a0-1))
+                'game-list-ready
+                :from *net-mgr*
+                )
+              )
+          (set! a0-1 gp-0)
+          (-> *net-mgr* notify)
+          (set! gp-0 (-> gp-0 next0))
+          )
+        )
+      )
+    (go-virtual idle)
+    )
+  )
+
+(define *tmp-addr* (new 'static 'net-address))
+
+(define *tmp-game* (new 'static 'net-available-game))
+
+(define *lan-game-verified* #f)
+
+(defun memeq ((arg0 pointer) (arg1 pointer) (arg2 int))
+  (dotimes (v1-0 arg2)
+    (if (!= (-> (the-as (pointer int8) arg0)) (-> (the-as (pointer int8) arg1)))
+        (return #f)
+        )
+    (&+! arg0 1)
+    (&+! arg1 1)
+    )
+  #t
+  )
+
+(defun lan-game-verify-callback ((arg0 net-lanfind-callback-data-args))
+  (when (memeq (the-as pointer (-> arg0 peer-desc peer-address)) (the-as pointer *tmp-addr*) 24)
+    (mem-clear! (the-as pointer *tmp-game*) 328)
+    (init-from-lanfind! *tmp-game* arg0)
+    (if (-> *tmp-game* info in-staging)
+        (set! *lan-game-verified* #t)
+        )
+    )
+  0
+  )
+
+(defstate verifying-lan-game (net-mgr)
+  :virtual #t
+  :code (behavior ((arg0 net-connection-info))
+    (go-virtual connecting-to-game arg0)
+    (format 0 "verifying game...~%")
+    (set! *lan-game-verified* #f)
+    (mem-copy! (the-as pointer *tmp-addr*) (the-as pointer (-> arg0 address-list)) 24)
+    (set! *scert-function-id* (scert-function net-lanfind-in-params-defaults))
+    (knet-scert-function-1-args *net-lan-find-in-params*)
+    (set! (-> *net-lan-find-in-params* pfn-lanfind-callback) lan-game-verify-callback)
+    (set! *scert-function-id* (scert-function net-lanfind))
+    (knet-scert-function-1-args *net-lan-find-in-params*)
+    (dotimes (s5-0 60)
+      (set! *scert-function-id* (scert-function net-update))
+      (knet-scert-function-0-args)
+      (when *lan-game-verified*
+        (format 0 "game verified ok~%")
+        (go-virtual connecting-to-game arg0)
+        )
+      (suspend)
+      )
+    (game-connect-failed)
+    )
+  )
+
+(define *net-msg-pending* #f)
+
+(defun send-fake-msg ((arg0 int) (arg1 mem-buffer))
+  (cond
+    ((>= *fake-msg-count* 32)
+     (format 0 "<WARNING!!!> DROPPING MESSAGE TO SELF!!!!~%")
+     )
+    (else
+      (mem-copy!
+        (the-as pointer (-> *fake-msgs* (logand (+ *fake-msg-read* *fake-msg-count*) 31)))
+        (-> arg1 base)
+        (bytes-used arg1)
+        )
+      (set! *fake-msg-count* (+ *fake-msg-count* 1))
+      )
+    )
+  0
+  )
+
+(defun verify-msg ((arg0 mem-buffer))
+  (let ((s5-0 (-> (the-as (pointer uint8) (-> arg0 base)) 0))
+        (v1-2 (bytes-used arg0))
+        )
+    (cond
+      ((zero? s5-0)
+       (let ((a0-3 (-> (the-as (pointer uint8) (-> arg0 base)) 1)))
+         (-> (the-as (pointer uint8) (-> arg0 base)) 2)
+         (when (!= (+ a0-3 1) v1-2)
+           (break!)
+           0
+           )
+         )
+       )
+      ((= s5-0 255)
+       (when (!= (+ (-> (the-as (pointer uint8) (-> arg0 base)) 1) (* (-> (the-as (pointer uint8) (-> arg0 base)) 2) 256))
+                 v1-2
+                 )
+         (break!)
+         0
+         )
+       )
+      (else
+        (when (!= s5-0 v1-2)
+          (break!)
+          0
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun net-send-msg ((arg0 int) (arg1 mem-buffer) (arg2 int))
+  (when (not (and *net-mgr*
+                  (-> *net-mgr* next-state)
+                  (let ((v1-6 (-> *net-mgr* next-state name)))
+                    (or (= v1-6 'playing-game) (= v1-6 'playing-sp-game) (= v1-6 'joining-game) (= v1-6 'leaving-game))
+                    )
+                  )
+             )
+    (format 0 ">>>> not sending msg due to wrong state~%")
+    (return (the-as object #f))
+    )
+  (if *net-log-write*
+      (net-log-msg
+        (-> arg1 base)
+        (bytes-used arg1)
+        (if *net-mgr*
+            (-> *net-mgr* game-state local-machine-idx)
+            0
+            )
+        arg2
+        arg0
+        )
+      )
+  (verify-msg arg1)
+  (let ((s5-1 (new 'stack-no-clear 'net-send-message-params)))
+    (set! (-> s5-1 in connection-handle) (-> *net-mgr* game-state connect-handle))
+    (set! (-> s5-1 in transport-flags) arg0)
+    (set! (-> s5-1 in message-type) *net-app-msg-id*)
+    (set! (-> s5-1 in message-length) (bytes-used arg1))
+    (set! (-> s5-1 in message-data) (the-as uint (-> arg1 base)))
+    (case arg2
+      ((-1)
+       (send-fake-msg arg0 arg1)
+       (set! (-> s5-1 in dest-client target-client) -1)
+       )
+      ((-2)
+       (set! (-> s5-1 in dest-client target-client) -1)
+       )
+      (else
+        (when (logtest? (ash 1 (if *net-mgr*
+                                   (-> *net-mgr* game-state local-machine-idx)
+                                   0
+                                   )
+                             )
+                        arg2
+                        )
+          (send-fake-msg arg0 arg1)
+          (set! arg2 (logclear arg2 (ash 1 (if *net-mgr*
+                                               (-> *net-mgr* game-state local-machine-idx)
+                                               0
+                                               )
+                                         )
+                               )
+                )
+          )
+        (set! (-> s5-1 in dest-client target-client) 256)
+        (set! (-> s5-1 in dest-client client-mask base-id) 0)
+        (set! (-> s5-1 in dest-client client-mask bitmask 0) (the-as uint arg2))
+        (dotimes (v1-33 8)
+          (if (logtest? arg2 (ash 1 v1-33))
+              (set! (-> s5-1 in dest-client client-mask max-id) v1-33)
+              )
+          )
+        (+! (-> s5-1 in dest-client client-mask max-id) 1)
+        )
+      )
+    (when (not (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-sp-game)))
+      (when (not (and (zero? arg2) (= (-> s5-1 in dest-client target-client) 256)))
+        0
+        (set! *scert-function-id* (scert-function net-send-message))
+        (let ((a2-2 (knet-scert-function-2-args (-> s5-1 in) (-> s5-1 out))))
+          (when (or (nonzero? (-> s5-1 out error-code)) (nonzero? a2-2))
+            (format 0 "send msg returned error ~D~%" a2-2)
+            (inspect (-> s5-1 in))
+            (inspect (-> s5-1 out))
+            (send-event *net-mgr* 'net-error)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs uint.
+(defun parse-ip ((arg0 (pointer uint8)))
+  (local-vars (a0-3 symbol))
+  (let ((v0-0 0))
+    (let ((s5-0 0)
+          (v1-0 0)
+          )
+      (dotimes (s4-0 4)
+        (until a0-3
+          (+! s5-0 1)
+          (set! a0-3
+                (or (zero? (-> (the-as (pointer int8) (&+ arg0 s5-0)))) (= (-> (the-as (pointer int8) (&+ arg0 s5-0))) 46))
+                )
+          )
+        (set! (-> arg0 s5-0) (the-as uint 0))
+        (set! v0-0 (logior (* v0-0 256) (atoi (&+ arg0 v1-0))))
+        (set! v1-0 (+ s5-0 1))
+        )
+      )
+    (the-as uint v0-0)
+    )
+  )
+
+(define *tmp-hostname* "                                           ")
+
+(defun format-ip ((arg0 uint) (arg1 string))
+  (format
+    (clear arg1)
+    "~D.~D.~D.~D"
+    (logand (shr arg0 24) 255)
+    (logand (shr arg0 16) 255)
+    (logand (shr arg0 8) 255)
+    (logand arg0 255)
+    )
+  0
+  )
+
+(defun format-ip-raw ((arg0 uint) (arg1 (pointer uint8)))
+  (format-ip arg0 *tmp-hostname*)
+  (copy-charp<-charp arg1 (-> *tmp-hostname* data))
+  0
+  )
+
+;; WARN: Return type mismatch int vs uint.
+(defun net-get-local-ip ()
+  0
+  0
+  0
+  0
+  (if (not (and *net-mgr* (-> *net-mgr* scert-initted)))
+      (return (the-as uint 0))
+      )
+  (set! *scert-function-id* (scert-function net-get-local-ip))
+  (the-as uint (if (zero? (knet-scert-function-1-args *net-local-ip*))
+                   (the-as int (parse-ip (-> *net-local-ip* data)))
+                   0
+                   )
+          )
+  )
+
+(define *ip-lookup* 0)
+
+;; WARN: Return type mismatch int vs object.
+(defun get-host-by-name-callback ((arg0 net-type-lookup-response))
+  (format 0 "get-host-by-name callback~%")
+  (inspect arg0)
+  (when (nonzero? (-> arg0 error-code))
+    (set! *ip-lookup* 0)
+    (return (the-as object #f))
+    )
+  (when (<= (-> arg0 n-ipaddresses) 0)
+    (set! *ip-lookup* 0)
+    (return (the-as object #f))
+    )
+  (format 0 "yay ~G~%" (-> arg0 asz-ipaddresses))
+  (set! *ip-lookup* (the-as int (parse-ip (-> arg0 asz-ipaddresses 0 data))))
+  (format 0 "~X~%" *ip-lookup*)
+  0
+  )
+
+(define *dns-string* (new 'static 'array uint8 32
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       #x0
+                       )
+        )
+
+(define *dns-string2* (new 'static 'array uint8 32
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        #x0
+                        )
+        )
+
+(defun get-host-by-name ((arg0 (pointer uint8)) (arg1 time-frame))
+  (local-vars (v0-4 int) (s4-2 int))
+  (copy-charp<-charp *dns-string2* arg0)
+  (let ((s4-0 (parse-ip *dns-string2*)))
+    (format-ip-raw s4-0 *dns-string*)
+    (when (strncmp *dns-string* arg0 -1)
+      (set! *ip-lookup* (the-as int s4-0))
+      (return *ip-lookup*)
+      )
+    )
+  (let ((s4-1 (&-> (the-as (pointer uint8) *net-mgr-scratch*) 0))
+        (a1-4 (&-> (the-as (pointer uint8) *net-mgr-scratch*) 512))
+        )
+    (set! (-> s4-1 0) (the-as uint 0))
+    (set! (-> a1-4 0) (the-as uint 0))
+    (cond
+      ((and (zero? (knet-eenet-get-dns-addr s4-1 a1-4)) (nonzero? (-> s4-1 0)))
+       (format 0 "... using SCE-RT lookup: ~G [~G]~%" s4-1 arg0)
+       (let ((s3-0 (new 'stack-no-clear 'net-type-lookup-params)))
+         (mem-clear! (-> s3-0 sz-host-name) 276)
+         (copy-charp<-charp (-> s3-0 sz-host-name) arg0)
+         (copy-charp<-charp (-> s3-0 sz-server-ip) s4-1)
+         (set! (-> s3-0 pf-lookup-response) get-host-by-name-callback)
+         (set! *ip-lookup* -1)
+         (set! *scert-function-id* (scert-function net-lookup-host))
+         (let ((s5-1 (knet-scert-function-1-args (-> s3-0 sz-host-name))))
+           (format 0 "rc=~D~%" s5-1)
+           (if (nonzero? s5-1)
+               (return 0)
+               )
+           )
+         )
+       (suspend-for arg1
+         (if (!= *ip-lookup* -1)
+             (goto cfg-17)
+             )
+         (set! *scert-function-id* (scert-function net-update))
+         (knet-scert-function-0-args)
+         )
+       (return 0)
+       (label cfg-17)
+       (set! v0-4 *ip-lookup*)
+       (b! #t cfg-35 :delay (nop!))
+       (the-as none 0)
+       )
+      (else
+        (format 0 "... using eenet lookup~%")
+        (if (nonzero? (knet-eenet-dns-start arg0))
+            (return 0)
+            )
+        (suspend-for arg1
+          (let ((s3-1 -2))
+            (set! s4-2 (knet-eenet-dns-poll (&-> '*ip-lookup* value)))
+            (if (!= s4-2 s3-1)
+                (goto cfg-29)
+                )
+            )
+          )
+        (return 0)
+        (label cfg-29)
+        (format 0 "rc=~D, iplookup: ~X~%" s4-2 *ip-lookup*)
+        (if (nonzero? s4-2)
+            (return 0)
+            )
+        (return *ip-lookup*)
+        )
+      )
+    )
+  (the-as none 0)
+  (set! v0-4 (the-as int 0))
+  (label cfg-35)
+  v0-4
+  )
+
+;; WARN: Return type mismatch int vs uint.
+(defun net-get-client-ip ((arg0 int))
+  0
+  0
+  0
+  0
+  (if (not (and *net-mgr* (nonzero? (-> *net-mgr* game-state connect-handle)) (-> *net-mgr* scert-initted)))
+      (return (the-as uint 0))
+      )
+  (set! *scert-function-id* (scert-function net-get-client-ip))
+  (the-as
+    uint
+    (if (zero? (knet-scert-function-3-args *net-external-ip* (-> *net-mgr* game-state connect-handle) arg0))
+        (the-as int (parse-ip (-> *net-external-ip* data)))
+        0
+        )
+    )
+  )
+
+(defun per-process-hook ()
+  (when (and *net-msg-pending* *net-mgr* (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-game))
+    (set! *net-msg-pending* #f)
+    (update *net-mgr*)
+    )
+  0
+  )

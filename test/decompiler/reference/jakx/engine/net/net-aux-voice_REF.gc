@@ -1,0 +1,596 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type aux-voice-mgr
+(deftype aux-voice-mgr (process)
+  ((game-id         int32)
+   (my-id           int32)
+   (bitfield        int32)
+   (connect-handle  pointer)
+   )
+  (:state-methods
+    startup
+    creating
+    joining
+    active
+    die
+    )
+  (:methods
+    (init! (_type_) none)
+    (aux-voice-send (_type_ mem-buffer int int) none)
+    )
+  )
+
+;; definition for method 3 of type aux-voice-mgr
+(defmethod inspect ((this aux-voice-mgr))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgame-id: ~D~%" (-> this game-id))
+  (format #t "~2Tmy-id: ~D~%" (-> this my-id))
+  (format #t "~2Tbitfield: ~D~%" (-> this bitfield))
+  (format #t "~2Tconnect-handle: ~A~%" (-> this connect-handle))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *aux-voice-mgr*, type aux-voice-mgr
+(define *aux-voice-mgr* (the-as aux-voice-mgr #f))
+
+;; definition for symbol *aux-voice-resp*, type medius-find-world-by-name-response
+(define *aux-voice-resp* (new 'static 'medius-find-world-by-name-response))
+
+;; definition for symbol *aux-game-name*, type string
+(define *aux-game-name* (new 'global 'string 64 (the-as string #f)))
+
+;; definition for symbol *aux-voice-game-info*, type medius-game-info-response
+(define *aux-voice-game-info* (new 'static 'medius-game-info-response))
+
+;; definition for symbol *aux-voice-connect-info*, type net-connection-info
+(define *aux-voice-connect-info* (new 'static 'net-connection-info))
+
+;; definition for symbol *aux-voice-got-callback*, type symbol
+(define *aux-voice-got-callback* #f)
+
+;; definition for symbol *aux-voice-world-report*, type medius-world-report
+(define *aux-voice-world-report* (new 'static 'medius-world-report))
+
+;; definition for symbol *aux-voice-enabled*, type symbol
+(define *aux-voice-enabled* #f)
+
+;; definition for symbol *aux-voice-last-startup*, type time-frame
+(define *aux-voice-last-startup* (the-as time-frame 0))
+
+;; definition for symbol *aux-voice-acct-ids*, type (pointer int32)
+(define *aux-voice-acct-ids* (new 'static 'array int32 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+
+;; definition for method 7 of type aux-voice-mgr
+;; WARN: Return type mismatch process vs aux-voice-mgr.
+(defmethod relocate ((this aux-voice-mgr) (offset int))
+  (set! *aux-voice-mgr* this)
+  (if *aux-voice-mgr*
+      (set! *aux-voice-mgr* (&+ *aux-voice-mgr* offset))
+      )
+  (the-as aux-voice-mgr ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type aux-voice-mgr
+(defmethod deactivate ((this aux-voice-mgr))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *aux-voice-mgr* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for function aux-voice-mgr-init-by-other
+(defbehavior aux-voice-mgr-init-by-other aux-voice-mgr ()
+  (stack-size-set! (-> self main-thread) 1600)
+  (logclear! (-> self mask) (process-mask pause menu))
+  (init! self)
+  (go-virtual startup)
+  )
+
+;; definition for function aux-voice-mgr-activate
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-mgr-activate ()
+  (process->handle (ppointer->process (process-spawn aux-voice-mgr :name "aux-voice-mgr")))
+  )
+
+;; definition for function aux-voice-mgr-deactivate
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-mgr-deactivate ()
+  (send-event *aux-voice-mgr* 'go-die)
+  0
+  )
+
+;; definition for function aux-voice-mgr-failed
+(defbehavior aux-voice-mgr-failed aux-voice-mgr ()
+  (go-virtual die)
+  )
+
+;; definition for function do-aux-voice-msg-callback
+;; WARN: Return type mismatch uint vs object.
+(defun do-aux-voice-msg-callback ((arg0 mem-buffer) (arg1 object) (arg2 int) (arg3 (pointer uint8)))
+  (let ((s5-0 (-> arg3 0)))
+    (when (zero? s5-0)
+      (set! s5-0 (+ (-> arg3 1) 1))
+      (let ((s3-0 (&-> arg3 1))
+            (s4-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1))
+            )
+        (set-buffer! (-> s4-0 0) s3-0 (the-as int (-> s3-0 0)))
+        (let* ((a0-2 (-> s3-0 1))
+               (v1-5 (-> *net-aux-msg-handlers* a0-2))
+               )
+          (if (nonzero? (-> v1-5 handler-func))
+              ((-> v1-5 handler-func) (-> s4-0 0) arg2)
+              )
+          )
+        )
+      )
+    s5-0
+    )
+  )
+
+;; definition for function aux-voice-msg-callback
+;; INFO: Called from C
+(defun aux-voice-msg-callback ((arg0 mem-buffer) (arg1 object) (arg2 int) (arg3 (pointer uint8)))
+  (with-pp
+    (let ((gp-0 (the-as process pp)))
+      (set! pp *display*)
+      (let ((v0-0 (do-aux-voice-msg-callback arg0 arg1 arg2 arg3)))
+        (set! pp gp-0)
+        v0-0
+        )
+      )
+    )
+  )
+
+;; definition for function aux-voice-acct-id-callback
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-acct-id-callback ((arg0 mem-buffer) (arg1 int))
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (set! (-> *aux-voice-acct-ids* arg1) (read-int32 arg0))
+  (format 0 "machine %D is acct-id ~D~%" arg1 (-> *aux-voice-acct-ids* arg1))
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *net-aux-msg-handlers* 12 handler-func) aux-voice-acct-id-callback)
+
+;; definition for function aux-voice-mgr-default-handler
+(defbehavior aux-voice-mgr-default-handler aux-voice-mgr ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('go-die)
+     (go-virtual die)
+     )
+    )
+  )
+
+;; definition for function aux-voice-local-disconnect-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-local-disconnect-callback ()
+  (format 0 "disconnect callback~%")
+  (set! *aux-voice-got-callback* #t)
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate die (aux-voice-mgr)
+  :virtual #t
+  :code (behavior ()
+    (when (nonzero? (-> self connect-handle))
+      (format 0 "disconnecting dme...~%")
+      (let ((gp-0 (new 'stack-no-clear 'medius-disconnect-params)))
+        (mem-clear! (&-> gp-0 connection-handle) 16)
+        (set! *aux-voice-got-callback* #f)
+        (set! (-> gp-0 connection-handle) (-> self connect-handle))
+        (set! (-> gp-0 disconnect-reason) 0)
+        (set! (-> gp-0 my-disconnect-callback) (the-as pointer aux-voice-local-disconnect-callback))
+        (set! *scert-function-id* (scert-function net-disconnect))
+        (knet-scert-function-1-args (&-> gp-0 connection-handle))
+        )
+      (suspend-for (seconds 2)
+        (if *aux-voice-got-callback*
+            (goto cfg-7)
+            )
+        )
+      (label cfg-7)
+      (set! (-> self connect-handle) (the-as pointer 0))
+      0
+      )
+    )
+  )
+
+;; definition for method 20 of type aux-voice-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this aux-voice-mgr))
+  (set! (-> this game-id) 0)
+  (set! (-> this connect-handle) (the-as pointer 0))
+  (set! *aux-voice-mgr* this)
+  0
+  (none)
+  )
+
+;; definition for function aux-voice-client-connect-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-client-connect-callback ((arg0 net-type-client-connect-callback-data))
+  (with-pp
+    (inspect arg0)
+    (let ((s5-0 *aux-voice-mgr*))
+      (when s5-0
+        (logior! (-> s5-0 bitfield) (ash 1 (-> arg0 client-index)))
+        (set! (-> *net-mgr* game-state connected-bitfield) (-> s5-0 bitfield))
+        (let ((s4-0 pp))
+          (set! pp s5-0)
+          (send-event *headset* 'client-joined (-> arg0 client-index))
+          (set! pp s4-0)
+          )
+        (let ((s4-1 (alloc-msg-buffer)))
+          (write-int8 s4-1 0)
+          (write-int8 s4-1 0)
+          (write-int8 s4-1 12)
+          (write-int32 s4-1 (-> *net-mgr* lobby-state my-account-id))
+          (set! (-> (the-as (pointer int8) (-> s4-1 base)) 1) (+ (bytes-used s4-1) -1))
+          (aux-voice-send s5-0 s4-1 (ash 1 (-> arg0 client-index)) 64)
+          (free-msg-buffer s4-1)
+          )
+        )
+      )
+    0
+    )
+  )
+
+;; definition for function aux-voice-client-disconnect-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-client-disconnect-callback ((arg0 net-type-client-connect-callback-data))
+  (with-pp
+    (inspect arg0)
+    (let ((v1-2 *aux-voice-mgr*))
+      (when v1-2
+        (logclear! (-> v1-2 bitfield) (ash 1 (-> arg0 client-index)))
+        (set! (-> *net-mgr* game-state connected-bitfield) (-> v1-2 bitfield))
+        (let ((s5-0 pp))
+          (set! pp v1-2)
+          (send-event *headset* 'client-left (-> arg0 client-index))
+          (set! pp s5-0)
+          )
+        )
+      )
+    (set! (-> *aux-voice-acct-ids* (-> arg0 client-index)) 0)
+    0
+    )
+  )
+
+;; definition for function aux-voice-local-connect-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun aux-voice-local-connect-callback ((arg0 net-type-connect-callback-data))
+  (inspect arg0)
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate startup (aux-voice-mgr)
+  :virtual #t
+  :event aux-voice-mgr-default-handler
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'medius-find-world-by-name-request)))
+      (mem-clear! (-> gp-0 message-id) 108)
+      (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+      (format (clear *aux-game-name*) "@CLAN_CHAT_~D" (-> *medius-my-clan* medius-id))
+      (copy-charp<-charp (-> gp-0 name) (-> *aux-game-name* data))
+      (set! (-> gp-0 world-type) 0)
+      (set! *aux-voice-got-callback* #f)
+      (set! *scert-function-id* (scert-function medius-find-world-by-name))
+      (if (nonzero? (knet-scert-function-3-args
+                      (-> gp-0 message-id)
+                      (lambda ((arg0 pointer))
+                        (mem-copy! (the-as pointer *aux-voice-resp*) arg0 141)
+                        (set! *aux-voice-got-callback* #t)
+                        0
+                        )
+                      #f
+                      )
+                    )
+          (return #f)
+          )
+      )
+    (until *aux-voice-got-callback*
+      (suspend)
+      )
+    (let ((gp-1 *aux-voice-resp*))
+      (inspect gp-1)
+      (cond
+        ((or (nonzero? (-> gp-1 status-code)) (zero? (-> gp-1 medius-world-id)))
+         (go-virtual creating)
+         )
+        (else
+          (set! (-> self game-id) (-> gp-1 medius-world-id))
+          (go-virtual joining)
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate creating (aux-voice-mgr)
+  :virtual #t
+  :event aux-voice-mgr-default-handler
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'medius-create-game-request)))
+      (mem-clear! (-> gp-0 message-id) 212)
+      (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+      (set! *scert-function-id* (scert-function get-application-id))
+      (set! (-> gp-0 application-id) (knet-scert-function-0-args))
+      (set! (-> gp-0 min-players) 1)
+      (set! (-> gp-0 max-players) 16)
+      (set! (-> gp-0 game-level) 3)
+      (set! (-> gp-0 rules-set) 0)
+      (set! (-> gp-0 game-host-type) 4)
+      (set! (-> gp-0 attributes) 0)
+      (copy-charp<-charp (-> gp-0 game-name) (-> *aux-game-name* data))
+      (set! *aux-voice-got-callback* #f)
+      (set! *scert-function-id* (scert-function medius-create-game))
+      (knet-scert-function-3-args
+        (-> gp-0 message-id)
+        (lambda ((arg0 medius-create-game-response))
+          (inspect arg0)
+          (mem-copy! (the-as pointer *aux-voice-resp*) (the-as pointer arg0) 32)
+          (set! *aux-voice-got-callback* #t)
+          0
+          )
+        #f
+        )
+      )
+    (until *aux-voice-got-callback*
+      (suspend)
+      )
+    (let ((gp-1 (the-as medius-create-game-response *aux-voice-resp*)))
+      (case (-> gp-1 status-code)
+        (((medius-status-code medius-success))
+         (format 0 "found game.. joining~%")
+         (set! (-> self game-id) (-> gp-1 medius-world-id))
+         (go-virtual joining)
+         )
+        (((medius-status-code medius-game-name-exists))
+         (go-virtual startup)
+         )
+        (else
+          (format 0 "creating game..~%")
+          (aux-voice-mgr-failed)
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate joining (aux-voice-mgr)
+  :virtual #t
+  :event aux-voice-mgr-default-handler
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'medius-game-info-request)))
+      (mem-clear! (-> gp-0 message-id) 44)
+      (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+      (set! (-> gp-0 medius-world-id) (-> self game-id))
+      (set! *aux-voice-got-callback* #f)
+      (set! *scert-function-id* (scert-function medius-game-info))
+      (knet-scert-function-3-args
+        (-> gp-0 message-id)
+        (lambda ((arg0 medius-game-info-response))
+          (inspect arg0)
+          (mem-copy! (the-as pointer *aux-voice-game-info*) (the-as pointer arg0) 396)
+          (set! *aux-voice-got-callback* #t)
+          0
+          )
+        #f
+        )
+      )
+    (until *aux-voice-got-callback*
+      (suspend)
+      )
+    (cond
+      ((= (-> *aux-voice-game-info* status-code) (medius-status-code medius-success))
+       )
+      (else
+        (aux-voice-mgr-failed)
+        )
+      )
+    (let ((gp-1 (new 'stack-no-clear 'medius-join-game-request)))
+      (mem-clear! (-> gp-1 message-id) 196)
+      (mem-copy! (-> gp-1 session-key) *medius-session-key* 17)
+      (set! (-> gp-1 medius-world-id) (-> self game-id))
+      (set! *aux-voice-got-callback* #f)
+      (set! *scert-function-id* (scert-function medius-join-game))
+      (knet-scert-function-3-args
+        (-> gp-1 message-id)
+        (lambda ((arg0 medius-join-game-response))
+          (inspect arg0)
+          (mem-copy! (the-as pointer *aux-voice-resp*) (the-as pointer arg0) 186)
+          (set! *aux-voice-got-callback* #t)
+          0
+          )
+        #f
+        )
+      )
+    (until *aux-voice-got-callback*
+      (suspend)
+      )
+    (let ((v1-16 (the-as medius-join-game-response *aux-voice-resp*)))
+      (if (= (-> v1-16 status-code) (medius-status-code medius-success))
+          (mem-copy! (the-as pointer *aux-voice-connect-info*) (the-as pointer (-> v1-16 connect-info)) 154)
+          (aux-voice-mgr-failed)
+          )
+      )
+    (set! (-> *medius-my-player* stats last-channel-id) (-> *net-mgr* lobby-state channel-id))
+    (medius-start-account-stats-update #t #f)
+    (let ((gp-2 (new 'stack-no-clear 'medius-update-user-state)))
+      (mem-clear! (-> gp-2 session-key) 24)
+      (mem-copy! (-> gp-2 session-key) *medius-session-key* 17)
+      (set! (-> gp-2 user-action) 2)
+      (set! *scert-function-id* (scert-function medius-update-user-state))
+      (knet-scert-function-1-args (-> gp-2 session-key))
+      (set! (-> gp-2 user-action) 1)
+      (set! *scert-function-id* (scert-function medius-update-user-state))
+      (knet-scert-function-1-args (-> gp-2 session-key))
+      )
+    (let ((gp-3 (new 'stack-no-clear 'net-connect-params)))
+      (mem-clear! (the-as pointer (-> gp-3 in)) 356)
+      (mem-clear! (the-as pointer (-> gp-3 out)) 12)
+      (set! *scert-function-id* (scert-function net-connect-in-params-defaults))
+      (knet-scert-function-1-args (-> gp-3 in))
+      (set! (-> gp-3 in max-clients) 16)
+      (mem-copy! (the-as pointer (-> gp-3 in connection-info)) (the-as pointer *aux-voice-connect-info*) 154)
+      (set! (-> gp-3 in pf-remote-client-connect-callback) (the-as pointer aux-voice-client-connect-callback))
+      (set! (-> gp-3 in pf-remote-client-disconnect-callback) (the-as pointer aux-voice-client-disconnect-callback))
+      (set! (-> gp-3 in pf-local-connect-callback) (the-as pointer aux-voice-local-connect-callback))
+      (set! *scert-function-id* (scert-function net-connect))
+      (if (nonzero? (knet-scert-function-2-args (-> gp-3 in) (-> gp-3 out)))
+          (aux-voice-mgr-failed)
+          )
+      (set! (-> self connect-handle) (-> gp-3 out connection-handle))
+      )
+    (let ((gp-4 (new 'stack-no-clear 'net-connection-status)))
+      (until #f
+        (suspend)
+        (set! *scert-function-id* (scert-function net-get-connection-status))
+        (knet-scert-function-2-args (&-> gp-4 my-connect-status) (-> self connect-handle))
+        (cond
+          ((= (-> gp-4 my-connect-status) 1)
+           (suspend)
+           (goto cfg-19)
+           )
+          ((= (-> gp-4 my-connect-status) 3)
+           (suspend)
+           (aux-voice-mgr-failed)
+           )
+          )
+        )
+      )
+    #f
+    (label cfg-19)
+    (go-virtual active)
+    )
+  )
+
+;; definition for symbol *aux-voice-last-update*, type time-frame
+(define *aux-voice-last-update* (the-as time-frame 0))
+
+;; definition for function aux-voice-running
+;; WARN: Return type mismatch int vs object.
+(defbehavior aux-voice-running aux-voice-mgr ()
+  (let ((gp-0 (new 'stack-no-clear 'array 'int32 2)))
+    (set! *scert-function-id* (scert-function net-get-client-list))
+    (knet-scert-function-2-args (-> self connect-handle) (&-> gp-0 0))
+    (set! (-> self bitfield) 0)
+    (mem-copy! (&-> self bitfield) (&-> gp-0 1) 2)
+    )
+  (logior! (-> self bitfield) (ash 1 (-> self my-id)))
+  (set! (-> *net-mgr* game-state connected-bitfield) (-> self bitfield))
+  (format *stdebug* "-> AUX voice mgr running: I am ~D, connected: ~D~%" (-> self my-id) (-> self bitfield))
+  (when (>= (- (-> *display* real-clock frame-counter) *aux-voice-last-update*) (seconds 25))
+    (set! *aux-voice-last-update* (-> *display* real-clock frame-counter))
+    (when (not (logtest? (+ (ash 1 (-> self my-id)) -1) (-> self bitfield)))
+      (let ((gp-1 (new 'stack-no-clear 'medius-world-report)))
+        (mem-clear! (-> gp-1 session-key) 384)
+        (mem-copy! (-> gp-1 session-key) *medius-session-key* 17)
+        (set! (-> gp-1 medius-world-id) (-> self game-id))
+        (copy-charp<-charp (-> gp-1 game-name) (-> *aux-voice-game-info* game-name))
+        (set! (-> gp-1 min-players) 1)
+        (set! (-> gp-1 max-players) 16)
+        (set! (-> gp-1 world-status) 2)
+        (dotimes (v1-22 16)
+          (if (logtest? (-> self bitfield) (ash 1 v1-22))
+              (+! (-> gp-1 player-count) 1)
+              )
+          )
+        (set! *scert-function-id* (scert-function medius-world-report))
+        (knet-scert-function-1-args (-> gp-1 session-key))
+        )
+      )
+    )
+  (if (= (-> *medius-my-clan* medius-id) -1)
+      (set! *aux-voice-enabled* #f)
+      )
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate active (aux-voice-mgr)
+  :virtual #t
+  :event aux-voice-mgr-default-handler
+  :exit (behavior ()
+    (headset-deactivate)
+    )
+  :code (behavior ()
+    (set! *aux-voice-last-update* (+ (-> *display* real-clock frame-counter) (seconds -25)))
+    (set! *scert-function-id* (scert-function net-get-my-client-index))
+    (knet-scert-function-2-args (&-> self my-id) (-> self connect-handle))
+    (set! (-> *net-mgr* game-state local-machine-idx) (-> self my-id))
+    (let ((gp-0 (alloc-msg-buffer)))
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 12)
+      (write-int32 gp-0 (-> *net-mgr* lobby-state my-account-id))
+      (set! (-> (the-as (pointer int8) (-> gp-0 base)) 1) (+ (bytes-used gp-0) -1))
+      (aux-voice-send self gp-0 -1 64)
+      (free-msg-buffer gp-0)
+      )
+    (aux-voice-running)
+    (suspend)
+    (headset-activate)
+    (until #f
+      (suspend-for (seconds 20)
+        (aux-voice-running)
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 21 of type aux-voice-mgr
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 21 aux-voice-mgr) has a return type of none, but the expression builder found a return statement.
+(defmethod aux-voice-send ((this aux-voice-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (let ((gp-0 (new 'stack-no-clear 'net-send-message-in-params)))
+    (case arg1
+      ((-2)
+       (set! arg1 (-> this bitfield))
+       )
+      )
+    (if (zero? (logclear arg1 (ash 1 (-> this my-id))))
+        (return #f)
+        )
+    (mem-clear! (&-> gp-0 connection-handle) 64)
+    (set! (-> gp-0 connection-handle) (-> this connect-handle))
+    (set! (-> gp-0 transport-flags) 128)
+    (set! (-> gp-0 message-type) *aux-voice-msg-id*)
+    (set! (-> gp-0 message-length) (bytes-used arg0))
+    (set! (-> gp-0 message-data) (the-as uint (-> arg0 base)))
+    (set! (-> gp-0 dest-client target-client) 256)
+    (set! (-> gp-0 dest-client client-mask base-id) 0)
+    (mem-copy! (the-as pointer (-> gp-0 dest-client client-mask)) (&-> this bitfield) 2)
+    (set! (-> gp-0 dest-client client-mask max-id) 16)
+    (set! *scert-function-id* (scert-function net-send-message))
+    (let ((a2-2 (knet-scert-function-2-args (&-> gp-0 connection-handle) (&+ gp-0 64))))
+      (if (nonzero? a2-2)
+          (format 0 "aux-voice-send: ~D~%" a2-2)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

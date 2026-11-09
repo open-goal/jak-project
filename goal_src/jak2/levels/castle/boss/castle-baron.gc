@@ -1078,11 +1078,9 @@
           (t9-0)
           )
       )
-    (let ((v1-6 (ja-group)))
-      (when (not (and v1-6 (= v1-6 (-> self draw art-group data (-> self enemy-info hostile-anim)))))
-        (ja-channel-push! 1 (seconds 0.1))
-        (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
-        )
+    (when (not (ja-group? (-> self draw art-group data (-> self enemy-info hostile-anim))))
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)) :num! min)
       )
     )
   :code (behavior ()
@@ -2235,18 +2233,6 @@
         )
     )
   :trans (behavior ()
-    (local-vars
-      (sv-752 (array collide-shape))
-      (sv-756 sphere)
-      (sv-760 (pointer uint32))
-      (sv-768 int)
-      (sv-832 vector)
-      (sv-848 int)
-      (sv-864 int)
-      (sv-880 vector)
-      (sv-896 vector)
-      (sv-912 vector)
-      )
     (rlet ((vf0 :class vf)
            (vf4 :class vf)
            (vf5 :class vf)
@@ -2356,15 +2342,10 @@
                         )
                     0
                     (dotimes (s1-0 s3-1)
-                      (let ((s0-0 vector-vector-xz-distance))
-                        (set! sv-832 (-> *krew-boss-clone-spawn-points* s1-0))
-                        (let* ((a1-27 (target-pos 0))
-                               (f0-9 (s0-0 sv-832 a1-27))
-                               )
-                          (when (< f0-9 f30-0)
-                            (set! s2-1 s1-0)
-                            (set! f30-0 f0-9)
-                            )
+                      (let ((f0-9 (vector-vector-xz-distance (-> *krew-boss-clone-spawn-points* s1-0) (target-pos 0))))
+                        (when (< f0-9 f30-0)
+                          (set! s2-1 s1-0)
+                          (set! f30-0 f0-9)
                           )
                         )
                       )
@@ -2372,41 +2353,39 @@
                         (nonzero? (-> self next-clone-side))
                         )
                     (set! (-> self last-closest-spawn) s2-1)
-                    (set! sv-848 (mod (+ s2-1 1) s3-1))
-                    (set! sv-864 (mod (+ s2-1 -1) s3-1))
-                    (let ((s1-1 (quaternion->matrix (new-stack-matrix0) (-> self root quat))))
+                    (let ((sv-848 (mod (+ s2-1 1) s3-1))
+                          (sv-864 (mod (+ s2-1 -1) s3-1))
+                          (s1-1 (quaternion->matrix (new-stack-matrix0) (-> self root quat)))
+                          )
                       (when (< sv-864 0)
-                        (set! sv-864 (+ sv-864 s3-1))
+                        (+! sv-864 s3-1)
                         sv-864
                         )
-                      (let ((s0-1 (new 'stack-no-clear 'vector)))
-                        (set! sv-880 (-> *krew-boss-clone-spawn-points* sv-848))
-                        (let* ((v0-16 (target-pos 0))
-                               (s0-2 (vector-! s0-1 sv-880 v0-16))
-                               )
-                          (set! sv-912 (new 'stack-no-clear 'vector))
-                          (set! sv-896 (-> *krew-boss-clone-spawn-points* sv-864))
-                          (let ((v0-17 (target-pos 0)))
-                            (.lvf vf4 (&-> sv-896 quad))
-                            (.lvf vf5 (&-> v0-17 quad))
+                      (let ((s0-2 (vector-! (new 'stack-no-clear 'vector) (-> *krew-boss-clone-spawn-points* sv-848) (target-pos 0)))
+                            (sv-912 (new 'stack-no-clear 'vector))
                             )
-                          (.mov.vf.w vf6 vf0)
-                          (.sub.vf.xyz vf6 vf4 vf5)
-                          (.svf (&-> sv-912 quad) vf6)
-                          (let ((f30-1 (vector-y-angle (-> s1-1 vector 2))))
-                            (cond
-                              ((< (fabs (deg-diff (vector-y-angle s0-2) f30-1)) (fabs (deg-diff (vector-y-angle sv-912) f30-1)))
-                               (if (> (-> self next-clone-side) 0)
-                                   (+! (-> self next-clone-side) 1)
-                                   (set! (-> self next-clone-side) 1)
-                                   )
-                               )
-                              ((< (-> self next-clone-side) 0)
-                               (+! (-> self next-clone-side) -1)
-                               )
-                              (else
-                                (set! (-> self next-clone-side) -1)
-                                )
+                        (let ((sv-896 (-> *krew-boss-clone-spawn-points* sv-864))
+                              (v0-17 (target-pos 0))
+                              )
+                          (.lvf vf4 (&-> sv-896 quad))
+                          (.lvf vf5 (&-> v0-17 quad))
+                          )
+                        (.mov.vf.w vf6 vf0)
+                        (.sub.vf.xyz vf6 vf4 vf5)
+                        (.svf (&-> sv-912 quad) vf6)
+                        (let ((f30-1 (vector-y-angle (-> s1-1 vector 2))))
+                          (cond
+                            ((< (fabs (deg-diff (vector-y-angle s0-2) f30-1)) (fabs (deg-diff (vector-y-angle sv-912) f30-1)))
+                             (if (> (-> self next-clone-side) 0)
+                                 (+! (-> self next-clone-side) 1)
+                                 (set! (-> self next-clone-side) 1)
+                                 )
+                             )
+                            ((< (-> self next-clone-side) 0)
+                             (+! (-> self next-clone-side) -1)
+                             )
+                            (else
+                              (set! (-> self next-clone-side) -1)
                               )
                             )
                           )
@@ -2421,95 +2400,100 @@
                     )
                   )
                 )
-              (set! sv-752 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 10)))
-              (let ((v1-121 (new 'stack-no-clear 'sphere)))
-                (set! (-> v1-121 quad) (-> s5-1 quad))
-                (set! sv-756 v1-121)
-                )
-              (set! sv-760 (new 'static 'array uint32 64
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             #x0
-                             )
+              (let ((sv-752 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 10)))
+                    (v1-121 (new 'stack-no-clear 'sphere))
                     )
-              (set! sv-768 0)
-              (set! (-> sv-756 r) 10240.0)
-              (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 (-> sv-752 data) (-> sv-752 allocated-length)))
-              (if s4-1
-                  (set! sv-768 (+ sv-768 -1))
-                  )
-              (when (<= sv-768 0)
-                (let ((s4-2 (new 'stack-no-clear 'enemy-init-by-other-params)))
-                  (set! (-> s4-2 trans quad) (-> s5-1 quad))
-                  (quaternion-copy! (-> s4-2 quat) (-> self root quat))
-                  (set! (-> s4-2 entity) #f)
-                  (set! (-> s4-2 directed?) #f)
-                  (set! (-> s4-2 no-initial-move-to-ground?) #f)
-                  (+! (-> self num-clones-to-spawn) -1)
-                  (set! (-> self clones gp-2)
-                        (ppointer->handle (process-spawn krew-boss-clone :init enemy-init-by-other self s4-2 :to self))
+                (set! (-> v1-121 quad) (-> s5-1 quad))
+                (let ((sv-756 v1-121))
+                  (let ((sv-760 (new 'static 'array uint32 64
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  #x0
+                                  )
+                                )
                         )
+                    )
+                  (let ((sv-768 0))
+                    (set! (-> sv-756 r) 10240.0)
+                    (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 (-> sv-752 data) (-> sv-752 allocated-length)))
+                    (if s4-1
+                        (+! sv-768 -1)
+                        )
+                    (when (<= sv-768 0)
+                      (let ((s4-2 (new 'stack-no-clear 'enemy-init-by-other-params)))
+                        (set! (-> s4-2 trans quad) (-> s5-1 quad))
+                        (quaternion-copy! (-> s4-2 quat) (-> self root quat))
+                        (set! (-> s4-2 entity) #f)
+                        (set! (-> s4-2 directed?) #f)
+                        (set! (-> s4-2 no-initial-move-to-ground?) #f)
+                        (+! (-> self num-clones-to-spawn) -1)
+                        (set! (-> self clones gp-2)
+                              (ppointer->handle (process-spawn krew-boss-clone :init enemy-init-by-other self s4-2 :to self))
+                              )
+                        )
+                      )
+                    )
                   )
                 )
               )
@@ -2682,11 +2666,11 @@
       )
     0
     (logclear! (-> self mask) (process-mask actor-pause))
-    (let ((gp-1 (handle->process (-> self focus handle))))
+    (let ((gp-1 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if (not gp-1)
           (go-virtual active)
           )
-      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-1) 0) quad))
+      (set! (-> self focus-pos quad) (-> (get-trans gp-1 0) quad))
       )
     (let ((f30-0 (-> self enemy-info circle-dist-lo))
           (f28-0 (-> self enemy-info circle-dist-hi))
@@ -2717,9 +2701,9 @@
     )
   :trans (behavior ()
     (local-vars (v1-25 enemy-flag))
-    (let ((a0-1 (handle->process (-> self focus handle))))
+    (let ((a0-1 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if a0-1
-          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          (set! (-> self focus-pos quad) (-> (get-trans a0-1 0) quad))
           )
       )
     (if (or (!= (-> self focus aware) 3) (not (get-enemy-target self)))

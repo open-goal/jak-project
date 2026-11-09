@@ -367,6 +367,14 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
     return nullptr;
   }
 
+  // the macro always gives a process, so a more specific type (from :handle-type) needs a cast
+  if (!cast_type_for_result) {
+    auto proc_type = env.get_variable_type(*val_in_if, true);
+    if (proc_type != TypeSpec("process") && env.dts->ts.tc(TypeSpec("process"), proc_type)) {
+      cast_type_for_result = proc_type;
+    }
+  }
+
   const auto& temp_use_def = env.get_use_def_info(*second_result.maps.regs.at(reg_temp_1));
   if (temp_use_def.use_count() != 2 || temp_use_def.def_count() != 1) {
     lg::error("failed usedef: {} {}", temp_use_def.use_count(), temp_use_def.def_count());

@@ -5,73 +5,62 @@
 ;; INFO: Used lq/sq
 (defun cam-slave-get-vector-with-offset ((arg0 entity-actor) (arg1 vector) (arg2 symbol))
   (local-vars (s3-0 object))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (cond
-      ((= arg2 'trans)
-       (set! s3-0 (-> arg0 trans))
-       )
-      ((= arg2 'rot)
-       (set! s3-0 (&-> arg0 task))
-       )
-      (else
-        (set! s3-0 (res-lump-struct arg0 arg2 structure))
-        )
+  (cond
+    ((= arg2 'trans)
+     (set! s3-0 (-> arg0 trans))
+     )
+    ((= arg2 'rot)
+     (set! s3-0 (&-> arg0 task))
+     )
+    (else
+      (set! s3-0 (res-lump-struct arg0 arg2 structure))
       )
-    (let* ((s2-0 (method-of-type res-lump get-property-struct))
-           (v1-8 arg2)
-           (a0-8
-             (the-as
-               vector
-               (s2-0
-                 arg0
-                 (cond
-                   ((= v1-8 'trans)
-                    'trans-offset
-                    )
-                   ((= v1-8 'pivot)
-                    'pivot-offset
-                    )
-                   ((= v1-8 'align)
-                    'align-offset
-                    )
-                   ((= v1-8 'interesting)
-                    'interesting-offset
-                    )
-                   (else
-                     (format 0 "WARNING: cam-slave-get-vector-with-offset has been passed an unknown symbol ~A.~%" arg2)
-                     #f
-                     )
+    )
+  (let* ((s2-0 (method-of-type res-lump get-property-struct))
+         (v1-8 arg2)
+         (a0-8
+           (the-as
+             vector
+             (s2-0
+               arg0
+               (cond
+                 ((= v1-8 'trans)
+                  'trans-offset
+                  )
+                 ((= v1-8 'pivot)
+                  'pivot-offset
+                  )
+                 ((= v1-8 'align)
+                  'align-offset
+                  )
+                 ((= v1-8 'interesting)
+                  'interesting-offset
+                  )
+                 (else
+                   (format 0 "WARNING: cam-slave-get-vector-with-offset has been passed an unknown symbol ~A.~%" arg2)
+                   #f
                    )
-                 'interp
-                 -1000000000.0
-                 (the-as structure #f)
-                 (the-as (pointer res-tag) #f)
-                 *res-static-buf*
                  )
+               'interp
+               -1000000000.0
+               (the-as structure #f)
+               (the-as (pointer res-tag) #f)
+               *res-static-buf*
                )
              )
            )
-      (cond
-        ((and s3-0 a0-8)
-         (.lvf vf4 (&-> (the-as vector s3-0) quad))
-         (.lvf vf5 (&-> a0-8 quad))
-         (.mov.vf.w vf6 vf0)
-         (.add.vf.xyz vf6 vf4 vf5)
-         (.svf (&-> arg1 quad) vf6)
-         #t
          )
-        (s3-0
-          (set! (-> arg1 quad) (-> (the-as vector s3-0) quad))
-          #t
-          )
-        (else
-          #f
-          )
+    (cond
+      ((and s3-0 a0-8)
+       (vector+! arg1 (the-as vector s3-0) a0-8)
+       #t
+       )
+      (s3-0
+        (set! (-> arg1 quad) (-> (the-as vector s3-0) quad))
+        #t
+        )
+      (else
+        #f
         )
       )
     )
@@ -389,134 +378,107 @@
 ;; definition for method 9 of type cam-index
 ;; INFO: Used lq/sq
 (defmethod cam-index-method-9 ((this cam-index) (arg0 symbol) (arg1 entity) (arg2 vector) (arg3 curve))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s2-0 cam-slave-get-flags)
-          (s0-0 arg1)
-          (v1-0 arg0)
-          )
-      (set! (-> this flags)
-            (the-as
-              cam-index-options
-              (s2-0
-                s0-0
-                (cond
-                  ((= v1-0 'focalpull)
-                   'focalpull-flags
-                   )
-                  ((= v1-0 'campoints)
-                   'campoints-flags
-                   )
-                  (else
-                    (format (clear *cam-res-string*) "~S-flags" arg0)
-                    (format 0 "WARNING: cam-index-init is using string->symbol to build symbol ~A at runtime.~%" *cam-res-string*)
-                    (string->symbol *cam-res-string*)
-                    )
+  (let ((s2-0 cam-slave-get-flags)
+        (s0-0 arg1)
+        (v1-0 arg0)
+        )
+    (set! (-> this flags)
+          (the-as
+            cam-index-options
+            (s2-0
+              s0-0
+              (cond
+                ((= v1-0 'focalpull)
+                 'focalpull-flags
+                 )
+                ((= v1-0 'campoints)
+                 'campoints-flags
+                 )
+                (else
+                  (format (clear *cam-res-string*) "~S-flags" arg0)
+                  (format 0 "WARNING: cam-index-init is using string->symbol to build symbol ~A at runtime.~%" *cam-res-string*)
+                  (string->symbol *cam-res-string*)
                   )
                 )
               )
             )
-      )
-    (let* ((s2-1 (res-lump-data arg1 arg0 pointer))
-           (s0-1 (method-of-type res-lump get-property-struct))
-           (v1-4 arg0)
-           (v0-10
-             (s0-1
-               arg1
-               (cond
-                 ((= v1-4 'focalpull)
-                  'focalpull-offset
-                  )
-                 ((= v1-4 'campoints)
-                  'campoints-offset
-                  )
-                 (else
-                   (format (clear *cam-res-string*) "~S-offset" arg0)
-                   (format 0 "WARNING: cam-index-init is using string->symbol to build symbol ~A at runtime.~%" *cam-res-string*)
-                   (string->symbol *cam-res-string*)
-                   )
+          )
+    )
+  (let* ((s2-1 (res-lump-data arg1 arg0 pointer))
+         (s0-1 (method-of-type res-lump get-property-struct))
+         (v1-4 arg0)
+         (v0-10
+           (s0-1
+             arg1
+             (cond
+               ((= v1-4 'focalpull)
+                'focalpull-offset
+                )
+               ((= v1-4 'campoints)
+                'campoints-offset
+                )
+               (else
+                 (format (clear *cam-res-string*) "~S-offset" arg0)
+                 (format 0 "WARNING: cam-index-init is using string->symbol to build symbol ~A at runtime.~%" *cam-res-string*)
+                 (string->symbol *cam-res-string*)
                  )
-               'interp
-               -1000000000.0
-               (the-as structure #f)
-               (the-as (pointer res-tag) #f)
-               *res-static-buf*
                )
+             'interp
+             -1000000000.0
+             (the-as structure #f)
+             (the-as (pointer res-tag) #f)
+             *res-static-buf*
              )
            )
-      (cond
-        (s2-1
-          (cond
-            (v0-10
-              (let ((a1-8 (-> this vec)))
-                (let ((v1-6 (&+ s2-1 0))
-                      (a0-16 (the-as vector v0-10))
-                      )
-                  (.lvf vf4 (&-> (the-as (pointer int128) v1-6)))
-                  (.lvf vf5 (&-> a0-16 quad))
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> a1-8 0 quad) vf6)
-                )
-              (let ((v1-7 (-> this vec 1)))
-                (let ((a0-17 (&+ s2-1 16))
-                      (a1-9 (the-as vector v0-10))
-                      )
-                  (.lvf vf4 (&-> (the-as (pointer int128) a0-17)))
-                  (.lvf vf5 (&-> a1-9 quad))
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> v1-7 quad) vf6)
-                )
-              )
-            (else
-              (set! (-> this vec 0 quad) (-> (the-as (pointer uint128) (&+ s2-1 0))))
-              (set! (-> this vec 1 quad) (-> (the-as (pointer uint128) (&+ s2-1 16))))
-              )
+         )
+    (cond
+      (s2-1
+        (cond
+          (v0-10
+            (vector+! (-> this vec 0) (the-as vector (&+ s2-1 0)) (the-as vector v0-10))
+            (vector+! (-> this vec 1) (the-as vector (&+ s2-1 16)) (the-as vector v0-10))
+            )
+          (else
+            (set! (-> this vec 0 quad) (-> (the-as (pointer uint128) (&+ s2-1 0))))
+            (set! (-> this vec 1 quad) (-> (the-as (pointer uint128) (&+ s2-1 16))))
             )
           )
-        (arg3
-          (set! (-> this vec 0 quad) (-> arg3 cverts 0 quad))
-          (set! (-> this vec 1 quad) (-> arg3 cverts (+ (-> arg3 num-cverts) -1) quad))
-          )
-        (else
-          (return #f)
-          )
+        )
+      (arg3
+        (set! (-> this vec 0 quad) (-> arg3 cverts 0 quad))
+        (set! (-> this vec 1 quad) (-> arg3 cverts (+ (-> arg3 num-cverts) -1) quad))
+        )
+      (else
+        (return #f)
         )
       )
-    (let ((v1-13 (new-stack-vector0)))
-      0.0
-      (cond
-        ((logtest? (-> this flags) (cam-index-options RADIAL))
-         (vector-! v1-13 (-> this vec 1) arg2)
-         (set! (-> this vec 1 w) (vector-length v1-13))
-         (vector-! v1-13 (-> this vec 0) arg2)
-         (set! (-> this vec 1 x) (vector-length v1-13))
-         (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
-         (set! (-> this vec 0 quad) (-> arg2 quad))
-         )
-        ((logtest? (-> this flags) (cam-index-options SPHERICAL))
-         (vector-! v1-13 (-> this vec 1) arg2)
-         (set! (-> this vec 1 w) (vector-length v1-13))
-         (vector-! v1-13 (-> this vec 0) arg2)
-         (set! (-> this vec 1 x) (vector-length v1-13))
-         (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
-         (set! (-> this vec 0 quad) (-> arg2 quad))
-         )
-        (else
-          (vector-! (-> this vec 1) (-> this vec 1) (-> this vec 0))
-          (set! (-> this vec 1 w) (vector-normalize-ret-len! (-> this vec 1) 1.0))
-          )
-        )
-      )
-    #t
     )
+  (let ((v1-14 (new-stack-vector0)))
+    0.0
+    (cond
+      ((logtest? (-> this flags) (cam-index-options RADIAL))
+       (vector-! v1-14 (-> this vec 1) arg2)
+       (set! (-> this vec 1 w) (vector-length v1-14))
+       (vector-! v1-14 (-> this vec 0) arg2)
+       (set! (-> this vec 1 x) (vector-length v1-14))
+       (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
+       (set! (-> this vec 0 quad) (-> arg2 quad))
+       )
+      ((logtest? (-> this flags) (cam-index-options SPHERICAL))
+       (vector-! v1-14 (-> this vec 1) arg2)
+       (set! (-> this vec 1 w) (vector-length v1-14))
+       (vector-! v1-14 (-> this vec 0) arg2)
+       (set! (-> this vec 1 x) (vector-length v1-14))
+       (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
+       (set! (-> this vec 0 quad) (-> arg2 quad))
+       )
+      (else
+        (vector-! (-> this vec 1) (-> this vec 1) (-> this vec 0))
+        (set! (-> this vec 1 w) (vector-normalize-ret-len! (-> this vec 1) 1.0))
+        )
+      )
+    )
+  #t
   )
 
 ;; definition for method 10 of type cam-index
@@ -757,72 +719,41 @@
 ;; WARN: new jak 2 until loop case, check carefully
 (defmethod tracking-spline-method-18 ((this tracking-spline) (arg0 float) (arg1 vector) (arg2 vector) (arg3 tracking-spline-sampler))
   (local-vars (f0-4 float))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (when (not arg3)
-      (set! arg3 (new 'stack-no-clear 'tracking-spline-sampler))
-      (set! (-> arg3 cur-pt) (-> this used-point))
-      (set! (-> arg3 partial-pt) (-> this partial-point))
-      )
-    0.0
-    (until #f
-      (cond
-        ((= (-> arg3 cur-pt) (-> this end-point))
-         (set! (-> arg3 partial-pt) 0.0)
-         (let ((a0-2 arg1))
-           (let ((v1-4 arg1)
-                 (a1-2 (-> this point (-> arg3 cur-pt)))
-                 )
-             (.lvf vf4 (&-> v1-4 quad))
-             (.lvf vf5 (&-> a1-2 position quad))
-             )
-           (.mov.vf.w vf6 vf0)
-           (.add.vf.xyz vf6 vf4 vf5)
-           (.svf (&-> a0-2 quad) vf6)
+  (when (not arg3)
+    (set! arg3 (new 'stack-no-clear 'tracking-spline-sampler))
+    (set! (-> arg3 cur-pt) (-> this used-point))
+    (set! (-> arg3 partial-pt) (-> this partial-point))
+    )
+  0.0
+  (until #f
+    (cond
+      ((= (-> arg3 cur-pt) (-> this end-point))
+       (set! (-> arg3 partial-pt) 0.0)
+       (vector+! arg1 arg1 (-> this point (-> arg3 cur-pt) position))
+       (return arg1)
+       )
+      ((begin (set! f0-4 (+ (-> arg3 partial-pt) (/ arg0 (-> this point (-> arg3 cur-pt) tp-length)))) (< f0-4 1.0))
+       (set! (-> arg3 partial-pt) f0-4)
+       (let ((s2-0 (new 'stack-no-clear 'vector)))
+         (let ((v1-13 (-> this point (-> arg3 cur-pt) next)))
+           (vector-lerp! s2-0 (-> this point (-> arg3 cur-pt) position) (-> this point v1-13 position) f0-4)
            )
-         (return arg1)
+         (vector+! arg1 arg1 s2-0)
          )
-        ((begin (set! f0-4 (+ (-> arg3 partial-pt) (/ arg0 (-> this point (-> arg3 cur-pt) tp-length)))) (< f0-4 1.0))
-         (set! (-> arg3 partial-pt) f0-4)
-         (let ((s2-0 (new 'stack-no-clear 'vector)))
-           (let ((v1-13 (-> this point (-> arg3 cur-pt) next)))
-             (vector-lerp! s2-0 (-> this point (-> arg3 cur-pt) position) (-> this point v1-13 position) f0-4)
-             )
-           (let ((a0-6 arg1))
-             (.lvf vf4 (&-> arg1 quad))
-             (.lvf vf5 (&-> s2-0 quad))
-             (.mov.vf.w vf6 vf0)
-             (.add.vf.xyz vf6 vf4 vf5)
-             (.svf (&-> a0-6 quad) vf6)
-             )
-           )
-         (let ((v1-16 arg2))
-           (let ((a0-8 (-> this point (-> arg3 cur-pt) direction)))
-             (.lvf vf4 (&-> arg2 quad))
-             (.lvf vf5 (&-> a0-8 quad))
-             )
-           (.mov.vf.w vf6 vf0)
-           (.add.vf.xyz vf6 vf4 vf5)
-           (.svf (&-> v1-16 quad) vf6)
-           )
-         (return arg1)
-         )
-        (else
-          (let ((f0-7 (* (- 1.0 (-> arg3 partial-pt)) (-> this point (-> arg3 cur-pt) tp-length))))
-            (set! arg0 (- arg0 f0-7))
-            )
-          (set! (-> arg3 partial-pt) 0.0)
-          (set! (-> arg3 cur-pt) (-> this point (-> arg3 cur-pt) next))
+       (vector+! arg2 arg2 (-> this point (-> arg3 cur-pt) direction))
+       (return arg1)
+       )
+      (else
+        (let ((f0-7 (* (- 1.0 (-> arg3 partial-pt)) (-> this point (-> arg3 cur-pt) tp-length))))
+          (set! arg0 (- arg0 f0-7))
           )
+        (set! (-> arg3 partial-pt) 0.0)
+        (set! (-> arg3 cur-pt) (-> this point (-> arg3 cur-pt) next))
         )
       )
-    #f
-    (the-as vector #f)
     )
+  #f
+  (the-as vector #f)
   )
 
 ;; definition for method 19 of type tracking-spline
@@ -913,67 +844,54 @@
 ;; INFO: Used lq/sq
 (defmethod tracking-spline-method-21 ((this tracking-spline) (arg0 vector) (arg1 float) (arg2 float) (arg3 float) (arg4 float) (arg5 vector))
   (with-pp
-    (rlet ((vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           )
-      (init-vf0-vector)
-      (let ((v1-0 (-> this used-point))
-            (f0-0 (-> this partial-point))
-            )
-        (let ((f1-0 (-> this summed-len)))
-          0.0
-          0.0
-          (let* ((f2-6 (* (- (- f1-0 (* f0-0 (-> this point v1-0 tp-length))) arg4) arg3))
-                 (f2-9 (* (fmin arg1 (- f2-6 (-> this max-move))) (-> pp clock time-adjust-ratio)))
-                 )
-            (set! (-> this max-move) (fmin arg2 (+ (-> this max-move) f2-9)))
-            )
+    (let ((v1-0 (-> this used-point))
+          (f0-0 (-> this partial-point))
           )
-        (set! (-> this max-move) (fmax 0.0 (-> this max-move)))
-        (let ((f1-9 (-> this summed-len)))
-          0.0
-          (let* ((f1-10 (- f1-9 (* f0-0 (-> this point v1-0 tp-length))))
-                 (f1-12 (fmin 204.8 (- f1-10 (-> this sample-len))))
-                 )
-            (set! (-> this sample-len) (fmin 16384.0 (+ (-> this sample-len) f1-12)))
-            )
+      (let ((f1-0 (-> this summed-len)))
+        0.0
+        0.0
+        (let* ((f2-6 (* (- (- f1-0 (* f0-0 (-> this point v1-0 tp-length))) arg4) arg3))
+               (f2-9 (* (fmin arg1 (- f2-6 (-> this max-move))) (-> pp clock time-adjust-ratio)))
+               )
+          (set! (-> this max-move) (fmin arg2 (+ (-> this max-move) f2-9)))
           )
-        (let ((s3-0 (new 'stack-no-clear 'tracking-spline-sampler)))
-          (set! (-> s3-0 cur-pt) v1-0)
-          (set! (-> s3-0 partial-pt) f0-0)
-          (if (not arg5)
-              (set! arg5 (new 'static 'vector))
-              )
-          (tracking-spline-method-19 this (* (-> this max-move) (-> pp clock time-adjust-ratio)) arg0 arg5 s3-0)
-          (tracking-spline-method-14 this s3-0)
-          (dotimes (s2-0 63)
-            (tracking-spline-method-18 this (/ (-> this sample-len) 64) arg0 arg5 s3-0)
+        )
+      (set! (-> this max-move) (fmax 0.0 (-> this max-move)))
+      (let ((f1-9 (-> this summed-len)))
+        0.0
+        (let* ((f1-10 (- f1-9 (* f0-0 (-> this point v1-0 tp-length))))
+               (f1-12 (fmin 204.8 (- f1-10 (-> this sample-len))))
+               )
+          (set! (-> this sample-len) (fmin 16384.0 (+ (-> this sample-len) f1-12)))
+          )
+        )
+      (let ((s3-0 (new 'stack-no-clear 'tracking-spline-sampler)))
+        (set! (-> s3-0 cur-pt) v1-0)
+        (set! (-> s3-0 partial-pt) f0-0)
+        (if (not arg5)
+            (set! arg5 (new 'static 'vector))
             )
-          (vector-float*! arg0 arg0 0.015625)
-          (vector-float*! arg5 arg5 0.015625)
-          (let ((a2-3 (-> s3-0 cur-pt)))
-            (set! (-> this debug-last-point) a2-3)
-            (let ((s4-1 (new 'stack-no-clear 'vector)))
-              (set! (-> this debug-old-position quad) (-> this old-position quad))
-              (set! (-> this debug-out-position quad) (-> arg0 quad))
-              (vector-! s4-1 arg0 (-> this old-position))
-              (tracking-spline-method-20 this s4-1 a2-3)
-              (let ((a0-23 arg0))
-                (.lvf vf4 (&-> (-> this old-position) quad))
-                (.lvf vf5 (&-> s4-1 quad))
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> a0-23 quad) vf6)
-                )
-              )
+        (tracking-spline-method-19 this (* (-> this max-move) (-> pp clock time-adjust-ratio)) arg0 arg5 s3-0)
+        (tracking-spline-method-14 this s3-0)
+        (dotimes (s2-0 63)
+          (tracking-spline-method-18 this (/ (-> this sample-len) 64) arg0 arg5 s3-0)
+          )
+        (vector-float*! arg0 arg0 0.015625)
+        (vector-float*! arg5 arg5 0.015625)
+        (let ((a2-3 (-> s3-0 cur-pt)))
+          (set! (-> this debug-last-point) a2-3)
+          (let ((s4-1 (new 'stack-no-clear 'vector)))
+            (set! (-> this debug-old-position quad) (-> this old-position quad))
+            (set! (-> this debug-out-position quad) (-> arg0 quad))
+            (vector-! s4-1 arg0 (-> this old-position))
+            (tracking-spline-method-20 this s4-1 a2-3)
+            (vector+! arg0 (-> this old-position) s4-1)
             )
           )
         )
-      (set! (-> this old-position quad) (-> arg0 quad))
-      arg0
       )
+    (set! (-> this old-position quad) (-> arg0 quad))
+    arg0
     )
   )
 
@@ -1178,158 +1096,77 @@
 ;; definition for function cam-curve-pos
 ;; INFO: Used lq/sq
 (defbehavior cam-curve-pos camera-slave ((arg0 vector) (arg1 vector) (arg2 curve) (arg3 symbol))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (new-stack-vector0)))
-      0.0
-      (let ((s2-0 (new-stack-vector0)))
-        (if arg1
-            (set! (-> arg1 w) 0.0)
-            )
-        (when (< (-> self intro-t) 1.0)
-          (+! (-> self intro-t) (* (-> self intro-t-step) (-> self clock time-adjust-ratio)))
-          (if (< 1.0 (-> self intro-t))
-              (set! (-> self intro-t) 1.0)
-              )
-          (curve-get-pos! s5-0 (parameter-ease-sin-clamp (-> self intro-t)) (-> self intro-curve))
-          (let ((a1-2 s5-0))
-            (let ((v1-9 s5-0)
-                  (a0-3 (-> self intro-offset))
-                  )
-              (.lvf vf4 (&-> v1-9 quad))
-              (.lvf vf5 (&-> a0-3 quad))
-              )
-            (.mov.vf.w vf6 vf0)
-            (.add.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> a1-2 quad) vf6)
-            )
-          (let ((a1-3 arg0))
-            (let ((v1-10 arg0)
-                  (a0-4 s5-0)
-                  )
-              (.lvf vf4 (&-> v1-10 quad))
-              (.lvf vf5 (&-> a0-4 quad))
-              )
-            (.mov.vf.w vf6 vf0)
-            (.add.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> a1-3 quad) vf6)
-            )
-          (cond
-            ((not arg1)
-             )
-            ((< (-> self intro-t) 0.5)
-             (curve-get-pos! s2-0 (+ 0.0001 (parameter-ease-sin-clamp (-> self intro-t))) (-> self intro-curve))
-             (let ((a1-5 s2-0))
-               (let ((v1-14 s2-0)
-                     (a0-7 (-> self intro-offset))
-                     )
-                 (.lvf vf4 (&-> v1-14 quad))
-                 (.lvf vf5 (&-> a0-7 quad))
-                 )
-               (.mov.vf.w vf6 vf0)
-               (.add.vf.xyz vf6 vf4 vf5)
-               (.svf (&-> a1-5 quad) vf6)
-               )
-             (vector-! arg1 s2-0 s5-0)
-             (set! (-> arg1 w) 1.0)
-             )
-            (else
-              (curve-get-pos! s2-0 (+ -0.0001 (parameter-ease-sin-clamp (-> self intro-t))) (-> self intro-curve))
-              (let ((a1-7 s2-0))
-                (let ((v1-19 s2-0)
-                      (a0-12 (-> self intro-offset))
-                      )
-                  (.lvf vf4 (&-> v1-19 quad))
-                  (.lvf vf5 (&-> a0-12 quad))
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> a1-7 quad) vf6)
-                )
-              (vector-! arg1 s5-0 s2-0)
-              (set! (-> arg1 w) 1.0)
-              )
-            )
+  (let ((s5-0 (new-stack-vector0)))
+    0.0
+    (let ((s2-0 (new-stack-vector0)))
+      (if arg1
+          (set! (-> arg1 w) 0.0)
           )
-        )
-      (cond
-        ((not (-> self spline-exists))
-         )
-        ((= (-> self spline-follow-dist) 0.0)
-         (let ((f0-18 (if arg3
-                          (cam-index-method-10 (-> self index) (-> self tracking follow-pt))
-                          (cam-index-method-10 (-> self index) (the-as vector (&-> (view-get-active-camera) stack 400)))
-                          )
-                      )
-               )
-           (if (logtest? (cam-slave-options-u32 EASE_SPLINE_IDX) (-> self options))
-               (set! f0-18 (parameter-ease-sin-clamp f0-18))
-               )
-           (curve-get-pos! s5-0 f0-18 (-> self spline-curve))
-           )
-         (let ((a1-12 s5-0))
-           (let ((v1-35 s5-0)
-                 (a0-20 (-> self spline-offset))
-                 )
-             (.lvf vf4 (&-> v1-35 quad))
-             (.lvf vf5 (&-> a0-20 quad))
-             )
-           (.mov.vf.w vf6 vf0)
-           (.add.vf.xyz vf6 vf4 vf5)
-           (.svf (&-> a1-12 quad) vf6)
-           )
-         (let ((v1-36 arg0))
-           (.lvf vf4 (&-> arg0 quad))
-           (.lvf vf5 (&-> s5-0 quad))
-           (.mov.vf.w vf6 vf0)
-           (.add.vf.xyz vf6 vf4 vf5)
-           (.svf (&-> v1-36 quad) vf6)
-           )
-         )
-        (else
-          (let ((s3-2 (new 'stack-no-clear 'vector)))
-            (curve-length (-> self spline-curve))
-            (if arg3
-                (set! (-> s3-2 quad) (-> self tracking follow-pt quad))
-                (set! (-> s3-2 quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj quad))
-                )
-            (let ((f0-22
-                    (curve-closest-point (-> self spline-curve) s3-2 (-> self spline-tt) 40960.0 10 (-> self spline-follow-dist))
-                    )
-                  )
-              (set! (-> self spline-tt) (fmin 1.0 f0-22))
-              )
+      (when (< (-> self intro-t) 1.0)
+        (+! (-> self intro-t) (* (-> self intro-t-step) (-> self clock time-adjust-ratio)))
+        (if (< 1.0 (-> self intro-t))
+            (set! (-> self intro-t) 1.0)
             )
-          (curve-get-pos! s5-0 (-> self spline-tt) (-> self spline-curve))
-          (let ((a1-15 s5-0))
-            (let ((v1-41 s5-0)
-                  (a0-27 (-> self spline-offset))
-                  )
-              (.lvf vf4 (&-> v1-41 quad))
-              (.lvf vf5 (&-> a0-27 quad))
-              )
-            (.mov.vf.w vf6 vf0)
-            (.add.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> a1-15 quad) vf6)
-            )
-          (let ((v1-42 arg0))
-            (let ((a1-16 s5-0))
-              (.lvf vf4 (&-> arg0 quad))
-              (.lvf vf5 (&-> a1-16 quad))
-              )
-            (.mov.vf.w vf6 vf0)
-            (.add.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> v1-42 quad) vf6)
+        (curve-get-pos! s5-0 (parameter-ease-sin-clamp (-> self intro-t)) (-> self intro-curve))
+        (vector+! s5-0 s5-0 (-> self intro-offset))
+        (vector+! arg0 arg0 s5-0)
+        (cond
+          ((not arg1)
+           )
+          ((< (-> self intro-t) 0.5)
+           (curve-get-pos! s2-0 (+ 0.0001 (parameter-ease-sin-clamp (-> self intro-t))) (-> self intro-curve))
+           (vector+! s2-0 s2-0 (-> self intro-offset))
+           (vector-! arg1 s2-0 s5-0)
+           (set! (-> arg1 w) 1.0)
+           )
+          (else
+            (curve-get-pos! s2-0 (+ -0.0001 (parameter-ease-sin-clamp (-> self intro-t))) (-> self intro-curve))
+            (vector+! s2-0 s2-0 (-> self intro-offset))
+            (vector-! arg1 s5-0 s2-0)
+            (set! (-> arg1 w) 1.0)
             )
           )
         )
       )
-    arg0
+    (cond
+      ((not (-> self spline-exists))
+       )
+      ((= (-> self spline-follow-dist) 0.0)
+       (let ((f0-18 (if arg3
+                        (cam-index-method-10 (-> self index) (-> self tracking follow-pt))
+                        (cam-index-method-10 (-> self index) (the-as vector (&-> (view-get-active-camera) stack 400)))
+                        )
+                    )
+             )
+         (if (logtest? (cam-slave-options-u32 EASE_SPLINE_IDX) (-> self options))
+             (set! f0-18 (parameter-ease-sin-clamp f0-18))
+             )
+         (curve-get-pos! s5-0 f0-18 (-> self spline-curve))
+         )
+       (vector+! s5-0 s5-0 (-> self spline-offset))
+       (vector+! arg0 arg0 s5-0)
+       )
+      (else
+        (let ((s3-2 (new 'stack-no-clear 'vector)))
+          (curve-length (-> self spline-curve))
+          (if arg3
+              (set! (-> s3-2 quad) (-> self tracking follow-pt quad))
+              (set! (-> s3-2 quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj quad))
+              )
+          (let ((f0-22
+                  (curve-closest-point (-> self spline-curve) s3-2 (-> self spline-tt) 40960.0 10 (-> self spline-follow-dist))
+                  )
+                )
+            (set! (-> self spline-tt) (fmin 1.0 f0-22))
+            )
+          )
+        (curve-get-pos! s5-0 (-> self spline-tt) (-> self spline-curve))
+        (vector+! s5-0 s5-0 (-> self spline-offset))
+        (vector+! arg0 arg0 s5-0)
+        )
+      )
     )
+  arg0
   )
 
 ;; definition for function cam-curve-setup
@@ -1483,13 +1320,7 @@
                   (vector-float*! s2-1 s2-1 f0-23)
                   )
                 (+! (-> arg0 follow-blend) (/ (-> pp clock time-adjust-ratio) 60))
-                (let ((a0-26 (-> arg0 follow-off)))
-                  (.lvf vf4 (&-> (-> arg0 follow-off) quad))
-                  (.lvf vf5 (&-> s2-1 quad))
-                  (.mov.vf.w vf6 vf0)
-                  (.add.vf.xyz vf6 vf4 vf5)
-                  (.svf (&-> a0-26 quad) vf6)
-                  )
+                (vector+! (-> arg0 follow-off) (-> arg0 follow-off) s2-1)
                 )
                (else
                  (set! (-> arg0 follow-off quad) (-> s2-1 quad))
@@ -1509,16 +1340,10 @@
                (jump-to-target! (-> arg0 follow-height-extra) 0.0)
                )
              )
-           (let ((s2-3 (-> arg0 follow-pt)))
-             (let ((v1-53 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
-                   (a0-31 (-> arg0 follow-off))
-                   )
-               (.lvf vf4 (&-> v1-53 quad))
-               (.lvf vf5 (&-> a0-31 quad))
-               )
-             (.mov.vf.w vf6 vf0)
-             (.add.vf.xyz vf6 vf4 vf5)
-             (.svf (&-> s2-3 quad) vf6)
+           (vector+!
+             (-> arg0 follow-pt)
+             (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+             (-> arg0 follow-off)
              )
            (vector--float*!
              (-> arg0 follow-pt)
@@ -1531,16 +1356,16 @@
            )
           (else
             0.0
-            (let ((s2-5 (new-stack-vector0)))
+            (let ((s2-6 (new-stack-vector0)))
               (set! (-> arg0 follow-blend) 0.0)
               (cond
                 ((-> arg0 no-follow)
-                 (vector-reset! s2-5)
+                 (vector-reset! s2-6)
                  )
                 (else
-                  (vector-! s2-5 (the-as vector (&-> (view-get-active-camera) stack 400)) arg1)
-                  (vector-normalize! s2-5 1.0)
-                  (let* ((f0-32 (vector-dot (the-as vector (&-> (view-get-active-camera) stack 256)) s2-5))
+                  (vector-! s2-6 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj) arg1)
+                  (vector-normalize! s2-6 1.0)
+                  (let* ((f0-32 (vector-dot (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec) s2-6))
                          (f30-3 (cond
                                   ((< f0-32 0.0)
                                    1.0
@@ -1555,14 +1380,14 @@
                                   )
                                 )
                          )
-                    (vector-! s2-5 arg1 (the-as vector (&-> (view-get-active-camera) stack 400)))
-                    (vector-flatten! s2-5 s2-5 (the-as vector (&-> (view-get-active-camera) stack 160)))
-                    (let* ((f1-14 (* 0.000022194603 (+ -20480.0 (vector-length s2-5))))
+                    (vector-! s2-6 arg1 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
+                    (vector-flatten! s2-6 s2-6 (-> (the-as camera-master (view-get-active-camera)) local-down))
+                    (let* ((f1-14 (* 0.000022194603 (+ -20480.0 (vector-length s2-6))))
                            (f28-1 (fmax 0.0 (fmin 1.0 f1-14)))
                            )
                       (vector-float*!
-                        s2-5
-                        (the-as vector (&-> (view-get-active-camera) stack 256))
+                        s2-6
+                        (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec)
                         (* (lerp 2048.0 8192.0 f28-1) f30-3)
                         )
                       )
@@ -1571,7 +1396,7 @@
                 )
               (cond
                 (arg2
-                  (vector-seek-3d-smooth! (-> arg0 follow-off) s2-5 (* 20480.0 (seconds-per-frame)) 0.05)
+                  (vector-seek-3d-smooth! (-> arg0 follow-off) s2-6 (* 20480.0 (seconds-per-frame)) 0.05)
                   (if (logtest? (cam-slave-options VERTICAL_FOLLOW_MATCHES_CAMERA)
                                 (-> (the-as camera-master (view-get-active-camera)) settings slave-options)
                                 )
@@ -1580,21 +1405,15 @@
                       )
                   )
                 (else
-                  (set! (-> arg0 follow-off quad) (-> s2-5 quad))
+                  (set! (-> arg0 follow-off quad) (-> s2-6 quad))
                   (jump-to-target! (-> arg0 follow-height-extra) 0.0)
                   )
                 )
               )
-            (let ((s2-7 (-> arg0 follow-pt)))
-              (let ((v1-83 (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
-                    (a0-43 (-> arg0 follow-off))
-                    )
-                (.lvf vf4 (&-> v1-83 quad))
-                (.lvf vf5 (&-> a0-43 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> s2-7 quad) vf6)
+            (vector+!
+              (-> arg0 follow-pt)
+              (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+              (-> arg0 follow-off)
               )
             (vector--float*!
               (-> arg0 follow-pt)
@@ -1639,7 +1458,11 @@
                (-> (the-as camera-master (view-get-active-camera)) settings target-height)
                )
             )
-          (vector-! (-> arg0 follow-off) (-> arg0 follow-off) (the-as vector (&-> (view-get-active-camera) stack 400)))
+          (vector-!
+            (-> arg0 follow-off)
+            (-> arg0 follow-off)
+            (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+            )
           )
         )
       (set! (-> arg0 old-cam-trans quad) (-> arg1 quad))
@@ -1803,17 +1626,7 @@
                 (.mul.x.vf.xyz vf1 vf1 vf2)
                 (.svf (&-> sv-144 quad) vf1)
                 )
-              (let ((a1-3 s2-0))
-                (let ((v1-13 s2-0)
-                      (a0-6 (-> arg0 fvec))
-                      )
-                  (.lvf vf4 (&-> v1-13 quad))
-                  (.lvf vf5 (&-> a0-6 quad))
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> a1-3 quad) vf6)
-                )
+              (vector+! s2-0 s2-0 (-> arg0 fvec))
               (vector-normalize! s2-0 f26-0)
               (vector--float*! s2-0 s2-0 (-> arg0 rvec) 6144.0)
               (vector-normalize! s2-0 1.0)
@@ -1863,17 +1676,7 @@
               (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> sv-272 quad) vf1)
               )
-            (let ((a1-17 s2-0))
-              (let ((v1-35 s2-0)
-                    (a0-22 (-> arg0 fvec))
-                    )
-                (.lvf vf4 (&-> v1-35 quad))
-                (.lvf vf5 (&-> a0-22 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> a1-17 quad) vf6)
-              )
+            (vector+! s2-0 s2-0 (-> arg0 fvec))
             (vector-normalize! s2-0 1.0)
             (let ((f0-18 (vector-dot s2-0 (-> arg0 uvec))))
               (when (and (< f28-1 0.0) (< f0-18 (- f28-1)))
@@ -1904,17 +1707,7 @@
           (vector-normalize! s3-0 1.0)
           (let ((f28-2 (vector-dot s3-0 (-> arg0 uvec))))
             (vector-float*! s2-0 (-> arg0 uvec) (* 0.525 (tan (/ arg2 2))))
-            (let ((a1-23 s2-0))
-              (let ((v1-57 s2-0)
-                    (a0-35 (-> arg0 fvec))
-                    )
-                (.lvf vf4 (&-> v1-57 quad))
-                (.lvf vf5 (&-> a0-35 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> a1-23 quad) vf6)
-              )
+            (vector+! s2-0 s2-0 (-> arg0 fvec))
             (vector-normalize! s2-0 1.0)
             (let ((f0-28 (vector-dot s2-0 (-> arg0 uvec))))
               (cond
@@ -2023,17 +1816,7 @@
             (set! (-> arg0 looking-interesting quad) (-> arg1 quad))
             )
           )
-        (let ((a1-8 (-> arg0 looking-at)))
-          (let ((v1-24 s0-0)
-                (a0-12 arg1)
-                )
-            (.lvf vf4 (&-> v1-24 quad))
-            (.lvf vf5 (&-> a0-12 quad))
-            )
-          (.mov.vf.w vf6 vf0)
-          (.add.vf.xyz vf6 vf4 vf5)
-          (.svf (&-> a1-8 quad) vf6)
-          )
+        (vector+! (-> arg0 looking-at) s0-0 arg1)
         (forward-down->inv-matrix s1-1 s0-0 (-> (the-as camera-master (view-get-active-camera)) local-down))
         (when (!= f30-0 0.0)
           0.0
@@ -2296,3 +2079,7 @@
     )
   arg0
   )
+
+
+
+

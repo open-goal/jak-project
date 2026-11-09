@@ -16,9 +16,18 @@
 (define-extern vector<-matrix! (function vector matrix vector))
 (define-extern vector<-cspace! (function vector cspace vector))
 (define-extern sleep-code (function symbol :behavior process))
+(define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
 (define-extern ja-frame-num (function int float :behavior process-drawable))
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
+(define-extern ja-aframe (function float int float :behavior process-drawable))
 (define-extern draw-joint-axes (function process-drawable none))
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
+(define-extern process-drawable-reset-all-cloth (function process-drawable none))
+(define-extern process-drawable-show-all-cloth (function process-drawable symbol none))
+(define-extern process-drawable-slow-mo-cloth (function process-drawable symbol none))
+(define-extern process-drawable-set-cloth-ground-height (function process-drawable float none))
+(define-extern process-drawable-set-wind-strength (function process-drawable float none))
+(define-extern process-drawable-cloth-command (function process-drawable pair none))
 
 ;; these are mostly the same as jak 1?
 (defmacro ja-group (&key (chan 0))
@@ -27,9 +36,13 @@
        (-> self skel root-channel ,chan frame-group))
   )
 
-(defmacro ja-group? (group &key (chan 0))
-  "is self in this frame group on this channel? default is channel 0, which is the base channel."
-  `(= (ja-group) ,group)
+(defmacro ja-group? (&key (chan 0) &rest groups)
+  "is self in any of these frame groups on this channel? default is channel 0, which is the base channel."
+  (with-gensyms (group)
+    `(let ((,group (ja-group :chan ,chan)))
+       (the symbol (and ,group (or ,@(apply (lambda (x) `(= ,group ,x)) groups))))
+       )
+    )
   )
 
 (defmacro ja (&key (chan 0)

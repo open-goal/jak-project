@@ -241,6 +241,18 @@ struct TypePropExtras {
 
 void run(Output& out, const Input& input);
 
+/*!
+ * Get the type of a load of (-> self draw art-group data <idx>) if we know it from the art group
+ * info (like an art-joint-anim).
+ */
+std::optional<TypeSpec> self_art_element_load_type(
+    const Env& env,
+    const DecompilerTypeSystem& dts,
+    int op_idx,
+    Register base_reg,
+    const TypeSpec& base_type,
+    const std::vector<FieldReverseLookupOutput::Token>& tokens);
+
 bool backprop_tagged_type(const TP_Type& expected_type,
                           types2::Type& actual_type,
                           const DecompilerTypeSystem& dts);

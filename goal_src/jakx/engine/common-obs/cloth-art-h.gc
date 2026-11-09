@@ -35,6 +35,19 @@
   )
 ;; ---cloth-flag
 
+(defmacro static-cloth-params (ag-name args)
+ `(let ((parms (new 'static 'cloth-params)))
+    (false! (-> parms alt-tex-name))
+    (false! (-> parms alt-tex-name2))
+    (false! (-> parms alt-tex-name3))
+    ,@(apply (lambda (x) (if (and (eq? (car x) 'mesh) (not (integer? (cadr x))))
+                           `(set! (-> parms ,(car x)) ,(art-elt-index ag-name (cadr x)))
+                           `(set! (-> parms ,(car x)) ,(cadr x))
+                           )) args)
+    parms
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (deftype cloth-pt (structure)
@@ -66,7 +79,7 @@
 (deftype disc-transform (structure)
   ((offset                vector  :inline)
    (normal                vector  :inline)
-   (joint-name            basic)
+   (joint-name            string)
    (radius                float)
    (joint                 int16)
    (start-particle-index  int16)

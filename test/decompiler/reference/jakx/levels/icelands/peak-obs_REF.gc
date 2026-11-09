@@ -120,12 +120,15 @@
         )
     )
   (let ((s4-1 (process-nettable-method-27 this 'set-destruction-time)))
-    (mem-buffer-method-22 s4-1 (the-as int (-> this last-u)))
+    (write-float s4-1 (-> this last-u))
     (process-nettable-method-29 this s4-1 -2 16)
     (process-nettable-method-28 this s4-1)
     )
   (vector-float*! (-> this impact-direction) (-> arg0 normal) -1.0)
-  (let ((v1-34 (make-sound-instance (-> *sound-info* 603) 0 (the-as symbol (process->handle this)))))
+  (let ((v1-34
+          (make-sound-instance (-> *sound-info* 603) (new 'static 'sound-id) (the-as symbol (process->handle this)))
+          )
+        )
     (if v1-34
         (-> v1-34 id)
         0
@@ -159,7 +162,7 @@
       (vector-! (the-as vector (&-> v1-1 x)) (-> this target-position) (-> this root trans))
       (vector-float*! (-> this rbody lin-velocity) (the-as vector (&-> v1-1 x)) (/ 1.0 f30-0))
       )
-    (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-velocity) (-> this rbody info mass))
+    (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-velocity) (-> this rbody info info mass))
     (vector-reset! (-> this rbody ang-momentum))
     (let ((v1-8 (new 'stack-no-clear 'inline-array 'collide-query 1)))
       (set! (-> v1-8 0 start-pos quad) (-> this root root-prim prim-core world-sphere quad))
@@ -177,11 +180,11 @@
         )
       (fill-using-line-sphere *collide-cache* (-> v1-8 0))
       )
-    (rigid-body-control-method-13 (-> this rbody))
+    (init-velocities! (-> this rbody))
     (rbody-collision (-> this root) (-> this rbody) f30-0)
     )
   (rigid-body-object-method-70 this)
-  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (update-rbody-transform! (-> this rbody) (-> this root))
   (rigid-body-object-method-61 this)
   (update-transforms (-> this root))
   0
@@ -198,11 +201,11 @@
 ;; definition for method 17 of type peak-snowball
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-17 ((this peak-snowball) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+(defmethod process-nettable-method-17 ((this peak-snowball) (arg0 symbol) (arg1 mem-buffer))
   (case arg0
     (('explode)
      (when (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
-       (let ((f30-0 (mem-buffer-method-40 arg1))
+       (let ((f30-0 (read-float arg1))
              (s4-0 (new 'stack-no-clear 'vector))
              )
          (path-control-method-14 (-> this path) s4-0 f30-0 'interp)
@@ -236,6 +239,7 @@
               )
 
 ;; definition for method 66 of type peak-snowball
+;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-66 ((this peak-snowball))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
   (set! (-> this path-length) (total-distance (-> this path)))
@@ -255,7 +259,8 @@
   (if (not (process-nettable-method-25 this))
       (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
       )
-  0.0
+  0
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -297,7 +302,10 @@
           )
         )
     (sound-stop (the-as sound-id (-> self roll-sound)) #t)
-    (let ((v1-32 (make-sound-instance (-> *sound-info* 604) 0 (the-as symbol (process->handle self)))))
+    (let ((v1-32
+            (make-sound-instance (-> *sound-info* 604) (new 'static 'sound-id) (the-as symbol (process->handle self)))
+            )
+          )
       (if v1-32
           (-> v1-32 id)
           0
@@ -325,7 +333,7 @@
       (set! (-> gp-0 quad) (-> self root trans quad))
       (let ((s5-0 (new 'stack-no-clear 'quaternion)))
         (quaternion-look-at! (the-as quaternion (&-> s5-0 x)) (-> self impact-direction) *up-vector*)
-        (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (&-> s5-0 x)))
+        (quaternion-copy! (-> self root rotation) (the-as quaternion (&-> s5-0 x)))
         )
       (suspend-for (seconds 0.04)
         (let ((f0-2 (fmax 0.0 (fmin 1.0 (* 0.083333336 (the float (- (current-time) time)))))))
@@ -402,7 +410,7 @@
              (let ((f24-0 (lerp-scale 0.2 0.7 f30-0 0.0 1024000.0))
                    (v1-28 (make-sound-instance
                             (-> *sound-info* 602)
-                            (the-as int (-> self roll-sound))
+                            (the-as sound-id (-> self roll-sound))
                             (the-as symbol (process->handle self))
                             )
                           )
@@ -487,7 +495,7 @@
                         )
                       )
                     (quaternion-normalize! (the-as quaternion (-> self rbody rot)))
-                    (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self rbody rot)))
+                    (quaternion-copy! (-> self root rotation) (the-as quaternion (-> self rbody rot)))
                     )
                   )
                 )
@@ -502,7 +510,7 @@
 
 ;; definition for method 65 of type peak-snowball
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-65 ((this peak-snowball) (arg0 vector))
+(defmethod init-collision! ((this peak-snowball))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)

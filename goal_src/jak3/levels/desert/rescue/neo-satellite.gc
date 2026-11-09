@@ -1695,9 +1695,9 @@
       (- (-> this actual-laser-rotate-angle))
       )
     )
-  (let ((a0-19 (handle->process (-> this focus handle))))
+  (let ((a0-19 (the-as process-focusable (handle->process (-> this focus handle)))))
     (if a0-19
-        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-19) 0))
+        (vector-copy! (-> this focus-pos) (get-trans a0-19 0))
         )
     )
   (let ((f0-18 (/ (-> this hit-points) (-> this enemy-info default-hit-points))))
@@ -2468,8 +2468,11 @@
     (* (-> this spin-speed) (seconds-per-frame))
     )
   (cond
-    ((and (as-type (handle->process (-> this focus handle)) process-focusable)
-          (not (logtest? (-> (the-as process-focusable (as-type (handle->process (-> this focus handle)) process-focusable))
+    ((and (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable)
+          (not (logtest? (-> (the-as
+                               process-focusable
+                               (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable)
+                               )
                              focus-status
                              )
                          (focus-status disable dead ignore grabbed)
@@ -2734,7 +2737,7 @@
     (let ((f28-2 (vector-vector-xz-distance (-> this root trans) (-> this focus-pos)))
           (s4-2 (the-as object #f))
           )
-      (let ((v1-98 (as-type (handle->process (-> this focus handle)) process-focusable)))
+      (let ((v1-98 (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable)))
         (when v1-98
           (let ((v1-99 (-> v1-98 root)))
             (set! s4-2 (and v1-99 (logtest? (-> (the-as collide-shape-moving v1-99) status) (collide-status on-surface))))
@@ -2746,7 +2749,7 @@
           (let ((f0-46 (- (-> this current-shockwave-radius) (* f30-0 (the float s4-4)))))
             (if (and (>= f0-46 16384.0) (< f0-46 163840.0) (>= f0-46 (+ -4096.0 f28-2)) (>= (+ 4096.0 f28-2) f0-46))
                 (send-event
-                  (handle->process (-> this focus handle))
+                  (the-as process-focusable (handle->process (-> this focus handle)))
                   'attack
                   #f
                   (static-attack-info
@@ -3808,7 +3811,7 @@
     (let ((v1-1 s5-1))
       (when (or (and s4-0 (not v1-1)) (and v1-1 (not s4-0)))
         (send-event
-          (handle->process (-> this focus handle))
+          (the-as process-focusable (handle->process (-> this focus handle)))
           'attack
           #f
           (static-attack-info
@@ -3816,7 +3819,7 @@
             ((id (new-attack-id)) (damage 1.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'shock))
             )
           )
-        (send-event this 'notify 'attack (handle->process (-> this focus handle)))
+        (send-event this 'notify 'attack (the-as process-focusable (handle->process (-> this focus handle))))
         )
       )
     (set! (-> this was-player-inside-cone?) s5-1)
