@@ -77,6 +77,9 @@ linter_rules.append(
 # Errors
 linter_rules.append(LinterRule("ERROR", "missing_res_tag", re.compile(r".pcpyud"), 1))
 linter_rules.append(
+    LinterRule("ERROR", "unhandled scratchpad usage", re.compile(r"#x70000000"), 1)
+)
+linter_rules.append(
     LinterRule("ERROR", "missing_res_tag_cast", re.compile(r"\(the-as \(pointer res-tag\)"), 1)
 )
 linter_rules.append(LinterRule("ERROR", "decomp_error", re.compile(r";; ERROR"), 1))
