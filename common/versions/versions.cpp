@@ -20,7 +20,7 @@ GameVersion game_name_to_version(const std::string& name) {
 }
 
 bool valid_game_version(const std::string& name) {
-  return name == "jak1" || name == "jak2" || name == "jak3";
+  return name == "jak1" || name == "jak2" || name == "jak3" || name == "jakx";
 }
 
 std::string version_to_game_name(GameVersion v) {
