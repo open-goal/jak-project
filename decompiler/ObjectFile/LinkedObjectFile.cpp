@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstring>
 #include <numeric>
+#include <optional>
 
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
@@ -500,6 +501,64 @@ static bool swap_fp_relative_offsets(Function& function, size_t instr_idx, int c
   return false;
 }
 
+static std::optional<int> swap_fp_relative_offsets_far_label(Function& function,
+                                                             size_t instr_idx,
+                                                             int current_fp) {
+  if (instr_idx + 3 >= function.instructions.size()) {
+    return {};
+  }
+  auto& field_add = function.instructions[instr_idx];
+  auto& lui = function.instructions[instr_idx + 1];
+  auto& ori = function.instructions[instr_idx + 2];
+  auto& add = function.instructions[instr_idx + 3];
+  if (field_add.kind != InstructionKind::DADDIU || lui.kind != InstructionKind::LUI ||
+      ori.kind != InstructionKind::ORI || add.kind != InstructionKind::DADDU ||
+      !lui.get_src(0).is_imm() || !ori.get_src(1).is_imm()) {
+    return {};
+  }
+
+  auto temp = field_add.get_dst(0).get_reg();
+  auto dst = lui.get_dst(0).get_reg();
+  if (temp == dst || ori.get_dst(0).get_reg() != dst || ori.get_src(0).get_reg() != dst ||
+      add.get_dst(0).get_reg() != dst) {
+    return {};
+  }
+  auto add_src0 = add.get_src(0).get_reg();
+  auto add_src1 = add.get_src(1).get_reg();
+  if (!(add_src0 == temp && add_src1 == dst) && !(add_src0 == dst && add_src1 == temp)) {
+    return {};
+  }
+
+  auto in_function = [&](int addr) {
+    return addr >= function.start_word * 4 && addr < function.end_word * 4;
+  };
+  int field_offset = field_add.get_imm_src().get_imm();
+  int label_offset = (lui.get_src(0).get_imm() << 16) + ori.get_src(1).get_imm();
+  if (!in_function(current_fp + field_offset) || in_function(current_fp + label_offset)) {
+    return {};
+  }
+
+  const Register fp(Reg::GPR, Reg::FP);
+  Instruction new_lui = lui;
+  new_lui.get_dst(0).set_reg(temp);
+  Instruction new_ori = ori;
+  new_ori.get_dst(0).set_reg(temp);
+  new_ori.get_src(0).set_reg(temp);
+  Instruction new_add = add;
+  new_add.get_dst(0).set_reg(temp);
+  new_add.get_src(0).set_reg(temp);
+  new_add.get_src(1).set_reg(fp);
+  Instruction new_field_add = field_add;
+  new_field_add.get_dst(0).set_reg(dst);
+  new_field_add.get_src(0).set_reg(temp);
+
+  field_add = new_lui;
+  lui = new_ori;
+  ori = new_add;
+  add = new_field_add;
+  return label_offset;
+}
+
 /*!
  * Analyze disassembly for use of the FP register, and add labels for fp-relative data access
  */
@@ -521,6 +580,25 @@ void LinkedObjectFile::process_fp_relative_links() {
         // HACKs
         if (instr.kind == InstructionKind::PEXTLW) {
           continue;
+        }
+
+        auto warn_swapped = [&](int label_id) {
+          const auto& label = labels.at(label_id);
+          auto target = is_string(seg, label.offset)
+                            ? fmt::format("\"{}\"", get_goal_string_by_label(label))
+                            : fmt::format("data at offset {}", label.offset);
+          function.warnings.unique_warning("Swapped fp-relative label and field offsets for {}",
+                                           target);
+        };
+
+        if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg() &&
+            instr.get_src(0).get_reg() == Register(Reg::GPR, Reg::FP)) {
+          int current_fp = 4 * (function.start_word + 1);
+          auto far_offset = swap_fp_relative_offsets_far_label(function, instr_idx, current_fp);
+          if (far_offset) {
+            warn_swapped(get_label_id_for(seg, current_fp + *far_offset));
+            continue;
+          }
         }
 
         // search over instruction sources
@@ -548,12 +626,7 @@ void LinkedObjectFile::process_fp_relative_links() {
                                swap_fp_relative_offsets(function, instr_idx, current_fp);
                 atom.set_label(get_label_id_for(seg, current_fp + atom.get_imm()));
                 if (swapped) {
-                  const auto& label = labels.at(atom.get_label());
-                  auto target = is_string(seg, label.offset)
-                                    ? fmt::format("\"{}\"", get_goal_string_by_label(label))
-                                    : fmt::format("data at offset {}", label.offset);
-                  function.warnings.unique_warning(
-                      "Swapped fp-relative label and field offsets for {}", target);
+                  warn_swapped(atom.get_label());
                 }
                 stats.n_fp_reg_use_resolved++;
               } break;
