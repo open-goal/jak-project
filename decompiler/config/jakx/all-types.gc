@@ -15867,7 +15867,7 @@
 
 (deftype game-task-node-info (basic)
   ((level                              symbol                             :offset-assert 4) ;; guessed by decompiler
-   (task uint8)
+   (task                               game-task                          :offset-assert 8)
    (net-play-mode                      net-play-mode                      :offset-assert 9)
    (name                               string                             :offset-assert 12) ;; guessed by decompiler
    (max-humans                         int8                               :offset-assert 16)
@@ -21193,7 +21193,7 @@
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (prim-client-method-9 (_type_) none) ;; 9
+    (build-prim-strip! (_type_) none) ;; 9
     )
   )
 
@@ -37981,7 +37981,7 @@
 (define-extern *shadow-vu1-data* shadow-vu1-data) ;; 
 (define-extern shadow-vu1-block vu-function) ;; 
 (define-extern shadow-vu1-add-constants (function dma-buffer int viewport none))
-(define-extern shadow-vu1-patch-consts (function symbol int object none))
+(define-extern shadow-vu1-patch-consts (function dma-buffer int int none))
 (define-extern shadow-vu1-add-matrix (function dma-buffer math-camera none))
 (define-extern shadow-vu1-init-buffer (function dma-buffer int viewport none))
 
@@ -41293,6 +41293,16 @@
   :flag-assert         #xe00000010
   )
 
+;; +++light-trails-h:lie-mode
+(defenum lie-mode
+  :type uint64
+  (appearance0)
+  (appearance1)
+  (appearance2)
+  (use-two-strips 3)
+  )
+;; ---light-trails-h:lie-mode
+
 (deftype light-trail-composition (structure)
   ((color-mode        uint64                        :offset-assert 0)
    (color-curve       curve-color-piecewise         :offset-assert 8) ;; guessed by decompiler
@@ -41309,10 +41319,10 @@
    (width-repeat-dist float                         :offset-assert 64)
    (uv-mode           uint64                        :offset-assert 72)
    (uv-repeat-dist    float                         :offset-assert 80)
-   (max-age           uint64                        :offset-assert 88) ;; time-frame
+   (max-age           time-frame                    :offset-assert 88)
    (tex-id            texture-id                    :offset-assert 96) ;; guessed by decompiler
    (tex-name          basic                         :offset-assert 100)
-   (lie-mode          uint64                        :offset-assert 104) ;; lie-mode
+   (lie-mode          lie-mode                      :offset-assert 104)
    (lie-vector        vector                :inline :offset-assert 112)
    (zbuffer?          symbol                        :offset-assert 128) ;; guessed by decompiler
    (use-tape-mode?    symbol                        :offset-assert 132) ;; guessed by decompiler
@@ -41326,7 +41336,7 @@
 
 (deftype light-trail-breadcrumb (structure)
   ((pos        vector :inline :offset-assert 0)
-   (birth-time uint32         :offset 12)
+   (birth-time uint32         :offset 12 :decomp-as time-frame :score 1)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -41341,15 +41351,24 @@
   :flag-assert         #xe00000010
   )
 
+;; +++light-trails-h:light-trail-decision
+(defenum light-trail-decision
+  :type uint64
+  (added 0)
+  (not-added 1)
+  (reset 2)
+  )
+;; ---light-trails-h:light-trail-decision
+
 (deftype light-trail (prim-client)
   ((crumb-array             (array uint8)             :offset-assert 4) ;; guessed by decompiler
    (crumb-size              uint8                     :offset-assert 8)
    (crumb-count             int16                     :offset-assert 10)
    (max-crumb-count         int16                     :offset-assert 12)
    (appearance              light-trail-composition   :offset-assert 16)
-   (start-marker            uint64                    :offset-assert 24)
-   (end-marker              uint64                    :offset-assert 32)
-   (decision                uint64                    :offset-assert 40) ;; light-trail-decision
+   (start-marker            time-frame                :offset-assert 24)
+   (end-marker              time-frame                :offset-assert 32)
+   (decision                light-trail-decision      :offset-assert 40)
    (total-distance-traveled float                     :offset-assert 48)
    (strip                   prim-strip                :offset-assert 52) ;; guessed by decompiler
    (strip2                  prim-strip                :offset-assert 56) ;; guessed by decompiler
@@ -41359,19 +41378,19 @@
   :size-assert         #x80
   :flag-assert         #x1700000080
   (:methods
-    (light-trail-method-10 (_type_ light-trail-composition int) none) ;; 10 ;; (reset! (_type_) none)
-    (light-trail-method-11 () none) ;; 11 ;; (add-crumb! (_type_ vector time-frame) int)
-    (light-trail-method-12 (_type_ vector int) none) ;; 12 ;; (build-prim-strip! (_type_) none)
-    (light-trail-method-13 () none) ;; 13 ;; (common-trans! (_type_) int)
-    (light-trail-method-14 () none) ;; 14 ;; (expire-old-points! (_type_) none)
-    (light-trail-method-15 () none) ;; 15 ;; (light-trail-method-15 (_type_) none)
-    (light-trail-method-16 () none) ;; 16 ;; (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none)
-    (light-trail-method-17 () none) ;; 17 ;; (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol)
-    (light-trail-method-18 () none) ;; 18 ;; (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none)
-    (light-trail-method-19 () none) ;; 19 ;; (crumb-age-out-callback (_type_ float int) none)
-    (light-trail-method-20 () none) ;; 20 ;; (reset-crumbs! (_type_) none)
-    (light-trail-method-21 () none) ;; 21 ;; (replace-last-crumb! (_type_ vector) none)
-    (light-trail-method-22 () none) ;; 22
+    (setup! (_type_ light-trail-composition int) none) ;; 10 
+    (reset! (_type_) none) ;; 11
+    (add-crumb! (_type_ vector time-frame) int) ;; 12
+    (connect! (_type_) connection) ;; 13
+    (common-trans! (_type_) int) ;; 14
+    (expire-old-points! (_type_) none) ;; 15
+    (light-trail-method-16 (_type_) none) ;; 16 ;; (light-trail-method-15 (_type_) none)
+    (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none) ;; 17
+    (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol) ;; 18
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none) ;; 19
+    (crumb-age-out-callback (_type_ float int) none) ;; 20
+    (reset-crumbs! (_type_) none) ;; 21
+    (replace-last-crumb! (_type_ vector) none) ;; 22
     )
   )
 
@@ -41389,8 +41408,8 @@
   :size-assert         #x80
   :flag-assert         #x1900000080
   (:methods
-    (weapon-trail-method-23 () none) ;; 23 ;; (weapon-trail-method-23 (_type_ vector vector) none)
-    (weapon-trail-method-24 () none) ;; 24
+    (add-crumb-with-offset (_type_ vector vector) light-trail-breadcrumb) ;; 23
+    (weapon-trail-method-24 (_type_ vector vector) none) ;; 24
     )
   )
 
@@ -41408,15 +41427,15 @@
   :size-assert         #x80
   :flag-assert         #x1900000080
   (:methods
-    (tread-trail-method-23 () none) ;; 23 ;; (tread-trail-method-23 (_type_ vector vector) none)
-    (tread-trail-method-24 () none) ;; 24
+    (add-crumb-with-offset (_type_ vector vector) none) ;; 23
+    (tread-trail-method-24 (_type_ vector vector) none) ;; 24
     )
   )
 
 (deftype light-trail-tracker-spawn-params (structure)
   ((appearance         light-trail-composition  :offset-assert 0)
    (max-num-crumbs     int32                    :offset-assert 4)
-   (tracked-obj        uint64                   :offset-assert 8) ;; handle
+   (tracked-obj        handle                   :offset-assert 8  :handle-type process-drawable)
    (track-immediately? symbol                   :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -41435,10 +41454,10 @@
 
 (deftype light-trail-tracker (process)
   ((trail                light-trail  :offset-assert 144) ;; guessed by decompiler
-   (tracked-object       handle       :offset-assert 152) ;; handle
+   (tracked-object       handle       :offset-assert 152  :handle-type process-drawable)
    (offscreen?           symbol       :offset-assert 160) ;; guessed by decompiler
-   (offscreen-start-time uint64       :offset-assert 168) ;; time-frame
-   (next-line-check-time uint64       :offset-assert 176) ;; time-frame
+   (offscreen-start-time time-frame   :offset-assert 168)
+   (next-line-check-time time-frame   :offset-assert 176)
    (last-add-frame-val   uint32       :offset-assert 184)
    )
   :method-count-assert 22
@@ -41449,18 +41468,19 @@
     die ;; 15
     )
   (:methods
-    (get-tracked-object-pos (_type_ process-focusable vector) vector)
-    (should-track? (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-18 () none) ;; 18 ;; (should-end? (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-19 () none) ;; 19 ;; (should-draw? (_type_) symbol)
-    (light-trail-tracker-method-20 () none) ;; 20 ;; (add-crumb! (_type_ vector) none)
+    (get-tracked-object-pos (_type_ process-focusable vector) vector) ;; 17
+    (should-track? (_type_ process-focusable) symbol) ;; 18
+    (should-end? (_type_ process-focusable) symbol) ;; 19
+    (should-draw? (_type_) symbol) ;; 20
+    (add-crumb! (_type_ vector) none) ;; 21
     )
   )
 
 (deftype weapon-trail-tracker (light-trail-tracker)
-  ((joint0     int16   :offset-assert 188)
-   (joint1     int16   :offset-assert 190)
-   (state-time uint64  :offset-assert 192) ;; time-frame
+  ((trail      weapon-trail :override)
+   (joint0     int16        :offset-assert 188)
+   (joint1     int16        :offset-assert 190)
+   (state-time time-frame   :offset-assert 192)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -41471,7 +41491,7 @@
   )
 
 (deftype tread-trail-tracker (light-trail-tracker)
-  ()
+  ((trail      tread-trail :override))
   :method-count-assert 22
   :size-assert         #xbc
   :flag-assert         #x16003000bc
@@ -41485,7 +41505,7 @@
   )
 
 (deftype light-trail-tracker-projectile (light-trail-tracker)
-  ((state-time uint64  :offset-assert 192) ;; time-frame
+  ((state-time time-frame  :offset-assert 192)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -41701,11 +41721,11 @@
 ;; light-trails                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern compute-trail-scaled-t function) ;; (function uint float float float float float vector float)
-(define-extern *dist-cache-array* (pointer float)) ;; 
-(define-extern *total-length* float) ;; 
-;; (define-extern light-trail-tracker-common-post function) ;; (function object :behavior light-trail-tracker)
-;; (define-extern estimate-light-trail-mem-usage function) ;; (function uint uint int)
+(define-extern compute-trail-scaled-t (function uint float float float float float vector float))
+(define-extern *dist-cache-array* (pointer float))
+(define-extern *total-length* float)
+(define-extern light-trail-tracker-common-post (function object :behavior light-trail-tracker))
+(define-extern estimate-light-trail-mem-usage (function uint uint uint))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-new                  ;;
