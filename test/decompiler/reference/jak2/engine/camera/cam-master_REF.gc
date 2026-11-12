@@ -21,9 +21,9 @@
 ;; definition for function reset-follow
 ;; INFO: Used lq/sq
 (defbehavior reset-follow camera-master ()
-  (let ((a0-1 (handle->process (-> self focus handle))))
-    (when (the-as process-focusable a0-1)
-      (set! (-> self tpos-old quad) (-> (get-trans (the-as process-focusable a0-1) 4) quad))
+  (let ((a0-1 (the-as process-focusable (handle->process (-> self focus handle)))))
+    (when a0-1
+      (set! (-> self tpos-old quad) (-> (get-trans a0-1 4) quad))
       (set! (-> self tpos-curr quad) (-> self tpos-old quad))
       (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
       (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
@@ -37,29 +37,27 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs symbol.
 (defbehavior reset-target-tracking camera-master ()
-  (let ((gp-0 (handle->process (-> self focus handle))))
+  (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
     (the-as
       symbol
       (when gp-0
-        (set! (-> self tpos-old quad) (-> (get-trans (the-as process-focusable gp-0) 4) quad))
+        (set! (-> self tpos-old quad) (-> (get-trans gp-0 4) quad))
         (set! (-> self tpos-curr quad) (-> self tpos-old quad))
         (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
         (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
         (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
-        (quaternion->matrix (-> self tgt-rot-mat) (get-quat (the-as process-focusable gp-0) 2))
-        (quaternion->matrix (-> self tgt-face-mat) (get-quat (the-as process-focusable gp-0) 1))
+        (quaternion->matrix (-> self tgt-rot-mat) (get-quat gp-0 2))
+        (quaternion->matrix (-> self tgt-face-mat) (get-quat gp-0 1))
         (vector-reset! (-> self pitch-off))
         (set! (-> self upspeed) 0.0)
-        (set! (-> self on-ground)
-              (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status in-air)))
-              )
+        (set! (-> self on-ground) (not (logtest? (-> gp-0 focus-status) (focus-status in-air))))
         (set! (-> self on-pole) #f)
         (set! (-> self ease-t) 1.0)
         (set! (-> self string-max target y) (-> self settings string-max-height))
         (set! (-> self string-max target z) (-> self settings string-max-length))
         (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
         (cond
-          ((time-elapsed? (get-notice-time (the-as process-focusable gp-0)) (-> *CAMERA-bank* attack-timeout))
+          ((time-elapsed? (get-notice-time gp-0) (-> *CAMERA-bank* attack-timeout))
            (set! (-> self being-attacked) #f)
            )
           (else
@@ -73,7 +71,7 @@
             )
           )
         (cond
-          ((focus-test? (the-as process-focusable gp-0) under-water)
+          ((focus-test? gp-0 under-water)
            (set! (-> self under-water) 2)
            )
           (else
@@ -94,7 +92,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior master-track-target camera-master ()
-  (let ((gp-0 (handle->process (-> self focus handle))))
+  (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
     (the-as
       symbol
       (cond
@@ -1069,7 +1067,7 @@
 
 ;; definition for method 14 of type camera-master
 (defmethod camera-master-method-14 ((this camera-master) (arg0 vector))
-  (if (handle->process (-> this focus handle))
+  (if (the-as process-focusable (handle->process (-> this focus handle)))
       (vector-! arg0 (-> this tpos-curr) (-> this tpos-old))
       (vector-reset! arg0)
       )

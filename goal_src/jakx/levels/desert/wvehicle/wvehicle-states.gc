@@ -5,8 +5,8 @@
 ;; name in dgo: wvehicle-states
 ;; dgos: COMMON, GAME
 
-(define-extern *explosion-effect-suppress* explosion)
-(define-extern explosion-spawn (function explosion-init-params process-drawable none))
+(define-extern *explosion-effect-suppress* symbol)
+(define-extern explosion-spawn (function explosion-init-params process-drawable explosion))
 
 ;; DECOMP BEGINS
 
@@ -24,11 +24,7 @@
 (defstate explode (wvehicle)
   :virtual #t
   :enter (behavior ()
-    (rlet ((vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           )
+    (rlet ((vf0 :class vf))
       (init-vf0-vector)
       (set! (-> self car-fire-loop) (the-as uint 0))
       (set! (-> self pad4 1) (the-as uint 0.0))
@@ -74,7 +70,7 @@
       (send-event (handle->process (-> self net-player)) 'vehicle-explode)
       (cond
         ((logtest? (-> self v-flags) (vehicle-flag player-owned))
-         (let ((v1-41 (make-sound-instance (-> *sound-info* 434) 0 #f)))
+         (let ((v1-41 (make-sound-instance (-> *sound-info* 434) (new 'static 'sound-id) #f)))
            (if v1-41
                (-> v1-41 id)
                0
@@ -82,7 +78,7 @@
            )
          )
         ((= (-> self info vehicle-type) (vehicle-type-u8 drone))
-         (let ((v1-46 (make-sound-instance (-> *sound-info* 435) 0 #f)))
+         (let ((v1-46 (make-sound-instance (-> *sound-info* 435) (new 'static 'sound-id) #f)))
            (if v1-46
                (-> v1-46 id)
                0
@@ -100,7 +96,7 @@
                                                       )
                        )
                     )
-               (let ((v1-57 (make-sound-instance (-> *sound-info* 643) 0 #f)))
+               (let ((v1-57 (make-sound-instance (-> *sound-info* 643) (new 'static 'sound-id) #f)))
                  (if v1-57
                      (-> v1-57 id)
                      0
@@ -108,7 +104,7 @@
                  )
                )
               (else
-                (let ((v1-61 (make-sound-instance (-> *sound-info* 436) 0 #f)))
+                (let ((v1-61 (make-sound-instance (-> *sound-info* 436) (new 'static 'sound-id) #f)))
                   (if v1-61
                       (-> v1-61 id)
                       0
@@ -142,7 +138,7 @@
         )
       (set-vector! (-> self draw color-mult) 0.5 0.5 0.5 1.0)
       (set! (-> self draw color-emissive quad) (the-as uint128 0))
-      (rigid-body-object-method-76 self)
+      (on-impact self)
       (let ((s5-2 (new 'stack-no-clear 'inline-array 'vector 2))
             (gp-5 (-> self rbody))
             )
@@ -155,8 +151,8 @@
         (set-vector! (-> s5-2 1) (* 4096.0 (+ -1.0 (* 2.0 (rand-vu)))) 0.0 -16384.0 1.0)
         (vector-matrix*! (-> s5-2 1) (-> s5-2 1) (-> gp-5 matrix))
         (apply-impact! gp-5 (-> s5-2 1) (-> s5-2 0))
-        (rigid-body-control-method-12 gp-5 1.0)
-        (rigid-body-control-method-13 gp-5)
+        (integrate-momentum! gp-5 1.0)
+        (init-velocities! gp-5)
         )
       (let ((gp-6 (new 'stack-no-clear 'explosion-init-params)))
         (set! (-> gp-6 spawn-point quad) (-> self root trans quad))
@@ -174,8 +170,8 @@
         (set! (-> gp-6 damage-scale) 1.0)
         (set! (-> gp-6 vehicle-damage-factor) 1.0)
         (set! (-> gp-6 vehicle-impulse-factor) 1.0)
-        (set! (-> gp-6 ignore-proc) (the-as uint (process->handle #f)))
-        (set! (-> gp-6 attacker) (the-as uint (process->handle #f)))
+        (set! (-> gp-6 ignore-proc) (process->handle #f))
+        (set! (-> gp-6 attacker) (process->handle #f))
         (set! (-> gp-6 collide-lof-check?) #f)
         (set! (-> gp-6 velocity quad) (the-as uint128 0))
         (set! (-> gp-6 wpn-type) 0)
@@ -194,36 +190,16 @@
             (set! (-> s5-3 gravity) -327680.0)
             (set! (-> s5-3 rot-speed) 10.2)
             (set-vector! (-> s5-3 fountain-rand-transv-lo) -81920.0 61440.0 -81920.0 1.0)
-            (let ((a0-88 (-> s5-3 fountain-rand-transv-lo)))
-              (let ((v1-161 (-> s5-3 fountain-rand-transv-lo))
-                    (a1-26 (-> self root transv))
-                    )
-                (.lvf vf4 (&-> v1-161 quad))
-                (.lvf vf5 (&-> a1-26 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> a0-88 quad) vf6)
-              )
+            (vector+! (-> s5-3 fountain-rand-transv-lo) (-> s5-3 fountain-rand-transv-lo) (-> self root transv))
             (set-vector! (-> s5-3 fountain-rand-transv-hi) 81920.0 131072.0 81920.0 1.0)
-            (let ((a0-93 (-> s5-3 fountain-rand-transv-hi)))
-              (let ((v1-163 (-> s5-3 fountain-rand-transv-lo))
-                    (a1-28 (-> self root transv))
-                    )
-                (.lvf vf4 (&-> v1-163 quad))
-                (.lvf vf5 (&-> a1-28 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> a0-93 quad) vf6)
-              )
+            (vector+! (-> s5-3 fountain-rand-transv-hi) (-> s5-3 fountain-rand-transv-lo) (-> self root transv))
             (let ((v1-166
                     (process-spawn joint-exploder (-> gp-7 skel) (-> gp-7 anim) s5-3 gp-7 :name "joint-exploder" :to self :unk 0)
                     )
                   )
               (when v1-166
                 (let ((gp-8 (-> v1-166 0)))
-                  (let ((v1-168 (-> (the-as process-drawable gp-8) draw)))
+                  (let ((v1-168 (-> (the-as joint-exploder gp-8) draw)))
                     (if v1-168
                         (.svf (&-> (-> v1-168 color-mult) quad) vf0)
                         )
@@ -288,7 +264,7 @@
          (if (zero? (-> self car-fire-loop))
              (set! (-> self car-fire-loop) (the-as uint (new-sound-id)))
              )
-         (let ((v1-8 (make-sound-instance (-> *sound-info* 308) (the-as int (-> self car-fire-loop)) #f)))
+         (let ((v1-8 (make-sound-instance (-> *sound-info* 308) (the-as sound-id (-> self car-fire-loop)) #f)))
            (cond
              (v1-8
                (set! (-> v1-8 volume) (the int (* 1024.0 (-> gp-0 y))))
@@ -318,7 +294,7 @@
        (if (zero? (-> self vehicle-sound-1))
            (set! (-> self vehicle-sound-1) (new-sound-id))
            )
-       (let ((v1-22 (make-sound-instance (-> *sound-info* 286) (the-as int (-> self vehicle-sound-1)) #f)))
+       (let ((v1-22 (make-sound-instance (-> *sound-info* 286) (-> self vehicle-sound-1) #f)))
          (cond
            (v1-22
              (set! (-> v1-22 volume) (the int (* 1024.0 (-> self vehicle-float-2))))
@@ -351,7 +327,7 @@
          (set! (-> gp-1 w) 1.0)
          (set! (-> gp-1 w) (/ 1.0 (+ 1.0 (square (-> gp-1 z)))))
          (set! (-> gp-1 w) (cube-root (-> gp-1 w)))
-         (let ((v1-43 (make-sound-instance (-> *sound-info* 619) (the-as int (-> self vehicle-sound-2)) #f)))
+         (let ((v1-43 (make-sound-instance (-> *sound-info* 619) (-> self vehicle-sound-2) #f)))
            (cond
              (v1-43
                (set! (-> v1-43 volume) (the int (* 1024.0 (-> gp-1 w))))
@@ -400,8 +376,8 @@
       (set! (-> gp-0 damage-scale) 1.0)
       (set! (-> gp-0 vehicle-damage-factor) 1.0)
       (set! (-> gp-0 vehicle-impulse-factor) 1.0)
-      (set! (-> gp-0 ignore-proc) (the-as uint (process->handle #f)))
-      (set! (-> gp-0 attacker) (the-as uint (process->handle #f)))
+      (set! (-> gp-0 ignore-proc) (process->handle #f))
+      (set! (-> gp-0 attacker) (process->handle #f))
       (set! (-> gp-0 collide-lof-check?) #f)
       (set! (-> gp-0 velocity quad) (the-as uint128 0))
       (set! (-> gp-0 wpn-type) 0)
@@ -414,63 +390,44 @@
         (vehicle-section-method-11 a0-15 self)
         )
       )
-    (rigid-body-object-method-73 self)
-    (rigid-body-object-method-75 self)
+    (disable-physics self)
+    (disable-collision self)
     )
   :code sleep-code
   :post (behavior ()
-    (rlet ((vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           )
-      (init-vf0-vector)
-      (when (and (not (logtest? (vehicle-flag temp) (-> self v-flags)))
-                 (time-elapsed? (-> self state-time) (seconds 0.035))
-                 )
-        (set! (-> self v-flags) (the-as vehicle-flag (logior (vehicle-flag temp) (-> self v-flags))))
-        (let ((a1-1 (new 'stack 'debris-tuning (the-as uint 0)))
-              (a2-1 (-> self info debris))
-              )
-          (when a2-1
-            (set! (-> a1-1 duration) (the-as uint 1500))
-            (set! (-> a1-1 hit-xz-reaction) 0.95)
-            (set! (-> a1-1 hit-y-reaction) 0.6)
-            (set! (-> a1-1 gravity) -163840.0)
-            (set! (-> a1-1 scale-rand-lo) 2.0)
-            (set! (-> a1-1 scale-rand-hi) (* 2.0 (-> a1-1 scale-rand-lo)))
-            (set! (-> a1-1 rot-speed) 1000.0)
-            (let ((v1-21 (-> a1-1 fountain-rand-transv-lo)))
-              (let ((a0-5 (-> self root transv))
-                    (a3-0 (new 'static 'vector :x -81920.0 :y 61440.0 :z -81920.0 :w 1.0))
-                    )
-                (.lvf vf4 (&-> a0-5 quad))
-                (.lvf vf5 (&-> a3-0 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> v1-21 quad) vf6)
-              )
-            (let ((v1-22 (-> a1-1 fountain-rand-transv-hi)))
-              (let ((a0-7 (-> self root transv))
-                    (a3-1 (new 'static 'vector :x 81920.0 :y 131072.0 :z 81920.0 :w 1.0))
-                    )
-                (.lvf vf4 (&-> a0-7 quad))
-                (.lvf vf5 (&-> a3-1 quad))
-                )
-              (.mov.vf.w vf6 vf0)
-              (.add.vf.xyz vf6 vf4 vf5)
-              (.svf (&-> v1-22 quad) vf6)
-              )
-            (debris-spawn self a1-1 a2-1 (the-as process-drawable #f))
+    (when (and (not (logtest? (vehicle-flag temp) (-> self v-flags)))
+               (time-elapsed? (-> self state-time) (seconds 0.035))
+               )
+      (set! (-> self v-flags) (the-as vehicle-flag (logior (vehicle-flag temp) (-> self v-flags))))
+      (let ((a1-1 (new 'stack 'debris-tuning (the-as uint 0)))
+            (a2-1 (-> self info debris))
             )
+        (when a2-1
+          (set! (-> a1-1 duration) (the-as uint 1500))
+          (set! (-> a1-1 hit-xz-reaction) 0.95)
+          (set! (-> a1-1 hit-y-reaction) 0.6)
+          (set! (-> a1-1 gravity) -163840.0)
+          (set! (-> a1-1 scale-rand-lo) 2.0)
+          (set! (-> a1-1 scale-rand-hi) (* 2.0 (-> a1-1 scale-rand-lo)))
+          (set! (-> a1-1 rot-speed) 1000.0)
+          (vector+!
+            (-> a1-1 fountain-rand-transv-lo)
+            (-> self root transv)
+            (new 'static 'vector :x -81920.0 :y 61440.0 :z -81920.0 :w 1.0)
+            )
+          (vector+!
+            (-> a1-1 fountain-rand-transv-hi)
+            (-> self root transv)
+            (new 'static 'vector :x 81920.0 :y 131072.0 :z 81920.0 :w 1.0)
+            )
+          (debris-spawn self a1-1 a2-1 (the-as process-drawable #f))
           )
-        (logior! (-> self draw status) (draw-control-status no-draw))
         )
-      (if (not (-> self child))
-          (go-virtual die)
-          )
+      (logior! (-> self draw status) (draw-control-status no-draw))
       )
+    (if (not (-> self child))
+        (go-virtual die)
+        )
     )
   )
 
@@ -545,7 +502,7 @@
     (set! (-> self sink-sound-id) (new-sound-id))
     (cond
       ((logtest? (-> self unk-vehicle-int32-3) 8)
-       (let ((v1-27 (make-sound-instance (-> *sound-info* 302) (the-as int (-> self sink-sound-id)) #f)))
+       (let ((v1-27 (make-sound-instance (-> *sound-info* 302) (-> self sink-sound-id) #f)))
          (if v1-27
              (-> v1-27 id)
              0
@@ -553,7 +510,7 @@
          )
        )
       (else
-        (let ((v1-31 (make-sound-instance (-> *sound-info* 259) (the-as int (-> self sink-sound-id)) #f)))
+        (let ((v1-31 (make-sound-instance (-> *sound-info* 259) (-> self sink-sound-id) #f)))
           (if v1-31
               (-> v1-31 id)
               0
@@ -573,7 +530,7 @@
       )
     (let ((gp-0 (handle->process (-> self fire-tracker))))
       (when gp-0
-        (let ((v1-42 (make-sound-instance (-> *sound-info* 306) 0 #f)))
+        (let ((v1-42 (make-sound-instance (-> *sound-info* 306) (new 'static 'sound-id) #f)))
           (if v1-42
               (-> v1-42 id)
               0
@@ -628,7 +585,7 @@
       (set! (-> v1-1 torque quad) (the-as uint128 0))
       )
     0
-    (rigid-body-control-method-17 (-> self rbody))
+    (reset-momentum! (-> self rbody))
     (let ((f30-0 (seconds-per-frame)))
       (wvehicle-method-214 self f30-0)
       (wvehicle-method-215 self)

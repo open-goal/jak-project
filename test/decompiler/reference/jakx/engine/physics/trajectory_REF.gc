@@ -123,7 +123,15 @@
             (let ((f0-1 (* (-> arg0 time) (/ (+ 1.0 (the float s2-0)) (the float s3-0)))))
               (compute-trans-at-time arg0 f0-1 s4-0)
               )
-            (add-debug-line #t (bucket-id bucket785) s5-0 s4-0 (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))
+            (add-debug-line
+              #t
+              (bucket-id debug-no-zbuf1)
+              s5-0
+              s4-0
+              (new 'static 'rgba :r #xff :a #x80)
+              #f
+              (the-as rgba -1)
+              )
             )
           )
         0
@@ -255,7 +263,7 @@
                                       (s2-1 (new 'stack 'boxed-array collide-shape 32))
                                       )
                                   (sphere<-vector+r! (the-as sphere s1-0) arg1 arg2)
-                                  (set! (-> s2-1 length) (fill-actor-list-for-box
+                                  (set! (-> s2-1 length) (fill-actor-list-for-sphere
                                                            *actor-hash*
                                                            s1-0
                                                            (the-as (pointer collide-shape) (-> s2-1 data))
@@ -401,61 +409,24 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod cubic-curve-method-9 ((this cubic-curve) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (set! (-> this vec 0 quad) (-> arg0 quad))
-    (set! (-> this mat uvec quad) (-> arg1 quad))
-    (let ((v1-2 (new 'stack-no-clear 'trajectory)))
-      (vector-! (-> v1-2 initial-velocity) arg2 arg0)
-      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) 3.0)
-      (let ((t1-7 (-> v1-2 initial-position)))
-        (let ((a1-3 (-> v1-2 initial-position)))
-          (let ((a3-2 arg1))
-            (let ((t2-1 -2.0))
-              (.mov vf7 t2-1)
-              )
-            (.lvf vf5 (&-> a3-2 quad))
-            )
-          (.lvf vf4 (&-> a1-3 quad))
-          )
-        (.add.x.vf.w vf6 vf0 vf0)
-        (.mul.x.vf.xyz acc vf5 vf7)
-        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-        (.svf (&-> t1-7 quad) vf6)
-        )
-      (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
-      (set! (-> this mat fvec quad) (-> v1-2 initial-position quad))
-      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) -2.0)
-      (let ((a3-7 (-> v1-2 initial-position)))
-        (.lvf vf4 (&-> (-> v1-2 initial-position) quad))
-        (.lvf vf5 (&-> arg1 quad))
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a3-7 quad) vf6)
-        )
-      (let ((a2-1 (-> v1-2 initial-position)))
-        (let ((a3-8 arg3))
-          (.lvf vf4 (&-> (-> v1-2 initial-position) quad))
-          (.lvf vf5 (&-> a3-8 quad))
-          )
-        (.mov.vf.w vf6 vf0)
-        (.add.vf.xyz vf6 vf4 vf5)
-        (.svf (&-> a2-1 quad) vf6)
-        )
-      (set! (-> this mat trans quad) (-> v1-2 initial-position quad))
-      )
-    (dotimes (v1-5 4)
-      (set! (-> this vec v1-5 w) 0.0)
-      )
-    0
-    (none)
+  (set! (-> this vec 0 quad) (-> arg0 quad))
+  (set! (-> this mat uvec quad) (-> arg1 quad))
+  (let ((v1-2 (new 'stack-no-clear 'trajectory)))
+    (vector-! (-> v1-2 initial-velocity) arg2 arg0)
+    (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) 3.0)
+    (vector+*! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1 -2.0)
+    (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+    (set! (-> this mat fvec quad) (-> v1-2 initial-position quad))
+    (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) -2.0)
+    (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1)
+    (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+    (set! (-> this mat trans quad) (-> v1-2 initial-position quad))
     )
+  (dotimes (v1-5 4)
+    (set! (-> this vec v1-5 w) 0.0)
+    )
+  0
+  (none)
   )
 
 ;; definition for method 10 of type cubic-curve
@@ -498,16 +469,16 @@
         (s4-0 10)
         )
     (cubic-curve-method-10 this (-> s5-0 initial-velocity) 0.0)
-    (add-debug-x #t (bucket-id bucket785) (-> s5-0 initial-velocity) *color-red*)
+    (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 initial-velocity) *color-red*)
     (dotimes (s3-0 s4-0)
       (set! (-> s5-0 initial-position quad) (-> s5-0 initial-velocity quad))
       (let ((f0-2 (/ (+ 1.0 (the float s3-0)) (the float s4-0))))
         (cubic-curve-method-10 this (-> s5-0 initial-velocity) f0-2)
         )
-      (add-debug-x #t (bucket-id bucket785) (-> s5-0 initial-velocity) *color-red*)
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 initial-velocity) *color-red*)
       (add-debug-line
         #t
-        (bucket-id bucket785)
+        (bucket-id debug-no-zbuf1)
         (-> s5-0 initial-position)
         (-> s5-0 initial-velocity)
         *color-red*
@@ -518,7 +489,7 @@
     )
   (add-debug-vector
     #t
-    (bucket-id bucket785)
+    (bucket-id debug-no-zbuf1)
     (cubic-curve-method-10 this (new 'stack-no-clear 'vector) 0.0)
     (cubic-curve-method-11 this (new 'stack-no-clear 'vector) 0.0)
     (meters 0.00024414062)
@@ -526,7 +497,7 @@
     )
   (add-debug-vector
     #t
-    (bucket-id bucket785)
+    (bucket-id debug-no-zbuf1)
     (cubic-curve-method-10 this (new 'stack-no-clear 'vector) 1.0)
     (vector-negate! (new 'stack-no-clear 'vector) (cubic-curve-method-11 this (new 'stack-no-clear 'vector) 1.0))
     (meters 0.00024414062)

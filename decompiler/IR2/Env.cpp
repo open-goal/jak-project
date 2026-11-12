@@ -543,6 +543,15 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   return entries;
 }
 
+namespace {
+std::string print_var_type(const TypeSpec& ts) {
+  if (ts.base_type() == "handle") {
+    return "handle";
+  }
+  return ts.print();
+}
+}  // namespace
+
 FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
                                                      int nargs_to_ignore) const {
   ASSERT(nargs_to_ignore <= 8);
@@ -583,8 +592,14 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
       continue;
     }
 
+    auto type_of_var = x.type.typespec();
+    auto retype_kv = m_var_retype.find(x.name());
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
     count++;
-    elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
+    elts.push_back(pretty_print::build_list(lookup_name, print_var_type(type_of_var)));
   }
 
   // sort in increasing offset.
@@ -602,7 +617,7 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
     if (m_vars_defined_in_let.find(x.name()) != m_vars_defined_in_let.end()) {
       continue;
     }
-    elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));
+    elts.push_back(pretty_print::build_list(x.name(), print_var_type(x.typespec)));
     count++;
   }
 

@@ -1081,9 +1081,9 @@
     '()
     )
   :trans (behavior ()
-    (let ((a0-4 (as-type (handle->process (-> self focus handle)) process-focusable)))
+    (let ((a0-4 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
       (when a0-4
-        (let ((v1-5 (get-trans (the-as process-focusable a0-4) 0)))
+        (let ((v1-5 (get-trans a0-4 0)))
           (when (< (vector-length (vector-! (new 'stack-no-clear 'vector) v1-5 (-> self root trans))) 32768.0)
             (set! (-> self save) #f)
             (go-virtual hostile)
@@ -1154,16 +1154,10 @@
         (go-virtual save)
         )
     (when (and (time-elapsed? (-> self state-time) (-> self reaction-time)) (not (-> self jump-attack)))
-      (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+      (let ((gp-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
         (when gp-0
-          (los-control-method-9
-            (-> self los)
-            (the-as process-focusable gp-0)
-            (get-trans (the-as process-focusable gp-0) 3)
-            819.2
-            4096.0
-            )
-          (let* ((v1-21 (get-trans (the-as process-focusable gp-0) 0))
+          (los-control-method-9 (-> self los) gp-0 (get-trans gp-0 3) 819.2 4096.0)
+          (let* ((v1-21 (get-trans gp-0 0))
                  (f30-0 (vector-length (vector-! (new 'stack-no-clear 'vector) v1-21 (-> self root trans))))
                  )
             (when (pointing-toward-focus? self 8192.0 #t)
@@ -1245,27 +1239,23 @@
 ;; definition for method 197 of type marauder
 ;; WARN: Return type mismatch int vs none.
 (defmethod fire-shot ((this marauder))
-  (let ((s4-0 (as-type (handle->process (-> this focus handle)) process-focusable))
+  (let ((s4-0 (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable))
         (s5-1 (new 'stack-no-clear 'vector))
         )
     (when s4-0
-      (vector-! s5-1 (-> this root trans) (get-trans (the-as process-focusable s4-0) 0))
+      (vector-! s5-1 (-> this root trans) (get-trans s4-0 0))
       (set! (-> s5-1 y) 0.0)
       (vector-normalize! s5-1 1.0)
       (vector-rotate90-around-y! s5-1 s5-1)
-      (if (< 0.0 (vector-dot s5-1 (get-transv (the-as process-focusable s4-0))))
+      (if (< 0.0 (vector-dot s5-1 (get-transv s4-0)))
           (vector-negate-in-place! s5-1)
           )
-      (vector+*!
-        (-> this target-pos)
-        (get-trans (the-as process-focusable s4-0) 3)
-        s5-1
-        (the-as float (if (rand-vu-percent? 0.66)
-                          8192.0
-                          0.0
-                          )
-                )
-        )
+      (vector+*! (-> this target-pos) (get-trans s4-0 3) s5-1 (the-as float (if (rand-vu-percent? 0.66)
+                                                                                8192.0
+                                                                                0.0
+                                                                                )
+                                                                      )
+                 )
       )
     )
   (let* ((s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 13)))
@@ -1301,10 +1291,10 @@
       (set! (-> v1-4 attack-id) a0-2)
       (set! (-> self attack-id) a0-2)
       )
-    (let ((a0-4 (handle->process (-> self focus handle))))
+    (let ((a0-4 (the-as process-focusable (handle->process (-> self focus handle)))))
       (set! gp-0 (when a0-4
                    (set! gp-0 (-> self target-pos))
-                   (vector-copy! gp-0 (get-trans (the-as process-focusable a0-4) 3))
+                   (vector-copy! gp-0 (get-trans a0-4 3))
                    gp-0
                    )
             )
@@ -1485,7 +1475,7 @@
 (defmethod clear-stale-victory ((this marauder))
   "Remove victory flag if needed."
   (if (or (time-elapsed? (-> this hit-focus-time) (seconds 4))
-          (and (handle->process (-> this focus handle))
+          (and (the-as process-focusable (handle->process (-> this focus handle)))
                (not (logtest? (-> (the-as process-focusable (handle->process (-> this focus handle))) focus-status)
                               (focus-status disable dead ignore grabbed)
                               )

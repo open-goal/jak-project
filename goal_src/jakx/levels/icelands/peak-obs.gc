@@ -31,7 +31,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 int))
+(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 mem-buffer))
   (ppointer->process (process-spawn peak-snowball :init peak-snowball-init-remote arg0 :name "peak-snowball"))
   )
 
@@ -63,7 +63,7 @@
                                  :max-time-step 0.033333335
                                  :mass 1000.0
                                  :inv-mass 0.001
-                                 :cm-offset-joint (new 'static 'vector :data (new 'static 'array float 4 0.0 0.0 0.0 1.0))
+                                 :cm-offset-joint (new 'static 'vector :w 1.0)
                                  :inertial-tensor-box (new 'static 'array meters 3 (meters 20) (meters 20) (meters 20))
                                  :gravity 163840.0
                                  )
@@ -92,12 +92,15 @@
         )
     )
   (let ((s4-1 (process-nettable-method-27 this 'set-destruction-time)))
-    (mem-buffer-method-22 s4-1 (the-as int (-> this last-u)))
+    (write-float s4-1 (-> this last-u))
     (process-nettable-method-29 this s4-1 -2 16)
     (process-nettable-method-28 this s4-1)
     )
   (vector-float*! (-> this impact-direction) (-> arg0 normal) -1.0)
-  (let ((v1-34 (make-sound-instance (-> *sound-info* 603) 0 (process->handle this))))
+  (let ((v1-34
+          (make-sound-instance (-> *sound-info* 603) (new 'static 'sound-id) (the-as symbol (process->handle this)))
+          )
+        )
     (if v1-34
         (-> v1-34 id)
         0
@@ -125,10 +128,10 @@
 (defmethod rigid-body-object-method-71 ((this peak-snowball))
   (let ((f30-0 (seconds-per-frame)))
     (let ((v1-1 (new 'stack-no-clear 'vector)))
-      (vector-! (the-as vector (-> v1-1 data)) (-> this target-position) (-> this root trans))
-      (vector-float*! (-> this rbody lin-velocity) (the-as vector (-> v1-1 data)) (/ 1.0 f30-0))
+      (vector-! (the-as vector (&-> v1-1 x)) (-> this target-position) (-> this root trans))
+      (vector-float*! (-> this rbody lin-velocity) (the-as vector (&-> v1-1 x)) (/ 1.0 f30-0))
       )
-    (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-velocity) (-> this rbody info mass))
+    (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-velocity) (-> this rbody info info mass))
     (vector-reset! (-> this rbody ang-momentum))
     (let ((v1-8 (new 'stack-no-clear 'inline-array 'collide-query 1)))
       (set! (-> v1-8 0 start-pos quad) (-> this root root-prim prim-core world-sphere quad))
@@ -144,13 +147,13 @@
         (set! (-> a0-10 action-mask) (collide-action solid))
         (set! (-> a0-10 nav-mesh) #f)
         )
-      (collide-cache-method-13 *collide-cache* (-> v1-8 0))
+      (fill-using-line-sphere *collide-cache* (-> v1-8 0))
       )
-    (rigid-body-control-method-13 (-> this rbody))
+    (init-velocities! (-> this rbody))
     (rbody-collision (-> this root) (-> this rbody) f30-0)
     )
   (rigid-body-object-method-70 this)
-  (rigid-body-control-method-11 (-> this rbody) (the-as vector (-> this root)))
+  (update-rbody-transform! (-> this rbody) (-> this root))
   (rigid-body-object-method-61 this)
   (update-transforms (-> this root))
   0
@@ -167,12 +170,12 @@
   (case arg0
     (('explode)
      (when (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
-       (let ((f30-0 (mem-buffer-method-40 arg1))
+       (let ((f30-0 (read-float arg1))
              (s4-0 (new 'stack-no-clear 'vector))
              )
-         (get-point-at-percent-along-path! (-> this path) s4-0 f30-0 'interp)
+         (path-control-method-14 (-> this path) s4-0 f30-0 'interp)
          (let ((s3-0 (new 'stack-no-clear 'vector)))
-           (displacement-between-points-at-percent-normalized! (-> this path) s3-0 f30-0)
+           (path-control-method-16 (-> this path) s3-0 f30-0)
            (let ((s5-0 (new 'stack-no-clear 'peak-obs-stackvar0)))
              (quaternion-look-at! (-> s5-0 quat) s3-0 *up-vector*)
              (quaternion->matrix (-> s5-0 mat) (-> s5-0 quat))
@@ -218,7 +221,8 @@
   (if (not (process-nettable-method-25 this))
       (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
       )
-  0.0
+  0
+  (none)
   )
 
 (defstate explode (peak-snowball)
@@ -259,7 +263,10 @@
           )
         )
     (sound-stop (the-as sound-id (-> self roll-sound)) #t)
-    (let ((v1-32 (make-sound-instance (-> *sound-info* 604) 0 (process->handle self))))
+    (let ((v1-32
+            (make-sound-instance (-> *sound-info* 604) (new 'static 'sound-id) (the-as symbol (process->handle self)))
+            )
+          )
       (if v1-32
           (-> v1-32 id)
           0
@@ -287,7 +294,7 @@
       (set! (-> gp-0 quad) (-> self root trans quad))
       (let ((s5-0 (new 'stack-no-clear 'quaternion)))
         (quaternion-look-at! (the-as quaternion (&-> s5-0 x)) (-> self impact-direction) *up-vector*)
-        (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (&-> s5-0 x)))
+        (quaternion-copy! (-> self root rotation) (the-as quaternion (&-> s5-0 x)))
         )
       (suspend-for (seconds 0.04)
         (let ((f0-2 (fmax 0.0 (fmin 1.0 (* 0.083333336 (the float (- (current-time) time)))))))
@@ -361,7 +368,12 @@
           (cond
             ((not (logtest? (-> self draw status) (draw-control-status no-draw)))
              (let ((f24-0 (lerp-scale 0.2 0.7 f30-0 0.0 1024000.0))
-                   (v1-28 (make-sound-instance (-> *sound-info* 602) (the-as int (-> self roll-sound)) (process->handle self)))
+                   (v1-28 (make-sound-instance
+                            (-> *sound-info* 602)
+                            (the-as sound-id (-> self roll-sound))
+                            (the-as symbol (process->handle self))
+                            )
+                          )
                    )
                (set! (-> self roll-sound) (the-as uint (cond
                                                          (v1-28
@@ -388,9 +400,9 @@
                 (go-virtual explode)
                 )
             (let ((s5-0 (new 'stack-no-clear 'vector)))
-              (get-point-at-percent-along-path! (-> self path) s5-0 f28-1 'interp)
+              (path-control-method-14 (-> self path) s5-0 f28-1 'interp)
               (let ((gp-0 (new 'stack-no-clear 'vector)))
-                (displacement-between-points-at-percent-normalized! (-> self path) gp-0 f28-1)
+                (path-control-method-16 (-> self path) gp-0 f28-1)
                 (let ((s4-0 (new 'stack-no-clear 'peak-obs-stackvar0)))
                   (quaternion-look-at! (-> s4-0 quat) gp-0 *up-vector*)
                   (quaternion->matrix (-> s4-0 mat) (-> s4-0 quat))
@@ -429,17 +441,9 @@
                     (let ((s5-1 (new 'stack-no-clear 'inline-array 'vector 3)))
                       (set! (-> s5-1 0 quad) (-> gp-0 quad))
                       (vector-normalize! (-> s5-1 0) 1.0)
-                      (vector-cross!
-                        (-> s5-1 1)
-                        (-> s5-1 0)
-                        (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
-                        )
+                      (vector-cross! (-> s5-1 1) (-> s5-1 0) (new 'static 'vector :y 1.0 :w 1.0))
                       (if (and (= (-> s5-1 1 x) 0.0) (= (-> s5-1 1 y) 0.0) (= (-> s5-1 1 z) 0.0))
-                          (vector-cross!
-                            (-> s5-1 1)
-                            (-> s5-1 0)
-                            (new 'static 'vector :data (new 'static 'array float 4 1.0 0.0 0.0 1.0))
-                            )
+                          (vector-cross! (-> s5-1 1) (-> s5-1 0) (new 'static 'vector :x 1.0 :w 1.0))
                           )
                       (let ((f0-23 (- (* 182.04445 (* 57.295784 f30-1)))))
                         (quaternion-vector-angle! (the-as quaternion (-> s5-1 2)) (-> s5-1 1) f0-23)
@@ -451,7 +455,7 @@
                         )
                       )
                     (quaternion-normalize! (the-as quaternion (-> self rbody rot)))
-                    (quaternion-copy! (the-as quaternion (-> self root rot)) (the-as quaternion (-> self rbody rot)))
+                    (quaternion-copy! (-> self root rotation) (the-as quaternion (-> self rbody rot)))
                     )
                   )
                 )
@@ -464,7 +468,7 @@
     )
   )
 
-(defmethod rigid-body-object-method-65 ((this peak-snowball) (arg0 vector))
+(defmethod init-collision! ((this peak-snowball))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)

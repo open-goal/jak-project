@@ -33,7 +33,8 @@
   )
 
 (deftype collectoid-draw (powerup-draw)
-  ((base-y  float)
+  ((root    collide-shape :override)
+   (base-y  float)
    )
   )
 
@@ -82,14 +83,14 @@
   )
 
 (defmethod process-nettable-method-15 ((this net-game-mgr-collectable) (arg0 mem-buffer))
-  (mem-buffer-method-29 arg0 (-> this steal-mode))
+  (write-bool arg0 (-> this steal-mode))
   ((method-of-type net-game-mgr-deathmatch process-nettable-method-15) this arg0)
   0
   (none)
   )
 
 (defmethod process-nettable-method-35 ((this net-game-mgr-collectable) (arg0 mem-buffer))
-  (set! (-> this steal-mode) (mem-buffer-method-46 arg0))
+  (set! (-> this steal-mode) (read-bool arg0))
   ((method-of-type net-game-mgr-deathmatch process-nettable-method-35) this arg0)
   0
   (none)
@@ -209,8 +210,8 @@
   (none)
   )
 
-(defmethod process-nettable-method-17 ((this net-player-collectable) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
-  ((method-of-type net-player-deathmatch process-nettable-method-17) this arg0 arg1 arg2)
+(defmethod process-nettable-method-17 ((this net-player-collectable) (arg0 symbol) (arg1 mem-buffer))
+  ((method-of-type net-player-deathmatch process-nettable-method-17) this arg0 arg1)
   0
   (none)
   )
@@ -313,13 +314,13 @@
   )
 
 (defmethod process-nettable-method-15 ((this collectoid) (arg0 mem-buffer))
-  (mem-buffer-method-14 arg0 (-> this controlled-by))
+  (write-int8 arg0 (-> this controlled-by))
   ((method-of-type net-powerup process-nettable-method-15) this arg0)
   (none)
   )
 
 (defmethod process-nettable-method-35 ((this collectoid) (arg0 mem-buffer))
-  (set! (-> this controlled-by) (mem-buffer-method-32 arg0))
+  (set! (-> this controlled-by) (read-int8 arg0))
   ((method-of-type net-powerup process-nettable-method-35) this arg0)
   (none)
   )
@@ -381,144 +382,117 @@
   )
 
 (defmethod powerup-draw-method-54 ((this collectoid-draw) (arg0 process-drawable))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
-      (let ((v1-0 arg0))
-        (cond
-          (v1-0
-            (vector-float*! (-> s5-0 0) (-> v1-0 root transv) 0.9)
-            (set! (-> s5-0 1 x) (* 0.0055555557 (vector-length (-> s5-0 0))))
-            (set! (-> *part-id-table* 752 init-specs 9 initial-valuef) (-> s5-0 1 x))
-            (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
-            (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 216))
-            (vector-reset! (-> *part-tracker-params-default* local-offset))
-            (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
-            (set! (-> *part-tracker-params-default* callback) #f)
-            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-            (set! (-> *part-tracker-params-default* target) v1-0)
-            (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
-            (set! (-> *part-tracker-params-default* local-space-param) 0)
-            (set! (-> *part-tracker-params-default* local-space-callback) #f)
-            (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-            *part-tracker-params-default*
-            (if (logtest? (-> *part-group-id-table* 216 flags) (sp-group-flag sp13))
-                (process-spawn
-                  part-tracker-subsampler
-                  :init part-tracker-subsampler-init
-                  *part-tracker-params-default*
-                  :name "part-tracker-subsampler"
-                  :to *entity-pool*
-                  :unk 0
-                  )
-                (process-spawn
-                  part-tracker
-                  :init part-tracker-init
-                  *part-tracker-params-default*
-                  :name "part-tracker"
-                  :to *entity-pool*
-                  :unk 0
-                  )
-                )
-            (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
-            (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
-            (vector-reset! (-> *part-tracker-params-default* local-offset))
-            (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
-            (set! (-> *part-tracker-params-default* callback) #f)
-            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-            (set! (-> *part-tracker-params-default* target) this)
-            (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
-            (set! (-> *part-tracker-params-default* local-space-param) 0)
-            (set! (-> *part-tracker-params-default* local-space-callback) #f)
-            (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
-            *part-tracker-params-default*
-            (if (logtest? (-> *part-group-id-table* 215 flags) (sp-group-flag sp13))
-                (process-spawn
-                  part-tracker-subsampler
-                  :init part-tracker-subsampler-init
-                  *part-tracker-params-default*
-                  :name "part-tracker-subsampler"
-                  :to *entity-pool*
-                  :unk 0
-                  )
-                (process-spawn
-                  part-tracker
-                  :init part-tracker-init
-                  *part-tracker-params-default*
-                  :name "part-tracker"
-                  :to *entity-pool*
-                  :unk 0
-                  )
-                )
-            )
-          (else
-            (set-vector! (-> s5-0 0) 0.0 0.0 0.0 1.0)
-            )
-          )
-        )
-      (let ((a1-21 (new 'stack 'debris-tuning (the-as uint 0))))
-        (set! (-> a1-21 scale-rand-lo) 1.0)
-        (set! (-> a1-21 scale-rand-hi) 1.0)
-        (set-vector! (-> a1-21 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
-        (let ((a2-14 (-> a1-21 fountain-rand-transv-lo)))
-          (let ((v1-52 (-> a1-21 fountain-rand-transv-lo))
-                (a0-42 (-> s5-0 0))
-                )
-            (.lvf vf4 (&-> v1-52 quad))
-            (.lvf vf5 (&-> a0-42 quad))
-            )
-          (.mov.vf.w vf6 vf0)
-          (.add.vf.xyz vf6 vf4 vf5)
-          (.svf (&-> a2-14 quad) vf6)
-          )
-        (set-vector! (-> a1-21 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
-        (let ((a0-47 (-> a1-21 fountain-rand-transv-hi)))
-          (let ((v1-54 (-> a1-21 fountain-rand-transv-hi))
-                (a2-15 (-> s5-0 0))
-                )
-            (.lvf vf4 (&-> v1-54 quad))
-            (.lvf vf5 (&-> a2-15 quad))
-            )
-          (.mov.vf.w vf6 vf0)
-          (.add.vf.xyz vf6 vf4 vf5)
-          (.svf (&-> a0-47 quad) vf6)
-          )
-        (set! (-> a1-21 fountain-rand-transv-hi w) 16384.0)
-        (set! (-> a1-21 duration) (the-as uint 1200))
-        (set! (-> this base-y) (-> this root trans y))
-        (debris-spawn this a1-21 *collectoid-debris-params* (the-as process-drawable #f))
-        )
-      )
-    (when (type? (-> this root) collide-shape)
-      (let ((v1-61 (-> (the-as collide-shape (-> this root)) root-prim)))
-        (set! (-> v1-61 prim-core collide-as) (collide-spec))
-        (set! (-> v1-61 prim-core collide-with) (collide-spec))
-        )
-      0
-      )
-    (logior! (-> this draw status) (draw-control-status no-draw))
-    (if (type? (-> this root) collide-shape)
-        (transform-post)
-        )
-    (let ((v1-69 (make-sound-instance (-> *sound-info* 310) 0 #f)))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+    (let ((v1-0 arg0))
       (cond
-        (v1-69
-          (set! (-> v1-69 trans quad) (-> this root trans quad))
-          (logior! (-> v1-69 flags) 96)
-          (-> v1-69 id)
+        (v1-0
+          (vector-float*! (-> s5-0 0) (-> v1-0 root transv) 0.9)
+          (set! (-> s5-0 1 x) (* 0.0055555557 (vector-length (-> s5-0 0))))
+          (set! (-> *part-id-table* 752 init-specs 9 initial-valuef) (-> s5-0 1 x))
+          (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+          (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 216))
+          (vector-reset! (-> *part-tracker-params-default* local-offset))
+          (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+          (set! (-> *part-tracker-params-default* callback) #f)
+          (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+          (set! (-> *part-tracker-params-default* target) v1-0)
+          (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+          (set! (-> *part-tracker-params-default* local-space-param) 0)
+          (set! (-> *part-tracker-params-default* local-space-callback) #f)
+          (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+          *part-tracker-params-default*
+          (if (logtest? (-> *part-group-id-table* 216 flags) (sp-group-flag sp13))
+              (process-spawn
+                part-tracker-subsampler
+                :init part-tracker-subsampler-init
+                *part-tracker-params-default*
+                :name "part-tracker-subsampler"
+                :to *entity-pool*
+                :unk 0
+                )
+              (process-spawn
+                part-tracker
+                :init part-tracker-init
+                *part-tracker-params-default*
+                :name "part-tracker"
+                :to *entity-pool*
+                :unk 0
+                )
+              )
+          (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+          (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
+          (vector-reset! (-> *part-tracker-params-default* local-offset))
+          (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+          (set! (-> *part-tracker-params-default* callback) #f)
+          (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+          (set! (-> *part-tracker-params-default* target) this)
+          (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+          (set! (-> *part-tracker-params-default* local-space-param) 0)
+          (set! (-> *part-tracker-params-default* local-space-callback) #f)
+          (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+          *part-tracker-params-default*
+          (if (logtest? (-> *part-group-id-table* 215 flags) (sp-group-flag sp13))
+              (process-spawn
+                part-tracker-subsampler
+                :init part-tracker-subsampler-init
+                *part-tracker-params-default*
+                :name "part-tracker-subsampler"
+                :to *entity-pool*
+                :unk 0
+                )
+              (process-spawn
+                part-tracker
+                :init part-tracker-init
+                *part-tracker-params-default*
+                :name "part-tracker"
+                :to *entity-pool*
+                :unk 0
+                )
+              )
           )
         (else
-          0
+          (set-vector! (-> s5-0 0) 0.0 0.0 0.0 1.0)
           )
         )
       )
-    0
-    (none)
+    (let ((a1-21 (new 'stack 'debris-tuning (the-as uint 0))))
+      (set! (-> a1-21 scale-rand-lo) 1.0)
+      (set! (-> a1-21 scale-rand-hi) 1.0)
+      (set-vector! (-> a1-21 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (vector+! (-> a1-21 fountain-rand-transv-lo) (-> a1-21 fountain-rand-transv-lo) (-> s5-0 0))
+      (set-vector! (-> a1-21 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (vector+! (-> a1-21 fountain-rand-transv-hi) (-> a1-21 fountain-rand-transv-hi) (-> s5-0 0))
+      (set! (-> a1-21 fountain-rand-transv-hi w) 16384.0)
+      (set! (-> a1-21 duration) (the-as uint 1200))
+      (set! (-> this base-y) (-> this root trans y))
+      (debris-spawn this a1-21 *collectoid-debris-params* (the-as process-drawable #f))
+      )
     )
+  (when (type? (-> this root) collide-shape)
+    (let ((v1-61 (-> (the-as collide-shape (-> this root)) root-prim)))
+      (set! (-> v1-61 prim-core collide-as) (collide-spec))
+      (set! (-> v1-61 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (if (type? (-> this root) collide-shape)
+      (transform-post)
+      )
+  (let ((v1-69 (make-sound-instance (-> *sound-info* 310) (new 'static 'sound-id) #f)))
+    (cond
+      (v1-69
+        (set! (-> v1-69 trans quad) (-> this root trans quad))
+        (logior! (-> v1-69 flags) 96)
+        (-> v1-69 id)
+        )
+      (else
+        0
+        )
+      )
+    )
+  0
+  (none)
   )
 
 (defstate idle (collectoid-draw)
@@ -610,7 +584,7 @@
                )
         )
     (+! (-> this root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
-    (quaternion-axis-angle! (the-as quaternion (-> this root rot)) 0.0 1.0 0.0 (* 20.0 f30-0))
+    (quaternion-axis-angle! (-> this root rotation) 0.0 1.0 0.0 (* 20.0 f30-0))
     )
   0
   (none)
@@ -635,11 +609,11 @@
                )
         (a0-20 (-> *net-players* arg1))
         )
-    (set! arg1 (the-as int (and v1-23 arg1)))
-    (when (the-as net-player arg1)
+    (set! arg1 (and v1-23 arg1))
+    (when arg1
       (cond
         ((= (-> v1-23 team) (-> a0-20 team))
-         (let ((v1-26 (make-sound-instance (-> *sound-info* 564) 0 #f)))
+         (let ((v1-26 (make-sound-instance (-> *sound-info* 564) (new 'static 'sound-id) #f)))
            (cond
              (v1-26
                (set! (-> v1-26 trans quad) (-> this pos quad))
@@ -653,7 +627,7 @@
            )
          )
         (else
-          (let ((v1-28 (make-sound-instance (-> *sound-info* 566) 0 #f)))
+          (let ((v1-28 (make-sound-instance (-> *sound-info* 566) (new 'static 'sound-id) #f)))
             (cond
               (v1-28
                 (set! (-> v1-28 trans quad) (-> this pos quad))
@@ -673,17 +647,17 @@
   (none)
   )
 
-(defmethod process-nettable-method-17 ((this collectoid) (arg0 symbol) (arg1 mem-buffer) (arg2 object))
+(defmethod process-nettable-method-17 ((this collectoid) (arg0 symbol) (arg1 mem-buffer))
   (cond
     ((= arg0 'converted)
-     (let ((s4-0 (mem-buffer-method-32 arg1))
-           (a2-1 (mem-buffer-method-32 arg1))
+     (let ((s4-0 (read-int8 arg1))
+           (a2-1 (read-int8 arg1))
            )
        (collectoid-method-56 this s4-0 a2-1)
        )
      )
     (else
-      ((method-of-type net-powerup process-nettable-method-17) this arg0 arg1 arg2)
+      ((method-of-type net-powerup process-nettable-method-17) this arg0 arg1)
       )
     )
   0
@@ -695,8 +669,8 @@
   (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
     (when (!= (-> this touched-by) (-> this controlled-by))
       (let ((s5-0 (process-nettable-method-27 this 'converted)))
-        (mem-buffer-method-14 s5-0 (-> this controlled-by))
-        (mem-buffer-method-14 s5-0 (-> this touched-by))
+        (write-int8 s5-0 (-> this controlled-by))
+        (write-int8 s5-0 (-> this touched-by))
         (process-nettable-method-29 this s5-0 -2 80)
         (process-nettable-method-28 this s5-0)
         )
@@ -741,8 +715,8 @@
     )
   (set! (-> this die-or-respawn-time) -1)
   (let ((s5-3 (process-nettable-method-27 this 'picked-up)))
-    (mem-buffer-method-16 s5-3 (-> this die-or-respawn-time))
-    (mem-buffer-method-14 s5-3 (-> this touched-by))
+    (write-int32 s5-3 (-> this die-or-respawn-time))
+    (write-int8 s5-3 (-> this touched-by))
     (process-nettable-method-29 this s5-3 -2 80)
     (process-nettable-method-28 this s5-3)
     )
@@ -754,48 +728,50 @@
 
 ;; WARN: Return type mismatch trsqv vs none.
 (defmethod powerup-draw-method-52 ((this collectoid-draw) (arg0 float))
-  (set! (-> this root) (new 'process 'trsqv))
+  (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   (none)
   )
 
 (define *desclct-pris-texture-anim-array*
-  (new 'static 'texture-anim-array :type texture-anim
-    (new 'static 'texture-anim
-      :num-layers #x1
-      :func #f
-      :init-func-id 'texture-anim-override-size-init
-      :mip-func-id 'texture-anim-draw-mips
-      :time-func #f
-      :tex #f
-      :tex-name "collectoid-eye-01-dest"
-      :extra (new 'static 'vector :x 64.0 :y 16.0 :z 1.0)
-      :color (new 'static 'rgba :a #x80)
-      :frame-delta 300.0
-      :frame-mod 225.0
-      :test #x31001
-      :alpha #x44
-      :clamp #x4
-      :data (new 'static 'array texture-anim-layer 2
-        (new 'static 'texture-anim-layer
-          :func-id 'default-texture-anim-layer-func
-          :init-func #f
-          :tex #f
-          :end-time 225.0
-          :tex-name "collectoid-eye-01"
-          :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
-          :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
-          :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
-          :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
-          :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
-          :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
-          :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0 0.5))
-          :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
-          :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
-          :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
-          :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
-          :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
-          :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.0 0.5))
-          :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+  (the-as (texture-anim-array texture-anim)
+    (new 'static 'texture-anim-array :type texture-anim
+      (new 'static 'texture-anim
+        :num-layers #x1
+        :func #f
+        :init-func-id 'texture-anim-override-size-init
+        :mip-func-id 'texture-anim-draw-mips
+        :time-func #f
+        :tex #f
+        :tex-name "collectoid-eye-01-dest"
+        :extra (new 'static 'vector :x 64.0 :y 16.0 :z 1.0)
+        :color (new 'static 'rgba :a #x80)
+        :frame-delta 300.0
+        :frame-mod 225.0
+        :test #x31001
+        :alpha #x44
+        :clamp #x4
+        :data (new 'static 'array texture-anim-layer 2
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 225.0
+            :tex-name "collectoid-eye-01"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.0 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
           )
         )
       )

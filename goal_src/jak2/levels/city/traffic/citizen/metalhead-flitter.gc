@@ -289,15 +289,10 @@
       (set! (-> v1-13 prim-core collide-with) (collide-spec))
       )
     0
-    (let ((a0-4 (handle->process (-> self focus handle))))
+    (let ((a0-4 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when a0-4
         (let* ((gp-1 (-> self root))
-               (s3-0
-                 (vector-normalize!
-                   (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-4) 0) (-> gp-1 trans))
-                   1.0
-                   )
-                 )
+               (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-4 0) (-> gp-1 trans)) 1.0))
                (f0-1 (deg-diff (quaternion-y-angle (-> gp-1 quat)) (vector-y-angle s3-0)))
                )
           (quaternion-rotate-y! (-> gp-1 quat) (-> gp-1 quat) f0-1)
@@ -410,17 +405,17 @@
   )
 
 (defmethod metalhead-flitter-method-205 ((this metalhead-flitter))
-  (let ((s3-0 (the-as process (as-type (handle->process (-> this focus handle)) process-focusable))))
+  (let ((s3-0 (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable)))
     (when s3-0
-      (let* ((s5-1 (get-trans (the-as process-focusable s3-0) 0))
+      (let* ((s5-1 (get-trans s3-0 0))
              (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> this root trans)))
              (f30-0 (vector-length s4-1))
              )
         (cond
-          ((enemy-method-99 this (the-as process-focusable s3-0))
+          ((enemy-method-99 this s3-0)
            (go-flee this)
            )
-          ((and (< f30-0 32768.0) (not (metalhead-flitter-method-207 this (the-as process-focusable s3-0))))
+          ((and (< f30-0 32768.0) (not (metalhead-flitter-method-207 this s3-0)))
            (go (method-of-object this circling))
            )
           ((< f30-0 (-> this enemy-info notice-nav-radius))
@@ -546,11 +541,9 @@
             )
           0
           )
-        (let ((v1-29 (ja-group)))
-          (if (not (and v1-29 (= v1-29 (-> self draw art-group data (-> self enemy-info idle-anim)))))
-              (ja-channel-push! 1 (seconds 0.2))
-              )
-          )
+        (if (not (ja-group? (-> self draw art-group data (-> self enemy-info idle-anim))))
+            (ja-channel-push! 1 (seconds 0.2))
+            )
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
@@ -666,30 +659,29 @@
     )
   :trans (behavior ()
     (local-vars (s5-2 vector))
-    (let ((gp-0 (the-as process (as-type (handle->process (-> self focus handle)) process-focusable))))
-      (set! s5-2
-            (cond
-              ((and gp-0
-                    (not (time-elapsed? (-> self state-time) (seconds 1.5)))
-                    gp-0
-                    (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+    (let ((gp-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
+      (set! s5-2 (cond
+                   ((and gp-0
+                         (not (time-elapsed? (-> self state-time) (seconds 1.5)))
+                         gp-0
+                         (not (logtest? (-> gp-0 focus-status) (focus-status disable dead ignore grabbed)))
+                         )
+                    (let ((s5-1 (-> self nav state))
+                          (v1-10 (get-trans gp-0 0))
+                          )
+                      (logclear! (-> s5-1 flags) (nav-state-flag directional-mode))
+                      (logior! (-> s5-1 flags) (nav-state-flag target-poly-dirty))
+                      (set! (-> s5-1 target-post quad) (-> v1-10 quad))
+                      )
+                    0
+                    (set! s5-2 (-> self attack-pos))
+                    (set! (-> s5-2 quad) (the-as uint128 (the-as vector (-> (get-trans gp-0 3) quad))))
+                    s5-2
                     )
-               (let ((s5-1 (-> self nav state))
-                     (v1-10 (get-trans (the-as process-focusable gp-0) 0))
+                   (else
+                     (the-as vector (go-stare self))
                      )
-                 (logclear! (-> s5-1 flags) (nav-state-flag directional-mode))
-                 (logior! (-> s5-1 flags) (nav-state-flag target-poly-dirty))
-                 (set! (-> s5-1 target-post quad) (-> v1-10 quad))
-                 )
-               0
-               (set! s5-2 (-> self attack-pos))
-               (set! (-> s5-2 quad) (the-as uint128 (the-as vector (-> (get-trans (the-as process-focusable gp-0) 3) quad))))
-               s5-2
-               )
-              (else
-                (the-as vector (go-stare self))
-                )
-              )
+                   )
             )
       )
     )
@@ -767,11 +759,9 @@
             )
           0
           )
-        (let ((v1-29 (ja-group)))
-          (if (not (and v1-29 (= v1-29 (-> self draw art-group data (-> self enemy-info idle-anim)))))
-              (ja-channel-push! 1 (seconds 0.2))
-              )
-          )
+        (if (not (ja-group? (-> self draw art-group data (-> self enemy-info idle-anim))))
+            (ja-channel-push! 1 (seconds 0.2))
+            )
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
@@ -807,9 +797,9 @@
     (set! (-> self off-screen-timer) (the-as uint (current-time)))
     )
   :trans (behavior ()
-    (let ((gp-0 (handle->process (-> self focus handle))))
+    (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if gp-0
-          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+          (set! (-> self focus-pos quad) (-> (get-trans gp-0 0) quad))
           )
       (when (time-elapsed? (-> self state-time) (seconds 0.1))
         (let ((v1-11 (-> self focus aware)))
@@ -819,10 +809,7 @@
                ((if gp-0
                     (metalhead-flitter-method-207
                       self
-                      (the-as
-                        process-focusable
-                        (the-as process (as-type (handle->process (-> self focus handle)) process-focusable))
-                        )
+                      (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)
                       )
                     )
                 (if (and (get-enemy-target self) (time-elapsed? (the-as int (-> self off-screen-timer)) (seconds 0.3)))

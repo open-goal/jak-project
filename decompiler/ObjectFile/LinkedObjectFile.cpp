@@ -472,6 +472,34 @@ void LinkedObjectFile::disassemble_functions() {
   }
 }
 
+// jak x sometimes does (-> "string" data) with the field and label offsets swapped:
+//     daddiu v1, fp, 4
+//     daddiu a1, v1, <label offset>
+// we swap them back so the label points at the static data instead of into code
+static bool swap_fp_relative_offsets(Function& function, size_t instr_idx, int current_fp) {
+  if (instr_idx + 1 >= function.instructions.size()) {
+    return false;
+  }
+  auto& instr = function.instructions[instr_idx];
+  auto& next = function.instructions[instr_idx + 1];
+  if (next.kind != InstructionKind::DADDIU ||
+      next.get_src(0).get_reg() != instr.get_dst(0).get_reg()) {
+    return false;
+  }
+
+  auto in_function = [&](int addr) {
+    return addr >= function.start_word * 4 && addr < function.end_word * 4;
+  };
+  int field_offset = instr.get_imm_src().get_imm();
+  int label_offset = next.get_imm_src().get_imm();
+  if (in_function(current_fp + field_offset) && !in_function(current_fp + label_offset)) {
+    instr.get_imm_src().set_imm(label_offset);
+    next.get_imm_src().set_imm(field_offset);
+    return true;
+  }
+  return false;
+}
+
 /*!
  * Analyze disassembly for use of the FP register, and add labels for fp-relative data access
  */
@@ -516,7 +544,17 @@ void LinkedObjectFile::process_fp_relative_links() {
               // generate pointer to fp-relative data
               case InstructionKind::DADDIU: {
                 auto& atom = instr.get_imm_src();
+                bool swapped = instr.kind == InstructionKind::DADDIU &&
+                               swap_fp_relative_offsets(function, instr_idx, current_fp);
                 atom.set_label(get_label_id_for(seg, current_fp + atom.get_imm()));
+                if (swapped) {
+                  const auto& label = labels.at(atom.get_label());
+                  auto target = is_string(seg, label.offset)
+                                    ? fmt::format("\"{}\"", get_goal_string_by_label(label))
+                                    : fmt::format("data at offset {}", label.offset);
+                  function.warnings.unique_warning(
+                      "Swapped fp-relative label and field offsets for {}", target);
+                }
                 stats.n_fp_reg_use_resolved++;
               } break;
 

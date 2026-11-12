@@ -446,11 +446,8 @@ namespace method_10_collide_cache_prim { extern void link(); }
 namespace method_17_collide_cache { extern void link(); }
 namespace method_9_collide_puss_work { extern void link(); }
 namespace method_10_collide_puss_work { extern void link(); }
-namespace method_20_grid_hash { extern void link(); }
 namespace method_22_grid_hash { extern void link(); }
-namespace method_30_sphere_hash { extern void link(); }
-namespace method_35_spatial_hash { extern void link(); }
-namespace method_36_spatial_hash { extern void link(); }
+namespace method_24_grid_hash { extern void link(); }
 namespace sparticle_motion_blur { extern void link(); }
 namespace sp_launch_particles_var { extern void link(); }
 namespace particle_adgif { extern void link(); }
@@ -799,10 +796,10 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"texture", {jakx::adgif_shader_texture_with_update::link}},
      {"collide-func",
       {jakx::moving_sphere_triangle_intersect::link, jakx::collide_do_primitives::link}},
-     {"joint", {jakx::cspace_parented_transformq_joint::link}},
-     {"foreground",
-      {jakx::foreground_check_longest_edge_asm::link, jakx::foreground_generic_merc::link,
-       jakx::foreground_merc::link, jakx::foreground_draw_hud::link}},
+     {"joint",
+      {
+          // jakx::cspace_parented_transformq_joint::link
+      }},
      {"particle-curves", {jakx::live_func_curve::link, jakx::birth_func_curve::link}},
      {"collide-hash",
       {jakx::method_11_collide_hash::link, jakx::method_12_collide_hash::link,
@@ -820,11 +817,10 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jakx::method_10_collide_cache_prim::link, jakx::method_17_collide_cache::link,
        jakx::method_9_collide_puss_work::link, jakx::method_10_collide_puss_work::link}},
      {"spatial-hash",
-      {jakx::method_20_grid_hash::link, jakx::method_22_grid_hash::link,
-       jakx::method_30_sphere_hash::link, jakx::method_36_spatial_hash::link,
-       jakx::method_21_grid_hash::link, jakx::method_24_grid_hash::link,
-       jakx::method_35_sphere_hash::link, jakx::method_35_spatial_hash::link,
-       jakx::method_40_spatial_hash::link}},
+      {
+          jakx::method_22_grid_hash::link,
+          jakx::method_24_grid_hash::link,
+      }},
      {"sparticle-launcher",
       {jakx::sparticle_motion_blur::link, jakx::sp_launch_particles_var::link,
        jakx::particle_adgif::link, jakx::sp_init_fields::link}},

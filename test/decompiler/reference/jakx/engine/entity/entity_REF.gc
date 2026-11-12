@@ -968,7 +968,7 @@
 
 ;; definition for method 23 of type level-group
 ;; WARN: Return type mismatch int vs none.
-(defmethod level-group-method-23 ((this level-group))
+(defmethod update-vis-volumes ((this level-group))
   (dotimes (s5-0 (-> this length))
     (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
@@ -1127,7 +1127,7 @@
 ;; definition for method 25 of type level-group
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod level-group-method-25 ((this level-group))
+(defmethod print-visvol-sizes ((this level-group))
   (let ((s5-0 0))
     (dotimes (v1-0 (-> this length))
       (let ((a0-4 (-> this level v1-0)))
@@ -1330,7 +1330,7 @@
     (if (and (nonzero? (-> (the-as process-drawable arg0) draw)) *display-actor-vis*)
         (add-debug-sphere
           #t
-          (bucket-id bucket793)
+          (bucket-id debug)
           (-> (the-as process-drawable arg0) draw origin)
           (-> (the-as process-drawable arg0) draw bounds w)
           (new 'static 'rgba :r #x80 :a #x80)
@@ -1339,7 +1339,7 @@
     )
   (add-debug-x
     #t
-    (bucket-id bucket785)
+    (bucket-id debug-no-zbuf1)
     (-> (the-as process-drawable arg0) root trans)
     (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
     )
@@ -1355,7 +1355,7 @@
       ((and sv-16 (= (-> sv-16 extra process) arg0))
        (add-debug-text-3d
          #t
-         (bucket-id bucket785)
+         (bucket-id debug-no-zbuf1)
          (-> sv-16 name)
          (-> (the-as process-drawable arg0) root trans)
          (if (logtest? (-> sv-16 extra perm status) (entity-perm-status bit-0 error))
@@ -1386,7 +1386,7 @@
          (if (and a0-24 (logtest? (the-as int a0-24) 1))
              (add-debug-text-3d
                #t
-               (bucket-id bucket785)
+               (bucket-id debug-no-zbuf1)
                (symbol->string-debug a0-24)
                (-> (the-as process-drawable arg0) root trans)
                (the-as font-color sv-20)
@@ -1402,7 +1402,7 @@
            (if s0-1
                (add-debug-box
                  #t
-                 (bucket-id bucket785)
+                 (bucket-id debug-no-zbuf1)
                  (-> s0-1 0)
                  (-> s0-1 1)
                  (if (is-object-visible? (-> sv-16 extra level) s1-1 a2-9)
@@ -1434,7 +1434,7 @@
     )
   (add-debug-text-3d
     #t
-    (bucket-id bucket785)
+    (bucket-id debug-no-zbuf1)
     (if (-> arg0 state)
         (symbol->string-debug (-> arg0 state name))
         "#f"
@@ -1489,15 +1489,15 @@
                            (sv-20 (-> s2-0 extra trans))
                            )
                       (when (or (= sv-16 'full) (-> s2-0 extra process))
-                        (add-debug-x #t (bucket-id bucket785) sv-20 (if (-> s2-0 extra process)
-                                                                        (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
-                                                                        (new 'static 'rgba :r #xff :a #x80)
-                                                                        )
+                        (add-debug-x #t (bucket-id debug-no-zbuf1) sv-20 (if (-> s2-0 extra process)
+                                                                             (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
+                                                                             (new 'static 'rgba :r #xff :a #x80)
+                                                                             )
                                      )
                         (if (< (vector-vector-distance (math-camera-pos) sv-20) 2048000.0)
                             (add-debug-text-3d
                               #t
-                              (bucket-id bucket785)
+                              (bucket-id debug-no-zbuf1)
                               (-> s2-0 name)
                               sv-20
                               (if (logtest? (-> s2-0 extra perm status) (entity-perm-status bit-0 error))
@@ -1555,13 +1555,13 @@
                         (when (and (type? s0-1 process-drawable) (nonzero? (-> (the-as process-drawable s0-1) draw)))
                           (add-debug-x
                             #t
-                            (bucket-id bucket785)
+                            (bucket-id debug-no-zbuf1)
                             (-> (the-as process-drawable s0-1) root trans)
                             (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
                             )
                           (add-debug-sphere
                             #t
-                            (bucket-id bucket793)
+                            (bucket-id debug)
                             (-> (the-as process-drawable s0-1) draw origin)
                             (-> (the-as process-drawable s0-1) draw bounds w)
                             (new 'static 'rgba :r #x80 :a #x80)
@@ -1579,7 +1579,7 @@
       )
     )
   (if *generate-actor-vis*
-      (level-group-method-23 this)
+      (update-vis-volumes this)
       )
   (cond
     (*debug-actor*
@@ -1955,7 +1955,7 @@
     )
   (let ((s4-2 (-> this level status)))
     (set! (-> this level status) 'active)
-    ((method-of-object *level* level-group-method-27))
+    (level-group-method-27 *level*)
     (dotimes (s3-1 (-> *level* length))
       (let ((s2-0 (-> *level* level s3-1)))
         (when (= (-> s2-0 status) 'active)
@@ -2188,7 +2188,7 @@
 (defun process-drawable-from-entity! ((arg0 process-drawable) (arg1 entity-actor))
   (logior! (-> arg0 mask) (process-mask actor-pause))
   (set! (-> arg0 root trans quad) (-> arg1 extra trans quad))
-  (quaternion-copy! (the-as quaternion (-> arg0 root rot)) (-> arg1 quat))
+  (quaternion-copy! (-> arg0 root rotation) (-> arg1 quat))
   (vector-identity! (-> arg0 root scale))
   (none)
   )
@@ -2397,7 +2397,7 @@
 ;; WARN: Stack slot offset 40 signed mismatch
 ;; WARN: Stack slot offset 40 signed mismatch
 ;; WARN: Return type mismatch int vs none.
-(defmethod level-group-method-17 ((this level-group) (arg0 int))
+(defmethod actors-update ((this level-group) (arg0 int))
   (let ((sv-16 this))
     (when *compact-actors*
       (if (and (= *compact-actors* 'debug) (= (-> *nk-dead-pool* alive-list prev) (-> *nk-dead-pool* first-gap)))
@@ -2778,7 +2778,3 @@
   0
   (none)
   )
-
-
-
-

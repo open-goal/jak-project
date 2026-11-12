@@ -2707,6 +2707,112 @@ FormElement* rewrite_set_font_single(LetElement* in,
   return elt;
 }
 
+FormElement* rewrite_ja_group_check(LetElement* in, const Env& env, FormPool& pool) {
+  //  (let ((v1-50 (ja-group)))
+  //    (cond
+  //      ((and (and v1-50 (or (= v1-50 jakb-gun-stance-ja) (= v1-50 jakb-gun-stance-dark-ja)))
+  //            (or (= gp-1 jakb-gun-stance-ja) (= gp-1 jakb-gun-stance-dark-ja))
+  //            )
+  //    )
+  //  ->
+  //  (cond
+  //    ((and (ja-group? jakb-gun-stance-ja jakb-gun-stance-dark-ja)
+  //          (or (= gp-1 jakb-gun-stance-ja) (= gp-1 jakb-gun-stance-dark-ja)))
+  //       ...
+  if (env.version < GameVersion::Jak2 || in->entries().size() != 1 || in->body()->size() != 1) {
+    return nullptr;
+  }
+
+  auto src = in->entries().at(0).src;
+  if (!match(Matcher::op_with_rest(GenericOpMatcher::func(Matcher::constant_token("ja-group")), {}),
+             src)
+           .matched) {
+    return nullptr;
+  }
+
+  auto var_name = env.get_variable_name(in->entries().at(0).dest);
+  auto is_var = [&](const RegisterAccess& ra) { return env.get_variable_name(ra) == var_name; };
+  auto strip_truthy = [&](Form* form) {
+    auto mr = match(
+        Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY), {Matcher::any(0)}),
+        form);
+    return mr.matched ? mr.maps.forms.at(0) : form;
+  };
+  auto is_var_form = [&](Form* form) {
+    auto mr = match(Matcher::any_reg(0), strip_truthy(form));
+    return mr.matched && is_var(*mr.maps.regs.at(0));
+  };
+  auto group_compared = [&](Form* form) -> Form* {
+    auto mr =
+        match(Matcher::op_fixed(FixedOperatorKind::EQ, {Matcher::any_reg(0), Matcher::any(1)}),
+              strip_truthy(form));
+    return mr.matched && is_var(*mr.maps.regs.at(0)) ? mr.maps.forms.at(1) : nullptr;
+  };
+
+  Form* site_form = nullptr;
+  int site_idx = -1;
+  int site_count = 0;
+  std::vector<Form*> groups;
+  in->body()->apply_form([&](Form* form) {
+    for (int i = 0; i < form->size(); i++) {
+      auto sc = dynamic_cast<ShortCircuitElement*>(form->at(i));
+      if (!sc || sc->kind != ShortCircuitElement::AND || sc->entries.size() != 2 ||
+          !is_var_form(sc->entries.at(0).condition)) {
+        continue;
+      }
+
+      std::vector<Form*> found;
+      auto checks = strip_truthy(sc->entries.at(1).condition);
+      auto or_sc = checks->try_as_element<ShortCircuitElement>();
+      if (or_sc && or_sc->kind == ShortCircuitElement::OR) {
+        for (auto& e : or_sc->entries) {
+          auto group = group_compared(e.condition);
+          if (!group) {
+            found.clear();
+            break;
+          }
+          found.push_back(group);
+        }
+      } else if (auto group = group_compared(checks)) {
+        found.push_back(group);
+      }
+
+      if (!found.empty()) {
+        site_count++;
+        site_form = form;
+        site_idx = i;
+        groups = found;
+      }
+    }
+  });
+  if (site_count != 1) {
+    return nullptr;
+  }
+
+  // the variable can't be used anywhere else
+  auto count_uses = [&](const RegAccessSet& vars) {
+    return std::count_if(vars.begin(), vars.end(),
+                         [&](const RegisterAccess& ra) { return is_var(ra); });
+  };
+  RegAccessSet body_vars, site_vars;
+  in->body()->collect_vars(body_vars, true);
+  site_form->at(site_idx)->collect_vars(site_vars, true);
+  if (count_uses(body_vars) != count_uses(site_vars)) {
+    return nullptr;
+  }
+
+  // :chan arg
+  auto args = groups;
+  for (auto arg : dynamic_cast<GenericElement*>(src->try_as_single_active_element())->elts()) {
+    args.push_back(arg);
+  }
+  auto check = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-group?")), args);
+  check->parent_form = site_form;
+  site_form->at(site_idx) = check;
+  return in->body()->at(0);
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -2735,6 +2841,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_joint_macro) {
     stats.ja++;
     return as_joint_macro;
+  }
+
+  auto as_ja_group_check = rewrite_ja_group_check(in, env, pool);
+  if (as_ja_group_check) {
+    stats.ja_group++;
+    return as_ja_group_check;
   }
 
   auto as_set_vector = rewrite_set_vector(in, env, pool);

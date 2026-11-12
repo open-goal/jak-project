@@ -1024,7 +1024,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   int offset_override,
                                   bool skip_in_static_decomp,
                                   double score,
-                                  const std::optional<TypeSpec> decomp_as_ts) {
+                                  const std::optional<TypeSpec> decomp_as_ts,
+                                  const std::optional<TypeSpec> handle_ts) {
   if (type->lookup_field(field_name, nullptr)) {
     throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
@@ -1068,6 +1069,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
   field.set_field_score(score);
   if (decomp_as_ts) {
     field.set_decomp_as_ts(*decomp_as_ts);
+  }
+  if (handle_ts) {
+    field.set_handle_ts(*handle_ts);
   }
 
   int after_field = offset + get_size_in_type(field);

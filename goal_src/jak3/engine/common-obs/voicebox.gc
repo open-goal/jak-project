@@ -86,10 +86,10 @@
               )
 
 (defmethod get-track-pt-and-scale ((this remote) (arg0 vector))
-  (let ((s4-0 (handle->process (-> this focus handle))))
+  (let ((s4-0 (the-as process-focusable (handle->process (-> this focus handle)))))
     (when s4-0
-      (vector-copy! arg0 (get-trans (the-as process-focusable s4-0) 3))
-      (let ((a0-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s4-0) 0))))
+      (vector-copy! arg0 (get-trans s4-0 3))
+      (let ((a0-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat s4-0 0))))
         (vector+float*! arg0 arg0 a0-7 (* -16384.0 (- 1.0 (-> this blend))))
         )
       )
@@ -129,7 +129,7 @@
   )
 
 (defbehavior remote-track remote ()
-  (let ((gp-0 (handle->process (-> self focus handle)))
+  (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle))))
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (vector-copy! s5-0 (-> self parent 0 trans))
@@ -148,7 +148,7 @@
         (rotate-toward-orientation! (-> self root) s5-1 65536.0 5461.3335 150 150 0.0)
         )
       (when gp-0
-        (let* ((gp-1 (-> (the-as process-focusable gp-0) root))
+        (let* ((gp-1 (-> gp-0 root))
                (s4-1 (-> self root trans))
                (f0-6
                  (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-1 (-> gp-1 trans))))
@@ -211,9 +211,9 @@
     )
   :trans (behavior ()
     (remote-track)
-    (let ((a0-1 (handle->process (-> self focus handle))))
+    (let ((a0-1 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if (and a0-1 (< 0.1 (-> self blend)))
-          (point-toward-point-clear-roll-pitch! (-> self root) (get-trans (the-as process-focusable a0-1) 0))
+          (point-toward-point-clear-roll-pitch! (-> self root) (get-trans a0-1 0))
           )
       )
     )
@@ -254,7 +254,7 @@
   :event (-> (method-of-type remote enter) event)
   :trans remote-track
   :code (behavior ()
-    (while (handle->process (-> self focus handle))
+    (while (the-as process-focusable (handle->process (-> self focus handle)))
       (suspend)
       (ja :num! (loop!))
       )
@@ -513,7 +513,7 @@
       )
     )
   :code (behavior ()
-    (while (let ((a0-2 (handle->process (-> self focus handle))))
+    (while (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
              (and a0-2 (!= (send-event a0-2 'test-pickup (pickup-type trick-judge)) 0.0))
              )
       (suspend)

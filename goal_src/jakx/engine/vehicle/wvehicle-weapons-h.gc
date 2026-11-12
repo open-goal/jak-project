@@ -7,29 +7,214 @@
 
 ;; DECOMP BEGINS
 
+(define V_R_MINE1_ARMED? #t)
+
+;; ERROR: Unsupported inline assembly instruction kind - [plzcw v1, a0]
+; (defun weapon-mask->type ((arg0 int))
+;   (local-vars (v1-2 uint128))
+;   (cond
+;     ((= (logand (shl #x8000 16) (the-as int arg0)) (shl #x8000 16))
+;      32
+;      )
+;     (else
+;       (.plzcw v1-2 (the-as int arg0))
+;       (- (+ (logand (shr -1 32) (the-as int v1-2)) -30))
+;       )
+;     )
+;   )
+
+;; TODO
+; (define *weapon-suppression-table* <static-data L34>)
+;
+; (dotimes (v1-3 21)
+;   (dotimes (a0-0 17)
+;     ;; og:preserve-this
+;     (set! (-> *weapon-suppression-table* v1-3 a0-0) #f)
+;     )
+;   )
+
 (deftype vehicle-weapon-slot (process-drawable)
-  ((owning-vehicle handle  :offset-assert 248)
-   (ammunition     int8    :offset-assert 256)
-   (flags          uint8   :offset-assert 257)
-   (in-slot        uint8   :offset-assert 258)
-   (powerup-level  uint8   :offset-assert 259)
-   (my-type        uint8   :offset-assert 260)
+  ((owning-vehicle  handle)
+   (ammunition      int8)
+   (flags           uint8)
+   (in-slot         uint8)
+   (powerup-level   uint8)
+   (my-type         uint8)
    )
-  :method-count-assert 60
-  :size-assert         #x105
-  :flag-assert         #x3c00800105
   (:state-methods
-    idle ;; 50
+    idle
     )
   (:methods
-    (vehicle-weapon-slot-method-51 () none) ;; 51
-    (vehicle-weapon-slot-method-52 () none) ;; 52
-    (vehicle-weapon-slot-method-53 () none) ;; 53
-    (vehicle-weapon-slot-method-54 () none) ;; 54
-    (vehicle-weapon-slot-method-55 () none) ;; 55
-    (vehicle-weapon-slot-method-56 () none) ;; 56
-    (vehicle-weapon-slot-method-57 () none) ;; 57
-    (vehicle-weapon-slot-method-58 () none) ;; 58
-    (vehicle-weapon-slot-method-59 () none) ;; 59
+    (vehicle-weapon-slot-method-51 () none)
+    (vehicle-weapon-slot-method-52 () none)
+    (vehicle-weapon-slot-method-53 () none)
+    (vehicle-weapon-slot-method-54 () none)
+    (vehicle-weapon-slot-method-55 () none)
+    (vehicle-weapon-slot-method-56 () none)
+    (vehicle-weapon-slot-method-57 () none)
+    (vehicle-weapon-slot-method-58 () none)
+    (vehicle-weapon-slot-method-59 () none)
     )
   )
+
+(deftype gunmount-drawable (process-drawable)
+  ((mounted-on  uint64)
+   (hardpoint   int8)
+   )
+  (:methods
+    (gunmount-drawable-method-50 () none)
+    (gunmount-drawable-method-51 () none)
+    (gunmount-drawable-method-52 () none)
+    (gunmount-drawable-method-53 () none)
+    )
+  )
+
+
+(deftype gunmount-generic-drawable (gunmount-drawable)
+  ((config           uint8)
+   (flash            uint64)
+   (changeover-anim  int32)
+   (powerup-level    int8)
+   )
+  (:methods
+    (gunmount-generic-drawable-method-54 () none)
+    (gunmount-generic-drawable-method-55 () none)
+    )
+  )
+
+
+(deftype warning-hud-icon (basic)
+  ((hsprite  hud-sprite  :inline)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+
+(defmethod new warning-hud-icon ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-vector! (-> gp-0 hsprite color) 255 16 16 255)
+    (set! (-> gp-0 hsprite pos z) #xffffff0)
+    (set! (-> gp-0 hsprite pos w) 0)
+    (set! (-> gp-0 hsprite scale-x) 1.0)
+    (set! (-> gp-0 hsprite scale-y) 1.0)
+    (set! (-> gp-0 hsprite angle) 0.0)
+    (set! (-> gp-0 hsprite flags) (hud-sprite-flags hsf3))
+    (set! (-> gp-0 hsprite tex) (get-texture car-reticle-07 level-default-minimap))
+    gp-0
+    )
+  )
+
+(deftype rapid-fire-params (structure)
+  ((rof                     uint16)
+   (shot-radius             float)
+   (shot-range              float)
+   (beam-effect             uint16)
+   (impact-callback         basic)
+   (impact-callback-params  basic)
+   (shot-sound              uint16)
+   (hit-sound               uint16)
+   (wpn-type                uint8)
+   (wpn-powerup-level       int8)
+   )
+  )
+
+
+(deftype rapid-fire-control (basic)
+  ((owner           handle)
+   (params          rapid-fire-params)
+   (shot-clock      uint16)
+   (next-shot-from  int8)
+   (hit-spang-part  basic)
+   (old-origin      vector      :inline)
+   (old-rot         quaternion  :inline)
+   (emitters        basic)
+   )
+  (:methods
+    (rapid-fire-control-method-9 () none)
+    (rapid-fire-control-method-10 () none)
+    (rapid-fire-control-method-11 () none)
+    (rapid-fire-control-method-12 () none)
+    )
+  )
+
+
+(deftype rapid-fire-callback-gun-hitspang-params (structure)
+  ((bits-part-id   uint32)
+   (dust-part-id   uint32)
+   (group-part-id  uint32)
+   )
+  )
+
+
+(deftype vehicle-weapon-drone (process-focusable)
+  ((owning-vehicle     uint64)
+   (owning-slot        uint64)
+   (target             uint64)
+   (orbit-height       float)
+   (orbit-radius       float)
+   (orbit-period       uint32)
+   (orbit-phase        uint32)
+   (scaled-last-frame  basic)
+   (ammunition         uint32)
+   (next-gaze          quaternion  :inline)
+   (next-gaze-time     uint64)
+   (last-gaze-time     uint64)
+   (pitch-bend         float)
+   (sweep-loop         uint32)
+   (muzzle-flashes     uint64      4)
+   (next-target-poll   uint64)
+   (firecontrol        basic)
+   (blam               uint32)
+   )
+  (:methods
+    (vehicle-weapon-drone-method-59 () none)
+    (vehicle-weapon-drone-method-60 () none)
+    (vehicle-weapon-drone-method-61 () none)
+    (vehicle-weapon-drone-method-62 () none)
+    (vehicle-weapon-drone-method-63 () none)
+    (vehicle-weapon-drone-method-64 () none)
+    (vehicle-weapon-drone-method-65 () none)
+    (vehicle-weapon-drone-method-66 () none)
+    )
+  )
+
+
+(deftype v-wpn-ptable-entry (structure)
+  ((chance       uint16)
+   (weapon-type  uint8)
+   (pad1         uint8)
+   )
+  :pack-me
+  )
+
+
+(deftype v-wpn-ptable (structure)
+  ((entries-count  int8)
+   (total-chance   uint16)
+   (entries-array  (inline-array v-wpn-ptable-entry))
+   )
+  )
+
+
+(deftype v-wpn-ptable-quad (structure)
+  ((base              v-wpn-ptable)
+   (last-lap          v-wpn-ptable)
+   (base-behind       v-wpn-ptable)
+   (last-lap-behind   v-wpn-ptable)
+   (behind-threshold  float)
+   )
+  )
+
+
+(deftype v-wpn-net-info (structure)
+  ()
+  )
+
+;; ERROR: failed type prop at 14: Could not figure out load: (set! a2 (l.bu gp))
+
+;; ERROR: failed type prop at 9: Could not figure out load: (set! a2 (l.bu gp))
+;; WARN: Return type mismatch none vs v-wpn-net-info.
+
+(define *cheat-defaultgun-in-race* #f)

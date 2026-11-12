@@ -1154,7 +1154,7 @@
       (set! (-> v1-8 radius) arg2)
       (set! (-> v1-8 collide-with) (collide-spec hit-by-others-list player-list los-blocker))
       (set! (-> v1-8 ignore-process0) this)
-      (set! (-> v1-8 ignore-process1) (handle->process (-> this focus handle)))
+      (set! (-> v1-8 ignore-process1) (the-as process-focusable (handle->process (-> this focus handle))))
       (set! (-> v1-8 ignore-pat)
             (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
             )
@@ -1493,28 +1493,26 @@
 ;; WARN: Return type mismatch symbol vs none.
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior dp-bipedal-turret-code dp-bipedal ()
-  (let ((v1-2 (ja-group)))
-    (when (not (and v1-2 (= v1-2 dp-bipedal-turret-idle-middle-ja)))
-      (ja-channel-push! 3 (seconds 0.2))
-      (ja-no-eval :group! dp-bipedal-turret-idle-middle-ja :num! zero)
-      (let ((a0-6 (-> self skel root-channel 1)))
-        (let ((f0-1 0.0))
-          (set! (-> a0-6 frame-interp 1) f0-1)
-          (set! (-> a0-6 frame-interp 0) f0-1)
-          )
-        (set! (-> a0-6 frame-group) (the-as art-joint-anim dp-bipedal-turret-idle-left-ja))
-        (set! (-> a0-6 frame-num) 0.0)
-        (joint-control-channel-group! a0-6 (the-as art-joint-anim dp-bipedal-turret-idle-left-ja) num-func-identity)
+  (when (not (ja-group? dp-bipedal-turret-idle-middle-ja))
+    (ja-channel-push! 3 (seconds 0.2))
+    (ja-no-eval :group! dp-bipedal-turret-idle-middle-ja :num! zero)
+    (let ((a0-6 (-> self skel root-channel 1)))
+      (let ((f0-1 0.0))
+        (set! (-> a0-6 frame-interp 1) f0-1)
+        (set! (-> a0-6 frame-interp 0) f0-1)
         )
-      (let ((a0-7 (-> self skel root-channel 2)))
-        (let ((f0-3 1.0))
-          (set! (-> a0-7 frame-interp 1) f0-3)
-          (set! (-> a0-7 frame-interp 0) f0-3)
-          )
-        (set! (-> a0-7 frame-group) (the-as art-joint-anim dp-bipedal-turret-idle-right-ja))
-        (set! (-> a0-7 frame-num) 0.0)
-        (joint-control-channel-group! a0-7 (the-as art-joint-anim dp-bipedal-turret-idle-right-ja) num-func-identity)
+      (set! (-> a0-6 frame-group) dp-bipedal-turret-idle-left-ja)
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group! a0-6 dp-bipedal-turret-idle-left-ja num-func-identity)
+      )
+    (let ((a0-7 (-> self skel root-channel 2)))
+      (let ((f0-3 1.0))
+        (set! (-> a0-7 frame-interp 1) f0-3)
+        (set! (-> a0-7 frame-interp 0) f0-3)
         )
+      (set! (-> a0-7 frame-group) dp-bipedal-turret-idle-right-ja)
+      (set! (-> a0-7 frame-num) 0.0)
+      (joint-control-channel-group! a0-7 dp-bipedal-turret-idle-right-ja num-func-identity)
       )
     )
   (until #f
@@ -3021,15 +3019,15 @@
       (logclear! (-> this focus-status) (focus-status ignore))
       )
   (when (< 1 (the-as int (-> this focus aware)))
-    (let ((s5-2 (handle->process (-> this focus handle))))
+    (let ((s5-2 (the-as process-focusable (handle->process (-> this focus handle)))))
       (when s5-2
-        (vector-copy! (-> this focus-bullseye) (get-trans (the-as process-focusable s5-2) 3))
-        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable s5-2) 0))
+        (vector-copy! (-> this focus-bullseye) (get-trans s5-2 3))
+        (vector-copy! (-> this focus-pos) (get-trans s5-2 0))
         (vector-! (-> this focus-dir) (-> this focus-pos) (-> this root trans))
         (vector-normalize! (-> this focus-dir) 1.0)
         (-> this focus-dir)
         (let ((s3-0 (-> this focus-pos))
-              (s4-3 (get-transv (the-as process-focusable s5-2)))
+              (s4-3 (get-transv s5-2))
               (v1-56 (-> this root))
               )
           (vector+float*! (-> this focus-close-attack-pos) s3-0 s4-3 1.1)
@@ -3038,7 +3036,7 @@
                        (-> this focus-throw-attack-pos)
                        (-> v1-56 trans)
                        (-> v1-56 transv)
-                       (get-trans (the-as process-focusable s5-2) 1)
+                       (get-trans s5-2 1)
                        s4-3
                        122880.0
                        102400.0
@@ -3048,13 +3046,7 @@
                 )
           )
         0
-        (los-control-method-9
-          (-> this los)
-          (the-as process-focusable s5-2)
-          (get-trans (the-as process-focusable s5-2) 3)
-          819.2
-          4096.0
-          )
+        (los-control-method-9 (-> this los) s5-2 (get-trans s5-2 3) 819.2 4096.0)
         )
       )
     )
@@ -3390,7 +3382,3 @@
         )
   (go (method-of-object this idle))
   )
-
-
-
-

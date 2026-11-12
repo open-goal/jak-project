@@ -2718,7 +2718,7 @@ void SimpleExpressionElement::update_from_stack_subu_l32_s7(const Env& env,
   auto var = m_expr.get_arg(0).var();
   auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
   auto type = get_input_type_for_access(env, var);
-  if (type != TypeSpec("handle")) {
+  if (type.base_type() != "handle") {
     env.func->warnings.warning(
         ".subu (32-bit) used on a {} at idx {}. This probably should be a handle.", type.print(),
         var.idx());

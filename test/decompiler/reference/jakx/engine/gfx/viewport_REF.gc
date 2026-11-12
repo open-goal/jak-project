@@ -1,0 +1,593 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 11 of type viewport
+;; WARN: Return type mismatch int vs none.
+(defmethod viewport-method-11 ((this viewport))
+  (set! (-> this screen-hx) (/ (-> this screen-sx) 2))
+  (set! (-> this screen-hy) (/ (-> this screen-sy) 2))
+  (set! (-> this screen-qx) (/ (-> this screen-hx) 2))
+  (set! (-> this screen-qy) (/ (-> this screen-hy) 2))
+  (set! (-> this screen-maxx) (+ (-> this screen-sx) 1792))
+  (set! (-> this screen-maxy) (+ (-> this screen-sy) 1840))
+  (set! (-> this screen-cx) (+ (-> this screen-hx) 1792))
+  (set! (-> this screen-cy) (+ (-> this screen-hy) 1840))
+  (set! (-> this blur-hx) (/ (-> this blur-sx) 2))
+  (set! (-> this blur-hy) (/ (-> this blur-sy) 2))
+  (set! (-> this blur-cx) (+ (-> this blur-hx) 1792))
+  (set! (-> this blur-cy) (+ (-> this blur-hy) 1840))
+  (set! (-> this blur-scale) 0.0)
+  (set! (-> this scissor)
+        (new 'static 'gs-scissor :scax1 (+ (-> this screen-sx) -1) :scay1 (+ (-> this screen-sy) -1))
+        )
+  (set! (-> this scissor-on-screen)
+        (new 'static 'gs-scissor
+          :scax0 (-> this minx-on-screen)
+          :scay0 (-> this miny-on-screen)
+          :scax1 (+ (-> this screen-sx) -1 (-> this minx-on-screen))
+          :scay1 (+ (-> this screen-sy) -1 (-> this miny-on-screen))
+          )
+        )
+  (set-vector!
+    (-> this shadow-texoffset)
+    (+ 0.5 (* 0.5 (the float (-> this screen-sx))))
+    (+ 0.5 (* 0.5 (the float (-> this screen-sy))))
+    0.0
+    1.0
+    )
+  (when (!= (-> this index) 2)
+    (let ((v1-41 (-> *viewport-array* default)))
+      (math-camera-method-9
+        (-> this math-camera)
+        (the float (-> v1-41 screen-sx))
+        (the float (-> v1-41 screen-sy))
+        (the float (-> this screen-sx))
+        (the float (-> this screen-sy))
+        )
+      )
+    (blit-displays-work-method-24 *blit-displays-work* (-> this blur-forward-dma) this 1)
+    (blit-displays-work-method-24 *blit-displays-work* (-> this blur-reverse-dma) this -1)
+    (blit-displays-work-method-25 *blit-displays-work* (-> this blur-finish-dma))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type viewport
+;; WARN: Return type mismatch int vs none.
+(defmethod init-gs-regs ((this viewport))
+  (set! (-> this screen-sx) 512)
+  (set! (-> this screen-sy) 416)
+  (set! (-> this ratio-x) 1.0)
+  (set! (-> this ratio-y) 1.0)
+  (set! (-> this frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8))
+  (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+  (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24)))
+  (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24) :zmsk #x1))
+  (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+  (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9))
+  (set! (-> this clamp)
+        (new 'static 'gs-clamp
+          :wms (gs-tex-wrap-mode region-clamp)
+          :wmt (gs-tex-wrap-mode region-clamp)
+          :maxu #x1ff
+          :maxv #x19f
+          )
+        )
+  (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x22 :fbw #x8))
+  (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x440 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+  (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+  (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11c0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+  (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8e :fbw #x1 :fbmsk #xffffff))
+  (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1 :tfx #x1))
+  (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x12e :fbw #x8 :fbmsk #xff000000))
+  (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+  (set! (-> this shadow-dma-tex0)
+        (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1 :tfx #x3)
+        )
+  (set-vector! (-> this shadow-texscale) 0.001953125 0.001953125 0.0 1.0)
+  (set! (-> this blur-sx) 256)
+  (set! (-> this blur-sy) 256)
+  (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x4e :fbw #x4))
+  (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x6e :fbw #x4))
+  (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x4e :fbw #x4 :fbmsk #xffffff))
+  (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8))
+  (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xdc0 :tbw #x4 :tw #x8 :th #x8))
+  (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8 :tcc #x1))
+  (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                               :wms (gs-tex-wrap-mode region-clamp)
+                               :wmt (gs-tex-wrap-mode region-clamp)
+                               :maxu #xff
+                               :maxv #xff
+                               )
+        )
+  (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #xff :scay1 #xff))
+  (set! (-> this minx-on-screen) 0)
+  (set! (-> this miny-on-screen) 0)
+  (viewport-method-11 this)
+  0
+  (none)
+  )
+
+;; definition for method 13 of type viewport
+;; WARN: Return type mismatch int vs none.
+(defmethod viewport-method-13 ((this viewport))
+  (set! (-> this screen-sx) 512)
+  (set! (-> this ratio-x) 1.0)
+  (set! (-> this ratio-y) 0.5)
+  (cond
+    ((zero? (-> this index))
+     (set! (-> this screen-sy) 192)
+     (set! (-> this frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8))
+     (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24)))
+     (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24) :zmsk #x1))
+     (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1))
+     (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x8))
+     (set! (-> this clamp)
+           (new 'static 'gs-clamp
+             :wms (gs-tex-wrap-mode region-clamp)
+             :wmt (gs-tex-wrap-mode region-clamp)
+             :maxu #x1ff
+             :maxv #xbf
+             )
+           )
+     (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x22 :fbw #x8))
+     (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x440 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+     (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11c0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+     (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8e :fbw #x1 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1 :tfx #x1))
+     (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x12e :fbw #x8 :fbmsk #xff000000))
+     (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this shadow-dma-tex0)
+           (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1 :tfx #x3)
+           )
+     (set-vector! (-> this shadow-texscale) 0.001953125 0.00390625 0.0 1.0)
+     (set! (-> this blur-sx) 256)
+     (set! (-> this blur-sy) 128)
+     (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x4e :fbw #x4))
+     (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x6e :fbw #x4))
+     (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x4e :fbw #x4 :fbmsk #xffffff))
+     (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x7))
+     (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xdc0 :tbw #x4 :tw #x8 :th #x7))
+     (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x7 :tcc #x1))
+     (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                  :wms (gs-tex-wrap-mode region-clamp)
+                                  :wmt (gs-tex-wrap-mode region-clamp)
+                                  :maxu #xff
+                                  :maxv #x7f
+                                  )
+           )
+     (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #xff :scay1 #x7f))
+     (set! (-> this minx-on-screen) 0)
+     (set! (-> this miny-on-screen) 0)
+     0
+     )
+    ((= (-> this index) 1)
+     (set! (-> this screen-sy) 192)
+     (set! (-> this frame) (new 'static 'gs-frame :fbp #x1c6 :fbw #x8))
+     (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x1c6 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x15e :psm (gs-psm ct24)))
+     (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x15e :psm (gs-psm ct24) :zmsk #x1))
+     (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x38c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1))
+     (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x38c0 :tbw #x8 :tw #x9 :th #x8))
+     (set! (-> this clamp)
+           (new 'static 'gs-clamp
+             :wms (gs-tex-wrap-mode region-clamp)
+             :wmt (gs-tex-wrap-mode region-clamp)
+             :maxu #x1ff
+             :maxv #xbf
+             )
+           )
+     (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x52 :fbw #x8))
+     (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #xa40 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+     (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x1c6 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11e0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+     (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8f :fbw #x1 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x38c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1 :tfx #x1))
+     (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x15e :fbw #x8 :fbmsk #xff000000))
+     (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x1c6 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this shadow-dma-tex0)
+           (new 'static 'gs-tex0 :tbp0 #x38c0 :tbw #x8 :tw #x9 :th #x8 :tcc #x1 :tfx #x3)
+           )
+     (set-vector! (-> this shadow-texscale) 0.001953125 0.00390625 0.0 1.0)
+     (set! (-> this blur-sx) 256)
+     (set! (-> this blur-sy) 128)
+     (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x5e :fbw #x4))
+     (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x7e :fbw #x4))
+     (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x5e :fbw #x4 :fbmsk #xffffff))
+     (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #xbc0 :tbw #x4 :tw #x8 :th #x7))
+     (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xfc0 :tbw #x4 :tw #x8 :th #x7))
+     (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #xbc0 :tbw #x4 :tw #x8 :th #x7 :tcc #x1))
+     (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                  :wms (gs-tex-wrap-mode region-clamp)
+                                  :wmt (gs-tex-wrap-mode region-clamp)
+                                  :maxu #xff
+                                  :maxv #x7f
+                                  )
+           )
+     (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #xff :scay1 #x7f))
+     (set! (-> this minx-on-screen) 0)
+     (set! (-> this miny-on-screen) 192)
+     )
+    (else
+      (set! (-> this screen-sy) 384)
+      (set! (-> this frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8))
+      (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24)))
+      (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24) :zmsk #x1))
+      (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+      (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9))
+      (set! (-> this clamp)
+            (new 'static 'gs-clamp
+              :wms (gs-tex-wrap-mode region-clamp)
+              :wmt (gs-tex-wrap-mode region-clamp)
+              :maxu #x1ff
+              :maxv #x19f
+              )
+            )
+      (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x22 :fbw #x8))
+      (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x440 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+      (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11c0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+      (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8e :fbw #x1 :fbmsk #xffffff))
+      (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1 :tfx #x1))
+      (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x12e :fbw #x8 :fbmsk #xff000000))
+      (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this shadow-dma-tex0)
+            (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1 :tfx #x3)
+            )
+      (set-vector! (-> this shadow-texscale) 0.001953125 0.001953125 0.0 1.0)
+      (set! (-> this blur-sx) 256)
+      (set! (-> this blur-sy) 256)
+      (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x4e :fbw #x4))
+      (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x6e :fbw #x4))
+      (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x4e :fbw #x4 :fbmsk #xffffff))
+      (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8))
+      (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xdc0 :tbw #x4 :tw #x8 :th #x8))
+      (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8 :tcc #x1))
+      (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                   :wms (gs-tex-wrap-mode region-clamp)
+                                   :wmt (gs-tex-wrap-mode region-clamp)
+                                   :maxu #xff
+                                   :maxv #xff
+                                   )
+            )
+      (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #xff :scay1 #xff))
+      (set! (-> this minx-on-screen) 0)
+      (set! (-> this miny-on-screen) 0)
+      0
+      )
+    )
+  (viewport-method-11 this)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type viewport
+;; WARN: Return type mismatch int vs none.
+(defmethod viewport-method-14 ((this viewport))
+  (set! (-> this screen-sy) 416)
+  (set! (-> this ratio-x) 0.5)
+  (set! (-> this ratio-y) 1.0)
+  (cond
+    ((zero? (-> this index))
+     (set! (-> this screen-sx) 256)
+     (set! (-> this frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8))
+     (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24)))
+     (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24) :zmsk #x1))
+     (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x8 :th #x9 :tcc #x1))
+     (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x8 :th #x9))
+     (set! (-> this clamp)
+           (new 'static 'gs-clamp
+             :wms (gs-tex-wrap-mode region-clamp)
+             :wmt (gs-tex-wrap-mode region-clamp)
+             :maxu #xff
+             :maxv #x19f
+             )
+           )
+     (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x22 :fbw #x8))
+     (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x440 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+     (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11c0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+     (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8e :fbw #x1 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x8 :th #x9 :tcc #x1 :tfx #x1))
+     (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x12e :fbw #x8 :fbmsk #xff000000))
+     (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this shadow-dma-tex0)
+           (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x8 :th #x9 :tcc #x1 :tfx #x3)
+           )
+     (set-vector! (-> this shadow-texscale) 0.00390625 0.001953125 0.0 1.0)
+     (set! (-> this blur-sx) 128)
+     (set! (-> this blur-sy) 256)
+     (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x4e :fbw #x4))
+     (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x6e :fbw #x4))
+     (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x4e :fbw #x4 :fbmsk #xffffff))
+     (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x7 :th #x8))
+     (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xdc0 :tbw #x4 :tw #x7 :th #x8))
+     (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x7 :th #x8 :tcc #x1))
+     (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                  :wms (gs-tex-wrap-mode region-clamp)
+                                  :wmt (gs-tex-wrap-mode region-clamp)
+                                  :maxu #x7f
+                                  :maxv #xff
+                                  )
+           )
+     (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #x7f :scay1 #xff))
+     (set! (-> this minx-on-screen) 0)
+     (set! (-> this miny-on-screen) 0)
+     0
+     )
+    ((= (-> this index) 1)
+     (set! (-> this screen-sx) 256)
+     (set! (-> this frame) (new 'static 'gs-frame :fbp #x19a :fbw #x8))
+     (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x19a :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x132 :psm (gs-psm ct24)))
+     (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x132 :psm (gs-psm ct24) :zmsk #x1))
+     (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x3340 :tbw #x8 :tw #x8 :th #x9 :tcc #x1))
+     (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x3340 :tbw #x8 :tw #x8 :th #x9))
+     (set! (-> this clamp)
+           (new 'static 'gs-clamp
+             :wms (gs-tex-wrap-mode region-clamp)
+             :wmt (gs-tex-wrap-mode region-clamp)
+             :maxu #xff
+             :maxv #x19f
+             )
+           )
+     (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x26 :fbw #x8))
+     (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x4c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+     (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x19a :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11e0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+     (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8f :fbw #x1 :fbmsk #xffffff))
+     (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x3340 :tbw #x8 :tw #x8 :th #x9 :tcc #x1 :tfx #x1))
+     (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x132 :fbw #x8 :fbmsk #xff000000))
+     (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x19a :fbw #x8 :fbmsk #xffffff))
+     (set! (-> this shadow-dma-tex0)
+           (new 'static 'gs-tex0 :tbp0 #x3340 :tbw #x8 :tw #x8 :th #x9 :tcc #x1 :tfx #x3)
+           )
+     (set-vector! (-> this shadow-texscale) 0.00390625 0.001953125 0.0 1.0)
+     (set! (-> this blur-sx) 128)
+     (set! (-> this blur-sy) 256)
+     (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x50 :fbw #x4))
+     (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x70 :fbw #x4))
+     (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x50 :fbw #x4 :fbmsk #xffffff))
+     (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #xa00 :tbw #x4 :tw #x7 :th #x8))
+     (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xe00 :tbw #x4 :tw #x7 :th #x8))
+     (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #xa00 :tbw #x4 :tw #x7 :th #x8 :tcc #x1))
+     (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                  :wms (gs-tex-wrap-mode region-clamp)
+                                  :wmt (gs-tex-wrap-mode region-clamp)
+                                  :maxu #x7f
+                                  :maxv #xff
+                                  )
+           )
+     (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #x7f :scay1 #xff))
+     (set! (-> this minx-on-screen) 256)
+     (set! (-> this miny-on-screen) 0)
+     0
+     )
+    (else
+      (set! (-> this screen-sx) 512)
+      (set! (-> this frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8))
+      (set! (-> this frame-a) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this zbuf-on) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24)))
+      (set! (-> this zbuf-off) (new 'static 'gs-zbuf :zbp #x12e :psm (gs-psm ct24) :zmsk #x1))
+      (set! (-> this tex0) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+      (set! (-> this tex0-24) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9))
+      (set! (-> this clamp)
+            (new 'static 'gs-clamp
+              :wms (gs-tex-wrap-mode region-clamp)
+              :wmt (gs-tex-wrap-mode region-clamp)
+              :maxu #x1ff
+              :maxv #x19f
+              )
+            )
+      (set! (-> this copy-frame) (new 'static 'gs-frame :fbp #x22 :fbw #x8))
+      (set! (-> this copy-tex0) (new 'static 'gs-tex0 :tbp0 #x440 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+      (set! (-> this glow-frame-1) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this glow-tex0-1) (new 'static 'gs-tex0 :tbp0 #x11c0 :tbw #x1 :tw #x5 :th #x5 :tcc #x1 :tfx #x1))
+      (set! (-> this glow-frame-2) (new 'static 'gs-frame :fbp #x8e :fbw #x1 :fbmsk #xffffff))
+      (set! (-> this glow-tex0-2) (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x8 :th #x9 :tcc #x1 :tfx #x1))
+      (set! (-> this shadow-invert-frame) (new 'static 'gs-frame :fbp #x12e :fbw #x8 :fbmsk #xff000000))
+      (set! (-> this shadow-dma-frame) (new 'static 'gs-frame :fbp #x196 :fbw #x8 :fbmsk #xffffff))
+      (set! (-> this shadow-dma-tex0)
+            (new 'static 'gs-tex0 :tbp0 #x32c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1 :tfx #x3)
+            )
+      (set-vector! (-> this shadow-texscale) 0.001953125 0.001953125 0.0 1.0)
+      (set! (-> this blur-sx) 256)
+      (set! (-> this blur-sy) 256)
+      (set! (-> this blur-frame-0) (new 'static 'gs-frame :fbp #x4e :fbw #x4))
+      (set! (-> this blur-frame-1) (new 'static 'gs-frame :fbp #x6e :fbw #x4))
+      (set! (-> this blur-frame-a) (new 'static 'gs-frame :fbp #x4e :fbw #x4 :fbmsk #xffffff))
+      (set! (-> this blur-tex0-0) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8))
+      (set! (-> this blur-tex0-1) (new 'static 'gs-tex0 :tbp0 #xdc0 :tbw #x4 :tw #x8 :th #x8))
+      (set! (-> this blur-tex0-a) (new 'static 'gs-tex0 :tbp0 #x9c0 :tbw #x4 :tw #x8 :th #x8 :tcc #x1))
+      (set! (-> this blur-clamp) (new 'static 'gs-clamp
+                                   :wms (gs-tex-wrap-mode region-clamp)
+                                   :wmt (gs-tex-wrap-mode region-clamp)
+                                   :maxu #xff
+                                   :maxv #xff
+                                   )
+            )
+      (set! (-> this blur-scissor) (new 'static 'gs-scissor :scax1 #xff :scay1 #xff))
+      (set! (-> this minx-on-screen) 0)
+      (set! (-> this miny-on-screen) 0)
+      0
+      )
+    )
+  (viewport-method-11 this)
+  0
+  (none)
+  )
+
+;; definition for method 9 of type viewport-array
+;; WARN: Return type mismatch int vs none.
+(defmethod viewport-array-method-9 ((this viewport-array) (arg0 viewport))
+  (set! (-> this mode) (the-as uint arg0))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (set! (-> this num-viewports) (the-as uint 1))
+       (countdown (s5-0 3)
+         (set! (-> this data s5-0 index) s5-0)
+         (init-gs-regs (-> this data s5-0))
+         )
+       )
+      ((= v1-0 1)
+       (set! (-> this num-viewports) (the-as uint 2))
+       (countdown (s5-1 3)
+         (set! (-> this data s5-1 index) s5-1)
+         (viewport-method-13 (-> this data s5-1))
+         )
+       )
+      ((= v1-0 2)
+       (set! (-> this num-viewports) (the-as uint 2))
+       (countdown (s5-2 3)
+         (set! (-> this data s5-2 index) s5-2)
+         (viewport-method-14 (-> this data s5-2))
+         )
+       )
+      )
+    )
+  (set! *view-count* (the-as int (-> this num-viewports)))
+  (if (nonzero? shadow-make-invert-buf)
+      (shadow-make-invert-buf)
+      )
+  (if (nonzero? init-warp)
+      (init-warp)
+      )
+  (if (nonzero? init-hflip-zbuf)
+      (init-hflip-zbuf)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type viewport-array
+(defmethod set-current-viewport ((this viewport-array) (arg0 uint))
+  (let ((v0-0 (-> this data arg0)))
+    (set! (-> this current-viewport-index) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type viewport
+(defmethod viewport-method-9 ((this viewport) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0
+                         (frame-1 (-> this frame))
+                         (zbuf-1 (-> this zbuf-on))
+                         (scissor-1 (-> this scissor))
+                         )
+  this
+  )
+
+;; definition for method 11 of type viewport-array
+(defmethod get-current-viewport ((this viewport-array))
+  (-> this data (-> this current-viewport-index))
+  )
+
+;; definition for method 10 of type viewport
+(defmethod set-scissor-1 ((this viewport) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0 (scissor-1 (-> this scissor-on-screen)))
+  this
+  )
+
+;; definition for method 0 of type viewport-array
+;; WARN: Return type mismatch structure vs viewport-array.
+(defmethod new viewport-array ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((gp-0 (t9-0 allocation v1-1)))
+      (dotimes (s5-0 2)
+        (set! (-> (the-as viewport-array gp-0) data s5-0 math-camera) (view-get-math-camera s5-0))
+        )
+      (the-as viewport-array gp-0)
+      )
+    )
+  )
+
+;; definition for method 15 of type viewport
+;; WARN: Check prologue - tricky store of a0
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod viewport-method-15 ((this viewport))
+  (let* ((sv-96 this)
+         (sv-112 (-> sv-96 math-camera))
+         (sv-128 (-> sv-112 camera-rot))
+         (s0-0 (-> sv-96 prev-inv-camera-rot))
+         (s1-0 (new 'stack-no-clear 'matrix))
+         (s2-0 (new 'static 'vector :z 172032.0 :w 1.0))
+         (s3-0 (new 'static 'vector :z -172032.0 :w 1.0))
+         (gp-0 (-> sv-96 motion-vector))
+         (s4-0 (new 'stack-no-clear 'vector))
+         (s5-0 (new 'static 'vector :x 524288.0 :y 524288.0 :z 524288.0 :w 1.0))
+         )
+    (if (not (paused?))
+        (mem-copy!
+          (the-as pointer (-> sv-96 prev-inv-camera-rot))
+          (the-as pointer (-> sv-112 prev-inv-camera-rot))
+          64
+          )
+        )
+    (matrix*! s1-0 s0-0 sv-128)
+    (vector-matrix*! gp-0 s2-0 s1-0)
+    (vector-! gp-0 gp-0 s2-0)
+    (vector-matrix*! s4-0 s3-0 s1-0)
+    (vector-! s4-0 s4-0 s3-0)
+    (if (< (vector-length gp-0) (vector-length s4-0))
+        (set! (-> gp-0 quad) (-> s4-0 quad))
+        )
+    (set! (-> gp-0 z) (/ (-> gp-0 z) (* -1638.4 (-> *display* dog-ratio))))
+    (vector+! gp-0 gp-0 s5-0)
+    (vector-! gp-0 gp-0 s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *viewport-array*, type viewport-array
+(define *viewport-array* (new 'global 'viewport-array))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 0 shadow-dma) (new 'global 'dma-buffer 464))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 1 shadow-dma) (new 'global 'dma-buffer 464))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 0 copy-dma) (new 'global 'dma-buffer 864))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 1 copy-dma) (new 'global 'dma-buffer 864))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* default copy-dma) (new 'global 'dma-buffer 864))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* default hflip-zbuf-dma) (new 'global 'dma-buffer 768))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 0 blur-forward-dma) (new 'global 'dma-buffer 6688))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 1 blur-forward-dma) (new 'global 'dma-buffer 6688))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 0 blur-reverse-dma) (new 'global 'dma-buffer 6688))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 1 blur-reverse-dma) (new 'global 'dma-buffer 6688))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 0 blur-finish-dma) (new 'global 'dma-buffer 1184))
+
+;; failed to figure out what this is:
+(set! (-> *viewport-array* data 1 blur-finish-dma) (new 'global 'dma-buffer 1184))
+
+
+
+

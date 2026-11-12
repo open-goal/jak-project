@@ -1,0 +1,1506 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function game-task-node->string
+(defun game-task-node->string ((arg0 game-task-node))
+  (-> *game-info* sub-task-list arg0 name)
+  )
+
+;; definition for method 9 of type game-task-info
+(defmethod game-task-info-method-9 ((this game-task-info))
+  (let ((v1-1 (-> *game-info* play-list)))
+    (countdown (a1-0 (-> v1-1 length))
+      (if (= this (-> v1-1 a1-0))
+          (return a1-0)
+          )
+      )
+    )
+  0
+  )
+
+;; definition for method 9 of type game-task-node-info
+(defmethod get-idx-in-task-list ((this game-task-node-info))
+  (let ((v1-1 (-> *game-info* sub-task-list)))
+    (countdown (a1-0 (-> v1-1 length))
+      (if (= this (-> v1-1 a1-0))
+          (return a1-0)
+          )
+      )
+    )
+  0
+  )
+
+;; definition for function reset-city-squad-control
+(defun reset-city-squad-control ((arg0 symbol) (arg1 symbol) (arg2 symbol))
+  (if (and (nonzero? *cty-attack-controller*) *cty-attack-controller*)
+      (cty-attack-reset arg0 #f #f)
+      )
+  (none)
+  )
+
+;; definition for function city-task-faction-commands
+(defun city-task-faction-commands ()
+  (if (or (zero? *cty-faction-manager*) (not *cty-faction-manager*))
+      (return 0)
+      )
+  (setup-city-task-faction)
+  )
+
+;; definition for function evaluate-faction-commands
+(defun evaluate-faction-commands ((arg0 pair))
+  (if (or (zero? *cty-faction-manager*) (not *cty-faction-manager*) (zero? arg0))
+      (return 0)
+      )
+  (cty-faction-evaluate-commands)
+  )
+
+;; definition for function update-task-masks
+(defun update-task-masks ((arg0 symbol))
+  (if (= arg0 'none)
+      (return 0)
+      )
+  (level-group-method-27 *level*)
+  (cond
+    ((or (= arg0 'debug) (= arg0 'level))
+     )
+    ((logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+     (set! (-> *game-info* features) (game-feature))
+     (set! (-> *game-info* items) (the-as uint 0))
+     (set! (-> *game-info* vehicles) (game-vehicles v-turtle v-snake v-scorpion v-toad v-rhino))
+     )
+    (else
+      (set! (-> *game-info* features) (game-feature))
+      (set! (-> *game-info* items) (the-as uint 0))
+      (set! (-> *game-info* vehicles) (game-vehicles))
+      0
+      )
+    )
+  (when (and (nonzero? *minimap*) *minimap*)
+    (let ((s5-0 (-> *minimap* engine alive-list)))
+      (while s5-0
+        (let ((s4-0 s5-0))
+          (if (and (logtest? (-> s4-0 flags) (minimap-flag task-graph))
+                   (not (game-task-node-info-method-12 (-> *game-info* sub-task-list (-> s4-0 node))))
+                   )
+              (logior! (-> s4-0 flags) (minimap-flag fade-out))
+              )
+          )
+        (set! s5-0 (-> s5-0 next))
+        )
+      )
+    )
+  (let ((s5-1
+          (lambda ((arg0 pair))
+            (let ((s4-0 (-> arg0 car)))
+              (while (not (null? (the-as object arg0)))
+                (let ((v1-0 (-> (the-as pair s4-0) car))
+                      (s5-0 (-> (the-as pair (-> (the-as pair s4-0) cdr)) car))
+                      )
+                  (-> (the-as pair (-> (the-as pair (-> (the-as pair s4-0) cdr)) cdr)) car)
+                  (-> (the-as pair (-> (the-as pair (-> (the-as pair (-> (the-as pair s4-0) cdr)) cdr)) cdr)) car)
+                  (let ((v1-1 (as-type (-> (the-as symbol v1-0) value) level-load-info))
+                        (a0-11 (-> (the-as pair (-> (the-as pair s4-0) cdr)) cdr))
+                        )
+                    (if (and v1-1 (-> (the-as level-load-info v1-1) borrow))
+                        (set! (-> (the-as level-load-info v1-1) borrow borrow-info (/ (the-as int s5-0) 8)) a0-11)
+                        )
+                    )
+                  )
+                (set! arg0 (the-as pair (-> arg0 cdr)))
+                (set! s4-0 (-> arg0 car))
+                )
+              )
+            #f
+            )
+          )
+        )
+    (let ((s4-1 #f))
+      (s5-1 (-> *game-info* sub-task-list (game-task-node city-start-start) borrow))
+      (let ((s3-0 (-> *game-info* sub-task-list)))
+        (dotimes (s2-0 (-> s3-0 length))
+          (when (nonzero? s2-0)
+            (let ((s1-0 (-> s3-0 s2-0)))
+              (case arg0
+                (('debug 'level)
+                 )
+                (else
+                  (if (logtest? (-> s1-0 flags) (game-task-node-flag closed))
+                      (game-task-node-info-method-13 s1-0)
+                      )
+                  )
+                )
+              (when (game-task-node-info-method-12 s1-0)
+                (when (-> s1-0 when-open)
+                  (countdown (v1-58 (-> s1-0 when-open length))
+                    (case (-> s1-0 when-open v1-58 actor)
+                      (((game-task-actor minimap))
+                       )
+                      )
+                    )
+                  )
+                (s5-1 (-> s1-0 borrow))
+                )
+              )
+            )
+          )
+        )
+      (if (not s4-1)
+          (city-task-faction-commands)
+          )
+      )
+    (dotimes (s4-2 (the-as int (-> *setting-control* user-current faction-command-count)))
+      (evaluate-faction-commands (-> *setting-control* user-current faction-command s4-2))
+      )
+    (logior! (-> *game-info* features) (-> *game-info* debug-features))
+    (logior! (-> *game-info* items) (-> *game-info* debug-items))
+    (logior! (-> *game-info* vehicles) (-> *game-info* debug-vehicles))
+    (dotimes (s4-3 (the-as int (-> *setting-control* user-current borrow-count)))
+      (s5-1 (-> *setting-control* user-current borrow s4-3))
+      )
+    )
+  (case arg0
+    (('load)
+     )
+    (else
+      (let ((v1-91 (-> *game-info* sub-task-list)))
+        (dotimes (a0-34 (-> v1-91 length))
+          (if (nonzero? a0-34)
+              (-> v1-91 a0-34)
+              )
+          )
+        )
+      )
+    )
+  (load-state-method-22 *load-state*)
+  (dotimes (s5-2 (-> *level* length))
+    (let ((a0-37 (-> *level* level s5-2)))
+      (if (= (-> a0-37 status) 'active)
+          (set-proto-vis! a0-37 arg0)
+          )
+      )
+    )
+  0
+  )
+
+;; definition for method 22 of type level
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function play-clean
+(defun play-clean ((arg0 symbol))
+  (set! *display-entity-errors* #f)
+  (set! *display-profile* #f)
+  (set! *display-actor-marks* #f)
+  (set! *display-bsp-errors* #f)
+  (set! (-> *level* play?) #t)
+  (time-of-day-setup #t)
+  (set! *time-of-day-fast* #f)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+  (reset-city-squad-control #f #f #f)
+  (when arg0
+    (let ((s5-0 (-> *game-info* mode)))
+      (set! (-> *game-info* mode) arg0)
+      (reset *game-info* 'game (the-as game-save #f) (the-as continue-point #f) #f)
+      (set! (-> *game-info* mode) s5-0)
+      )
+    )
+  0
+  )
+
+;; definition for function play-task
+;; WARN: Return type mismatch object vs string.
+(defun play-task ((arg0 game-task) (arg1 symbol) (arg2 symbol))
+  (setting-pers *setting-control* 'fail-music-volume (seconds 5) 'music-volume 'abs 0.0 0)
+  (setting-pers *setting-control* 'fail-sfx-volume (seconds 5) 'sfx-volume 'abs 0.0 0)
+  (setting-pers *setting-control* 'fail-dialog-volume (seconds 5) 'dialog-volume 'abs 0.0 0)
+  (play-clean arg1)
+  (let ((gp-1 (-> *game-info* play-list arg0)))
+    (the-as string (cond
+                     ((and (= arg2 'kiosk) (-> gp-1 kiosk-play-continue))
+                      (send-event (ppointer->process *time-of-day*) 'change 'hour 7)
+                      (task-node-open! (the-as game-task-node (-> gp-1 kiosk-play-node)) 'event)
+                      (if (pair? (-> gp-1 kiosk-play-continue))
+                          (-> (the-as pair (-> gp-1 kiosk-play-continue)) car)
+                          (-> gp-1 kiosk-play-continue)
+                          )
+                      )
+                     ((and (= arg2 'kiosk) (-> gp-1 kiosk-online-play-continue))
+                      (send-event (ppointer->process *time-of-day*) 'change 'hour 7)
+                      (task-node-open! (the-as game-task-node (-> gp-1 kiosk-play-node)) 'event)
+                      (if (pair? (-> gp-1 kiosk-online-play-continue))
+                          (-> (the-as pair (-> gp-1 kiosk-online-play-continue)) car)
+                          (-> gp-1 kiosk-online-play-continue)
+                          )
+                      )
+                     ((and (= arg2 'split) (-> gp-1 split-continue))
+                      (if (-> gp-1 play-continue)
+                          (task-node-open! (the-as game-task-node (-> gp-1 play-node)) 'menu)
+                          )
+                      (-> gp-1 split-continue)
+                      )
+                     (else
+                       (if (-> gp-1 play-continue)
+                           (task-node-open! (the-as game-task-node (-> gp-1 play-node)) 'menu)
+                           )
+                       (-> gp-1 play-continue)
+                       )
+                     )
+            )
+    )
+  )
+
+;; definition for function task-node-by-name
+(defun task-node-by-name ((arg0 string))
+  (let ((s5-0 (-> *game-info* sub-task-list)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((s3-0 (-> s5-0 s4-0)))
+          (if (string= arg0 (-> s3-0 name))
+              (return s3-0)
+              )
+          )
+        )
+      )
+    )
+  (the-as game-task-node-info #f)
+  )
+
+;; definition for function task-node-index-by-name
+(defun task-node-index-by-name ((arg0 string))
+  (let ((s5-0 (-> *game-info* sub-task-list)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((v1-4 (-> s5-0 s4-0)))
+          (if (string= arg0 (-> v1-4 name))
+              (return s4-0)
+              )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function task-resolution-close!
+(defun task-resolution-close! ((arg0 game-task))
+  (let ((v1-1 (-> *game-info* sub-task-list)))
+    (dotimes (a1-0 (-> v1-1 length))
+      (when (nonzero? a1-0)
+        (let ((a2-3 (-> v1-1 a1-0)))
+          (when (and (= (-> a2-3 task) arg0) (logtest? (-> a2-3 flags) (game-task-node-flag close-task)))
+            (game-task-node-info-method-10 a2-3 'event)
+            (return #t)
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function task-close!
+(defun task-close! ((arg0 string))
+  (let ((s5-0 (-> *game-info* sub-task-list)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((s3-0 (-> s5-0 s4-0)))
+          (when (string= arg0 (-> s3-0 name))
+            (let ((gp-2 (not (logtest? (-> s3-0 flags) (game-task-node-flag closed)))))
+              (game-task-node-info-method-10 s3-0 'event)
+              (return gp-2)
+              )
+            )
+          )
+        )
+      )
+    )
+  (format 0 "ERROR: attempting to close unknown task node ~A.~%" arg0)
+  #f
+  )
+
+;; definition for function task-closed?
+(defun task-closed? ((arg0 string))
+  (let ((s5-0 (-> *game-info* sub-task-list)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((s3-0 (-> s5-0 s4-0)))
+          (if (string= arg0 (-> s3-0 name))
+              (return (logtest? (-> s3-0 flags) (game-task-node-flag closed)))
+              )
+          )
+        )
+      )
+    )
+  (format 0 "ERROR: attempting to query closed? of unknown task node ~A.~%" arg0)
+  #f
+  )
+
+;; definition for function open-task-nodes
+(defun open-task-nodes ((arg0 (array game-task-node-info)))
+  (set! (-> arg0 length) 0)
+  (let ((v1-1 (-> *game-info* sub-task-list)))
+    (dotimes (a1-0 (-> v1-1 length))
+      (when (nonzero? a1-0)
+        (let ((a2-3 (-> v1-1 a1-0)))
+          (when (and (not (logtest? (-> a2-3 flags) (game-task-node-flag closed)))
+                     (< (-> arg0 length) (-> arg0 allocated-length))
+                     )
+            (set! (-> arg0 (-> arg0 length)) a2-3)
+            (+! (-> arg0 length) 1)
+            )
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for method 2 of type game-task-node-info
+(defmethod print ((this game-task-node-info))
+  (format
+    #t
+    "#<game-task-node-info ~S ~S @ #x~X>"
+    (-> this name)
+    (cond
+      ((logtest? (-> this flags) (game-task-node-flag closed))
+       "closed"
+       )
+      ((game-task-node-info-method-12 this)
+       "open"
+       )
+      (else
+        "inactive"
+        )
+      )
+    this
+    )
+  this
+  )
+
+;; definition for method 10 of type game-task-node-info
+;; WARN: Return type mismatch int vs none.
+(defmethod game-task-node-info-method-10 ((this game-task-node-info) (arg0 symbol))
+  (when (not (logtest? (-> this flags) (game-task-node-flag closed)))
+    (let ((s4-0
+            (lambda ((arg0 game-task-node-info) (arg1 object))
+              (logior! (-> arg0 flags) (game-task-node-flag closed))
+              (+! (-> *game-info* task-counter) 1)
+              (if (zero? (-> arg0 close-time))
+                  (set! (-> arg0 close-time) (the-as uint (-> *display* game-clock frame-counter)))
+                  )
+              (when (logtest? (-> arg0 flags) (game-task-node-flag close-task))
+                (reset-city-squad-control #f #f #f)
+                (when (= arg1 'event)
+                  )
+                )
+              (if (logtest? (-> arg0 flags) (game-task-node-flag close-task))
+                  ((lambda ((arg0 game-task-node-info))
+                     (if (view-get-active-target)
+                         (send-event (view-get-active-target) 'get-pickup (pickup-type fuel-cell) (the float (-> arg0 task)))
+                         (adjust *game-info* 'fuel-cell (the float (-> arg0 task)) #f)
+                         )
+                     )
+                   arg0
+                   )
+                  )
+              )
+            )
+          )
+      (let ((s2-0 0)
+            (s3-0 (new 'stack-no-clear 'array 'game-task-node 64))
+            )
+        (while (nonzero? s2-0)
+          (+! s2-0 -1)
+          (s4-0 (-> *game-info* sub-task-list (-> s3-0 s2-0)) arg0)
+          )
+        )
+      (s4-0 this arg0)
+      )
+    (update-task-masks arg0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function task-node-closed?
+(defun task-node-closed? ((arg0 game-task-node))
+  (let ((v1-2 (-> *game-info* sub-task-list arg0)))
+    (logtest? (-> v1-2 flags) (game-task-node-flag closed))
+    )
+  )
+
+;; definition for function task-node-close!
+(defun task-node-close! ((arg0 game-task-node) (arg1 symbol))
+  (game-task-node-info-method-10 (-> *game-info* sub-task-list arg0) arg1)
+  0
+  )
+
+;; definition for function task-open?
+(defun task-open? ((arg0 string))
+  (let ((s5-0 (-> *game-info* sub-task-list))
+        (s4-0 0)
+        )
+    (while (< s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((v1-4 (-> s5-0 s4-0)))
+          (if (string= arg0 (-> v1-4 name))
+              (return (task-node-open? (the-as game-task-node s4-0)))
+              )
+          )
+        )
+      (set! s4-0 (+ s4-0 1))
+      )
+    )
+  (format 0 "ERROR: attempting to query open? of unknown task node ~A.~%" arg0)
+  #f
+  )
+
+;; definition for method 11 of type game-task-node-info
+;; WARN: Return type mismatch int vs none.
+(defmethod game-task-node-info-method-11 ((this game-task-node-info) (arg0 symbol))
+  (logclear! (-> this flags) (game-task-node-flag closed))
+  (+! (-> *game-info* task-counter) 1)
+  (let ((s4-0 (-> *game-info* sub-task-list)))
+    (dotimes (s3-0 (-> s4-0 length))
+      (when (nonzero? s3-0)
+        (let ((a0-3 (-> s4-0 s3-0)))
+          (if (!= a0-3 this)
+              (game-task-node-info-method-10 a0-3 'event)
+              )
+          )
+        )
+      )
+    )
+  (update-task-masks arg0)
+  0
+  (none)
+  )
+
+;; definition for function task-node-open?
+(defun task-node-open? ((arg0 game-task-node))
+  (let ((v1-1 (-> *game-info* sub-task-list)))
+    (game-task-node-info-method-12 (-> v1-1 arg0))
+    )
+  )
+
+;; definition for method 12 of type game-task-node-info
+(defmethod game-task-node-info-method-12 ((this game-task-node-info))
+  (-> *game-info* sub-task-list)
+  (let ((v1-2 this))
+    (not (logtest? (-> v1-2 flags) (game-task-node-flag closed)))
+    )
+  )
+
+;; definition for function task-node-open!
+(defun task-node-open! ((arg0 game-task-node) (arg1 symbol))
+  (game-task-node-info-method-11 (-> *game-info* sub-task-list arg0) arg1)
+  0
+  )
+
+;; definition for method 13 of type game-task-node-info
+;; WARN: Return type mismatch int vs none.
+(defmethod game-task-node-info-method-13 ((this game-task-node-info))
+  0
+  (none)
+  )
+
+;; definition for function task-node-close-upwards
+;; WARN: Return type mismatch int vs none.
+(defun task-node-close-upwards ((arg0 (array game-task-node-info)) (arg1 int))
+  (-> arg0 arg1)
+  0
+  (none)
+  )
+
+;; definition for function task-node-reset
+(defun task-node-reset ((arg0 symbol))
+  (let ((s5-0 (-> *game-info* sub-task-list)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (when (nonzero? s4-0)
+        (let ((v1-4 (-> s5-0 s4-0)))
+          (when (logtest? (-> v1-4 flags) (game-task-node-flag closed))
+            (case arg0
+              (('game)
+               (if (nonzero? s4-0)
+                   (logior! (-> v1-4 flags) (game-task-node-flag closed))
+                   )
+               )
+              )
+            (if (logtest? (-> v1-4 flags) (game-task-node-flag closed))
+                (task-node-close-upwards s5-0 s4-0)
+                )
+            )
+          )
+        )
+      )
+    )
+  (+! (-> *game-info* task-counter) 1)
+  0
+  )
+
+;; definition for function cheat-add-gold
+;; WARN: Return type mismatch int vs object.
+(defun cheat-add-gold ()
+  0
+  (let ((v1-2 (-> *game-info* sub-task-list)))
+    (dotimes (a0-0 (-> v1-2 length))
+      (when (nonzero? a0-0)
+        (let ((a1-3 (-> v1-2 a0-0)))
+          (when (!= (-> a1-3 medals 0) (game-task-medal gold))
+            (set! (-> a1-3 medals 0) (game-task-medal gold))
+            (return (the-as object #f))
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for symbol *cache-open-node*, type game-task-node
+(define *cache-open-node* (game-task-node none))
+
+;; definition for function get-open-task-node-info
+(defun get-open-task-node-info ()
+  (if (game-task-node-info-method-12 (-> *game-info* sub-task-list *cache-open-node*))
+      (return (-> *game-info* sub-task-list *cache-open-node*))
+      )
+  (let ((gp-0 (-> *game-info* sub-task-list)))
+    (dotimes (s5-0 (-> gp-0 length))
+      (when (nonzero? s5-0)
+        (let ((s4-0 (-> gp-0 s5-0)))
+          (when (game-task-node-info-method-12 s4-0)
+            (set! *cache-open-node* (the-as game-task-node s5-0))
+            (return s4-0)
+            )
+          )
+        )
+      )
+    )
+  (the-as game-task-node-info #f)
+  )
+
+;; definition for function get-task-total-score
+(defun get-task-total-score ()
+  (let ((v0-0 0))
+    (let ((v1-1 (-> *game-info* sub-task-list)))
+      (dotimes (a0-0 (-> v1-1 length))
+        (when (nonzero? a0-0)
+          (let ((a1-3 (-> v1-1 a0-0)))
+            (if (-> *game-info* play-list (-> a1-3 task) single-player)
+                (+! v0-0 (the-as int (-> a1-3 medals 0)))
+                )
+            )
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function get-task-cup-score
+(defun get-task-cup-score ((arg0 int))
+  (let ((v0-0 0))
+    (let ((v1-1 (-> *game-info* sub-task-list)))
+      (dotimes (a1-0 (-> v1-1 length))
+        (when (nonzero? a1-0)
+          (let ((a2-3 (-> v1-1 a1-0)))
+            (if (and (-> *game-info* play-list (-> a2-3 task) single-player)
+                     (!= (-> a2-3 net-play-mode) 15)
+                     (!= (-> a2-3 net-play-mode) 16)
+                     (logtest? (-> a2-3 flags) arg0)
+                     )
+                (+! v0-0 (the-as int (-> a2-3 medals 0)))
+                )
+            )
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function stats-weapon-used
+(defun stats-weapon-used ()
+  0
+  )
+
+;; definition for function stats-player-died
+(defun stats-player-died ()
+  0
+  )
+
+;; definition for function stats-player-medal
+(defun stats-player-medal ()
+  0
+  )
+
+;; definition for function stats-player-ranking
+(defun stats-player-ranking ()
+  0
+  )
+
+;; definition for function stats-player-score
+(defun stats-player-score ()
+  0
+  )
+
+;; definition for function stats-player-end-mode
+(defun stats-player-end-mode ()
+  0
+  )
+
+;; definition for function stats-player-time
+(defun stats-player-time ()
+  0
+  )
+
+;; definition for function stats-player-duration
+(defun stats-player-duration ()
+  0
+  )
+
+;; definition for function stats-player-vehicle
+(defun stats-player-vehicle ()
+  0
+  )
+
+;; definition for function stats-player-cash
+(defun stats-player-cash ()
+  0
+  )
+
+;; definition for function get-medal-reward-ignore-medal
+(defun get-medal-reward-ignore-medal ((arg0 float))
+  (let ((v1-0 (get-open-task-node-info))
+        (a0-4 (if (and (= *game-mode* 'adventure) (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+                  1
+                  0
+                  )
+              )
+        )
+    (when v1-0
+      (cond
+        ((logtest? (game-task-node-flag score-lower-is-better) (-> v1-0 flags))
+         (cond
+           ((>= (-> v1-0 gold-array a0-4) arg0)
+            (return 3)
+            )
+           ((>= (-> v1-0 silver-array a0-4) arg0)
+            (return 2)
+            )
+           ((>= (-> v1-0 bronze-array a0-4) arg0)
+            (return 1)
+            )
+           (else
+             (return 0)
+             )
+           )
+         (the-as none 0)
+         )
+        (else
+          (cond
+            ((>= arg0 (-> v1-0 gold-array a0-4))
+             (return 3)
+             )
+            ((>= arg0 (-> v1-0 silver-array a0-4))
+             (return 2)
+             )
+            ((>= arg0 (-> v1-0 bronze-array a0-4))
+             (return 1)
+             )
+            (else
+              (return 0)
+              )
+            )
+          (the-as none 0)
+          )
+        )
+      (the-as none 0)
+      )
+    )
+  0
+  )
+
+;; definition for function get-medal-reward
+(defun get-medal-reward ((arg0 float))
+  (let ((v1-0 (get-open-task-node-info))
+        (a0-4 (if (and (= *game-mode* 'adventure) (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+                  1
+                  0
+                  )
+              )
+        )
+    (cond
+      (v1-0
+        (cond
+          ((logtest? (game-task-node-flag score-lower-is-better) (-> v1-0 flags))
+           (cond
+             ((>= (-> v1-0 gold-array a0-4) arg0)
+              (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 3))
+                  3
+                  0
+                  )
+              )
+             ((>= (-> v1-0 silver-array a0-4) arg0)
+              (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 2))
+                  2
+                  0
+                  )
+              )
+             ((>= (-> v1-0 bronze-array a0-4) arg0)
+              (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 1))
+                  1
+                  0
+                  )
+              )
+             (else
+               0
+               )
+             )
+           )
+          ((>= arg0 (-> v1-0 gold-array a0-4))
+           (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 3))
+               3
+               0
+               )
+           )
+          ((>= arg0 (-> v1-0 silver-array a0-4))
+           (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 2))
+               2
+               0
+               )
+           )
+          ((>= arg0 (-> v1-0 bronze-array a0-4))
+           (if (< (the-as uint (-> v1-0 medals 0)) (the-as uint 1))
+               1
+               0
+               )
+           )
+          (else
+            0
+            )
+          )
+        )
+      (else
+        0
+        )
+      )
+    )
+  )
+
+;; definition for function update-high-scores
+;; WARN: Return type mismatch int vs object.
+(defun update-high-scores ((arg0 float))
+  (let ((a0-1 (get-open-task-node-info)))
+    (when a0-1
+      (when (nonzero? (-> a0-1 high-scores))
+        (let ((v1-1 (-> a0-1 high-scores)))
+          (cond
+            ((logtest? (game-task-node-flag score-lower-is-better) (-> a0-1 flags))
+             (dotimes (a0-4 5)
+               (when (or (= (-> v1-1 a0-4) 0.0) (< arg0 (fabs (-> v1-1 a0-4))))
+                 (let ((a1-8 4))
+                   (while (< a0-4 a1-8)
+                     (set! (-> v1-1 a1-8) (-> v1-1 (+ a1-8 -1)))
+                     (+! a1-8 -1)
+                     )
+                   )
+                 (set! (-> v1-1 a0-4) (- arg0))
+                 (return (the-as object a0-4))
+                 )
+               )
+             (the-as int #f)
+             )
+            (else
+              (dotimes (a0-5 5)
+                (when (< (fabs (-> v1-1 a0-5)) arg0)
+                  (let ((a1-15 4))
+                    (while (< a0-5 a1-15)
+                      (set! (-> v1-1 a1-15) (-> v1-1 (+ a1-15 -1)))
+                      (+! a1-15 -1)
+                      )
+                    )
+                  (set! (-> v1-1 a0-5) (- arg0))
+                  (return (the-as object a0-5))
+                  )
+                )
+              (the-as int #f)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for symbol *last-medal*, type int
+(define *last-medal* 0)
+
+;; definition for function report-score
+(defun report-score ((arg0 float))
+  (local-vars (v0-3 int))
+  (let ((s5-0 (get-open-task-node-info))
+        (s4-0 0)
+        )
+    (let ((gp-0 (-> s5-0 medals 0)))
+      (let ((s2-0 (if (and (= *game-mode* 'adventure) (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+                      1
+                      0
+                      )
+                  )
+            )
+        (when s5-0
+          (if (or (= *game-mode* 'adventure)
+                  (= (-> s5-0 user-advanced-options lword) (-> s5-0 default-advanced-options lword))
+                  )
+              (update-high-scores arg0)
+              )
+          (set! s4-0
+                (cond
+                  ((and (not (demo?)) (= *game-mode* 'adventure))
+                   (cond
+                     ((logtest? (game-task-node-flag score-lower-is-better) (-> s5-0 flags))
+                      (cond
+                        ((>= (-> s5-0 gold-array s2-0) arg0)
+                         (let ((v1-16 3))
+                           (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-16)) (not (-> *game-info* playing-grand-prix?)))
+                               (set! (-> s5-0 medals 0) (the-as game-task-medal v1-16))
+                               )
+                           )
+                         (cond
+                           ((>= (the-as uint 3) (the-as uint gp-0))
+                            (set! *last-medal* 3)
+                            )
+                           (else
+                             (set! *last-medal* 0)
+                             0
+                             )
+                           )
+                         (return 3)
+                         )
+                        ((>= (-> s5-0 silver-array s2-0) arg0)
+                         (let ((v1-24 2))
+                           (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-24)) (not (-> *game-info* playing-grand-prix?)))
+                               (set! (-> s5-0 medals 0) (the-as game-task-medal v1-24))
+                               )
+                           )
+                         (cond
+                           ((>= (the-as uint 2) (the-as uint gp-0))
+                            (set! *last-medal* 2)
+                            )
+                           (else
+                             (set! *last-medal* 0)
+                             0
+                             )
+                           )
+                         (return 2)
+                         )
+                        ((>= (-> s5-0 bronze-array s2-0) arg0)
+                         (let ((v1-32 1))
+                           (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-32)) (not (-> *game-info* playing-grand-prix?)))
+                               (set! (-> s5-0 medals 0) (the-as game-task-medal v1-32))
+                               )
+                           )
+                         (cond
+                           ((>= (the-as uint 1) (the-as uint gp-0))
+                            (set! *last-medal* 1)
+                            )
+                           (else
+                             (set! *last-medal* 0)
+                             0
+                             )
+                           )
+                         (return 1)
+                         )
+                        )
+                      )
+                     (else
+                       (cond
+                         ((>= arg0 (-> s5-0 gold-array s2-0))
+                          (let ((v1-40 3))
+                            (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-40)) (not (-> *game-info* playing-grand-prix?)))
+                                (set! (-> s5-0 medals 0) (the-as game-task-medal v1-40))
+                                )
+                            )
+                          (cond
+                            ((>= (the-as uint 3) (the-as uint gp-0))
+                             (set! *last-medal* 3)
+                             )
+                            (else
+                              (set! *last-medal* 0)
+                              0
+                              )
+                            )
+                          (return 3)
+                          )
+                         ((>= arg0 (-> s5-0 silver-array s2-0))
+                          (let ((v1-48 2))
+                            (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-48)) (not (-> *game-info* playing-grand-prix?)))
+                                (set! (-> s5-0 medals 0) (the-as game-task-medal v1-48))
+                                )
+                            )
+                          (cond
+                            ((>= (the-as uint 2) (the-as uint gp-0))
+                             (set! *last-medal* 2)
+                             )
+                            (else
+                              (set! *last-medal* 0)
+                              0
+                              )
+                            )
+                          (return 2)
+                          )
+                         ((>= arg0 (-> s5-0 bronze-array s2-0))
+                          (let ((v1-56 1))
+                            (if (and (< (the-as uint (-> s5-0 medals 0)) (the-as uint v1-56)) (not (-> *game-info* playing-grand-prix?)))
+                                (set! (-> s5-0 medals 0) (the-as game-task-medal v1-56))
+                                )
+                            )
+                          (cond
+                            ((>= (the-as uint 1) (the-as uint gp-0))
+                             (set! *last-medal* 1)
+                             )
+                            (else
+                              (set! *last-medal* 0)
+                              0
+                              )
+                            )
+                          (return 1)
+                          )
+                         )
+                       )
+                     )
+                   s4-0
+                   )
+                  (else
+                    (get-medal-reward arg0)
+                    )
+                  )
+                )
+          )
+        )
+      (cond
+        ((>= (the-as uint s4-0) (the-as uint gp-0))
+         (set! *last-medal* s4-0)
+         )
+        (else
+          (set! *last-medal* 0)
+          0
+          )
+        )
+      )
+    (return s4-0)
+    )
+  v0-3
+  )
+
+;; definition (debug) for function task-node-dump
+(defun-debug task-node-dump ((arg0 symbol))
+  (let ((gp-0 (-> *game-info* sub-task-list)))
+    (dotimes (s5-0 (-> gp-0 length))
+      (when (nonzero? s5-0)
+        (-> gp-0 s5-0)
+        (format
+          #t
+          "  ~-40S ~-8S~%"
+          (game-task-node->string (the-as game-task-node s5-0))
+          (if (task-node-closed? (the-as game-task-node s5-0))
+              "closed"
+              "open"
+              )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 2 of type game-task-event
+(defmethod print ((this game-task-event))
+  (let* ((t9-0 format)
+         (a0-1 #t)
+         (a1-0 "#<game-task-control ~S :action ~S :scene ~A @ #x~X>")
+         (v1-0 (-> this actor))
+         (a2-1 (cond
+                 ((= v1-0 (game-task-actor damus-wasdoors))
+                  "damus-wasdoors"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-17))
+                  "unused-slot-17"
+                  )
+                 ((= v1-0 (game-task-actor damus-desert))
+                  "damus-desert"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-14))
+                  "unused-slot-14"
+                  )
+                 ((= v1-0 (game-task-actor minimap))
+                  "minimap"
+                  )
+                 ((= v1-0 (game-task-actor sig-wasdoors))
+                  "sig-wasdoors"
+                  )
+                 ((= v1-0 (game-task-actor jinx-hiphog))
+                  "jinx-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor gun-gungame))
+                  "gun-gungame"
+                  )
+                 ((= v1-0 (game-task-actor torn-freehq))
+                  "torn-freehq"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-20))
+                  "unused-slot-20"
+                  )
+                 ((= v1-0 (game-task-actor torn-hipbooth))
+                  "torn-hipbooth"
+                  )
+                 ((= v1-0 (game-task-actor kleever-wasdoors))
+                  "kleever-wasdoors"
+                  )
+                 ((= v1-0 (game-task-actor was-pre-game-deserte))
+                  "was-pre-game-deserte"
+                  )
+                 ((= v1-0 (game-task-actor keira-garage))
+                  "keira-garage"
+                  )
+                 ((= v1-0 (game-task-actor damus-waspal))
+                  "damus-waspal"
+                  )
+                 ((= v1-0 (game-task-actor keira-freehq))
+                  "keira-freehq"
+                  )
+                 ((= v1-0 (game-task-actor samos-freehq))
+                  "samos-freehq"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-9))
+                  "unused-slot-9"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-10))
+                  "unused-slot-10"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-23))
+                  "unused-slot-23"
+                  )
+                 ((= v1-0 (game-task-actor onin-freehq))
+                  "onin-freehq"
+                  )
+                 ((= v1-0 (game-task-actor kleever-wascityb))
+                  "kleever-wascityb"
+                  )
+                 ((= v1-0 (game-task-actor samos-onintent))
+                  "samos-onintent"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-talkbox))
+                  "ashelin-talkbox"
+                  )
+                 ((= v1-0 (game-task-actor kleever-arena))
+                  "kleever-arena"
+                  )
+                 ((= v1-0 (game-task-actor tess-gungame))
+                  "tess-gungame"
+                  )
+                 ((= v1-0 (game-task-actor none))
+                  "none"
+                  )
+                 ((= v1-0 (game-task-actor seem-leaper))
+                  "seem-leaper"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-13))
+                  "unused-slot-13"
+                  )
+                 ((= v1-0 (game-task-actor damus-wascity))
+                  "damus-wascity"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-26))
+                  "unused-slot-26"
+                  )
+                 ((= v1-0 (game-task-actor monk-mummy))
+                  "monk-mummy"
+                  )
+                 ((= v1-0 (game-task-actor onin-talkbox))
+                  "onin-talkbox"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-29))
+                  "unused-slot-29"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-8))
+                  "unused-slot-8"
+                  )
+                 ((= v1-0 (game-task-actor vin-vinroom))
+                  "vin-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor torn-hiphog))
+                  "torn-hiphog"
+                  )
+                 ((= v1-0 (game-task-actor sig-nest))
+                  "sig-nest"
+                  )
+                 ((= v1-0 (game-task-actor daxter))
+                  "daxter"
+                  )
+                 ((= v1-0 (game-task-actor samos-talkbox))
+                  "samos-talkbox"
+                  )
+                 ((= v1-0 (game-task-actor seem-wascitya))
+                  "seem-wascitya"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-19))
+                  "unused-slot-19"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-freehq))
+                  "ashelin-freehq"
+                  )
+                 ((= v1-0 (game-task-actor wascity-leaper))
+                  "wascity-leaper"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-16))
+                  "unused-slot-16"
+                  )
+                 ((= v1-0 (game-task-actor veger-cave))
+                  "veger-cave"
+                  )
+                 ((= v1-0 (game-task-actor sig-talkbox))
+                  "sig-talkbox"
+                  )
+                 ((= v1-0 (game-task-actor wascity-turret))
+                  "wascity-turret"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-22))
+                  "unused-slot-22"
+                  )
+                 ((= v1-0 (game-task-actor power-game-vinroom))
+                  "power-game-vinroom"
+                  )
+                 ((= v1-0 (game-task-actor was-pre-game-wascityb))
+                  "was-pre-game-wascityb"
+                  )
+                 ((= v1-0 (game-task-actor damus-arena))
+                  "damus-arena"
+                  )
+                 ((= v1-0 (game-task-actor keira-genb))
+                  "keira-genb"
+                  )
+                 ((= v1-0 (game-task-actor samos-genb))
+                  "samos-genb"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-31))
+                  "unused-slot-31"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-12))
+                  "unused-slot-12"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-28))
+                  "unused-slot-28"
+                  )
+                 ((= v1-0 (game-task-actor torn-hiptable))
+                  "torn-hiptable"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-25))
+                  "unused-slot-25"
+                  )
+                 ((= v1-0 (game-task-actor ashelin-oasis))
+                  "ashelin-oasis"
+                  )
+                 ((= v1-0 (game-task-actor onin-onintent))
+                  "onin-onintent"
+                  )
+                 ((= v1-0 (game-task-actor pecker))
+                  "pecker"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-15))
+                  "unused-slot-15"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-18))
+                  "unused-slot-18"
+                  )
+                 ((= v1-0 (game-task-actor damus-ruins))
+                  "damus-ruins"
+                  )
+                 ((= v1-0 (game-task-actor veger-ruins))
+                  "veger-ruins"
+                  )
+                 ((= v1-0 (game-task-actor kleever-pen))
+                  "kleever-pen"
+                  )
+                 ((= v1-0 (game-task-actor torn-hipbar))
+                  "torn-hipbar"
+                  )
+                 ((= v1-0 (game-task-actor oracle-oracle))
+                  "oracle-oracle"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-21))
+                  "unused-slot-21"
+                  )
+                 ((= v1-0 (game-task-actor seem-temple))
+                  "seem-temple"
+                  )
+                 ((= v1-0 (game-task-actor seem-wascity))
+                  "seem-wascity"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-30))
+                  "unused-slot-30"
+                  )
+                 ((= v1-0 (game-task-actor pecker-onintent))
+                  "pecker-onintent"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-11))
+                  "unused-slot-11"
+                  )
+                 ((= v1-0 (game-task-actor monk-wascity))
+                  "monk-wascity"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-24))
+                  "unused-slot-24"
+                  )
+                 ((= v1-0 (game-task-actor unused-slot-27))
+                  "unused-slot-27"
+                  )
+                 (else
+                   "*unknown*"
+                   )
+                 )
+               )
+         (v1-1 (-> this action))
+         )
+    (t9-0
+      a0-1
+      a1-0
+      a2-1
+      (cond
+        ((= v1-1 (game-task-action idle))
+         "idle"
+         )
+        ((= v1-1 (game-task-action play))
+         "play"
+         )
+        ((= v1-1 (game-task-action show))
+         "show"
+         )
+        ((= v1-1 (game-task-action talk))
+         "talk"
+         )
+        ((= v1-1 (game-task-action hide))
+         "hide"
+         )
+        ((= v1-1 (game-task-action say))
+         "say"
+         )
+        ((= v1-1 (game-task-action trade))
+         "trade"
+         )
+        ((= v1-1 (game-task-action menu))
+         "menu"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      (-> this scene)
+      this
+      )
+    )
+  this
+  )
+
+;; definition for method 0 of type game-task-control
+(defmethod new game-task-control ((allocation symbol) (type-to-make type) (arg0 game-task-actor))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 actor) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type game-task-control
+(defmethod get-current-task-event ((this game-task-control))
+  (let ((gp-0 (new 'static 'game-task-event :scene #f)))
+    (let ((s4-0 #f))
+      (when (!= (-> this counter) (-> *game-info* task-counter))
+        (set! (-> this counter) (-> *game-info* task-counter))
+        (set! (-> this current-node) (game-task-node none))
+        (set! (-> this current-event) #f)
+        (set! s4-0 #t)
+        (let ((s2-0 (-> *game-info* sub-task-list)))
+          (dotimes (s3-0 (-> s2-0 length))
+            (when (nonzero? s3-0)
+              (let ((s1-0 (-> s2-0 s3-0)))
+                (when (and (task-node-open? (the-as game-task-node s3-0))
+                           (-> s1-0 when-open)
+                           (begin
+                             (countdown (v1-12 (-> s1-0 when-open length))
+                               (when (= (-> this actor) (-> s1-0 when-open v1-12 actor))
+                                 (set! (-> this current-event) (-> s1-0 when-open v1-12))
+                                 (set! (-> this current-node) (the-as game-task-node s3-0))
+                                 #t
+                                 (goto cfg-18)
+                                 )
+                               )
+                             #f
+                             )
+                           )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (label cfg-18)
+      (cond
+        ((= (-> this current-node) (game-task-node none))
+         (set! (-> gp-0 actor) (-> this actor))
+         )
+        ((begin (set! gp-0 (-> this current-event)) (not (logtest? (-> gp-0 flags) (game-task-flags gatflag-00))))
+         )
+        (else
+          (set! (-> gp-0 action) (the-as game-task-action (-> gp-0 tex)))
+          )
+        )
+      (if s4-0
+          (logior! (-> gp-0 flags) (game-task-flags gatflag-01))
+          (logclear! (-> gp-0 flags) (game-task-flags gatflag-01))
+          )
+      )
+    gp-0
+    )
+  )
+
+;; definition of type scene-stage
+(deftype scene-stage (process-hidden)
+  ()
+  )
+
+;; definition for method 3 of type scene-stage
+(defmethod inspect ((this scene-stage))
+  (when (not this)
+    (set! this this)
+    (goto cfg-62)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand (process-mask network) s5-0) (process-mask network))
+        (format #t "network ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> this clock))
+  (format #t "~1Tview: ~A~%" (-> this view))
+  (format #t "~1Tparent: #x~X~%" (-> this parent))
+  (format #t "~1Tbrother: #x~X~%" (-> this brother))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tprofile-ticks: ~D~%" (-> this profile-ticks))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tstate: ~A~%" (-> this state))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tstate-stack: ~A~%" (-> this state-stack))
+  (format #t "~1Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> this connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> this stack))
+  (label cfg-62)
+  this
+  )
+
+;; failed to figure out what this is:
+0

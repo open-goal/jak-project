@@ -1503,12 +1503,10 @@
     (if (= (level-status *level* 'lwideb) 'active)
         (set! (-> self destroyed) #t)
         )
-    (let ((gp-2 (handle->process (-> self focus handle))))
+    (let ((gp-2 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when (and gp-2
                  (and *traffic-engine*
-                      (< (vector-vector-xz-distance-squared (get-trans (the-as process-focusable gp-2) 0) (-> self root trans))
-                         (square 409600.0)
-                         )
+                      (< (vector-vector-xz-distance-squared (get-trans gp-2 0) (-> self root trans)) (square 409600.0))
                       (not (-> self destroyed))
                       )
                  )
@@ -1517,9 +1515,7 @@
            (go-virtual hostile)
            )
           (else
-            (if (and (focus-test? (the-as process-focusable gp-2) pilot)
-                     (>= (the-as uint (get-alert-level *traffic-engine*)) (the-as uint 1))
-                     )
+            (if (and (focus-test? gp-2 pilot) (>= (the-as uint (get-alert-level *traffic-engine*)) (the-as uint 1)))
                 (go-virtual hostile)
                 )
             )
@@ -1824,10 +1820,10 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let ((s5-0 (handle->process (-> this focus handle))))
+    (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
       (when s5-0
         (let ((s4-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s4-0 quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
+          (set! (-> s4-0 quad) (-> (get-trans s5-0 3) quad))
           (let ((s0-0 (new 'stack-no-clear 'vector)))
             (let ((v1-8 (-> this root trans)))
               (let ((a0-5 *y-vector*))
@@ -1847,7 +1843,7 @@
                     (a0-7 s4-0)
                     )
                 (let ((v1-10 s4-0))
-                  (let ((a1-6 (-> (the-as process-focusable s5-0) root transv)))
+                  (let ((a1-6 (-> s5-0 root transv)))
                     (let ((a2-0 f0-2))
                       (.mov vf7 a2-0)
                       )
@@ -1899,7 +1895,7 @@
                       (set! (-> s4-1 x) (deg- (-> s2-0 x) (-> s0-1 x)))
                       (set! (-> s4-1 y) (deg- (-> s2-0 y) (-> s0-1 y)))
                       (cond
-                        ((focus-test? (the-as process-focusable s5-0) pilot)
+                        ((focus-test? s5-0 pilot)
                          (set! (-> this angle-turret) (deg-seek (-> this angle-turret) (-> s4-1 y) (* 36408.89 (seconds-per-frame))))
                          (set! (-> this angle-guns) (deg-seek (-> this angle-guns) (-> s4-1 x) (* 7281.778 (seconds-per-frame))))
                          )
@@ -1975,21 +1971,14 @@
          )
         )
       (suspend)
-      (let ((gp-0 (handle->process (-> self focus handle))))
+      (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
         (cond
-          ((and gp-0
-                (< (vector-vector-xz-distance-squared (get-trans (the-as process-focusable gp-0) 0) (-> self root trans))
-                   (square 491520.0)
-                   )
-                )
+          ((and gp-0 (< (vector-vector-xz-distance-squared (get-trans gp-0 0) (-> self root trans)) (square 491520.0)))
            (cond
              ((and (>= (-> self id) 0) (task-node-open? (game-task-node city-power-resolution)))
               )
              (else
-               (if (and (not (focus-test? (the-as process-focusable gp-0) pilot))
-                        *traffic-engine*
-                        (zero? (get-alert-level *traffic-engine*))
-                        )
+               (if (and (not (focus-test? gp-0 pilot)) *traffic-engine* (zero? (get-alert-level *traffic-engine*)))
                    (goto cfg-36)
                    )
                )

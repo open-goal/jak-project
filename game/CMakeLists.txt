@@ -245,7 +245,6 @@ set(RUNTIME_SOURCE
         mips2c/jakx_functions/collide_func.cpp
         mips2c/jakx_functions/debug.cpp
         mips2c/jakx_functions/font.cpp
-        mips2c/jakx_functions/foreground.cpp
         mips2c/jakx_functions/generic_effect.cpp
         mips2c/jakx_functions/joint.cpp
         mips2c/jakx_functions/lights.cpp

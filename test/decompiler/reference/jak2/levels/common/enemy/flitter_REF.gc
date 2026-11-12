@@ -682,15 +682,10 @@
       )
     (+! (-> self root trans y) -8192.0)
     (enemy-method-129 self)
-    (let ((a0-5 (handle->process (-> self focus handle))))
+    (let ((a0-5 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when a0-5
         (let* ((gp-2 (-> self root))
-               (s3-0
-                 (vector-normalize!
-                   (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-5) 0) (-> gp-2 trans))
-                   1.0
-                   )
-                 )
+               (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-5 0) (-> gp-2 trans)) 1.0))
                (f0-2 (deg-diff (quaternion-y-angle (-> gp-2 quat)) (vector-y-angle s3-0)))
                )
           (quaternion-rotate-y! (-> gp-2 quat) (-> gp-2 quat) f0-2)
@@ -794,7 +789,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod flitter-method-180 ((this flitter))
-  (let ((s3-0 (as-type (handle->process (-> this focus handle)) process-focusable)))
+  (let ((s3-0 (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable)))
     (when s3-0
       (let* ((s5-1 (get-trans s3-0 0))
              (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> this root trans)))
@@ -933,11 +928,9 @@
             )
           0
           )
-        (let ((v1-29 (ja-group)))
-          (if (not (and v1-29 (= v1-29 (-> self draw art-group data (-> self enemy-info idle-anim)))))
-              (ja-channel-push! 1 (seconds 0.2))
-              )
-          )
+        (if (not (ja-group? (-> self draw art-group data (-> self enemy-info idle-anim))))
+            (ja-channel-push! 1 (seconds 0.2))
+            )
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (seek! max f30-0)
                     :frame-num 0.0
@@ -972,9 +965,9 @@
     (set! (-> self off-screen-timer) (the-as uint (current-time)))
     )
   :trans (behavior ()
-    (let ((gp-0 (handle->process (-> self focus handle))))
+    (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle)))))
       (if gp-0
-          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+          (set! (-> self focus-pos quad) (-> (get-trans gp-0 0) quad))
           )
       (when (time-elapsed? (-> self state-time) (seconds 0.1))
         (let ((v1-11 (-> self focus aware)))
@@ -984,10 +977,7 @@
                ((if gp-0
                     (flitter-method-182
                       self
-                      (the-as
-                        process-focusable
-                        (the-as process (as-type (handle->process (-> self focus handle)) process-focusable))
-                        )
+                      (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)
                       )
                     )
                 (if (and (get-enemy-target self) (time-elapsed? (the-as int (-> self off-screen-timer)) (seconds 0.3)))
@@ -1124,7 +1114,7 @@
     )
   :trans (behavior ()
     (local-vars (s5-2 object))
-    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+    (let ((gp-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
       (set! s5-2 (cond
                    ((and gp-0
                          (not (time-elapsed? (-> self state-time) (seconds 1.5)))

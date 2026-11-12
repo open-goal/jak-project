@@ -407,7 +407,11 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
             ReverseLookupNode node;
             node.prev = parent;
             node.token = token;
-            output->results.emplace_back(false, field_deref.type, node.to_vector());
+            auto result_type = field_deref.type;
+            if (field.handle_type() && !input.deref->is_store) {
+              result_type = TypeSpec("handle", {*field.handle_type()});
+            }
+            output->results.emplace_back(false, result_type, node.to_vector());
             continue;  // try more!
           } else {
             // needs a deref, offset is 0, didn't do a deref.
