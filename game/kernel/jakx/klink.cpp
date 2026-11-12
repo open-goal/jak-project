@@ -6,6 +6,7 @@
 
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/klink.h"
+#include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/common/memory_layout.h"
@@ -305,47 +306,60 @@ uint32_t link_control::jakx_work_v5() {
 
     // the link segments table is just at the start of the link data:
     m_link_segments_table = (SegmentInfoV5*)link_data;
-    /*
-    for (int i = 0; i < m_n_segments; i++) {
-      printf(" %d: reloc %d, data %d, size %d, magic %d\n", i, m_link_segments_table[i].relocs,
-             m_link_segments_table[i].data, m_link_segments_table[i].size,
-             m_link_segments_table[i].magic);
-    }
-    */
-    // for now, only supporting 1 segment
-    ASSERT(m_n_segments == 1);
+    for (u32 seg_id = m_n_segments - 1; seg_id >= 0; --seg_id) {
+      // fixup the relocs/data offsets into addresses (again, offsets from g_ee_main_mem)
+      // relocs is relative to this link data
+      auto code_infos = m_link_segments_table[seg_id];
+      code_infos.relocs += (link_data - g_ee_main_mem);
+      // data is relative to usual object_data
+      code_infos.data += m_object_data.offset;
+      ASSERT(code_infos.magic == 1);
 
-    // fixup the relocs/data offsets into addresses (again, offsets from g_ee_main_mem)
-    // relocs is relative to this link data
-    m_link_segments_table[0].relocs += (link_data - g_ee_main_mem);
-    // data is relative to usual object_data
-    m_link_segments_table[0].data += m_object_data.offset;
-    ASSERT(m_link_segments_table[0].magic == 1);
+      const char* segment_text = "main-segment";
+      auto heap = m_heap;
+      u32 segment_flags = 0;
 
-    // see if there's even data
-    if (m_link_segments_table[0].size == 0) {
-      // no data.
-      m_link_segments_table[0].data = 0;
-    } else {
-      // check if we need to move the main segment.
-      if (!m_moved_link_block ||
-          ((m_link_hdr->link_length + 0x50) <= m_link_hdr->length_to_get_to_code)) {
-        // printf(" v5 linker allocating for main segment... (%d)\n", m_moved_link_block);
-        auto old_data_offset = m_link_segments_table[0].data;  // 25
-        auto new_data = kmalloc(m_heap, m_link_segments_table[0].size, 0, "main-segment");
-        m_link_segments_table[0].data = new_data.offset;
-        if (!new_data.offset) {
-          MsgErr("dkernel: unable to malloc %d bytes for main-segment\n",
-                 m_link_segments_table[0].size);
-          return 1;
-        }
-        jakx::ultimate_memcpy(new_data.c(), old_data_offset + g_ee_main_mem,
-                              m_link_segments_table[0].size);
+      // Original elf would just do seg_id -= 1 and continue if seg_id > 2.
+      // Instead, we can just clamp down to 2 if seg_id > 2.
+      if (seg_id >= 2) {
+        seg_id = 2;
+        segment_text = "top-level-segment";
+        segment_flags = 0x2000;
+      }
+      if (seg_id == 1) {
+        segment_text = "debug-segment";
+        heap = kdebugheap;
+      }
+
+      // see if there's even data
+      if (seg_id != 1 && code_infos.size == 0) {
+        // no data.
+        code_infos.data = 0;
+        // check for no data in debug segment case
+      } else if (seg_id == 1 && DebugSegment == 0) {
+        code_infos.data = 0;
+        code_infos.size = 0;
       } else {
-        m_heap->current = m_object_data + m_code_size;
-        if (m_heap->top.offset <= m_heap->current.offset) {
-          MsgErr("dkernel: heap overflow\n");
-          return 1;
+        // For the main-segment, check of m_moved_link_block is false and that link_length + 0x50 <
+        // length to code.
+        if (seg_id != 0 || !m_moved_link_block ||
+            ((m_link_hdr->link_length + 0x50) <= m_link_hdr->length_to_get_to_code)) {
+          auto old_data_offset = code_infos.data;
+          auto new_data = kmalloc(heap, code_infos.size, segment_flags, segment_text);
+          code_infos.data = new_data.offset;
+          if (!new_data.offset) {
+            char errorText[512];
+            sprintf(errorText, "dkernel: unable to malloc %%d bytes for %s\n", segment_text);
+            MsgErr(errorText, code_infos.size);
+            return 1;
+          }
+          jakx::ultimate_memcpy(new_data.c(), old_data_offset + g_ee_main_mem, code_infos.size);
+        } else {
+          m_heap->current = m_object_data + m_code_size;
+          if (m_heap->top.offset <= m_heap->current.offset) {
+            MsgErr("dkernel: heap overflow\n");
+            return 1;
+          }
         }
       }
     }
