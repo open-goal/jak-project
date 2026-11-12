@@ -37180,7 +37180,7 @@
                "Reset all pending sprites in the aux-list."
                (function none))
 (define-extern add-to-sprite-aux-list (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none))
-(define-extern sprite-setup-frame-data (function sprite-frame-data uint none))
+(define-extern sprite-setup-frame-data (function sprite-frame-data viewport none))
 (define-extern sprite-vu1-block vu-function)
 (define-extern sprite-set-3d-quaternion!
                "Set the quaternion of the vec-data."
@@ -37191,10 +37191,10 @@
 (define-extern sprite-add-matrix-data
                "Set up matrix data DMA to VU1.
                 This changes per sprite mode, but remains constant for all sprites in that mode."
-               (function dma-buffer uint none))
+               (function dma-buffer uint viewport none))
 (define-extern sprite-add-frame-data
                "Set up frame data DMA to VU1."
-               (function dma-buffer uint none))
+               (function dma-buffer viewport none))
 (define-extern sprite-add-2d-chunk
                "Set up DMA for a single chunk of 2D sprites."
                (function sprite-array-2d int int dma-buffer int none))
@@ -37298,25 +37298,25 @@
   )
 
 (deftype sprite-glow-consts (structure)
-  ((camera      matrix :inline :offset-assert 0)
-   (perspective matrix :inline :offset-assert 64)
-   (hvdf-offset vector :inline :offset-assert 128)
-   (hmge-scale  vector :inline :offset-assert 144)
-   (consts      vector :inline :offset-assert 160)
-   (pfog0       float          :offset 160)
-   (deg-to-rad  float          :offset 164)
-   (min-scale   float          :offset 168)
-   (inv-area    float          :offset 172)
-   (sincos-01   vector :inline :offset-assert 176)
-   (sincos-23   vector :inline :offset-assert 192)
-   (sincos-45   vector :inline :offset-assert 208)
-   (sincos-67   vector :inline :offset-assert 224)
-   (sincos-89   vector :inline :offset-assert 240)
-   (basis-x     vector :inline :offset-assert 256)
-   (basis-y     vector :inline :offset-assert 272)
-   (xy-array    vector 4       :offset-assert 288) ;; guessed by decompiler
-   (clamp-min   vector :inline :offset 352)
-   (clamp-max   vector :inline :offset 368)
+  ((camera      matrix :inline      :offset-assert 0)
+   (perspective matrix :inline      :offset-assert 64)
+   (hvdf-offset vector :inline      :offset-assert 128)
+   (hmge-scale  vector :inline      :offset-assert 144)
+   (consts      vector :inline      :offset-assert 160)
+   (pfog0       float               :offset 160)
+   (deg-to-rad  float               :offset 164)
+   (min-scale   float               :offset 168)
+   (inv-area    float               :offset 172)
+   (sincos-01   vector :inline      :offset-assert 176)
+   (sincos-23   vector :inline      :offset-assert 192)
+   (sincos-45   vector :inline      :offset-assert 208)
+   (sincos-67   vector :inline      :offset-assert 224)
+   (sincos-89   vector :inline      :offset-assert 240)
+   (basis-x     vector :inline      :offset-assert 256)
+   (basis-y     vector :inline      :offset-assert 272)
+   (xy-array    vector 4 :inline    :offset-assert 288) ;; guessed by decompiler
+   (clamp-min   vector :inline      :offset 352)
+   (clamp-max   vector :inline      :offset 368)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -37339,6 +37339,7 @@
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
+   (num-sprites-quad   uint128              :overlay-at num-sprites)
    (vecdata-packet dma-packet       :inline :offset-assert 32)
    (vecdata        sprite-glow-data :inline :offset-assert 48)
    (shader-packet  dma-packet       :inline :offset-assert 112)
@@ -37351,13 +37352,15 @@
   )
 
 (deftype sprite-glow-ref-template (structure)
-  ((control-packet dma-packet       :inline :offset-assert 0)
-   (num-sprites    uint32                   :offset-assert 16)
-   (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
-   (vecdata-packet dma-packet       :inline :offset-assert 32)
-   (vecdata        sprite-glow-data :inline :offset-assert 48)
-   (shader-packet  dma-packet       :inline :offset-assert 112)
-   (mscal-packet   dma-packet       :inline :offset-assert 128)
+  ((control-packet      dma-packet       :inline :offset-assert 0)
+   (num-sprites         uint32                   :offset-assert 16)
+   (dummys              uint32           3       :offset-assert 20) ;; guessed by decompiler
+   (num-sprites-quad    uint128                  :overlay-at num-sprites)
+   (vecdata-packet      dma-packet       :inline :offset-assert 32)
+   (vecdata             sprite-glow-data :inline :offset-assert 48)
+   (shader-packet       dma-packet       :inline :offset-assert 112)
+   (shader-packet-ptr   pointer                  :offset 116)
+   (mscal-packet        dma-packet       :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
@@ -37365,15 +37368,15 @@
   )
 
 (define-extern *sprite-glow-templates* (array sprite-glow-template))
-(define-extern sprite-glow-vu1-block vu-function) ;; 
-(define-extern sprite-glow-init-consts (function sprite-glow-consts none)) ;; 
-(define-extern sprite-glow-init-engine (function dma-buffer object none)) ;; NEW input
-(define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data) ;; 
+(define-extern sprite-glow-vu1-block vu-function)
+(define-extern sprite-glow-init-consts (function sprite-glow-consts viewport none))
+(define-extern sprite-glow-init-engine (function dma-buffer viewport none))
+(define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data)
 (define-extern sprite-glow-add-sprite (function dma-buffer sprite-vec-data-2d float float float adgif-shader none)) ;; 
 (define-extern sprite-glow-add-simple-sprite (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none)) ;; 
-(define-extern sprite-glow-draw (function dma-buffer none)) ;; 
-(define-extern add-shader-to-dma (function dma-buffer adgif-shader)) ;; 
-(define-extern *simple-sprite-system* simple-sprite-system) ;; 
+(define-extern sprite-glow-draw (function dma-buffer none))
+(define-extern add-shader-to-dma (function dma-buffer adgif-shader))
+(define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-sphere                   ;;
