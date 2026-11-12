@@ -1233,6 +1233,31 @@ void types2_for_add(types2::Type& type_out,
     return;
   }
 
+  // (+ (+ obj (* a C1)) (* b C2)), a 2d array access with the products added one at a time
+  for (int i = 0; i < 2; i++) {
+    const auto& obj = i == 0 ? arg0_type : arg1_type;
+    const auto& prod = i == 0 ? arg1_type : arg0_type;
+    if (!prod.is_product() || !obj.is_plain_product_plus_obj() || obj.has_sum_multipliers() ||
+        obj.get_multiplier() == 1 || prod.get_multiplier() == 1 ||
+        obj.get_multiplier() == prod.get_multiplier() ||
+        !dts.ts.fully_defined_type_exists(obj.get_obj_plus_const_mult_typespec())) {
+      continue;
+    }
+    const auto& base = obj.get_obj_plus_const_mult_typespec();
+    FieldReverseLookupInput rd_in;
+    rd_in.base_type = base;
+    rd_in.stride = obj.get_multiplier();
+    rd_in.stride2 = prod.get_multiplier();
+    int size = dts.ts.lookup_type(base)->get_size_in_memory();
+    for (rd_in.offset = 0; rd_in.offset < size; rd_in.offset += 4) {
+      if (dts.ts.reverse_field_lookup(rd_in).success) {
+        type_out.type = TP_Type::make_object_plus_product_sum(
+            base, obj.get_multiplier(), prod.get_multiplier(), 0, obj.flipped_add_order());
+        return;
+      }
+    }
+  }
+
   // propagate integer math: a * C1 + C2
   if (arg1_type.is_integer_constant() && arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
     type_out.type = TP_Type::make_from_integer_constant_plus_product(
