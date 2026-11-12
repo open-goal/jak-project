@@ -317,7 +317,7 @@ uint32_t link_control::jakx_work_v5() {
 
       const char* segment_text = "main-segment";
       auto heap = m_heap;
-      u32 segment_flags = 0;
+      u32 segment_flags = 0;  // Used for main/debug segment
 
       // Original elf would just do seg_id -= 1 and continue if seg_id > 2.
       // Instead, we can just clamp down to 2 if seg_id > 2.
@@ -331,14 +331,15 @@ uint32_t link_control::jakx_work_v5() {
         heap = kdebugheap;
       }
 
-      // see if there's even data
-      if (seg_id != 1 && code_infos.size == 0) {
-        // no data.
-        code_infos.data = 0;
-        // check for no data in debug segment case
-      } else if (seg_id == 1 && DebugSegment == 0) {
+      // For debug-segment, check if DebugSegment == 0
+      if (seg_id == 1 && DebugSegment == 0) {
         code_infos.data = 0;
         code_infos.size = 0;
+      }
+      // see if there's even data
+      else if (code_infos.size == 0) {
+        // no data.
+        code_infos.data = 0;
       } else {
         // For the main-segment, check of m_moved_link_block is false and that link_length + 0x50 <
         // length to code.
