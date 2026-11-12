@@ -64,6 +64,7 @@ struct LetRewriteStats {
   int abs2 = 0;
   int unused = 0;
   int ja = 0;
+  int ja_group = 0;
   int case_no_else = 0;
   int case_with_else = 0;
   int set_vector = 0;
@@ -85,11 +86,11 @@ struct LetRewriteStats {
   int light_trail_tracker_spawn = 0;
 
   int total() const {
-    return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set +
-           launch_particles + call_parent_state_handler + suspend_for + font_method +
-           light_trail_tracker_spawn;
+    return dotimes + countdown + abs + abs2 + unused + ja + ja_group + case_no_else +
+           case_with_else + set_vector + set_vector2 + send_event + font_context_meth + proc_new +
+           attack_info + vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket +
+           dma_buffer_add_gs_set + launch_particles + call_parent_state_handler + suspend_for +
+           font_method + light_trail_tracker_spawn;
   }
 
   std::string print() const {
@@ -100,6 +101,7 @@ struct LetRewriteStats {
     out += fmt::format("  abs: {}\n", abs);
     out += fmt::format("  abs2: {}\n", abs2);
     out += fmt::format("  ja: {}\n", ja);
+    out += fmt::format("  ja_group: {}\n", ja_group);
     out += fmt::format("  set_vector: {}\n", set_vector);
     out += fmt::format("  set_vector2: {}\n", set_vector2);
     out += fmt::format("  set_vector3: {}\n", set_vector3);
@@ -130,6 +132,7 @@ struct LetRewriteStats {
     result.abs = abs + other.abs;
     result.abs2 = abs2 + other.abs2;
     result.ja = ja + other.ja;
+    result.ja_group = ja_group + other.ja_group;
     result.set_vector = set_vector + other.set_vector;
     result.set_vector2 = set_vector2 + other.set_vector2;
     result.case_no_else = case_no_else + other.case_no_else;
@@ -156,6 +159,7 @@ struct LetRewriteStats {
     abs += other.abs;
     abs2 += other.abs2;
     ja += other.ja;
+    ja_group += other.ja_group;
     set_vector += other.set_vector;
     set_vector2 += other.set_vector2;
     case_no_else += other.case_no_else;
@@ -388,11 +392,19 @@ class ObjectFileDB {
     [[maybe_unused]] int fn = 0;
     if (data.linked_data.segments == 3) {
       for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
-        f(data.linked_data.functions_by_seg.at(seg).at(j));
+        auto& func = data.linked_data.functions_by_seg.at(seg).at(j);
+        if (ir2_function_filter && &func != ir2_function_filter) {
+          continue;
+        }
+        f(func);
         fn++;
       }
     }
   }
+
+  // if set, ir2 passes only run on this function (used to re-analyze one function
+  // for the asm branch permuter)
+  const Function* ir2_function_filter = nullptr;
 
   // Danger: after adding all object files, we assume that the vector never reallocates.
   std::unordered_map<std::string, std::vector<ObjectFileData>> obj_files_by_name;

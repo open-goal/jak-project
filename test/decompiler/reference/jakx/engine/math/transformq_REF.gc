@@ -11,10 +11,9 @@
   )
 
 ;; definition for method 27 of type trsqv
-;; WARN: Return type mismatch vector vs quaternion.
 (defmethod get-quaternion ((this trsqv))
   "Get the quat for this [[trsqv]]."
-  (the-as quaternion (-> this rot))
+  (-> this rotation)
   )
 
 ;; definition for method 18 of type trsqv
@@ -41,7 +40,7 @@
    The vel is a maximum velocity limit.
    The frame count is the time constant (first order).
    There's some logic to avoid rapidly changing directions"
-  (let* ((f0-0 (deg-diff (quaternion-y-angle (the-as quaternion (-> this rot))) (vector-y-angle arg0)))
+  (let* ((f0-0 (deg-diff (quaternion-y-angle (-> this rotation)) (vector-y-angle arg0)))
          (f1-2 (fmin (* arg1 (seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
          (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
          )
@@ -234,7 +233,7 @@
   (forward-up->quaternion
     (get-quaternion this)
     (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
-    (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
+    (new 'static 'vector :y 1.0 :w 1.0)
     )
   )
 
@@ -244,7 +243,7 @@
   (forward-up->quaternion
     (get-quaternion this)
     (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
-    (new 'static 'vector :data (new 'static 'array float 4 0.0 1.0 0.0 1.0))
+    (new 'static 'vector :y 1.0 :w 1.0)
     )
   )
 
@@ -468,7 +467,3 @@
     arg0
     )
   )
-
-
-
-

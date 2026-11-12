@@ -118,7 +118,7 @@
 ;; WARN: Return type mismatch int vs search-info-flag.
 (defmethod get-search-info-flag ((this wlander))
   "Get search-info-flag for this process."
-  (let ((v1-1 (handle->process (-> this focus handle))))
+  (let ((v1-1 (the-as process-focusable (handle->process (-> this focus handle)))))
     (the-as search-info-flag (if (if v1-1
                                      (= (-> v1-1 type) target)
                                      )
@@ -432,27 +432,25 @@
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior wlander-travel-anim wlander ((arg0 object) (arg1 time-frame))
   (logclear! (-> self flags) (citizen-flag run-mode))
-  (let ((v1-4 (ja-group)))
-    (when (not (and v1-4 (= v1-4 (-> self draw art-group data (-> self anim-walk)))))
-      (ja-channel-push! 2 arg1)
-      (ja-no-eval :group! (-> self draw art-group data (-> self anim-walk))
-                  :num! (loop!)
-                  :dist (-> self dist-walk-anim)
-                  :frame-num (ja-aframe 4.0 0)
-                  )
-      (let ((gp-1 (-> self skel root-channel 1)))
-        (let ((f0-3 (-> self interp)))
-          (set! (-> gp-1 frame-interp 1) f0-3)
-          (set! (-> gp-1 frame-interp 0) f0-3)
-          )
-        (set! (-> gp-1 dist) (-> self dist-run-anim))
-        (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data (get-run-anim self))))
-        (set! (-> gp-1 param 0) 0.0)
-        (joint-control-channel-group!
-          gp-1
-          (the-as art-joint-anim (-> self draw art-group data (get-run-anim self)))
-          num-func-chan
-          )
+  (when (not (ja-group? (-> self draw art-group data (-> self anim-walk))))
+    (ja-channel-push! 2 arg1)
+    (ja-no-eval :group! (-> self draw art-group data (-> self anim-walk))
+                :num! (loop!)
+                :dist (-> self dist-walk-anim)
+                :frame-num (ja-aframe 4.0 0)
+                )
+    (let ((gp-1 (-> self skel root-channel 1)))
+      (let ((f0-3 (-> self interp)))
+        (set! (-> gp-1 frame-interp 1) f0-3)
+        (set! (-> gp-1 frame-interp 0) f0-3)
+        )
+      (set! (-> gp-1 dist) (-> self dist-run-anim))
+      (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data (get-run-anim self))))
+      (set! (-> gp-1 param 0) 0.0)
+      (joint-control-channel-group!
+        gp-1
+        (the-as art-joint-anim (-> self draw art-group data (get-run-anim self)))
+        num-func-chan
         )
       )
     )
@@ -513,7 +511,47 @@
   )
 
 ;; definition for method 239 of type wlander
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod fire-shot ((this wlander))
+  (let ((s4-0 (as-type (the-as process-focusable (handle->process (-> this focus handle))) process-focusable))
+        (s5-1 (new 'stack-no-clear 'vector))
+        )
+    (when s4-0
+      (vector-! s5-1 (-> this root trans) (get-trans s4-0 0))
+      (set! (-> s5-1 y) 0.0)
+      (vector-normalize! s5-1 1.0)
+      (vector-rotate90-around-y! s5-1 s5-1)
+      (if (< 0.0 (vector-dot s5-1 (get-transv s4-0)))
+          (vector-negate-in-place! s5-1)
+          )
+      (if (= (-> s4-0 type) target)
+          (vector+*! (-> this target-pos) (get-trans s4-0 3) s5-1 (* 0.2 (vector-length (get-transv s4-0))))
+          (vector-copy! (-> this target-pos) (get-trans s4-0 3))
+          )
+      )
+    )
+  (let ((t0-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data (-> this gun-joint)))))
+    (new 'stack-no-clear 'vector)
+    (vector+*!
+      t0-0
+      t0-0
+      (the-as vector (&-> this node-list data (-> this gun-joint) bone transform quad (-> this gun-axis)))
+      (-> this gun-length)
+      )
+    (spawn-guard-projectile this t0-0 (-> this target-pos) 819200.0 t0-0)
+    )
+  (let ((s5-2 sound-play-by-spec)
+        (s4-1 (static-sound-spec "wlander-fire" :group 0))
+        )
+    (set! (-> s4-1 volume) 1024)
+    (set! (-> s4-1 pitch-mod) 0)
+    (set! (-> s4-1 reg 0) (the-as uint (-> this shot-sound)))
+    (s5-2 s4-1 (new-sound-id) (-> this root trans))
+    )
+  0
+  (none)
+  )
 
 ;; definition for method 242 of type wlander
 (defmethod try-activate ((this wlander))
@@ -612,7 +650,7 @@
           (t9-0)
           )
       )
-    (if (handle->process (-> self focus handle))
+    (if (the-as process-focusable (handle->process (-> self focus handle)))
         (go-virtual hostile)
         )
     )
@@ -627,7 +665,9 @@
     (nav-enemy-method-183 self)
     (init-los! (-> self los) self (seconds 0.2) 327680.0 (collide-spec backgnd hit-by-others-list los-blocker))
     (set-time! (-> self state-time))
-    (when (and (handle->process (-> self focus handle)) (= (-> (handle->process (-> self focus handle)) type) target))
+    (when (and (the-as process-focusable (handle->process (-> self focus handle)))
+               (= (-> (the-as process-focusable (handle->process (-> self focus handle))) type) target)
+               )
       (let ((v1-19 (-> self nav)))
         (set! (-> v1-19 sphere-mask) (the-as uint #x1000fc))
         )
@@ -648,7 +688,7 @@
         (set! (-> self mad-level) (- (-> self mad-level) (* 0.1 (seconds-per-frame))))
         )
       )
-    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+    (let ((gp-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
       (when (or (not gp-0) (focus-test? gp-0 inactive) (focus-test? gp-0 disable) (focus-test? gp-0 dead))
         (clear-focused (-> self focus))
         (set! (-> self mad-level) 0.0)
@@ -699,7 +739,7 @@
     (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info walk-anim))) 300)
     )
   :post (behavior ()
-    (when (handle->process (-> self focus handle))
+    (when (the-as process-focusable (handle->process (-> self focus handle)))
       )
     (nav-enemy-method-187 self)
     )
@@ -716,7 +756,7 @@
   :trans (behavior ()
     (search-for-focus self)
     (when (time-elapsed? (-> self state-time) (seconds 1))
-      (if (handle->process (-> self focus handle))
+      (if (the-as process-focusable (handle->process (-> self focus handle)))
           (go-virtual hostile)
           )
       )
@@ -776,11 +816,11 @@
         )
     )
   :trans (behavior ()
-    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+    (let ((gp-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
       (when (or (not gp-0)
-                (focus-test? (the-as process-focusable gp-0) inactive)
-                (focus-test? (the-as process-focusable gp-0) disable)
-                (focus-test? (the-as process-focusable gp-0) dead)
+                (focus-test? gp-0 inactive)
+                (focus-test? gp-0 disable)
+                (focus-test? gp-0 dead)
                 (not (-> *setting-control* user-current citizen-fights))
                 )
         (clear-focused (-> self focus))
@@ -789,19 +829,13 @@
         (go-virtual active)
         )
       (when gp-0
-        (los-control-method-9
-          (-> self los)
-          (the-as process-focusable gp-0)
-          (get-trans (the-as process-focusable gp-0) 3)
-          819.2
-          4096.0
-          )
-        (let* ((v1-24 (get-trans (the-as process-focusable gp-0) 0))
+        (los-control-method-9 (-> self los) gp-0 (get-trans gp-0 3) 819.2 4096.0)
+        (let* ((v1-24 (get-trans gp-0 0))
                (f30-0 (vector-length (vector-! (new 'stack-no-clear 'vector) v1-24 (-> self root trans))))
                )
           (cond
             ((should-check-los? (-> self los) 0)
-             (vector-copy! (-> self target-pos) (get-trans (the-as process-focusable gp-0) 3))
+             (vector-copy! (-> self target-pos) (get-trans gp-0 3))
              (if (and (pointing-toward-focus? self 6371.5557 #t) (>= 12288.0 f30-0))
                  (go-virtual close-attack)
                  )
@@ -1418,12 +1452,10 @@
       )
     (until #f
       (while (not (pointing-toward-focus? self 4187.0225 #t))
-        (let ((s5-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+        (let ((s5-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
           (when s5-0
             (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
-                  (gp-2
-                    (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s5-0) 0) (-> self root trans))
-                    )
+                  (gp-2 (vector-! (new 'stack-no-clear 'vector) (get-trans s5-0 0) (-> self root trans)))
                   (s5-1 (new 'stack-no-clear 'vector))
                   (f30-0 1.2)
                   )
@@ -1472,10 +1504,10 @@
             )
           )
         )
-      (let ((v1-167 (as-type (handle->process (-> self focus handle)) process-focusable)))
+      (let ((v1-167 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
         (when v1-167
           (cond
-            ((focus-test? (the-as process-focusable v1-167) ignore)
+            ((focus-test? v1-167 ignore)
              (ja-no-eval :group! wlander-male-shoot-idle-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
@@ -2429,12 +2461,10 @@
       )
     (until #f
       (while (not (pointing-toward-focus? self 4187.0225 #t))
-        (let ((s5-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
+        (let ((s5-0 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
           (when s5-0
             (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
-                  (gp-2
-                    (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s5-0) 0) (-> self root trans))
-                    )
+                  (gp-2 (vector-! (new 'stack-no-clear 'vector) (get-trans s5-0 0) (-> self root trans)))
                   (s5-1 (new 'stack-no-clear 'vector))
                   (f30-0 1.2)
                   )
@@ -2483,10 +2513,10 @@
             )
           )
         )
-      (let ((v1-194 (as-type (handle->process (-> self focus handle)) process-focusable)))
+      (let ((v1-194 (as-type (the-as process-focusable (handle->process (-> self focus handle))) process-focusable)))
         (when v1-194
           (cond
-            ((focus-test? (the-as process-focusable v1-194) ignore)
+            ((focus-test? v1-194 ignore)
              (ja-no-eval :group! wlander-female-shoot-idle-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)

@@ -215,6 +215,16 @@ std::string remove_trailing_spaces(const std::string& in) {
   }
   return short_name;
 }
+// List of characters that cannot occur in filenames on some platforms.
+const std::set<char> banned_chars = {'<', '>', ':', '"', '/', '\\', '|', '?', '*', '^'};
+std::string sanitize_name(const std::string& in) {
+  auto copy = remove_trailing_spaces(in);
+  for (auto& ch : copy) {
+    if (banned_chars.contains(ch))
+      ch = '_';
+  }
+  return copy;
+}
 
 struct AudioFileInfo {
   std::string filename;
@@ -346,7 +356,6 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
     if (mus_name == "TWEAKVAL")
       continue;
 
-    std::vector<std::string> sfx_names;
     const size_t bank_offset = find_bank_offset(data);  // Find where the music bank starts
     if (bank_offset == SIZE_MAX) {
       lg::error("'{}' is not a valid .MUS bank.", mus_name);
@@ -443,7 +452,7 @@ void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
       else
         name = "sound" + std::to_string(sound_index);
 
-      auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
+      auto file_name = fmt::format("{}.wav", sanitize_name(name));
       write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE, output_folder / file_name);
       audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
 

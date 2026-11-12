@@ -122,7 +122,7 @@
    (next-pid            int32)
    (fast-stack-top      pointer)
    (current-process     process)
-   (relocating-process  basic)
+   (relocating-process  process)
    (relocating-min      int32)
    (relocating-max      int32)
    (relocating-offset   int32)
@@ -402,7 +402,7 @@
    (alive-list          dead-pool-heap-rec  :inline)
    (last                dead-pool-heap-rec  :overlay-at (-> alive-list prev))
    (dead-list           dead-pool-heap-rec  :inline)
-   (process-list        dead-pool-heap-rec  :dynamic)
+   (process-list        dead-pool-heap-rec  :dynamic :inline)
    )
   (:methods
     (new "Allocate and initialize a dead-pool-heap." (symbol type string int int) _type_) ;; 0
@@ -457,7 +457,7 @@
 
 
 (deftype handle-wrapper (structure)
-  ((handle  uint64)
+  ((handle  handle)
    )
   )
 
@@ -526,19 +526,22 @@
 
 
 (deftype event-message-block (structure)
-  ((to-handle    uint64)
-   (to           (pointer process)  :overlay-at to-handle)
-   (from-handle  uint64)
-   (from         (pointer process)  :overlay-at from-handle)
-   (param        uint64             6)
-   (message      symbol)
-   (num-params   int32)
+  ((to-handle   handle              :offset-assert 0) ;; handle
+   (to          (pointer process)   :offset-assert 0 :overlay-at to-handle) ;; guessed by decompiler
+   (from-handle handle              :offset-assert 8) ;; handle
+   (from        (pointer process)   :offset-assert 8 :overlay-at from-handle) ;; guessed by decompiler
+   (param       uint64            6 :offset-assert 16) ;; guessed by decompiler
+   (message     symbol              :offset-assert 64) ;; guessed by decompiler
+   (num-params  int32               :offset-assert 68)
    )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
   )
 
 
 (deftype event-message-block-array (inline-array-class)
-  ((data  event-message-block  :dynamic)
+  ((data  event-message-block  :dynamic :inline)
    )
   (:methods
     (send-all! (_type_) none)

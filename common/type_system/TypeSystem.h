@@ -68,7 +68,10 @@ struct FieldReverseLookupInput {
   std::optional<DerefKind> deref = std::nullopt;  // if we actually access memory
   int offset = 0;                                 // if we apply a constant offset
   int stride = 0;                                 // if we are doing a + (idx * stride)
+  int stride2 = 0;                                // a + (idx * stride) + (idx2 * stride2)
   TypeSpec base_type;                             // the type of the thing we're accessing
+
+  bool has_stride() const { return stride || stride2; }
 };
 
 constexpr double CONSTANT_INDEX_SCORE = -10.0;
@@ -77,7 +80,7 @@ struct FieldReverseLookupOutput {
   struct Token {
     enum class Kind { FIELD, CONSTANT_IDX, VAR_IDX } kind;
     std::string name;
-    int idx = -1;
+    int idx = -1;  // 0 for an index from stride and 1 from stride2
     double field_score = 0.0;
 
     double score() {
@@ -223,7 +226,8 @@ class TypeSystem {
                         int offset_override = -1,
                         bool skip_in_static_decomp = false,
                         double score = 0.0,
-                        const std::optional<TypeSpec> decomp_as_ts = std::nullopt);
+                        const std::optional<TypeSpec> decomp_as_ts = std::nullopt,
+                        const std::optional<TypeSpec> handle_ts = std::nullopt);
 
   void add_builtin_types(GameVersion version);
 

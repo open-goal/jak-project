@@ -1,10 +1,8 @@
 from utils import get_gsrc_path_from_filename, get_ref_path_from_filename, get_file_list
 import os
 
-# TODO - hard-coded to jak 2
-
 # Get all the gsrc files, if they aren't empty -- log if they aren't added to the reference tests as well
-file_list = get_file_list("jak2")
+file_list = get_file_list("jakx")
 
 # TODO - function for getting just the names
 missing_files = []
@@ -16,7 +14,7 @@ for file in file_list:
     file_name = file[0]
 
   # check gsrc
-  gsrc_path = get_gsrc_path_from_filename("jak2", file_name)
+  gsrc_path = get_gsrc_path_from_filename("jakx", file_name)
   if gsrc_path:
     gsrc_length = 0
     with open(gsrc_path, 'r') as fp:
@@ -24,7 +22,7 @@ for file in file_list:
 
     if gsrc_length > 15:
       # check if ref exists
-      ref_path = get_ref_path_from_filename("jak2", file_name, "./test/decompiler/reference/")
+      ref_path = get_ref_path_from_filename("jakx", file_name, "./test/decompiler/reference/")
       if not os.path.exists(ref_path):
         missing_files.append(file_name)
 

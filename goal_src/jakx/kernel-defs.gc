@@ -120,7 +120,7 @@
 (define-extern process-level-heap kheap) ;; not a kheap at boot
 (define-extern stack symbol)
 (define-extern scratch symbol)
-(define-extern *scratch-top* pointer)
+(define-extern *scratch-top* int32)
 (define-extern zero-func (function int))
 
 ;; InitHeapAndSymbol
@@ -137,7 +137,7 @@
 (define-extern dgo-load (function string kheap link-flag int none))
 (define-extern malloc (function symbol int pointer))
 (define-extern loado (function string kheap object))
-(define-extern link (function pointer pointer int kheap int pointer))
+(define-extern link (function pointer (pointer uint8) int kheap link-flag pointer))
 
 (declare-type cpad-info basic)
 (define-extern cpad-open (function cpad-info int cpad-info))
@@ -167,6 +167,162 @@
 (define-extern *kernel-symbol-warnings* symbol)
 (define-extern *kernel-boot-art-group* string)
 (define-extern symbol->string (function symbol string))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; networking stuff
+;;;;;;;;;;;;;;;;;;;;;
+
+;; net-mgr-async
+(define-extern knet-scert-function-0-args (function int))
+(define-extern knet-scert-function-1-args (function object int))
+(define-extern knet-scert-function-2-args (function object object int))
+(define-extern knet-scert-function-3-args (function object object object int))
+
+;; net-mgr
+(define-extern knet-eenet-get-mac (function pointer none))
+
+;; net-mgr-dme
+(define-extern knet-eenet-dns-start (function object int))
+(define-extern knet-eenet-dns-poll (function pointer int))
+(define-extern knet-eenet-get-dns-addr (function pointer pointer int))
+(define-extern knet-yield (function int none))
+
+;; net-mgr-medius
+(define-extern knet-scert-function-5-args (function object object object object object int))
+
+;; net-mgr-muis
+(define-extern knet-get-kernel-version-string (function (pointer uint8) (pointer uint8) pointer))
+(define-extern knet-get-scus (function (pointer uint8)))
+(define-extern knet-crc (function pointer int uint))
+
+;; net-init
+(define-extern network-bootstrap (function none))
+(define-extern knet-scert-get-extra-params (function (pointer uint32)))
+(define-extern knet-lg-init (function function function none))
+(define-extern knet-nm-init (function function function none))
+;; uncalled
+(define-extern knet-test (function pointer int))
+(define-extern knet-scert-function-4-args (function object object object object int))
+(define-extern knet-scert-function-6-args (function object object object object object object int))
+(define-extern knet-scert-function-7-args (function object object object object object object object int))
+(define-extern knet-scert-function-8-args (function object object object object object object object object int))
+
+;; args 9 and 10 are read from *scert-extra-params*
+(define-extern knet-scert-function-9-args (function object object object object object object object object int))
+(define-extern knet-scert-function-10-args (function object object object object object object object object int))
+(define-extern knet-lg-read (function pointer int int))
+(define-extern knet-lg-write (function pointer int int))
+(define-extern knet-lg-bytes-avail (function int))
+(define-extern knet-lg-bytes-in-playback-queue (function int))
+(define-extern knet-nm-reset-encoder (function int))
+(define-extern knet-nm-reset-decoder (function int int))
+(define-extern knet-eenet-get-configname (function int))
+(define-extern knet-eenet-bytes-used (function int))
+(define-extern knet-mkdir (function pointer int int))
+(define-extern knet-udp-errno (function int))
+(define-extern mc-load-patch (function int pointer int))
+(define-extern kget-audio-language-mask (function int))
+(define-extern knet-get-disc-flags (function int))
+
+;; net-start
+(define-extern knet-eenet-get-config-list (function pointer))
+(define-extern knet-eenet-start-hw (function int))
+(define-extern knet-eenet-poll-is-started (function int int))
+(define-extern knet-eenet-shutdown (function none))
+(define-extern knet-eenet-poll-is-shutdown (function int))
+(define-extern knet-eenet-set-filter (function int int))
+
+;; net-http
+(define-extern knet-tcp-socket-open (function int int))
+(define-extern knet-tcp-socket-connect (function int int int int))
+(define-extern knet-tcp-socket-poll (function int int int))
+(define-extern knet-tcp-set-sockopt (function int int int pointer int int))
+(define-extern knet-tcp-socket-send (function int pointer int int))
+(define-extern knet-tcp-socket-recv (function int pointer int int))
+(define-extern knet-tcp-socket-close (function int int))
+(define-extern knet-tcp-errno (function int))
+
+;; capture
+(define-extern knet-file-erase (function pointer none))
+(define-extern knet-dopen (function pointer int))
+(define-extern knet-dread (function int pointer int))
+(define-extern knet-dclose (function int int))
+
+;; fmv-player
+(define-extern fmv-get-mem-requirements (function int int int int int))
+(define-extern fmv-player-init (function pointer int))
+(define-extern fmv-player-start (function int int int))
+(define-extern fmv-player-stop (function int int))
+(define-extern fmv-player-set-pause (function int none))
+(define-extern fmv-player-work (function int))
+(define-extern fmv-player-idle (function none))
+(define-extern fmv-player-set-caption (function pointer int))
+(define-extern fmv-player-get-caption (function pointer))
+(define-extern fmv-player-get-texture (function pointer))
+(define-extern fmv-player-rewind (function none))
+(define-extern fmv-player-terminate (function none))
+
+;; dynamic-patch
+(define-extern knet-patch (function int pointer int int int))
+(define-extern knet-patch-hash (function pointer int int))
+(define-extern knet-get-dynamic-patches (function pointer pointer none))
+
+;; net-util
+(define-extern knet-get-static-patches (function pointer pointer none))
+
+;; net-logging
+(define-extern knet-get-local-rtc (function pointer none))
+
+;; udp-layer
+(define-extern knet-scert-net-get-nat-service (function pointer int))
+(define-extern knet-udp-socket-open (function int int))
+(define-extern knet-udp-socket-sendto (function int pointer int int int int))
+(define-extern knet-udp-socket-recvfrom (function int pointer int (pointer uint32) (pointer int32) int))
+(define-extern knet-udp-socket-close (function int int))
+
+;; headset
+(define-extern knet-lg-tick (function none))
+(define-extern knet-lg-got-headset (function int))
+(define-extern knet-lg-set-recording (function int int))
+(define-extern knet-lg-set-playback (function int int))
+(define-extern knet-lg-aread (function pointer (pointer int32) int none))
+(define-extern knet-lg-awrite (function pointer (pointer int32) int none))
+(define-extern knet-lg-async (function int (pointer int32) int))
+(declare-type nci-codec-io-block structure)
+(define-extern knet-nm-encode (function nci-codec-io-block none))
+(define-extern knet-nm-decode (function nci-codec-io-block int none))
+(define-extern knet-nm-decoder-needs-input (function int int))
+;; uncalled
+(define-extern knet-nm-decode3 (function int int int))
+(define-extern knet-nm-decode4 (function int int int))
+
+;; lobby-menu-manager
+(define-extern psplink-stop (function int))
+(define-extern psplink-poll (function int))
+
+;; lobby-net-startup
+(define-extern knet-dev9-present (function int))
+
+;; lobby-patch
+(define-extern dnas-load (function int))
+(define-extern dnas-unload (function int))
+(define-extern dnas-init (function int))
+(define-extern dnas-shutdown (function int))
+(define-extern dnas-abort (function int))
+(define-extern dnas-auth-net-start (function int))
+(define-extern dnas-auth-get-unique-id (function pointer int))
+(define-extern dnas-auth-install (function int))
+(define-extern dnas-get-status (function pointer int))
+(define-extern dnas-inst-init-mc (function int))
+(define-extern dnas-inst-personalize-data-length-mc (function int pointer pointer int))
+(define-extern dnas-inst-personalize-data-mc (function int int pointer int))
+(define-extern dnas-inst-shutdown-mc (function int))
+
+;; lobby-secrets
+(define-extern mc-get-secrets (function int))
+(define-extern psplink-start (function none))
+(define-extern psplink-swap-data (function int pointer int int))
+(define-extern psplink-check-swap-data (function int int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; PC Port functions

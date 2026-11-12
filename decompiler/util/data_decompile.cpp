@@ -554,7 +554,8 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride,
-    GameVersion version) {
+    GameVersion version,
+    std::optional<int> known_size = {}) {
   // lg::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify the stride matches the type system
@@ -576,7 +577,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     ASSERT_MSG(
         pointer_to_data.symbol_name() == "#f",
         fmt::format(
-            "attempted to decompile an inline-array of '{}', but encounted a non `#f` symbol",
+            "attempted to decompile an inline-array of '{}', but encountered a non `#f` symbol",
             array_elt_type.base_type()));
     return pretty_print::to_symbol("#f");
   }
@@ -588,8 +589,10 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   const auto& start_label = labels.at(pointer_to_data.label_id());
   int start_offset = start_label.offset;
 
-  int size_elts = guess_array_size_inline_array(start_offset, start_label.target_segment, stride,
-                                                all_words, labels);
+  int size_elts = known_size
+                      ? *known_size
+                      : guess_array_size_inline_array(start_offset, start_label.target_segment,
+                                                      stride, all_words, labels);
 
   // now disassemble:
   std::vector<goos::Object> array_def = {pretty_print::to_symbol(
@@ -1073,6 +1076,8 @@ const std::unordered_map<
          }},
         {GameVersion::JakX,
          {
+             {"actor-hash-bucket",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"), 16)}}},
              {"ocean-near-indices",
               {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
              {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
@@ -1082,6 +1087,8 @@ const std::unordered_map<
               {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
              {"sparticle-launch-group",
               {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+             {"simple-sprite-system",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
              {"continue-point",
               {{"want", ArrayFieldDecompMeta(TypeSpec("level-buffer-state-small"), 8)}}},
              {"vehicle-sound-info",
@@ -1096,14 +1103,29 @@ const std::unordered_map<
               }},
              {"vehicle-daxter-info",
               {
-                  {"chassis-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
-                  {"trunk-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
-                  {"roof-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"chassis-seats", ArrayFieldDecompMeta(TypeSpec("vehicle-seat-info"), 16)},
+                  {"trunk-seats", ArrayFieldDecompMeta(TypeSpec("vehicle-seat-info"), 16)},
+                  {"roof-seats", ArrayFieldDecompMeta(TypeSpec("vehicle-seat-info"), 16)},
               }},
              {"vehicle-hardpoint-info",
               {
                   {"local-pos-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
               }},
+             {"attackable-hash",
+              {
+                  {"procs", ArrayFieldDecompMeta(TypeSpec("handle"),
+                                                 8,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+                  {"trans", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"masks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                                 4,
+                                                 ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)},
+              }},
+             {"v-wpn-ptable",
+              {{"entries-array", ArrayFieldDecompMeta(TypeSpec("v-wpn-ptable-entry"),
+                                                      4,
+                                                      ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR,
+                                                      "entries-count")}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -1322,11 +1344,26 @@ goos::Object decompile_structure(const TypeSpec& type,
           const auto& metadata =
               array_field_decomp_special_cases.at(file->version).at(type.print()).at(field.name());
           if (metadata.kind == ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR) {
+            std::optional<int> known_size;
+            if (!metadata.size_field.empty()) {
+              FieldLookupInfo count_info = ts.lookup_field_info(type.print(), metadata.size_field);
+              int count_start = count_info.field.offset();
+              int count_size = ts.get_size_in_type(count_info.field);
+              u64 count = 0;
+              for (int i = 0; i < count_size; i++) {
+                int byte_idx_in_seg = count_start + i + label.offset - type_info->get_offset();
+                count |= u64(words.at(label.target_segment)
+                                 .at(byte_idx_in_seg / 4)
+                                 .get_byte(byte_idx_in_seg % 4))
+                         << (8 * i);
+              }
+              known_size = count;
+            }
             field_defs_out.emplace_back(
                 field.name(),
                 decomp_ref_to_inline_array_guess_size(
                     obj_words, labels, label.target_segment, field_start, ts, words, file,
-                    metadata.element_type, metadata.bytes_per_element, file->version));
+                    metadata.element_type, metadata.bytes_per_element, file->version, known_size));
           } else if (metadata.kind == ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR) {
             field_defs_out.emplace_back(
                 field.name(), decomp_ref_to_integer_array_guess_size(

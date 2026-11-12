@@ -532,6 +532,16 @@ std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
   return std::make_unique<SetVarOp>(dest, src, idx);
 }
 
+std::unique_ptr<AtomicOp> convert_xori_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_imm()) {
+    // xori s1, r0, 49292
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_int_constant(i0.get_src(1).get_imm()).as_expr(),
+        idx);
+  }
+  return make_2reg_1imm_op(i0, SimpleExpression::Kind::XOR, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_mtc1_1(const Instruction& i0, int idx) {
   if (i0.get_src(0).is_reg(rr0())) {
     return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
@@ -640,12 +650,17 @@ std::unique_ptr<AtomicOp> convert_dsubu_1(const Instruction& i0, int idx) {
 }
 
 std::unique_ptr<AtomicOp> convert_nor_1(const Instruction& i0, int idx) {
-  if (i0.get_src(1).is_reg(rr0())) {
-    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
-                                      SimpleExpression(SimpleExpression::Kind::LOGNOT,
-                                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
-                                      idx);
+  if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_reg(rr0())) {
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleExpression(SimpleAtom::make_int_constant(-1).as_expr()), idx);
   } else {
+    if (i0.get_src(1).is_reg(rr0())) {
+      return std::make_unique<SetVarOp>(
+          make_dst_var(i0, idx),
+          SimpleExpression(SimpleExpression::Kind::LOGNOT,
+                           make_src_atom(i0.get_src(0).get_reg(), idx)),
+          idx);
+    }
     // fall back
     return make_3reg_op(i0, SimpleExpression::Kind::NOR, idx);
   }
@@ -905,7 +920,7 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
     case InstructionKind::ANDI:
       return make_2reg_1imm_op(i0, SimpleExpression::Kind::AND, idx);
     case InstructionKind::XORI:
-      return make_2reg_1imm_op(i0, SimpleExpression::Kind::XOR, idx);
+      return convert_xori_1(i0, idx);
     case InstructionKind::NOR:
       return convert_nor_1(i0, idx);
     case InstructionKind::XOR:
@@ -1647,26 +1662,33 @@ std::unique_ptr<AtomicOp> convert_vector_plus(const Instruction& i0,
                                               const Instruction& i2,
                                               const Instruction& i3,
                                               const Instruction& i4,
-                                              int idx) {
+                                              int idx,
+                                              GameVersion version) {
+  // jak x emits the vmove after the two loads
+  const bool vmove_last = version >= GameVersion::JakX;
+  const Instruction& vmove = vmove_last ? i2 : i0;
+  const Instruction& load1 = vmove_last ? i0 : i1;
+  const Instruction& load2 = vmove_last ? i1 : i2;
+
   // vmove.w vf6, vf0
-  if (i0.kind != InstructionKind::VMOVE || i0.get_src(0).get_reg() != make_vf(0) ||
-      i0.get_dst(0).get_reg() != make_vf(6) || i0.cop2_dest != 1) {
+  if (vmove.kind != InstructionKind::VMOVE || vmove.get_src(0).get_reg() != make_vf(0) ||
+      vmove.get_dst(0).get_reg() != make_vf(6) || vmove.cop2_dest != 1) {
     return nullptr;
   }
 
   // lqc2 vf4, 0(a1) (src1)
-  if (i1.kind != InstructionKind::LQC2 || i1.get_dst(0).get_reg() != make_vf(4) ||
-      !i1.get_src(0).is_imm(0)) {
+  if (load1.kind != InstructionKind::LQC2 || load1.get_dst(0).get_reg() != make_vf(4) ||
+      !load1.get_src(0).is_imm(0)) {
     return nullptr;
   }
-  Register src1 = i1.get_src(1).get_reg();
+  Register src1 = load1.get_src(1).get_reg();
 
   // lqc2 vf5, 0(a2) (src2)
-  if (i2.kind != InstructionKind::LQC2 || i2.get_dst(0).get_reg() != make_vf(5) ||
-      !i2.get_src(0).is_imm(0)) {
+  if (load2.kind != InstructionKind::LQC2 || load2.get_dst(0).get_reg() != make_vf(5) ||
+      !load2.get_src(0).is_imm(0)) {
     return nullptr;
   }
-  Register src2 = i2.get_src(1).get_reg();
+  Register src2 = load2.get_src(1).get_reg();
 
   // vadd.xyz vf6, vf4, vf5
   if (i3.kind != InstructionKind::VADD || i3.get_dst(0).get_reg() != make_vf(6) ||
@@ -1873,7 +1895,7 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
     return std::make_unique<SpecialOp>(SpecialOp::Kind::SUSPEND, idx);
   }
 
-  auto as_vector_plus = convert_vector_plus(i0, i1, i2, i3, i4, idx);
+  auto as_vector_plus = convert_vector_plus(i0, i1, i2, i3, i4, idx, version);
   if (as_vector_plus) {
     return as_vector_plus;
   }
@@ -2024,7 +2046,7 @@ std::unique_ptr<AtomicOp> convert_vector_length_squared(const Instruction* instr
 }
 
 std::unique_ptr<AtomicOp> convert_7(const Instruction* instrs, int idx, GameVersion version) {
-  if (version == GameVersion::Jak3) {
+  if (version >= GameVersion::Jak3) {
     auto as_vector_length_squared = convert_vector_length_squared(instrs, idx);
     if (as_vector_length_squared) {
       return as_vector_length_squared;
@@ -2172,7 +2194,7 @@ std::unique_ptr<AtomicOp> convert_8(const Instruction* instrs, int idx, GameVers
     return as_vector_float_plus_times;
   }
 
-  if (version == GameVersion::Jak3) {
+  if (version >= GameVersion::Jak3) {
     auto as_vector_plus_times = convert_vector_plus_times(instrs, idx);
     if (as_vector_plus_times) {
       return as_vector_plus_times;

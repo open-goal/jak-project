@@ -93,6 +93,14 @@ jobs:
           ref: ${{ needs.validate-author.outputs.sha }}
           clean: false
 
+      - name: Cleanup Potential Outputs
+        run: |
+          rm -r ./ci-artifacts || true
+          rm -rf ./iso_data/jak1/* || true
+          rm -rf ./iso_data/jak2/* || true
+          rm -rf ./iso_data/jak3/* || true
+          rm -rf ./iso_data/jakx/* || true
+
       - name: Build Binaries
         run: |
           cmake -B build --preset="Release-linux-clang-static" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
@@ -136,6 +144,16 @@ jobs:
           rm -r ./data/iso_data || true
           rm -r ./data/decompiler_out || true
 
+      # - name: Install Jak X
+      #   run: |
+      #     cd ./ci-artifacts
+      #     ./extractor ~/isos/jak3_ntsc.iso --game jakx --extract --validate --proj-path "$PWD/data"
+      #     ./extractor ~/isos/jak3_ntsc.iso --game jakx --decompile --proj-path "$PWD/data"
+      #     ./extractor ~/isos/jak3_ntsc.iso --game jakx --compile --proj-path "$PWD/data"
+      #     rm -r ./data/out || true
+      #     rm -r ./data/iso_data || true
+      #     rm -r ./data/decompiler_out || true
+
       - name: Cleanup Installation
         run: |
           rm -r ./ci-artifacts || true
@@ -160,3 +178,10 @@ jobs:
           task set-game-jak3
           task offline-tests
           rm -rf ./iso_data/jak3/*
+
+      - name: Run Offline Tests - Jak X
+        run: |
+          7z x ~/isos/jakx_ntsc.iso -o./iso_data/jakx -aos
+          task set-game-jakx
+          task offline-tests
+          rm -rf ./iso_data/jakx/*

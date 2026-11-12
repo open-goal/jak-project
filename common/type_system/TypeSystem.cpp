@@ -1024,7 +1024,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   int offset_override,
                                   bool skip_in_static_decomp,
                                   double score,
-                                  const std::optional<TypeSpec> decomp_as_ts) {
+                                  const std::optional<TypeSpec> decomp_as_ts,
+                                  const std::optional<TypeSpec> handle_ts) {
   if (type->lookup_field(field_name, nullptr)) {
     throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
@@ -1068,6 +1069,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
   field.set_field_score(score);
   if (decomp_as_ts) {
     field.set_decomp_as_ts(*decomp_as_ts);
+  }
+  if (handle_ts) {
+    field.set_handle_ts(*handle_ts);
   }
 
   int after_field = offset + get_size_in_type(field);
@@ -2173,7 +2177,9 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
               "In type {}, type size was 0 for array field {} of type {}, check that the type "
               "is fully defined.",
               st->get_name(), field.name(), field.type().print()));
-      int array_idx = rel_offset / type->get_size_in_memory();
+      int inline_stride =
+          align(type->get_size_in_memory(), type->get_inline_array_stride_alignment());
+      int array_idx = rel_offset / inline_stride;
       if (!field.is_inline() &&
           field.offset() + field.array_size() * type->get_load_size() > offset) {
         if (rel_offset % type->get_load_size() == 0) {
@@ -2185,13 +2191,12 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
           }
         }
       } else if (field.is_inline() &&
-                 field.offset() + field.array_size() * type->get_size_in_memory() > offset) {
-        if (field.type() == requesting_field.type() &&
-            rel_offset % type->get_size_in_memory() == 0) {
+                 field.offset() + field.array_size() * inline_stride > offset) {
+        if (field.type() == requesting_field.type() && rel_offset % inline_stride == 0) {
           // same type
           best_exact_arr.first = &field;
           best_exact_arr.second = array_idx;
-        } else if (requesting_field.is_array() && rel_offset % type->get_size_in_memory() == 0 &&
+        } else if (requesting_field.is_array() && rel_offset % inline_stride == 0 &&
                    array_idx == 0) {
           // starts at the same offset as another array. just use the field with nothing extra
           best_exact = &field;
@@ -2200,9 +2205,8 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
           if (f_type && field.offset() + f_type->get_size_in_memory() > offset) {
             // struct that encompasses this field
             // simply search that structure for the field we want, offset by the field's offset
-            auto best_field_in_struct =
-                find_best_field_in_structure(ts, f_type, rel_offset % type->get_size_in_memory(),
-                                             requesting_field, want_fixed, 0);
+            auto best_field_in_struct = find_best_field_in_structure(
+                ts, f_type, rel_offset % inline_stride, requesting_field, want_fixed, 0);
             if (best_field_in_struct) {
               best_struct_field_deref = best_field_in_struct;
               best_struct_arr.first = &field;

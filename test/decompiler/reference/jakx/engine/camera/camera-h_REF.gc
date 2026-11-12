@@ -296,83 +296,46 @@
 ;; definition for method 10 of type cam-vector-seeker
 ;; WARN: Return type mismatch int vs none.
 (defmethod update! ((this cam-vector-seeker) (arg0 vector))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 (new 'stack-no-clear 'vector)))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    0.0
+    (let ((f0-1 (-> *display* dog-ratio)))
       0.0
-      (let ((f0-1 (-> *display* dog-ratio)))
-        0.0
-        (while (< 0.001 f0-1)
-          (let ((f1-2 (if (< 1.0 f0-1)
-                          1.0
-                          f0-1
-                          )
-                      )
-                )
-            (set! f0-1 (+ -1.0 f0-1))
-            (cond
-              (arg0
-                (let ((t0-0 v1-0))
-                  (let ((a2-6 (-> this target))
-                        (a3-0 arg0)
+      (while (< 0.001 f0-1)
+        (let ((f1-2 (if (< 1.0 f0-1)
+                        1.0
+                        f0-1
                         )
-                    (.lvf vf4 (&-> a2-6 quad))
-                    (.lvf vf5 (&-> a3-0 quad))
                     )
-                  (.mov.vf.w vf6 vf0)
-                  (.add.vf.xyz vf6 vf4 vf5)
-                  (.svf (&-> t0-0 quad) vf6)
-                  )
-                (vector-! v1-0 v1-0 (-> this value))
-                )
-              (else
-                (vector-! v1-0 (-> this target) (-> this value))
-                )
               )
-            (let ((f2-2 (* (-> this max-partial) (vector-length v1-0))))
-              (vector-float*! v1-0 v1-0 (-> this accel))
-              (let ((t0-5 (-> this vel)))
-                (let ((a2-13 (-> this vel))
-                      (a3-4 v1-0)
-                      )
-                  (.lvf vf4 (&-> a2-13 quad))
-                  (.lvf vf5 (&-> a3-4 quad))
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.add.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> t0-5 quad) vf6)
-                )
-              (let ((f3-2 (vector-length (-> this vel)))
-                    (f2-3 (fmin f2-2 (-> this max-vel)))
-                    )
-                (if (< f2-3 f3-2)
-                    (vector-float*! (-> this vel) (-> this vel) (/ f2-3 f3-2))
-                    )
-                )
+          (set! f0-1 (+ -1.0 f0-1))
+          (cond
+            (arg0
+              (vector+! v1-0 (-> this target) arg0)
+              (vector-! v1-0 v1-0 (-> this value))
               )
-            (vector-float*! v1-0 (-> this vel) f1-2)
+            (else
+              (vector-! v1-0 (-> this target) (-> this value))
+              )
             )
-          (let ((t0-6 (-> this value)))
-            (let ((a2-21 (-> this value))
-                  (a3-7 v1-0)
+          (let ((f2-2 (* (-> this max-partial) (vector-length v1-0))))
+            (vector-float*! v1-0 v1-0 (-> this accel))
+            (vector+! (-> this vel) (-> this vel) v1-0)
+            (let ((f3-2 (vector-length (-> this vel)))
+                  (f2-3 (fmin f2-2 (-> this max-vel)))
                   )
-              (.lvf vf4 (&-> a2-21 quad))
-              (.lvf vf5 (&-> a3-7 quad))
+              (if (< f2-3 f3-2)
+                  (vector-float*! (-> this vel) (-> this vel) (/ f2-3 f3-2))
+                  )
               )
-            (.mov.vf.w vf6 vf0)
-            (.add.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> t0-6 quad) vf6)
             )
+          (vector-float*! v1-0 (-> this vel) f1-2)
           )
+        (vector+! (-> this value) (-> this value) v1-0)
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition of type cam-rotation-tracker
@@ -445,7 +408,7 @@
   (let ((t9-0 (method-of-type process inspect)))
     (t9-0 this)
     )
-  (format #t "~2Ttrans: ~`vector`P~%" (-> this stack))
+  (format #t "~2Ttrans: ~`vector`P~%" (-> this trans))
   (format #t "~2Tinv-camera-rot: ~`matrix`P~%" (-> this inv-camera-rot))
   (format #t "~2Tfov: ~f~%" (-> this fov))
   (format #t "~2Tinterp-val: ~f~%" (-> this interp-val))
@@ -526,6 +489,17 @@
    (intro-handle                   uint64)
    (slow-mo-sound-id               uint32)
    )
+  (:states
+    cam-decel
+    cam-endlessfall
+    cam-fixed
+    cam-fixed-read-entity
+    cam-free-floating
+    cam-point-watch
+    cam-spline
+    cam-standoff
+    cam-standoff-read-entity
+    )
   )
 
 ;; definition for method 3 of type camera-slave
@@ -537,7 +511,7 @@
   (let ((t9-0 (method-of-type process inspect)))
     (t9-0 this)
     )
-  (format #t "~2Ttrans: ~`vector`P~%" (-> this stack))
+  (format #t "~2Ttrans: ~`vector`P~%" (-> this trans))
   (format #t "~2Tfov: ~f~%" (-> this fov))
   (format #t "~2Tfov0: ~f~%" (-> this fov0))
   (format #t "~2Tfov1: ~f~%" (-> this fov1))
@@ -646,9 +620,9 @@
    (interest-dist        float)
    )
   (:methods
-    (camera-master-method-15 () none)
-    (camera-master-method-16 () none)
-    (camera-master-method-17 () none)
+    (camera-master-method-15 (_type_ vector) none)
+    (camera-master-method-16 (_type_ vector) none)
+    (camera-master-method-17 (_type_ symbol) none)
     )
   (:states
     cam-master-active
@@ -710,7 +684,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

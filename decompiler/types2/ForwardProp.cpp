@@ -4,6 +4,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/types2/types2.h"
 #include "decompiler/util/type_utils.h"
 
@@ -23,6 +24,111 @@ bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
 bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
 }
+
+/*!
+ * Type of a field extracted from a bitfield. A handle loaded from a field with :handle-type is
+ * typed (handle <type>), and its process field points to that type instead of process.
+ */
+TypeSpec bitfield_field_type(const TypeSpec& bitfield_type, const BitField& field) {
+  if (bitfield_type.base_type() == "handle" && bitfield_type.arg_count() == 1 &&
+      field.name() == "process") {
+    return TypeSpec("pointer", {bitfield_type.get_single_arg()});
+  }
+  return field.type();
+}
+
+/*!
+ * Find the op that last wrote reg before op_idx, without leaving op_idx's basic block.
+ */
+const AtomicOp* find_def_in_block(const FunctionAtomicOps& ops, int op_idx, Register reg) {
+  int block_start = -1;
+  for (size_t i = 0; i < ops.block_id_to_first_atomic_op.size(); i++) {
+    if (op_idx >= ops.block_id_to_first_atomic_op[i] && op_idx < ops.block_id_to_end_atomic_op[i]) {
+      block_start = ops.block_id_to_first_atomic_op[i];
+      break;
+    }
+  }
+  if (block_start == -1) {
+    return nullptr;
+  }
+
+  for (int i = op_idx - 1; i >= block_start; i--) {
+    const auto& op = ops.ops.at(i);
+    for (auto& w : op->write_regs()) {
+      if (w == reg) {
+        return op.get();
+      }
+    }
+  }
+  return nullptr;
+}
+
+/*!
+ * If def is a 4 byte unsigned load from base_reg + offset, return base_reg.
+ */
+std::optional<Register> pointer_load_base(const AtomicOp* def, int offset) {
+  auto load = dynamic_cast<const LoadVarOp*>(def);
+  if (!load || load->kind() != LoadVarOp::Kind::UNSIGNED || load->size() != 4) {
+    return {};
+  }
+  IR2_RegOffset ro;
+  if (!get_as_reg_offset(load->src(), &ro) || ro.offset != offset) {
+    return {};
+  }
+  return ro.reg;
+}
+
+int basic_field_offset(const DecompilerTypeSystem& dts,
+                       const std::string& type_name,
+                       const std::string& field_name) {
+  auto info = dts.ts.lookup_field_info(type_name, field_name);
+  return info.field.offset() - dts.ts.lookup_type(type_name)->get_offset();
+}
+
+/*!
+ * Is reg at op_idx (-> self draw art-group)?
+ */
+bool is_self_art_group(const Env& env, const DecompilerTypeSystem& dts, int op_idx, Register reg) {
+  if (!env.func->ir2.atomic_ops) {
+    return false;
+  }
+  const auto& ops = *env.func->ir2.atomic_ops;
+
+  auto art_group_def = find_def_in_block(ops, op_idx, reg);
+  auto draw_reg =
+      pointer_load_base(art_group_def, basic_field_offset(dts, "draw-control", "art-group"));
+  if (!draw_reg) {
+    return false;
+  }
+
+  auto draw_def = find_def_in_block(ops, art_group_def->op_id(), *draw_reg);
+  auto self_reg = pointer_load_base(draw_def, basic_field_offset(dts, "process-drawable", "draw"));
+  return self_reg && *self_reg == Register(Reg::GPR, Reg::S6);
+}
+
+namespace types2 {
+std::optional<TypeSpec> self_art_element_load_type(
+    const Env& env,
+    const DecompilerTypeSystem& dts,
+    int op_idx,
+    Register base_reg,
+    const TypeSpec& base_type,
+    const std::vector<FieldReverseLookupOutput::Token>& tokens) {
+  if (base_type != TypeSpec("art-group") || tokens.size() != 2 ||
+      tokens[0].kind != FieldReverseLookupOutput::Token::Kind::FIELD || tokens[0].name != "data" ||
+      tokens[1].kind != FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX) {
+    return {};
+  }
+  if (!is_self_art_group(env, dts, op_idx, base_reg)) {
+    return {};
+  }
+  auto name = env.get_art_elt_name(tokens[1].idx);
+  if (name && name->ends_with("-ja")) {
+    return TypeSpec("art-joint-anim");
+  }
+  return {};
+}
+}  // namespace types2
 
 /*!
  * Set up an instruction which sets its result to an ambiguous deref.
@@ -456,7 +562,8 @@ void types2_for_right_shift(types2::Type& type_out,
       int size = shift_size - expr.get_arg(1).get_int();
       int start_bit = shift_size - size;
       auto field = find_field(dts.ts, bf, start_bit, size, is_unsigned);
-      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+      type_out.type = TP_Type::make_from_ts(
+          coerce_to_reg_type(bitfield_field_type(arg0_type.typespec(), field)));
       return;
     }
   }
@@ -480,7 +587,8 @@ void types2_for_right_shift(types2::Type& type_out,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     ASSERT(as_bitfield);
     auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
-    type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+    type_out.type = TP_Type::make_from_ts(
+        coerce_to_reg_type(bitfield_field_type(arg0_type.get_bitfield_type(), field)));
     return;
   }
 
@@ -1132,6 +1240,15 @@ void types2_for_add(types2::Type& type_out,
     return;
   }
 
+  // propagate integer math: a * C1 + b * C2 + C3
+  if (arg1_type.is_integer_constant() && arg0_type.kind == TP_Type::Kind::PRODUCT_SUM) {
+    const auto& [mult, mult2] = arg0_type.get_product_sum_multipliers();
+    type_out.type = TP_Type::make_from_product_sum(
+        mult, mult2, arg0_type.typespec(),
+        arg0_type.get_sum_constant() + arg1_type.get_integer_constant());
+    return;
+  }
+
   // propagate integer math: a + C1
   if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
     TypeSpec sum_type = arg0_type.typespec();
@@ -1202,12 +1319,42 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
+  // a * C1 + b * C2 (+ C3), possibly the two indices of a 2d array access.
+  {
+    auto as_product = [&](const TP_Type& t, int64_t* mult, int64_t* constant) {
+      if (t.is_product()) {
+        *mult = t.get_multiplier();
+        *constant = 0;
+        return true;
+      }
+      if (t.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+        *mult = t.get_mult_int_constant();
+        *constant = t.get_add_int_constant();
+        return true;
+      }
+      if (t.kind == TP_Type::Kind::TYPESPEC && is_int_or_uint(dts, t)) {
+        *mult = 1;
+        *constant = 0;
+        return true;
+      }
+      return false;
+    };
+    int64_t mult0, mult1, constant0, constant1;
+    if (as_product(arg0_type, &mult0, &constant0) && as_product(arg1_type, &mult1, &constant1) &&
+        mult0 != mult1) {
+      type_out.type =
+          TP_Type::make_from_product_sum(mult0, mult1, arg0_type.typespec(), constant0 + constant1);
+      return;
+    }
+  }
+
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
 
   // get addr of field with a constant: obj + C1
-  if (arg1.is_int() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+  if (arg1.is_int() &&
+      (arg0_type.kind == TP_Type::Kind::TYPESPEC || arg0_type.is_constant_string())) {
     // access a field.
     FieldReverseLookupInput rd_in;
     rd_in.deref = std::nullopt;
@@ -1218,11 +1365,14 @@ void types2_for_add(types2::Type& type_out,
     if (out.success) {
       if (out.results.size() == 1) {
         type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(out.results.front().result_type));
-        return;
       } else {
         types2_from_ambiguous_deref(output_instr, type_out, out.results, extras.tags_locked);
-        return;
       }
+      if (!out.results.front().addr_of && type_out.type &&
+          type_out.type->kind == TP_Type::Kind::TYPESPEC) {
+        type_out.type->set_field_origin(arg0_type.typespec(), arg1.get_int());
+      }
+      return;
     }
   }
 
@@ -1277,6 +1427,20 @@ void types2_for_add(types2::Type& type_out,
       return;
     } else if (!filtered_results.empty()) {
       types2_from_ambiguous_deref(output_instr, type_out, filtered_results, extras.tags_locked);
+      return;
+    }
+  }
+
+  // (+ (+ obj C1) (* a C2)), with obj + C1 already resolved to an element field access
+  if (arg1_type.is_product()) {
+    if (auto elt = lookup_array_element_from_field(dts.ts, arg0_type, arg1_type.get_multiplier())) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+      return;
+    }
+  }
+  if (arg0_type.is_product()) {
+    if (auto elt = lookup_array_element_from_field(dts.ts, arg1_type, arg0_type.get_multiplier())) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
       return;
     }
   }
@@ -1368,11 +1532,31 @@ void types2_for_add(types2::Type& type_out,
         type_out.type = TP_Type::make_from_integer_constant_plus_var(
             arg0_type.get_integer_constant(), arg1_type.typespec(), sum_type);
         return;
+      } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_SUM) {
+        if (auto elt = lookup_2d_array_element(dts.ts, arg1_type.typespec(), arg0_type)) {
+          type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+          return;
+        }
+        const auto& [mult, mult2] = arg0_type.get_product_sum_multipliers();
+        type_out.type = TP_Type::make_object_plus_product_sum(arg1_type.typespec(), mult, mult2,
+                                                              arg0_type.get_sum_constant(), true);
+        return;
       } else {
         type_out.type = TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
         return;
       }
     }
+  }
+
+  if (arg1_type.kind == TP_Type::Kind::PRODUCT_SUM && tc(dts, TypeSpec("structure"), arg0_type)) {
+    if (auto elt = lookup_2d_array_element(dts.ts, arg0_type.typespec(), arg1_type)) {
+      type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(elt->result_type));
+      return;
+    }
+    const auto& [mult, mult2] = arg1_type.get_product_sum_multipliers();
+    type_out.type = TP_Type::make_object_plus_product_sum(arg0_type.typespec(), mult, mult2,
+                                                          arg1_type.get_sum_constant(), false);
+    return;
   }
 
   if (env.version >= GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
@@ -1733,7 +1917,8 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
         // see if we can find a field (throws if we can't)
         auto field = find_field(dts.ts, as_bitfield, 0, 32, {});
         // this is a complete extraction, can set the type as the result.
-        out[m_dst->reg()]->type = TP_Type::make_from_ts(field.type());
+        out[m_dst->reg()]->type =
+            TP_Type::make_from_ts(bitfield_field_type(src_type->type->typespec(), field));
         return;
       }
     }
@@ -1750,7 +1935,13 @@ void AsmOp::propagate_types2(types2::Instruction& instr,
         int offset = sa;
         int size = 32 - offset;
         auto field = find_field(dts.ts, as_bitfield, offset, size, {});
-        out[m_dst->reg()]->type = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+        out[m_dst->reg()]->type = TP_Type::make_from_ts(
+            coerce_to_reg_type(bitfield_field_type(src_type->type->typespec(), field)));
+        return;
+      }
+      if (m_instr.src[1].get_imm() > 0 &&
+          dts.ts.tc(TypeSpec("integer"), src_type->type->typespec())) {
+        out[m_dst->reg()]->type = TP_Type::make_from_ts("uint");
         return;
       }
     }
@@ -1964,8 +2155,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
         return true;
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
         // normal non-virtual method access
-        type_out.type =
-            TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
+        type_out.type = TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name),
+                                                         method_id, method_info.name);
         return true;
       } else {
         // normal virtual method access.
@@ -1991,7 +2182,8 @@ bool load_var_op_determine_type(types2::Type& type_out,
           }
         }
         // nope
-        type_out.type = TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
+        type_out.type = TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id,
+                                                     method_info.name);
         return true;
       }
     }
@@ -2015,13 +2207,33 @@ bool load_var_op_determine_type(types2::Type& type_out,
         if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
           // this can get us the wrong thing for `new` methods.  And maybe relocate?
           type_out.type = TP_Type::make_non_virtual_method(
-              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id,
+              method_info.name);
           return true;
         }
       }
     }
 
-    if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+    if (input_type.has_sum_multipliers()) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = op.kind() == LoadVarOp::Kind::SIGNED;
+      dk.size = op.size();
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+      rd_in.stride = input_type.get_sum_multipliers().first;
+      rd_in.stride2 = input_type.get_sum_multipliers().second;
+      rd_in.offset = ro.offset + input_type.get_sum_constant();
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      if (rd.success) {
+        type_out.type = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        return true;
+      }
+    }
+
+    if (input_type.is_plain_product_plus_obj()) {
       FieldReverseLookupInput rd_in;
       DerefKind dk;
       dk.is_store = false;
@@ -2109,6 +2321,11 @@ bool load_var_op_determine_type(types2::Type& type_out,
                 TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
             return true;
           } else {
+            if (auto elt_type = types2::self_art_element_load_type(
+                    env, dts, op.op_id(), ro.reg, rd_in.base_type, rd.results.front().tokens)) {
+              type_out.type = TP_Type::make_from_ts(*elt_type);
+              return true;
+            }
             type_out.type =
                 TP_Type::make_from_ts(coerce_to_reg_type(rd.results.front().result_type));
             return true;

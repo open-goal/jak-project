@@ -16,7 +16,6 @@
 (define-extern ja-post (function none :behavior process-drawable))
 (define-extern merc-blend-shape (function process-drawable object))
 (define-extern ja-channel-push! (function int time-frame int :behavior process-drawable))
-(define-extern ja-channel-set! (function int int :behavior process-drawable))
 (define-extern ja-aframe-num (function int float :behavior process-drawable))
 (define-extern ja-frame-num (function int float :behavior process-drawable))
 (define-extern ja-aframe (function float int float :behavior process-drawable))
@@ -200,9 +199,13 @@
        (-> self skel root-channel ,chan frame-group))
   )
 
-(defmacro ja-group? (group &key (chan 0))
-  "is self in this frame group on this channel? default is channel 0, which is the base channel."
-  `(= (ja-group) ,group)
+(defmacro ja-group? (&key (chan 0) &rest groups)
+  "is self in any of these frame groups on this channel? default is channel 0, which is the base channel."
+  (with-gensyms (group)
+    `(let ((,group (ja-group :chan ,chan)))
+       (the symbol (and ,group (or ,@(apply (lambda (x) `(= ,group ,x)) groups))))
+       )
+    )
   )
 
 (defmacro ja (&key (chan 0)

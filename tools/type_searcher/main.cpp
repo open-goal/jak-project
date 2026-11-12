@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
       break;
     case GameVersion::JakX:
       dts.parse_type_defs({"decompiler", "config", "jakx", "all-types.gc"});
+      break;
     default:
       lg::error("unsupported game version");
       return 1;

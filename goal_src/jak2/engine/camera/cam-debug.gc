@@ -881,8 +881,8 @@
         )
       (while (!= s4-0 -134250495)
         (camera-line
-          (the-as vector (-> this point s5-0))
-          (the-as vector (-> this point s4-0))
+          (-> this point s5-0 position)
+          (-> this point s4-0 position)
           (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
           )
         (set! s5-0 s4-0)
@@ -893,7 +893,7 @@
         (camera-cross
           (new 'static 'vector :y 1024.0)
           (new 'static 'vector :z 1024.0)
-          (the-as vector (-> this point s5-0))
+          (-> this point s5-0 position)
           (new 'static 'vector4w :x #xff :w #x80)
           (meters 0.25)
           )
@@ -1022,7 +1022,7 @@
           (meters 0.25)
           )
         )
-    (let ((f30-0 (* 0.5 (-> *camera-combiner* fov))))
+    (let ((f30-0 (/ (-> *camera-combiner* fov) 2)))
       (camera-fov-frame
         (-> *camera-combiner* inv-camera-rot)
         (camera-pos)
@@ -1034,9 +1034,9 @@
       )
     (cond
       ((= (-> arg0 blend-to-type) (camera-blend-to-type unknown-2))
-       (let ((f0-2 (* 0.5 (-> arg0 fov))))
+       (let ((f0-2 (/ (-> arg0 fov) 2)))
          (camera-fov-frame
-           (the-as matrix (-> *camera-combiner* tracking))
+           (-> *camera-combiner* tracking inv-mat)
            (-> arg0 trans)
            f0-2
            0.75
@@ -1046,9 +1046,9 @@
          )
        )
       (else
-        (let ((f0-4 (* 0.5 (-> arg0 fov))))
+        (let ((f0-4 (/ (-> arg0 fov) 2)))
           (camera-fov-frame
-            (the-as matrix (-> arg0 tracking))
+            (-> arg0 tracking inv-mat)
             (-> arg0 trans)
             f0-4
             0.75
@@ -1531,7 +1531,7 @@
 
 (defun camera-master-debug ((arg0 camera-master))
   (when *display-cam-other*
-    (let ((f0-1 (* 0.5 (-> *camera-other-fov* data))))
+    (let ((f0-1 (/ (-> *camera-other-fov* data) 2)))
       (camera-fov-frame
         *camera-other-matrix*
         *camera-other-trans*
@@ -1545,7 +1545,7 @@
     (let ((s4-0 (new 'stack-no-clear 'vector))
           (s5-0 *camera-other-trans*)
           )
-      (vector+float*! s4-0 s5-0 (the-as vector (-> *camera-other-matrix* vector)) 2048.0)
+      (vector+float*! s4-0 s5-0 (-> *camera-other-matrix* vector 0) 2048.0)
       (camera-line s5-0 s4-0 (new 'static 'vector4w :x #xff :w #x80))
       (vector+float*! s4-0 s5-0 (-> *camera-other-matrix* vector 1) 2048.0)
       (camera-line s5-0 s4-0 (new 'static 'vector4w :y #xff :w #x80))
@@ -1636,7 +1636,7 @@
     (set! (-> a1-0 trans w) 1.0)
     (debug-set-camera-pos-rot! a0-0 a1-0)
     )
-  (send-event *camera* 'set-fov (degrees 64))
+  (send-event *camera* 'set-fov 11650.845)
   (clear *camera-old-level*)
   (format *camera-old-level* "dig3a")
   (set! *camera-old-cpu* 4815)

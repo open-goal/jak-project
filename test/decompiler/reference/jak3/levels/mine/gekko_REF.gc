@@ -1092,13 +1092,12 @@
   :code (behavior ()
     (when (!= (-> self turn-next-state) (method-of-type gekko attack-wall))
       (set-look-at-mode! self 1)
-      (let* ((v1-7 (ja-group))
-             (gp-0 (if (and v1-7 (= v1-7 gekko-wall-run0-a-ja))
-                       25
-                       24
-                       )
-                   )
-             )
+      (let ((gp-0 (if (ja-group? gekko-wall-run0-a-ja)
+                      25
+                      24
+                      )
+                  )
+            )
         (ja-channel-push! 1 (seconds 0.03))
         (dotimes (s5-0 (if (time-elapsed? (-> self last-turn-time) (seconds 1))
                            1
@@ -1188,13 +1187,12 @@
     (set-time! (-> self attack-time))
     )
   :code (behavior ()
-    (let* ((v1-2 (ja-group))
-           (gp-0 (if (and v1-2 (= v1-2 gekko-wall-run0-a-ja))
-                     25
-                     24
-                     )
-                 )
-           )
+    (let ((gp-0 (if (ja-group? gekko-wall-run0-a-ja)
+                    25
+                    24
+                    )
+                )
+          )
       (ja-channel-push! 1 (seconds 0.03))
       (let ((s5-0 (current-time))
             (s4-0 150)
@@ -1495,16 +1493,15 @@
     )
   :code (behavior ()
     (until #f
-      (let* ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
-             (v1-5 (ja-group))
-             (s5-0 (if (and v1-5 (= v1-5 gekko-run0-a-ja))
-                       25
-                       24
-                       )
-                   )
-             (s4-0 (rnd-time-frame self (seconds 0.007) (seconds 0.017)))
-             (gp-0 (new 'stack-no-clear 'vector))
-             )
+      (let ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
+            (s5-0 (if (ja-group? gekko-run0-a-ja)
+                      25
+                      24
+                      )
+                  )
+            (s4-0 (rnd-time-frame self (seconds 0.007) (seconds 0.017)))
+            (gp-0 (new 'stack-no-clear 'vector))
+            )
         (nav-enemy-method-164 self)
         (let ((a1-2 (-> self nav state)))
           (vector-copy! gp-0 (-> a1-2 target-pos))
@@ -1554,20 +1551,18 @@
             )
           )
         )
-      (let* ((v1-86 (ja-group))
-             (gp-1 (if (and v1-86 (= v1-86 gekko-idle0-ja))
-                       14
-                       15
-                       )
-                   )
-             (v1-91 (ja-group))
-             (s5-1 (if (and v1-91 (= v1-91 gekko-idle0-ja))
-                       15
-                       14
-                       )
-                   )
-             (s4-1 (rnd-time-frame self (seconds 0.017) (seconds 0.027)))
-             )
+      (let ((gp-1 (if (ja-group? gekko-idle0-ja)
+                      14
+                      15
+                      )
+                  )
+            (s5-1 (if (ja-group? gekko-idle0-ja)
+                      15
+                      14
+                      )
+                  )
+            (s4-1 (rnd-time-frame self (seconds 0.017) (seconds 0.027)))
+            )
         (let ((v1-95 self))
           (if (not (logtest? (enemy-flag ef37) (-> v1-95 enemy-flags)))
               (set! (-> v1-95 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-95 enemy-flags))))
@@ -1601,14 +1596,13 @@
 ;; WARN: Return type mismatch symbol vs none.
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior gekko-stare-code gekko ()
-  (let* ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
-         (v1-5 (ja-group))
-         (gp-0 (if (and v1-5 (= v1-5 gekko-run0-a-ja))
-                   25
-                   24
-                   )
-               )
-         )
+  (let ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
+        (gp-0 (if (ja-group? gekko-run0-a-ja)
+                  25
+                  24
+                  )
+              )
+        )
     (until #f
       (cond
         ((pointing-toward? self (-> self focus-pos) 8192.0)
@@ -1616,11 +1610,9 @@
            (set! (-> v1-10 enemy-flags) (the-as enemy-flag (logclear (-> v1-10 enemy-flags) (enemy-flag ef38))))
            )
          0
-         (let ((v1-14 (ja-group)))
-           (if (not (and v1-14 (= v1-14 (-> self draw art-group data gp-0))))
-               (ja-channel-push! 1 (seconds 0.12))
-               )
-           )
+         (if (not (ja-group? (-> self draw art-group data gp-0)))
+             (ja-channel-push! 1 (seconds 0.12))
+             )
          (ja-no-eval :group! (-> self draw art-group data gp-0) :num! (seek! max f30-1) :frame-num 0.0)
          (until (ja-done? 0)
            (if (= (-> self skel root-channel 0) (-> self skel channel))
@@ -2294,14 +2286,14 @@
         )
       (dotimes (s3-1 4)
         (let ((sv-976 (-> arg1 data (-> *gekko-ik-setup* s3-1 effector-index)))
-              (sv-980 (the-as gekko-foot-info (+ (the-as uint (-> gp-0 foot 0 foot-transform)) (* 96 s3-1))))
+              (sv-980 (the-as gekko-foot-info (-> gp-0 foot s3-1 foot-transform)))
               (sv-984 (new 'stack-no-clear 'vector))
               (sv-988 (new 'stack-no-clear 'vector))
               )
           (quaternion-from-two-vectors!
             (the-as quaternion sv-988)
             (-> gp-0 rot-matrix uvec)
-            (the-as vector (+ (the-as uint (-> gp-0 foot 0 ground-normal)) (* 96 s3-1)))
+            (-> gp-0 foot s3-1 ground-normal)
             )
           (vector<-cspace! (-> sv-980 ground-pos) sv-976)
           (matrix->quaternion (the-as quaternion sv-984) (-> sv-976 bone transform))
@@ -2524,9 +2516,9 @@
 (defmethod should-flee-from? ((this gekko) (arg0 process-focusable))
   "Return if this enemy should flee from the process."
   (or (< (current-time) (-> this scared-timer))
-      (let ((v1-4 (handle->process (-> this focus handle))))
+      (let ((v1-4 (the-as process-focusable (handle->process (-> this focus handle)))))
         (if v1-4
-            (and (or (focus-test? (the-as process-focusable v1-4) disable dead ignore grabbed)
+            (and (or (focus-test? v1-4 disable dead ignore grabbed)
                      (and (not (logtest? (-> this flags) (gekko-flag on-wall?)))
                           (not (time-elapsed? (-> this attack-time) (seconds 3)))
                           )
@@ -2796,9 +2788,9 @@
 ;; INFO: Used lq/sq
 (defmethod enemy-common-post ((this gekko))
   "Common implementation of post. Runs ja-post."
-  (let ((a0-2 (handle->process (-> this focus handle))))
+  (let ((a0-2 (the-as process-focusable (handle->process (-> this focus handle)))))
     (if a0-2
-        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-2) 3))
+        (vector-copy! (-> this focus-pos) (get-trans a0-2 3))
         )
     )
   (if (and (nonzero? (-> this path-wall)) (not (logtest? (-> this path-wall flags) (path-control-flag not-found))))
@@ -3040,9 +3032,7 @@
     (dotimes (s3-1 4)
       (vector-orient-by-quat! s5-3 (-> *gekko-foot-offset* s3-1 ground-pos) (-> this root quat))
       (vector+float*! (-> this foot s3-1 ground-pos) (-> this root trans) s5-3 (-> this scale))
-      (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> this foot 0 ground-normal)) (* 96 s3-1))))
-            (-> s4-3 quad)
-            )
+      (vector-copy! (-> this foot s3-1 ground-normal) s4-3)
       )
     )
   (logior! (-> this flags) (gekko-flag update-foot-position? follow-terrain update-tilt on-wall?))

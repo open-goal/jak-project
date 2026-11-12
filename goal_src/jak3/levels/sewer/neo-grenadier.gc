@@ -419,12 +419,12 @@
   )
 
 (defmethod neo-grenadier-method-193 ((this neo-grenadier))
-  (let ((s5-0 (handle->process (-> this focus handle))))
+  (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
     (when s5-0
       (cond
         ((-> this hostile-path)
          (let* ((s4-0 (-> this hostile-path))
-                (f30-0 (path-control-method-23 s4-0 (get-trans (the-as process-focusable s5-0) 0)))
+                (f30-0 (path-control-method-23 s4-0 (get-trans s5-0 0)))
                 (s3-1 (new 'stack-no-clear 'vector))
                 )
            (set! (-> this heading) (not (-> this heading)))
@@ -448,7 +448,7 @@
          )
         (else
           (let* ((s4-1 (-> this root))
-                 (a0-10 (get-trans (the-as process-focusable s5-0) 0))
+                 (a0-10 (get-trans s5-0 0))
                  (v1-27 (vector-! (new 'stack-no-clear 'vector) a0-10 (-> s4-1 trans)))
                  )
             (vector-length v1-27)
@@ -558,9 +558,9 @@
           (t9-0)
           )
       )
-    (let ((a0-1 (handle->process (-> self focus handle))))
+    (let ((a0-1 (the-as process-focusable (handle->process (-> self focus handle)))))
       (when a0-1
-        (let* ((s5-0 (get-trans (the-as process-focusable a0-1) 0))
+        (let* ((s5-0 (get-trans a0-1 0))
                (gp-0 (-> self root trans))
                (f30-0 (vector-vector-distance gp-0 s5-0))
                )
@@ -597,7 +597,7 @@
     (when (or (time-elapsed? (-> self state-time) (rand-vu-int-range (seconds 3) (seconds 9)))
               (>= 8192.0 (vector-vector-xz-distance (-> self root trans) (-> self bank final-pos)))
               )
-      (if (and (handle->process (-> self focus handle))
+      (if (and (the-as process-focusable (handle->process (-> self focus handle)))
                (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                               (focus-status disable dead ignore grabbed)
                               )
@@ -723,14 +723,9 @@
     )
   :post (behavior ()
     (when (nav-enemy-method-186 self)
-      (let ((a0-2 (handle->process (-> self focus handle))))
+      (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
         (if a0-2
-            (seek-to-point-toward-point!
-              (-> self root)
-              (get-trans (the-as process-focusable a0-2) 0)
-              (-> self nav max-rotation-rate)
-              (seconds 0.02)
-              )
+            (seek-to-point-toward-point! (-> self root) (get-trans a0-2 0) (-> self nav max-rotation-rate) (seconds 0.02))
             )
         )
       )
@@ -878,10 +873,10 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('event-attack)
-       (let ((s4-0 (handle->process (-> self focus handle))))
+       (let ((s4-0 (the-as process-focusable (handle->process (-> self focus handle)))))
          (when s4-0
            (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node neo-grenadier-lod0-jg bomb))))
-             (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s4-0) 0) gp-0)))
+             (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (get-trans s4-0 0) gp-0)))
                (let ((s4-1 (new 'stack-no-clear 'vector)))
                  (let ((f0-0 (vector-length s5-1)))
                    0.0
@@ -1024,9 +1019,9 @@
             )
           (nav-enemy-method-184 self)
           (ja-channel-push! 1 (seconds 0.067))
-          (let ((a0-44 (handle->process (-> self focus handle))))
+          (let ((a0-44 (the-as process-focusable (handle->process (-> self focus handle)))))
             (when a0-44
-              (let ((f0-14 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable a0-44) 0))))
+              (let ((f0-14 (vector-vector-distance (-> self root trans) (get-trans a0-44 0))))
                 (cond
                   ((< 102400.0 f0-14)
                    (ja-no-eval :group! neo-grenadier-throw-ja :num! (seek! max f30-0) :frame-num 0.0)
@@ -1053,14 +1048,9 @@
     )
   :post (behavior ()
     (when (nav-enemy-method-186 self)
-      (let ((a0-2 (handle->process (-> self focus handle))))
+      (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
         (if a0-2
-            (seek-to-point-toward-point!
-              (-> self root)
-              (get-trans (the-as process-focusable a0-2) 0)
-              (-> self nav max-rotation-rate)
-              (seconds 0.02)
-              )
+            (seek-to-point-toward-point! (-> self root) (get-trans a0-2 0) (-> self nav max-rotation-rate) (seconds 0.02))
             )
         )
       )
@@ -1137,7 +1127,7 @@
     (logclear! (-> self focus-status) (focus-status hit))
     (cond
       ((= (-> self focus aware) (enemy-aware hostile))
-       (if (and (handle->process (-> self focus handle))
+       (if (and (the-as process-focusable (handle->process (-> self focus handle)))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
                                )
@@ -1158,7 +1148,7 @@
   "Go to the hostile state, actively trying to attack the target."
   (if (and (and (-> this next-state) (= (-> this next-state name) 'knocked))
            (and (logtest? (-> this status-flags) (grenadier-status-flag gsf0))
-                (handle->process (-> this focus handle))
+                (the-as process-focusable (handle->process (-> this focus handle)))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> this focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
                                )

@@ -131,11 +131,16 @@ struct ArrayFieldDecompMeta {
   TypeSpec element_type;
   int bytes_per_element;  // aka stride
   Kind kind;
+  std::string size_field;
 
   ArrayFieldDecompMeta(TypeSpec _element_type,
                        int _bytes_per_element,
-                       Kind _kind = Kind::REF_TO_INLINE_ARR)
-      : element_type(_element_type), bytes_per_element(_bytes_per_element), kind(_kind) {};
+                       Kind _kind = Kind::REF_TO_INLINE_ARR,
+                       std::string _size_field = "")
+      : element_type(_element_type),
+        bytes_per_element(_bytes_per_element),
+        kind(_kind),
+        size_field(_size_field) {};
 };
 
 extern const std::unordered_map<

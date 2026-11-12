@@ -104,6 +104,7 @@ void add_field(StructureType* structure,
   double score = 0;
   bool skip_in_decomp = false;
   std::optional<TypeSpec> decomp_as_ts = std::nullopt;
+  std::optional<TypeSpec> handle_ts = std::nullopt;
   Field override_field;
   bool override = false;
 
@@ -199,6 +200,13 @@ void add_field(StructureType* structure,
       } else if (opt_name == ":decomp-as") {
         decomp_as_ts = TypeSpec(symbol_string(car(rest)));
         rest = cdr(rest);
+      } else if (opt_name == ":handle-type") {
+        if (type != TypeSpec("handle")) {
+          throw std::runtime_error(fmt::format(
+              "Field {} uses :handle-type but its type is {}, not handle", name, type.print()));
+        }
+        handle_ts = parse_typespec(ts, car(rest));
+        rest = cdr(rest);
       } else if (opt_name == ":offset-assert") {
         offset_assert = get_int(car(rest));
         if (offset_assert == -1) {
@@ -232,7 +240,7 @@ void add_field(StructureType* structure,
     // new unique field
     int actual_offset =
         ts->add_field_to_type(structure, name, type, is_inline, is_dynamic, array_size,
-                              offset_override, skip_in_decomp, score, decomp_as_ts);
+                              offset_override, skip_in_decomp, score, decomp_as_ts, handle_ts);
     if (offset_assert != -1 && actual_offset != offset_assert) {
       throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
                                " but offset-assert was set to " + std::to_string(offset_assert));

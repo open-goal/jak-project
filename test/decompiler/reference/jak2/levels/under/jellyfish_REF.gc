@@ -64,7 +64,7 @@
     (-> this gravity)
     (* 4096.0 (-> self clock time-adjust-ratio) (lerp-scale 0.01 0.1 (the float arg1) 0.0 5.0))
     )
-  (vector+float*! arg0 arg0 (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* arg1 64))) 0.2)
+  (vector+float*! arg0 arg0 (-> this chain-joints arg1 velocity) 0.2)
   0
   (none)
   )
@@ -72,11 +72,7 @@
 ;; definition for method 14 of type jellyfish-chain-physics
 ;; WARN: Return type mismatch int vs none.
 (defmethod chain-physics-method-14 ((this jellyfish-chain-physics) (arg0 vector) (arg1 int))
-  (vector-float*!
-    arg0
-    (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* (+ arg1 1) 64)))
-    (lerp-scale 0.1 0.9 (the float arg1) 0.0 5.0)
-    )
+  (vector-float*! arg0 (-> this chain-joints (+ arg1 1) velocity) (lerp-scale 0.1 0.9 (the float arg1) 0.0 5.0))
   0
   (none)
   )
@@ -578,14 +574,14 @@
       (suspend)
       (ja :num! (seek! max 1.4))
       )
-    (let ((gp-0 (handle->process (-> self focus handle)))
+    (let ((gp-0 (the-as process-focusable (handle->process (-> self focus handle))))
           (s5-0 (-> self root trans))
           )
       (cond
-        ((not (jellyfish-method-163 self (the-as process-focusable gp-0)))
+        ((not (jellyfish-method-163 self gp-0))
          (go-virtual stare)
          )
-        ((< (vector-vector-distance s5-0 (get-trans (the-as process-focusable gp-0) 3)) 20480.0)
+        ((< (vector-vector-distance s5-0 (get-trans gp-0 3)) 20480.0)
          (go-virtual grab-mech)
          )
         ((jellyfish-method-162 self)
@@ -634,12 +630,12 @@
       (if (< (vector-vector-distance gp-0 (-> self charge-pos)) 16384.0)
           (go-virtual threaten)
           )
-      (let ((s5-0 (handle->process (-> self focus handle))))
+      (let ((s5-0 (the-as process-focusable (handle->process (-> self focus handle)))))
         (cond
-          ((not (jellyfish-method-163 self (the-as process-focusable s5-0)))
+          ((not (jellyfish-method-163 self s5-0))
            (go-virtual stare)
            )
-          ((< (vector-vector-distance gp-0 (get-trans (the-as process-focusable s5-0) 3)) 20480.0)
+          ((< (vector-vector-distance gp-0 (get-trans s5-0 3)) 20480.0)
            (go-virtual grab-mech)
            )
           )
@@ -942,12 +938,12 @@
       symbol
       (and (and (if arg0
                     arg0
-                    (handle->process (-> this focus handle))
+                    (the-as process-focusable (handle->process (-> this focus handle)))
                     )
                 (focus-test?
                   (the-as process-focusable (if arg0
                                                 arg0
-                                                (handle->process (-> this focus handle))
+                                                (the-as process-focusable (handle->process (-> this focus handle)))
                                                 )
                           )
                   mech
@@ -989,12 +985,12 @@
       symbol
       (and (and (if arg0
                     arg0
-                    (handle->process (-> this focus handle))
+                    (the-as process-focusable (handle->process (-> this focus handle)))
                     )
                 (focus-test?
                   (the-as process-focusable (if arg0
                                                 arg0
-                                                (handle->process (-> this focus handle))
+                                                (the-as process-focusable (handle->process (-> this focus handle)))
                                                 )
                           )
                   mech
@@ -1152,17 +1148,14 @@
   (dotimes (s5-1 5)
     (update (-> this tentacles s5-1) this)
     )
-  (let ((a1-3 (handle->process (-> this focus handle))))
+  (let ((a1-3 (the-as process-focusable (handle->process (-> this focus handle)))))
     (if a1-3
-        (los-control-method-9 (-> this los) (the-as process-focusable a1-3) (the-as vector #f) 4096.0)
+        (los-control-method-9 (-> this los) a1-3 (the-as vector #f) 4096.0)
         )
     )
-  (let ((a0-10 (handle->process (-> this focus handle))))
-    (when (and a0-10
-               (focus-test? (the-as process-focusable a0-10) mech)
-               (not (logtest? (-> (the-as process-focusable a0-10) focus-status) (focus-status dead ignore)))
-               )
-      (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-10) 0) quad))
+  (let ((a0-10 (the-as process-focusable (handle->process (-> this focus handle)))))
+    (when (and a0-10 (focus-test? a0-10 mech) (not (logtest? (-> a0-10 focus-status) (focus-status dead ignore))))
+      (set! (-> this focus-pos quad) (-> (get-trans a0-10 0) quad))
       (set! (-> this path-player-u) (get-furthest-point-on-path (-> this path) (-> this focus-pos)))
       )
     )

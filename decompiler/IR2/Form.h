@@ -1314,6 +1314,23 @@ class DerefElement : public FormElement {
   std::vector<DerefToken> m_tokens;
 };
 
+struct Match2dIndices {
+  Form* idx[2] = {nullptr, nullptr};
+  Form* base = nullptr;
+};
+
+/*!
+ * find the two indices of (+ (* idx stride) (* idx2 stride2) constant [base]).
+ */
+std::optional<Match2dIndices> match_2d_indices(Form* in,
+                                               const std::vector<int>& strides,
+                                               s64 constant,
+                                               bool with_base,
+                                               const Env& env,
+                                               FormPool& pool);
+std::vector<DerefToken> fill_2d_index_placeholders(const std::vector<DerefToken>& tokens,
+                                                   const Match2dIndices& match);
+
 class ArrayFieldAccess : public FormElement {
  public:
   ArrayFieldAccess(RegisterAccess source,
@@ -1340,12 +1357,24 @@ class ArrayFieldAccess : public FormElement {
 
   bool flipped() const { return m_flipped; }
 
+  void set_index_strides(std::vector<int> strides, s64 constant) {
+    m_index_strides = std::move(strides);
+    m_index_constant = constant;
+  }
+
  private:
+  void update_with_val_2d(Form* new_val,
+                          const Env& env,
+                          FormPool& pool,
+                          std::vector<FormElement*>* result);
+
   RegisterAccess m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
   int m_constant_offset = -1;
   bool m_flipped = false;
+  std::vector<int> m_index_strides;
+  s64 m_index_constant = 0;
 };
 
 class StorePlainDeref : public FormElement {

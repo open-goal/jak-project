@@ -65,7 +65,7 @@ std::vector<std::tuple<u16, u8>> decompose_into_imm16_chunks(u64 imm) {
 // Given a larger than u12 immediate, decompose it into multiple (shifted or not)
 // immediates that can be used to emit multiple instructions to produce the desired outcome
 std::vector<std::tuple<u16, bool>> decompose_into_imm12_chunks(u64 imm) {
-  std ::vector<std::tuple<u16, bool>> result;
+  std::vector<std::tuple<u16, bool>> result;
   u64 upper = imm >> 12;
   while (upper > 0) {
     u16 chunk = (upper > 4095) ? 4095 : static_cast<u16>(upper);

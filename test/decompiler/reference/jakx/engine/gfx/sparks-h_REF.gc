@@ -20,24 +20,24 @@
     )
   (format #t "[~8x] ~A~%" this 'spark)
   (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
-  (format #t "~1Tage: ~f~%" (-> this pos w))
+  (format #t "~1Tage: ~f~%" (-> this age))
   (format #t "~1Tvel: #<vector @ #x~X>~%" (-> this vel))
-  (format #t "~1Tlength: ~f~%" (-> this vel w))
+  (format #t "~1Tlength: ~f~%" (-> this length))
   (format #t "~1Taccel: #<vector @ #x~X>~%" (-> this accel))
-  (format #t "~1Talpha: ~f~%" (-> this accel w))
+  (format #t "~1Talpha: ~f~%" (-> this alpha))
   (label cfg-4)
   this
   )
 
 ;; definition of type spark-vport
 (deftype spark-vport (structure)
-  ((mat          matrix  4 :inline)
-   (hvdf-offset  vector  :inline)
-   (hmge-scale   vector  :inline)
-   (frame        qword   :inline)
-   (zbuf         qword   :inline)
-   (scissor      qword   :inline)
-   (pfog0        vector  :inline)
+  ((mat          matrix    4 :inline)
+   (hvdf-offset  vector    :inline)
+   (hmge-scale   vector    :inline)
+   (frame        gs-adcmd  :inline)
+   (zbuf         gs-adcmd  :inline)
+   (scissor      gs-adcmd  :inline)
+   (pfog0        vector    :inline)
    )
   )
 
@@ -82,8 +82,8 @@
 ;; definition of type spark-constants
 (deftype spark-constants (structure)
   ((vport            spark-vport        2 :inline)
-   (adgif-tag        qword              :inline)
-   (prim-tags        vector             3 :inline)
+   (adgif-tag        gs-gif-tag         :inline)
+   (prim-tags        gs-gif-tag         3 :inline)
    (color-groups     spark-color-group  13 :inline)
    (friction         float)
    (scale            float)
@@ -216,23 +216,23 @@
    (start      vector           :inline)
    (vel        vector           :inline)
    (accel      vector           :inline)
-   (test       basic)
+   (test       symbol)
    (vecs       vector           4 :inline)
-   (y-floor    int32            512)
+   (y-floor    float            512)
    (data       spark            512 :inline)
    )
   (:methods
-    (sparks-work-method-9 () none)
-    (sparks-work-method-10 () none)
-    (sparks-work-method-11 () none)
-    (sparks-work-method-12 () none)
-    (sparks-work-method-13 () none)
-    (sparks-work-method-14 () none)
-    (sparks-work-method-15 () none)
-    (sparks-work-method-16 () none)
-    (sparks-work-method-17 () none)
-    (sparks-work-method-18 () none)
-    (sparks-work-method-19 () none)
+    (get-next-free-spark (_type_) spark)
+    (launch-spark (_type_ spark-launch-params) none)
+    (sparks-work-method-11 (_type_) none)
+    (update-vports! (_type_) none)
+    (copy-camera-mats! (_type_ int) none)
+    (reset-sparks (_type_) none)
+    (copy-vport-to-dma! (_type_ dma-buffer spark-vport spark-vport int) none)
+    (add-consts (_type_ dma-buffer) none)
+    (add-call (_type_ dma-buffer int) none)
+    (add-spark-dma (_type_ dma-buffer int) none)
+    (draw-sparks (_type_) none)
     )
   )
 
@@ -258,7 +258,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

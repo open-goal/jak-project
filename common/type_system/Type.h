@@ -235,6 +235,7 @@ class Field {
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
   const std::optional<TypeSpec> decomp_as_type() const { return m_decomp_as_ts; }
+  const std::optional<TypeSpec> handle_type() const { return m_handle_ts; }
   TypeSpec& type() { return m_type; }
   bool is_inline() const { return m_inline; }
   bool is_array() const { return m_array; }
@@ -263,6 +264,7 @@ class Field {
   double field_score() const { return m_field_score; }
   void set_field_score(double value) { m_field_score = value; }
   void set_decomp_as_ts(const TypeSpec& ts) { m_decomp_as_ts = ts; }
+  void set_handle_ts(const TypeSpec& ts) { m_handle_ts = ts; }
 
  private:
   friend class TypeSystem;
@@ -287,6 +289,7 @@ class Field {
   double m_field_score = 0.;
 
   std::optional<TypeSpec> m_decomp_as_ts = std::nullopt;
+  std::optional<TypeSpec> m_handle_ts = std::nullopt;
 };
 
 class StructureType : public ReferenceType {

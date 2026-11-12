@@ -7,11 +7,11 @@
    (cur-trans-hook        (function none))
    (cur-event-hook        (function none))
    (new-joint-anim        art-joint-anim)
-   (new-joint-anim-blend  uint64)
+   (new-joint-anim-blend  time-frame)
    (new-joint-anim-frame  float)
    (anim-mode             symbol)
-   (cur-grab-handle       uint64)
-   (cur-target-handle     uint64)
+   (cur-grab-handle       handle)
+   (cur-target-handle     handle)
    (old-grab-pos          vector     :inline)
    (joint                 joint-mod  4)
    (new-post-hook         (function none))
@@ -20,7 +20,7 @@
    (shadow-backup         shadow-geo)
    (draw?                 symbol)
    (userdata              uint64)
-   (prefix                basic)
+   (prefix                string)
    (shadow-volume-joint   int32)
    (speed                 float)
    (user-uint64           uint64     4)
@@ -126,10 +126,10 @@
    (part             sparticle-launch-control)
    (callback         (function part-tracker vector))
    (linger-callback  (function part-tracker vector))
-   (duration         uint64)
-   (linger-duration  uint64)
-   (state-time       uint64)
-   (target           uint64)
+   (duration         time-frame)
+   (linger-duration  time-frame)
+   (state-time       time-frame)
+   (target           handle)
    (target-joint     int32)
    )
   (:methods
@@ -230,12 +230,12 @@
   ((root           trsqv)
    (lightning      lightning-control)
    (callback       (function lightning-tracker none))
-   (duration       uint64)
-   (start-time     uint64)
+   (duration       time-frame)
+   (start-time     time-frame)
    (offset0        vector      :inline)
    (offset1        vector      :inline)
-   (target0        uint64)
-   (target1        uint64)
+   (target0        handle)
+   (target1        handle)
    (target-joint0  int32)
    (target-joint1  int32)
    (sound          sound-id)
@@ -282,8 +282,8 @@
 
 ;; definition of type touch-tracker
 (deftype touch-tracker (process-drawable)
-  ((duration      uint64)
-   (target        uint64)
+  ((duration      time-frame)
+   (target        handle)
    (event         symbol)
    (run-function  (function object))
    (callback      (function touch-tracker none))
@@ -349,7 +349,7 @@
 
 ;; definition of type othercam
 (deftype othercam (process)
-  ((hand               uint64)
+  ((hand               handle)
    (old-global-mask    process-mask)
    (mask-to-clear      process-mask)
    (cam-joint-index    int32)
@@ -401,14 +401,14 @@
    (group                   sparticle-launch-group)
    (group-on-kill           basic)
    (collide-with            collide-spec)
-   (collide-lof-check?      basic)
+   (collide-lof-check?      symbol)
    (damage                  float)
    (damage-scale            float)
    (vehicle-damage-factor   float)
    (vehicle-impulse-factor  float)
    (velocity                vector      :inline)
-   (ignore-proc             uint64)
-   (attacker                uint64)
+   (ignore-proc             handle)
+   (attacker                handle)
    (wpn-type                int8)
    )
   )
@@ -442,20 +442,23 @@
 
 ;; definition of type explosion
 (deftype explosion (process-drawable)
-  ((start-time       uint64)
+  ((root             collide-shape         :override)
+   (start-time       time-frame)
    (duration         uint32)
    (linger-duration  uint32)
    (attack-id        uint32)
    (mat              matrix                 :inline)
    (params           explosion-init-params  :inline)
-   (killed-someone?  basic)
-   (spawn-proc       uint64)
-   (spawn-type       basic)
+   (killed-someone?  symbol)
+   (spawn-proc       handle)
+   (spawn-type       type)
    )
+  (:state-methods
+    explode
+    )
   (:methods
-    (explosion-method-50 () none)
-    (explosion-method-51 () none)
-    (explosion-method-52 () none)
+    (explosion-method-51 (_type_) none)
+    (explosion-method-52 (_type_) none)
     )
   )
 
@@ -627,12 +630,12 @@
   ((strip  prim-strip)
    )
   (:methods
-    (simple-prim-method-50 () none)
-    (simple-prim-method-51 () none)
-    (simple-prim-method-52 () none)
-    (simple-prim-method-53 () none)
-    (simple-prim-method-54 () none)
-    (simple-prim-method-55 () none)
+    (simple-prim-method-50 (_type_) none)
+    (simple-prim-method-51 (_type_) none)
+    (simple-prim-method-52 (_type_) object)
+    (simple-prim-method-53 (_type_) none)
+    (simple-prim-method-54 (_type_) none)
+    (simple-prim-method-55 (_type_) rgba)
     )
   )
 
@@ -712,7 +715,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -811,7 +811,7 @@
         (set! (-> v1-4 radius) f0-0)
         (set! (-> v1-4 collide-with) (collide-spec backgnd))
         (set! (-> v1-4 ignore-process0) this)
-        (set! (-> v1-4 ignore-process1) (handle->process (-> this focus handle)))
+        (set! (-> v1-4 ignore-process1) (the-as process-focusable (handle->process (-> this focus handle))))
         (set! (-> v1-4 ignore-pat)
               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
               )
@@ -846,7 +846,7 @@
         (set! (-> v1-17 radius) f30-0)
         (set! (-> v1-17 collide-with) (collide-spec civilian enemy hit-by-player-list hit-by-others-list))
         (set! (-> v1-17 ignore-process0) this)
-        (set! (-> v1-17 ignore-process1) (handle->process (-> this focus handle)))
+        (set! (-> v1-17 ignore-process1) (the-as process-focusable (handle->process (-> this focus handle))))
         (set! (-> v1-17 ignore-pat)
               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
               )
@@ -941,12 +941,9 @@
           (the-as process-focusable (as-type (handle->process (-> this target-status handle)) process-focusable))
           (the-as enemy-aware #f)
           )
-        (let ((v1-58 (handle->process (-> this focus handle))))
+        (let ((v1-58 (the-as process-focusable (handle->process (-> this focus handle)))))
           (b!
-            (not (and v1-58
-                      (not (logtest? (-> (the-as process-focusable v1-58) focus-status) (focus-status disable dead inactive)))
-                      )
-                 )
+            (not (and v1-58 (not (logtest? (-> v1-58 focus-status) (focus-status disable dead inactive)))))
             cfg-65
             :delay (nop!)
             )
@@ -1104,9 +1101,10 @@
 
 ;; definition for method 282 of type crimson-guard
 ;; INFO: Used lq/sq
+;; WARN: op 8: float inf #x7f800000 moved to fpr
 (defmethod crimson-guard-method-282 ((this crimson-guard) (arg0 vector) (arg1 traffic-target-formation) (arg2 (pointer float)) (arg3 int))
   (let ((sv-16 -1))
-    (let ((sv-24 (the-as float (gpr->fpr #x7f800000)))
+    (let ((sv-24 (the-as float #x7f800000))
           (sv-28 (crimson-guard-method-283 this))
           )
       (let* ((v1-4 (-> this guard-type))

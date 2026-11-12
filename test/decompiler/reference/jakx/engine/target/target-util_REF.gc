@@ -1,0 +1,199 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-generic-blast collectables -1 -1
+              ((-1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 50)
+              :texture-level 18
+              :sort 4
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-generic-ripples collectables collectables-generic-ripples-lod0-jg collectables-generic-ripples-idle-ja
+              ((collectables-generic-ripples-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :texture-level 18
+              :sort 4
+              )
+
+;; definition of type target-bank
+(deftype target-bank (basic)
+  ((attack-timeout                    time-frame)
+   (ground-timeout                    time-frame)
+   (slide-down-timeout                time-frame)
+   (fall-timeout                      time-frame)
+   (fall-stumble-threshold            meters)
+   (hit-invulnerable-timeout          time-frame)
+   (same-attack-invulnerable-timeout  time-frame)
+   (min-dive-depth                    meters)
+   (root-radius                       meters)
+   (root-offset                       vector  :inline)
+   (body-radius                       meters)
+   (head-radius                       meters)
+   (head-height                       meters)
+   (head-offset                       vector  :inline)
+   (fall-height                       meters)
+   )
+  )
+
+;; definition for method 3 of type target-bank
+(defmethod inspect ((this target-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tattack-timeout: ~D~%" (-> this attack-timeout))
+  (format #t "~1Tground-timeout: ~D~%" (-> this ground-timeout))
+  (format #t "~1Tslide-down-timeout: ~D~%" (-> this slide-down-timeout))
+  (format #t "~1Tfall-timeout: ~D~%" (-> this fall-timeout))
+  (format #t "~1Tfall-stumble-threshold: (meters ~m)~%" (-> this fall-stumble-threshold))
+  (format #t "~1Thit-invulnerable-timeout: ~D~%" (-> this hit-invulnerable-timeout))
+  (format #t "~1Tsame-attack-invulnerable-timeout: ~D~%" (-> this same-attack-invulnerable-timeout))
+  (format #t "~1Tmin-dive-depth: (meters ~m)~%" (-> this min-dive-depth))
+  (format #t "~1Troot-radius: (meters ~m)~%" (-> this root-radius))
+  (format #t "~1Troot-offset: ~`vector`P~%" (-> this root-offset))
+  (format #t "~1Tbody-radius: (meters ~m)~%" (-> this body-radius))
+  (format #t "~1Thead-radius: (meters ~m)~%" (-> this head-radius))
+  (format #t "~1Thead-height: (meters ~m)~%" (-> this head-height))
+  (format #t "~1Thead-offset: ~`vector`P~%" (-> this head-offset))
+  (format #t "~1Tfall-height: (meters ~m)~%" (-> this fall-height))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *TARGET-bank*, type target-bank
+(define *TARGET-bank* (new 'static 'target-bank
+                        :attack-timeout (seconds 0.3)
+                        :ground-timeout (seconds 0.2)
+                        :slide-down-timeout (seconds 0.2)
+                        :fall-timeout (seconds 1)
+                        :fall-stumble-threshold (meters 39.9)
+                        :hit-invulnerable-timeout (seconds 1)
+                        :same-attack-invulnerable-timeout (seconds 2)
+                        :min-dive-depth (meters 2)
+                        :root-radius (meters 2.2)
+                        :root-offset (new 'static 'vector :y 4915.2 :w 1.0)
+                        :body-radius (meters 0.7)
+                        :head-radius (meters 0.7)
+                        :head-height (meters 1.4)
+                        :head-offset (new 'static 'vector :y 4915.2 :w 1.0)
+                        :fall-height (meters 1)
+                        )
+        )
+
+;; definition for function debounce-speed
+(defbehavior debounce-speed target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector))
+  (if (and (< 0.3 arg0) (< arg0 0.7) (< 0.0 arg1) (< (vector-dot arg2 arg3) 0.2))
+      (set! arg0 0.0)
+      )
+  arg0
+  )
+
+;; definition for method 57 of type target
+(defmethod process-focusable-method-57 ((this target))
+  (if (focus-test? this mech)
+      0.1
+      1.0
+      )
+  )
+
+;; definition for method 9 of type attack-info
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod attack-info-method-9 ((this attack-info) (arg0 attack-info) (arg1 process-drawable) (arg2 process-drawable))
+  (let ((s5-0 (as-type arg1 process-drawable)))
+    (let ((v1-0 (as-type arg2 process-drawable)))
+      (cond
+        ((logtest? (attack-mask attacker-velocity) (-> this mask))
+         (set! (-> arg0 attacker-velocity quad) (-> this attacker-velocity quad))
+         (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
+         )
+        (v1-0
+          (cond
+            (s5-0
+              (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
+              )
+            (else
+              (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root rotation))
+              (vector-negate-in-place! (-> arg0 trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
+              )
+            )
+          )
+        (else
+          (set! (-> arg0 trans quad) (the-as uint128 0))
+          (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
+          )
+        )
+      )
+    (if s5-0
+        (set! (-> arg0 intersection quad) (-> s5-0 root trans quad))
+        (set! (-> arg0 intersection quad) (-> (target-pos 0) quad))
+        )
+    )
+  (cond
+    ((!= (vector-length-squared (-> arg0 trans)) 0.0)
+     (set! (-> arg0 vector quad) (-> arg0 trans quad))
+     (set! (-> arg0 vector y) 0.0)
+     (vector-xz-normalize! (-> arg0 vector) 1.0)
+     )
+    (else
+      (set! (-> arg0 vector quad) (the-as uint128 0))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-pos
+(defun target-pos ((arg0 int))
+  (let ((v1-0 (the-as target (view-get-active-target))))
+    (cond
+      (v1-0
+        (if (zero? arg0)
+            (-> v1-0 root trans)
+            (vector<-cspace! (new 'static 'vector) (-> v1-0 node-list data arg0))
+            )
+        )
+      (else
+        (camera-pos)
+        )
+      )
+    )
+  )
+
+;; definition for function target-rot
+(defun target-rot ()
+  (let ((v1-0 (the-as target (view-get-active-target))))
+    (if v1-0
+        (-> v1-0 root rotation)
+        *unity-quaternion*
+        )
+    )
+  )
+
+;; definition for method 51 of type target
+(defmethod get-trans ((this target) (arg0 int))
+  "Get the `trans` for this process."
+  (let ((v1-0 (-> this root)))
+    (if (= arg0 4)
+        (-> this alt-cam-pos)
+        (-> v1-0 trans)
+        )
+    )
+  )
+
+;; definition for method 56 of type target
+;; WARN: Return type mismatch int vs time-frame.
+(defmethod get-notice-time ((this target))
+  (the-as time-frame 0)
+  )
+
+
+
+

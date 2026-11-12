@@ -1050,7 +1050,7 @@
              (let ((v1-12 (rand-vu-int-range 0 2)))
                (cond
                  ((zero? v1-12)
-                  (let ((v1-15 (ja-channel-float! (the-as art-joint-anim dm-robot-knock1-ja) 0.0 0.0 0.0)))
+                  (let ((v1-15 (ja-channel-float! dm-robot-knock1-ja 0.0 0.0 0.0)))
                     (when v1-15
                       (set! (-> self skel interp-select 0) (shl #x20000 32))
                       (set! (-> self skel interp-select 1) 0)
@@ -1062,7 +1062,7 @@
                     )
                   )
                  ((= v1-12 1)
-                  (let ((v1-18 (ja-channel-float! (the-as art-joint-anim dm-robot-knock2-ja) 0.0 0.0 0.0)))
+                  (let ((v1-18 (ja-channel-float! dm-robot-knock2-ja 0.0 0.0 0.0)))
                     (when v1-18
                       (set! (-> self skel interp-select 0) (shl #x20000 32))
                       (set! (-> self skel interp-select 1) 0)
@@ -1074,7 +1074,7 @@
                     )
                   )
                  ((= v1-12 2)
-                  (let ((v1-21 (ja-channel-float! (the-as art-joint-anim dm-robot-knock3-ja) 0.0 0.0 0.0)))
+                  (let ((v1-21 (ja-channel-float! dm-robot-knock3-ja 0.0 0.0 0.0)))
                     (when v1-21
                       (set! (-> self skel interp-select 0) (shl #x20000 32))
                       (set! (-> self skel interp-select 1) 0)
@@ -1120,9 +1120,7 @@
                          (when (< (the-as uint 2) (-> self damage-info s5-1 counter))
                            (set! (-> self damage-info s5-1 active) #t)
                            (set! (-> self damage-info s5-1 jnt) (the-as uint s4-1))
-                           (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> self damage-info 0 pos)) (* 48 s5-1))))
-                                 (-> s3-2 quad)
-                                 )
+                           (vector-copy! (-> self damage-info s5-1 pos) s3-2)
                            (+! (-> self damage-idx) 1)
                            )
                          )
@@ -1478,10 +1476,8 @@
         (set! (-> gp-1 frame-interp 1) f0-10)
         (set! (-> gp-1 frame-interp 0) f0-10)
         )
-      (joint-control-channel-group! gp-1 (the-as art-joint-anim dm-robot-standup-ja) num-func-identity)
-      (set! (-> gp-1 frame-num)
-            (the float (+ (-> (the-as art-joint-anim dm-robot-standup-ja) frames num-frames) -1))
-            )
+      (joint-control-channel-group! gp-1 dm-robot-standup-ja num-func-identity)
+      (set! (-> gp-1 frame-num) (the float (+ (-> dm-robot-standup-ja frames num-frames) -1)))
       )
     (loop
       (ja :num! (loop!))
@@ -1539,9 +1535,9 @@
       (set! (-> a0-3 frame-interp 1) 1.0)
       (set! (-> self skel interp-select 0) (the-as int (the-as uint #x3fc007fff8)))
       (set! (-> self skel interp-select 1) 0)
-      (set! (-> a0-3 frame-group) (the-as art-joint-anim dm-robot-walk-ja))
+      (set! (-> a0-3 frame-group) dm-robot-walk-ja)
       (set! (-> a0-3 param 0) (-> self tentacle-speed))
-      (joint-control-channel-group! a0-3 (the-as art-joint-anim dm-robot-walk-ja) num-func-loop!)
+      (joint-control-channel-group! a0-3 dm-robot-walk-ja num-func-loop!)
       )
     (loop
       (ja :num! (loop!))
@@ -1682,7 +1678,7 @@
         (let ((a1-27 (vector<-cspace+vector!
                        (new 'stack-no-clear 'vector)
                        (-> self node-list data (-> self damage-info gp-2 jnt))
-                       (the-as vector (+ (the-as uint (-> self damage-info 0 pos)) (* 48 gp-2)))
+                       (-> self damage-info gp-2 pos)
                        )
                      )
               )
@@ -2234,7 +2230,6 @@
   (set! (-> self damage-idx) 0)
   (dotimes (s4-2 5)
     (set! (-> self damage-info s4-2 part) (create-launch-control group-maker-damage-sparks self))
-    ;; og:preserve-this
     (vector-reset! (-> self damage-info s4-2 pos))
     (set! (-> self damage-info s4-2 jnt) (the-as uint (-> *maker-damage-joint-array* s4-2)))
     (set! (-> self damage-info s4-2 active) #f)

@@ -7,3 +7,1558 @@
 
 ;; DECOMP BEGINS
 
+(deftype mem-buffer (structure)
+  ((base    pointer)
+   (ptr     pointer)
+   (limit   uint32)
+   (in-use  symbol)
+   )
+  (:methods
+    (check-buffer-overrun (_type_ int) none)
+    (set-buffer! (_type_ pointer int) none)
+    (bytes-used (_type_) int)
+    (bytes-remaining (_type_) uint)
+    (reset! (_type_) none)
+    (write-int8 (_type_ int) none)
+    (write-int16 (_type_ int) none)
+    (write-int32 (_type_ int) none)
+    (write-int64 (_type_ int) none)
+    (write-uint8 (_type_ uint) none)
+    (write-uint16 (_type_ uint) none)
+    (write-uint32 (_type_ uint) none)
+    (write-uint64 (_type_ uint) none)
+    (write-float (_type_ float) none)
+    (write-vector (_type_ vector) none)
+    (write-vector-scaled (_type_ vector vector) none)
+    (write-quaternion (_type_ quaternion) none)
+    (write-level-pos (_type_ vector) none)
+    (copy-buffer (_type_ mem-buffer) none)
+    (write-symbol (_type_ symbol) none)
+    (write-bool (_type_ symbol) none)
+    (write-string (_type_ (pointer uint8)) none)
+    (write-bytes (_type_ pointer int) none)
+    (read-int8 (_type_) int)
+    (read-int16 (_type_) int)
+    (read-int32 (_type_) int)
+    (read-int64 (_type_) int)
+    (read-uint8 (_type_) uint)
+    (read-uint16 (_type_) uint)
+    (read-uint32 (_type_) uint)
+    (read-uint64 (_type_) uint)
+    (read-float (_type_) float)
+    (read-vector (_type_ mem-buffer) none)
+    (read-vector-scaled (_type_ vector vector) none)
+    (read-quaternion (_type_ quaternion) none)
+    (read-level-pos (_type_ mem-buffer) none)
+    (read-symbol (_type_) symbol)
+    (read-bool (_type_) symbol)
+    (read-string (_type_ (pointer uint8)) none)
+    (read-bytes (_type_ pointer int) none)
+    (dump-mem-used (_type_) none)
+    (dump-mem-all (_type_) none)
+    (skip-bytes (_type_ int) none)
+    )
+  )
+
+
+(defmethod set-buffer! ((this mem-buffer) (arg0 pointer) (arg1 int))
+  (set! (-> this base) arg0)
+  (set! (-> this ptr) arg0)
+  (set! (-> this limit) (the-as uint (&+ arg0 arg1)))
+  0
+  (none)
+  )
+
+(defmethod reset! ((this mem-buffer))
+  (set! (-> this ptr) (-> this base))
+  0
+  (none)
+  )
+
+(defmethod check-buffer-overrun ((this mem-buffer) (arg0 int))
+  (when (< (-> this limit) (the-as uint (&+ (-> this ptr) arg0)))
+    (format 0 "buffer overrun!~%")
+    (break!)
+    0
+    )
+  0
+  (none)
+  )
+
+(defmethod skip-bytes ((this mem-buffer) (arg0 int))
+  (&+! (-> this ptr) arg0)
+  0
+  (none)
+  )
+
+(defmethod bytes-used ((this mem-buffer))
+  (&- (-> this ptr) (the-as uint (-> this base)))
+  )
+
+(defmethod bytes-remaining ((this mem-buffer))
+  (- (-> this limit) (the-as uint (-> this ptr)))
+  )
+
+(defmethod write-int8 ((this mem-buffer) (arg0 int))
+  (set! (-> (the-as (pointer int8) (-> this ptr))) arg0)
+  (&+! (-> this ptr) 1)
+  0
+  (none)
+  )
+
+(defmethod write-int16 ((this mem-buffer) (arg0 int))
+  (set! (-> (the-as (pointer int8) (-> this ptr))) arg0)
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 1) (/ arg0 256))
+  (&+! (-> this ptr) 2)
+  0
+  (none)
+  )
+
+(defmethod write-int32 ((this mem-buffer) (arg0 int))
+  (set! (-> (the-as (pointer int8) (-> this ptr))) arg0)
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 1) (/ arg0 256))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 2) (sar arg0 16))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 3) (sar arg0 24))
+  (&+! (-> this ptr) 4)
+  0
+  (none)
+  )
+
+(defmethod write-int64 ((this mem-buffer) (arg0 int))
+  (set! (-> (the-as (pointer int8) (-> this ptr))) arg0)
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 1) (/ arg0 256))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 2) (sar arg0 16))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 3) (sar arg0 24))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 4) (sar arg0 32))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 5) (sar arg0 40))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 6) (sar arg0 48))
+  (set! (-> (the-as (pointer int8) (-> this ptr)) 7) (sar arg0 56))
+  (&+! (-> this ptr) 8)
+  0
+  (none)
+  )
+
+(defmethod write-uint8 ((this mem-buffer) (arg0 uint))
+  (write-int8 this (the-as int arg0))
+  (none)
+  )
+
+(defmethod write-uint16 ((this mem-buffer) (arg0 uint))
+  (write-int16 this (the-as int arg0))
+  (none)
+  )
+
+(defmethod write-uint32 ((this mem-buffer) (arg0 uint))
+  (write-int32 this (the-as int arg0))
+  (none)
+  )
+
+(defmethod write-uint64 ((this mem-buffer) (arg0 uint))
+  (write-int64 this (the-as int arg0))
+  (none)
+  )
+
+(defmethod write-float ((this mem-buffer) (arg0 float))
+  (write-int32 this (the-as int arg0))
+  (none)
+  )
+
+(defmethod read-int8 ((this mem-buffer))
+  (let ((v0-0 (-> (the-as (pointer int8) (-> this ptr)) 0)))
+    (&+! (-> this ptr) 1)
+    v0-0
+    )
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod read-int16 ((this mem-buffer))
+  (let ((v0-0
+          (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer int8) (-> this ptr)) 1) 256))
+          )
+        )
+    (&+! (-> this ptr) 2)
+    (the-as int v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod read-int32 ((this mem-buffer))
+  (let ((v0-0
+          (logior (logior (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer uint8) (-> this ptr)) 1) 256))
+                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 2) 16)
+                          )
+                  (shl (-> (the-as (pointer int8) (-> this ptr)) 3) 24)
+                  )
+          )
+        )
+    (&+! (-> this ptr) 4)
+    (the-as int v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod read-int64 ((this mem-buffer))
+  (let ((v0-0
+          (logior (logior (logior (logior (logior (logior (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer uint8) (-> this ptr)) 1) 256))
+                                                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 2) 16)
+                                                          )
+                                                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 3) 24)
+                                                  )
+                                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 4) 32)
+                                          )
+                                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 5) 40)
+                                  )
+                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 6) 48)
+                          )
+                  (shl (-> (the-as (pointer int8) (-> this ptr)) 7) 56)
+                  )
+          )
+        )
+    (&+! (-> this ptr) 8)
+    (the-as int v0-0)
+    )
+  )
+
+(defmethod read-uint8 ((this mem-buffer))
+  (let ((v0-0 (-> (the-as (pointer uint8) (-> this ptr)))))
+    (&+! (-> this ptr) 1)
+    v0-0
+    )
+  )
+
+(defmethod read-uint16 ((this mem-buffer))
+  (let ((v0-0
+          (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer uint8) (-> this ptr)) 1) 256))
+          )
+        )
+    (&+! (-> this ptr) 2)
+    v0-0
+    )
+  )
+
+(defmethod read-uint32 ((this mem-buffer))
+  (let ((v0-0
+          (logior (logior (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer uint8) (-> this ptr)) 1) 256))
+                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 2) 16)
+                          )
+                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 3) 24)
+                  )
+          )
+        )
+    (&+! (-> this ptr) 4)
+    v0-0
+    )
+  )
+
+(defmethod read-uint64 ((this mem-buffer))
+  (let ((v0-0
+          (logior (logior (logior (logior (logior (logior (logior (-> (the-as (pointer uint8) (-> this ptr))) (* (-> (the-as (pointer uint8) (-> this ptr)) 1) 256))
+                                                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 2) 16)
+                                                          )
+                                                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 3) 24)
+                                                  )
+                                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 4) 32)
+                                          )
+                                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 5) 40)
+                                  )
+                          (shl (-> (the-as (pointer uint8) (-> this ptr)) 6) 48)
+                          )
+                  (shl (-> (the-as (pointer uint8) (-> this ptr)) 7) 56)
+                  )
+          )
+        )
+    (&+! (-> this ptr) 8)
+    v0-0
+    )
+  )
+
+;; WARN: Return type mismatch uint vs float.
+(defmethod read-float ((this mem-buffer))
+  (the-as float (read-uint32 this))
+  )
+
+(defmethod write-vector ((this mem-buffer) (arg0 vector))
+  (write-int32 this (the-as int (the-as float (-> arg0 x))))
+  (write-int32 this (the-as int (the-as float (-> arg0 y))))
+  (write-int32 this (the-as int (the-as float (-> arg0 z))))
+  0
+  (none)
+  )
+
+(defmethod read-vector ((this mem-buffer) (arg0 mem-buffer))
+  (set! (-> arg0 base) (the-as pointer (read-uint32 this)))
+  (set! (-> arg0 ptr) (the-as pointer (read-uint32 this)))
+  (set! (-> arg0 limit) (the-as uint (read-uint32 this)))
+  0
+  (none)
+  )
+
+(defmethod write-vector-scaled ((this mem-buffer) (arg0 vector) (arg1 vector))
+  (write-int16 this (the int (/ (-> arg0 x) (-> arg1 x))))
+  (write-int16 this (the int (/ (-> arg0 y) (-> arg1 y))))
+  (write-int16 this (the int (/ (-> arg0 z) (-> arg1 z))))
+  0
+  (none)
+  )
+
+(defmethod read-vector-scaled ((this mem-buffer) (arg0 vector) (arg1 vector))
+  (set! (-> arg0 x) (* (-> arg1 x) (the float (read-int16 this))))
+  (set! (-> arg0 y) (* (-> arg1 y) (the float (read-int16 this))))
+  (set! (-> arg0 z) (* (-> arg1 z) (the float (read-int16 this))))
+  0
+  (none)
+  )
+
+(defmethod write-quaternion ((this mem-buffer) (arg0 quaternion))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'quaternion 1)))
+    (if (< (-> arg0 w) 0.0)
+        (quaternion-negate! (-> s5-0 0) arg0)
+        (quaternion-copy! (-> s5-0 0) arg0)
+        )
+    (write-int16 this (the int (* 32767.0 (-> s5-0 0 x))))
+    (write-int16 this (the int (* 32767.0 (-> s5-0 0 y))))
+    (write-int16 this (the int (* 32767.0 (-> s5-0 0 z))))
+    )
+  0
+  (none)
+  )
+
+(defmethod read-quaternion ((this mem-buffer) (arg0 quaternion))
+  (set! (-> arg0 x) (* 0.00003051851 (the float (read-int16 this))))
+  (set! (-> arg0 y) (* 0.00003051851 (the float (read-int16 this))))
+  (set! (-> arg0 z) (* 0.00003051851 (the float (read-int16 this))))
+  (set! (-> arg0 w)
+        (sqrtf (- 1.0 (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 y) (-> arg0 y)) (* (-> arg0 z) (-> arg0 z)))))
+        )
+  0
+  (none)
+  )
+
+(defmethod copy-buffer ((this mem-buffer) (arg0 mem-buffer))
+  (mem-copy! (-> this ptr) (-> arg0 base) (bytes-used arg0))
+  (&+! (-> this ptr) (bytes-used arg0))
+  0
+  (none)
+  )
+
+(defmethod write-bool ((this mem-buffer) (arg0 symbol))
+  (write-int8 this (if arg0
+                       1
+                       0
+                       )
+              )
+  0
+  (none)
+  )
+
+(defmethod read-bool ((this mem-buffer))
+  (nonzero? (read-int8 this))
+  )
+
+(defmethod write-string ((this mem-buffer) (arg0 (pointer uint8)))
+  (let ((v1-0 0))
+    (let ((a0-1 arg0))
+      (while (nonzero? (-> a0-1 0))
+        (+! v1-0 1)
+        (set! a0-1 (&-> a0-1 1))
+        )
+      )
+    (let ((s5-0 (+ v1-0 1)))
+      (mem-copy! (-> this ptr) arg0 s5-0)
+      (&+! (-> this ptr) s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: Function (method 47 mem-buffer) has a return type of none, but the expression builder found a return statement.
+(defmethod read-string ((this mem-buffer) (arg0 (pointer uint8)))
+  (until #f
+    (set! (-> arg0 0) (-> (the-as (pointer uint8) (-> this ptr))))
+    (&+! (-> this ptr) 1)
+    (if (zero? (-> arg0 0))
+        (return #f)
+        )
+    (set! arg0 (&-> arg0 1))
+    )
+  #f
+  0
+  (none)
+  )
+
+(defmethod write-bytes ((this mem-buffer) (arg0 pointer) (arg1 int))
+  (mem-copy! (-> this ptr) arg0 arg1)
+  (&+! (-> this ptr) arg1)
+  0
+  (none)
+  )
+
+(defmethod read-bytes ((this mem-buffer) (arg0 pointer) (arg1 int))
+  (mem-copy! arg0 (-> this ptr) arg1)
+  (&+! (-> this ptr) arg1)
+  0
+  (none)
+  )
+
+(deftype level-bounding-box (structure)
+  ((bmin  vector  :inline)
+   (bsz   vector  :inline)
+   )
+  (:methods
+    (update! (_type_) none)
+    (write-pos (_type_ vector mem-buffer) none)
+    (read-pos (_type_ mem-buffer mem-buffer) none)
+    )
+  )
+
+
+(defmethod write-pos ((this level-bounding-box) (arg0 vector) (arg1 mem-buffer))
+  (write-vector arg1 arg0)
+  0
+  (none)
+  )
+
+(defmethod read-pos ((this level-bounding-box) (arg0 mem-buffer) (arg1 mem-buffer))
+  (read-vector arg1 arg0)
+  0
+  (none)
+  )
+
+(define *level-bounding-box* (new 'static 'level-bounding-box))
+
+(defmethod write-level-pos ((this mem-buffer) (arg0 vector))
+  (write-pos *level-bounding-box* arg0 this)
+  0
+  (none)
+  )
+
+(defmethod read-level-pos ((this mem-buffer) (arg0 mem-buffer))
+  (read-pos *level-bounding-box* arg0 this)
+  0
+  (none)
+  )
+
+(defmethod dump-mem-used ((this mem-buffer))
+  (let ((s5-0 (bytes-used this)))
+    (format #t "~D bytes:~%" s5-0)
+    (dotimes (s4-0 s5-0)
+      (format #t "~X " (-> (the-as (pointer uint8) (&+ (-> this base) s4-0))))
+      (if (= (logand s4-0 15) 15)
+          (format #t "~%")
+          )
+      )
+    )
+  (format #t "~%")
+  0
+  (none)
+  )
+
+(defmethod dump-mem-all ((this mem-buffer))
+  (let ((s5-0 (- (-> this limit) (the-as uint (-> this base)))))
+    (format #t "~D bytes:~%" s5-0)
+    (dotimes (s4-0 (the-as int s5-0))
+      (format #t "~X " (-> (the-as (pointer uint8) (&+ (-> this base) s4-0))))
+      (if (= (logand s4-0 15) 15)
+          (format #t "~%")
+          )
+      )
+    )
+  (format 0 "~%")
+  0
+  (none)
+  )
+
+(define *msg-buffers* (new 'static 'inline-array mem-buffer 4
+                        (new 'static 'mem-buffer)
+                        (new 'static 'mem-buffer)
+                        (new 'static 'mem-buffer)
+                        (new 'static 'mem-buffer)
+                        )
+        )
+
+(set-buffer!
+  (-> *msg-buffers* 0)
+  (&->
+    (new 'static 'array uint32 256
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      )
+    0
+    )
+  1024
+  )
+
+(set-buffer!
+  (-> *msg-buffers* 1)
+  (&->
+    (new 'static 'array uint32 256
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      )
+    0
+    )
+  1024
+  )
+
+(set-buffer!
+  (-> *msg-buffers* 2)
+  (&->
+    (new 'static 'array uint32 256
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      )
+    0
+    )
+  1024
+  )
+
+(set-buffer!
+  (-> *msg-buffers* 3)
+  (&->
+    (new 'static 'array uint32 256
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      #x0
+      )
+    0
+    )
+  1024
+  )
+
+(dotimes (v1-20 4)
+  (set! (-> *msg-buffers* v1-20 in-use) #f)
+  )
+
+(defun alloc-msg-buffer ()
+  (dotimes (gp-0 4)
+    (when (not (-> *msg-buffers* gp-0 in-use))
+      (set! (-> *msg-buffers* gp-0 in-use) #t)
+      (reset! (-> *msg-buffers* gp-0))
+      (return (-> *msg-buffers* gp-0))
+      )
+    )
+  (the-as mem-buffer #f)
+  )
+
+(defun free-msg-buffer ((arg0 mem-buffer))
+  (set! (-> arg0 in-use) #f)
+  0
+  (none)
+  )

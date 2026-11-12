@@ -66,20 +66,26 @@ linter_rules = []
 # Infos
 # Warnings
 linter_rules.append(
-    LinterRule("WARN", "method_splits", re.compile("method-of-(?:type|object)"), 3)
+    LinterRule("WARN", "method_splits", re.compile(r"method-of-(?:type|object)"), 3)
 )
 linter_rules.append(
-    LinterRule("WARN", "func_splits", re.compile("\(t9-\d+(?:\s+[^\s]+\s*)?\)"), 3)
+    LinterRule("WARN", "func_splits", re.compile(r"\(t9-\d+(?:\s+[^\s]+\s*)?\)"), 3)
 )
 linter_rules.append(
-    LinterRule("WARN", "missing_arg", re.compile("local-vars.*[at].*\s+none\)"), 1)
+    LinterRule("WARN", "missing_arg", re.compile(r"local-vars.*[at].*\s+none\)"), 1)
 )
 # Errors
-linter_rules.append(LinterRule("ERROR", "missing_res_tag", re.compile(".pcpyud"), 1))
-linter_rules.append(LinterRule("ERROR", "decomp_error", re.compile(";; ERROR"), 1))
+linter_rules.append(LinterRule("ERROR", "missing_res_tag", re.compile(r".pcpyud"), 1))
+linter_rules.append(
+    LinterRule("ERROR", "unhandled scratchpad usage", re.compile(r"#x70000000"), 1)
+)
+linter_rules.append(
+    LinterRule("ERROR", "missing_res_tag_cast", re.compile(r"\(the-as \(pointer res-tag\)"), 1)
+)
+linter_rules.append(LinterRule("ERROR", "decomp_error", re.compile(r";; ERROR"), 1))
 linter_rules.append(
     LinterRule(
-        "ERROR", "casting_stack_var", re.compile("the-as\s+[^\s]*\s+.*\(new 'stack"), 2
+        "ERROR", "casting_stack_var", re.compile(r"the-as\s+[^\s]*\s+.*\(new 'stack"), 2
     )
 )
 
@@ -128,8 +134,14 @@ with open(src_path) as f:
     for lineno, line in enumerate(src_lines):
         adjusted_lineno = lineno + 1
         for rule in linter_rules:
-            match = rule.regex_pattern.search(line)
-            if match:
+            matches = rule.regex_pattern.finditer(line)
+            for match in matches:
+                if rule.rule_name == "method_splits":
+                    # A method split used as the target of (go ...) is intentional.
+                    # Ignore only that occurrence, not other method splits on the line.
+                    prefix = line[: match.start()]
+                    if re.search(r"\(\s*go\s+\(\s*$", prefix):
+                        continue
                 rule.matches.append(
                     LintMatch(
                         src_path,

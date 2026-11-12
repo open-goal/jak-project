@@ -374,6 +374,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         }
 
       case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+      case TP_Type::Kind::PRODUCT_SUM:
         // a bit lazy here, but I don't think you can ever merge these.
         *changed = true;
         return TP_Type::make_from_ts("int");
@@ -499,8 +500,11 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   }
 
   static const std::vector<std::string> code_ignore_list = {
-      "%",  "T",   "0L", "1L", "3L",   "1k",   "1K",   "2j", "0k",
-      "0K", "30L", "1T", "2T", "100h", "200h", "350h", "t"};
+      "%",    "T",    "0L",   "1L",   "3L",   "1k",   "1K",  "2j",   "0k",   "0K",
+      "30L",  "1T",   "2T",   "100h", "200h", "350h", "t",   "0N",   "1N",   "30H",
+      "134H", "370H", "252H", "27H",  "270H", "140H", "10H", "267H", "272H", "131H",
+      "134H", "370H", "252H", "27H",  "270H", "140H", "10H", "267H", "272H", "131H",
+  };
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
@@ -586,5 +590,53 @@ bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected
   }
 
   return !ts.tc(expected, actual);
+}
+
+std::optional<FieldReverseLookupOutput> lookup_2d_array_element(const TypeSystem& ts,
+                                                                const TypeSpec& base_type,
+                                                                const TP_Type& product_sum) {
+  FieldReverseLookupInput rd_in;
+  rd_in.base_type = base_type;
+  rd_in.stride = product_sum.get_product_sum_multipliers().first;
+  rd_in.stride2 = product_sum.get_product_sum_multipliers().second;
+  rd_in.offset = product_sum.get_sum_constant();
+  auto rd = ts.reverse_field_lookup(rd_in);
+  if (!rd.success || rd.addr_of) {
+    return std::nullopt;
+  }
+  return rd;
+}
+
+std::optional<FieldReverseLookupOutput> lookup_array_element_from_field(const TypeSystem& ts,
+                                                                        const TP_Type& field_addr,
+                                                                        int stride) {
+  if (!field_addr.has_field_origin()) {
+    return std::nullopt;
+  }
+  FieldReverseLookupInput rd_in;
+  rd_in.base_type = field_addr.field_origin_type();
+  rd_in.offset = field_addr.field_origin_offset();
+  auto field_rd = ts.reverse_field_lookup(rd_in);
+  rd_in.stride = stride;
+  auto rd = ts.reverse_field_lookup(rd_in);
+  if (!rd.success || rd.addr_of || !rd.has_variable_token() || !field_rd.success ||
+      field_rd.tokens.size() != rd.tokens.size()) {
+    return std::nullopt;
+  }
+
+  for (size_t i = 0; i < rd.tokens.size(); i++) {
+    const auto& tok = rd.tokens.at(i);
+    const auto& field_tok = field_rd.tokens.at(i);
+    bool same = tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX
+                    ? field_tok.kind == FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX &&
+                          field_tok.idx == 0
+                    : tok.kind == field_tok.kind && tok.name == field_tok.name &&
+                          (tok.kind != FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX ||
+                           tok.idx == field_tok.idx);
+    if (!same) {
+      return std::nullopt;
+    }
+  }
+  return rd;
 }
 }  // namespace decompiler

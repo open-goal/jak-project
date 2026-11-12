@@ -5,5 +5,462 @@
 ;; name in dgo: rigid-body-queue
 ;; dgos: ENGINE, GAME
 
+;; +++rbq-stack
+(deftype rb-line-sphere-test-stack (structure)
+  "rb-line-sphere-test-update"
+  ((tube-start sphere :inline)
+   (tube-end   sphere :inline)
+   (normal     vector :inline)
+   (axis-pt    vector :inline)
+   (ray-pt     vector :inline)
+   (axis       vector :inline)
+   (start-time uint32)
+   (end-time   uint32)
+   )
+  )
+;; ---rbq-stack
+
+(define-extern find-vehicle (function int vehicle))
+
 ;; DECOMP BEGINS
 
+(define *rigid-body-queue* (new 'static 'rigid-body-queue))
+
+(define *rigid-body-queue-manager* (the-as rigid-body-queue-manager #f))
+
+(deftype rb-line-sphere-test (structure)
+  ((params  ray-tube-intersect-params  :inline)
+   )
+  )
+
+
+(define *rb-line-sphere-test* (new 'static 'rb-line-sphere-test))
+
+;; WARN: Return type mismatch int vs object.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun-debug rb-line-sphere-test-update ()
+  (local-vars (v1-11 int) (v1-22 int))
+  (let ((gp-0 (-> *rb-line-sphere-test* params))
+        (v1-1 (math-camera-matrix))
+        (s5-0 (new 'stack-no-clear 'rb-line-sphere-test-stack))
+        )
+    (when (= (-> *col-rend* track) 1)
+      (vector+*! (the-as vector (-> gp-0 ray-start)) (-> v1-1 trans) (-> v1-1 fvec) 16384.0)
+      (set! (-> gp-0 ray-start r) 4096.0)
+      (vector-float*! (-> gp-0 ray-extrude) (-> v1-1 fvec) 40960.0)
+      )
+    (let ((v1-3 (as-type (find-vehicle 1) vehicle)))
+      (when v1-3
+        (let ((v1-5 (-> v1-3 root root-prim)))
+          (set! (-> s5-0 tube-start quad)
+                (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core world-sphere quad)
+                )
+          (set! (-> s5-0 tube-end quad) (-> (the-as collide-shape-prim-group v1-5) child 2 prim-core world-sphere quad))
+          )
+        (set! (-> gp-0 tube-start quad) (-> s5-0 tube-start quad))
+        (vector-! (-> gp-0 tube-extrude) (the-as vector (-> s5-0 tube-end)) (the-as vector (-> s5-0 tube-start)))
+        (set! (-> gp-0 tube-radius) (-> s5-0 tube-start r))
+        )
+      )
+    (.mfc0 v1-11 Count)
+    (set! (-> s5-0 start-time) (the-as uint v1-11))
+    (set! (-> s5-0 axis quad) (-> gp-0 tube-extrude quad))
+    (vector-normalize! (-> s5-0 axis) 1.0)
+    (set! (-> gp-0 tt)
+          (ray-cylinder-intersect
+            (-> gp-0 ray-start)
+            (-> gp-0 ray-extrude)
+            (-> gp-0 tube-start)
+            (-> s5-0 axis)
+            (+ (-> gp-0 tube-radius) (-> gp-0 ray-start r))
+            (vector-dot (-> s5-0 axis) (-> gp-0 tube-extrude))
+            (-> s5-0 axis-pt)
+            )
+          )
+    (when (>= (-> gp-0 tt) 0.0)
+      (vector+float*! (-> s5-0 ray-pt) (the-as vector (-> gp-0 ray-start)) (-> gp-0 ray-extrude) (-> gp-0 tt))
+      (vector-! (-> s5-0 normal) (-> s5-0 ray-pt) (-> s5-0 axis-pt))
+      (vector-normalize! (-> s5-0 normal) 1.0)
+      (set! (-> gp-0 normal quad) (-> s5-0 normal quad))
+      (vector+float*! (-> gp-0 intersect) (-> s5-0 axis-pt) (-> gp-0 normal) (-> gp-0 tube-radius))
+      (set! (-> gp-0 normal quad) (-> s5-0 normal quad))
+      )
+    (.mfc0 v1-22 Count)
+    (set! (-> s5-0 end-time) (the-as uint v1-22))
+    (format *stdebug* "time ~d~%" (- (-> s5-0 end-time) (-> s5-0 start-time)))
+    (set! (-> s5-0 tube-start quad) (-> gp-0 tube-start quad))
+    (vector+! (the-as vector (-> s5-0 tube-end)) (-> gp-0 tube-start) (-> gp-0 tube-extrude))
+    (set! (-> s5-0 tube-end r) (-> s5-0 tube-start r))
+    (draw-debug-x (-> gp-0 ray-start) (bucket-id debug-no-zbuf1) *color-red*)
+    (draw-debug-line-sphere
+      (-> gp-0 tube-start)
+      (-> gp-0 tube-extrude)
+      (bucket-id debug-no-zbuf1)
+      (-> gp-0 tube-radius)
+      (new 'static 'rgba :r #xff :g #xff :a #x20)
+      )
+    (draw-debug-line-sphere
+      (-> gp-0 tube-start)
+      (-> gp-0 tube-extrude)
+      (bucket-id debug)
+      (-> gp-0 tube-radius)
+      (new 'static 'rgba :r #xff :g #xff :a #x40)
+      )
+    (draw-debug-sphere (-> gp-0 ray-start) (bucket-id debug-no-zbuf1) -1.0 (new 'static 'rgba :g #xff :a #x40))
+    (draw-debug-line-sphere
+      (-> gp-0 ray-start)
+      (-> gp-0 ray-extrude)
+      (bucket-id debug-no-zbuf1)
+      -1.0
+      (new 'static 'rgba :g #xff :a #x20)
+      )
+    (draw-debug-line-sphere
+      (-> gp-0 ray-start)
+      (-> gp-0 ray-extrude)
+      (bucket-id debug)
+      -1.0
+      (new 'static 'rgba :g #xff :a #x40)
+      )
+    (format *stdebug* "tt ~f~%" (-> gp-0 tt))
+    (when (>= (-> gp-0 tt) 0.0)
+      (draw-debug-x (-> gp-0 intersect) (bucket-id debug-no-zbuf1) *color-red*)
+      (draw-debug-vector
+        (-> gp-0 intersect)
+        (-> gp-0 normal)
+        (bucket-id debug-no-zbuf1)
+        (new 'static 'rgba :r #xff :a #x60)
+        (meters 2)
+        )
+      (vector+float*! (-> s5-0 normal) (the-as vector (-> gp-0 ray-start)) (-> gp-0 ray-extrude) (-> gp-0 tt))
+      (draw-debug-line
+        (-> gp-0 ray-start)
+        (-> s5-0 normal)
+        (bucket-id debug-no-zbuf1)
+        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x50)
+        #f
+        (the-as rgba -1)
+        )
+      (draw-debug-sphere
+        (-> s5-0 normal)
+        (bucket-id debug-no-zbuf1)
+        (-> gp-0 ray-start r)
+        (new 'static 'rgba :b #xff :a #x40)
+        )
+      )
+    )
+  0
+  )
+
+(defmethod reset-perf! ((this rb-perf-data))
+  (dotimes (v1-0 32)
+    (set! (-> this times v1-0) (the-as uint 0))
+    (set! (-> this begin-counts v1-0) (the-as uint 0))
+    (set! (-> this end-counts v1-0) (the-as uint 0))
+    )
+  0
+  (none)
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defmethod begin-perf! ((this rb-perf-data) (arg0 int))
+  (local-vars (v1-0 int))
+  (.mfc0 v1-0 Count)
+  (set! (-> this begin-times arg0) (the-as uint v1-0))
+  (+! (-> this begin-counts arg0) 1)
+  0
+  (none)
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defmethod end-perf! ((this rb-perf-data) (arg0 int))
+  (local-vars (v1-0 int))
+  (.mfc0 v1-0 Count)
+  (+! (-> this times arg0) (- v1-0 (the-as int (-> this begin-times arg0))))
+  (+! (-> this end-counts arg0) 1)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun rb-reset-perf-array ()
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun rb-reset-perf-times ()
+  0
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defun rb-get-perf ()
+  #f
+  )
+
+(defmethod init-queue! ((this rigid-body-queue) (arg0 process))
+  (set! (-> this count) 0)
+  (set! (-> this manager) (process->handle arg0))
+  (dotimes (v1-3 128)
+    (set! (-> this array v1-3) (the-as handle #f))
+    )
+  (rb-reset-perf-array)
+  0
+  (none)
+  )
+
+(defmethod validate ((this rigid-body-queue))
+  (let ((gp-0 0))
+    (dotimes (v1-0 (-> this count))
+      (let ((a1-2 (-> this array v1-0))
+            (a2-0 (+ v1-0 1))
+            )
+        (while (< a2-0 (-> this count))
+          (if (= a1-2 (-> this array a2-0))
+              (+! gp-0 1)
+              )
+          (+! a2-0 1)
+          )
+        )
+      )
+    (if (> gp-0 0)
+        (format 0 "rigid-body-queue::validate: duplicate count ~d~%" gp-0)
+        )
+    (zero? gp-0)
+    )
+  )
+
+(define *rb-raw-time-val* 0)
+
+(defmethod update-rigid-bodies ((this rigid-body-queue))
+  (with-pp
+    (let ((f30-0 (seconds-per-frame)))
+      (countdown (s5-0 (-> this count))
+        (let ((a0-2 (handle->process (-> this array s5-0))))
+          (cond
+            (a0-2
+              (let ((v1-6 (-> (the-as process-drawable a0-2) rbody)))
+                (set! (-> v1-6 time-remaining) f30-0)
+                (logclear! (-> v1-6 flags) (rigid-body-flag impact stuck temp-penetrate-mode))
+                )
+              (let ((s4-0 pp))
+                (set! pp a0-2)
+                (rigid-body-object-method-85 (the-as rigid-body-object a0-2))
+                (set! pp s4-0)
+                )
+              0
+              )
+            (else
+              )
+            )
+          )
+        )
+      )
+    (let ((s5-1 (-> *kernel-context* prevent-from-run)))
+      (dotimes (s4-1 (-> this count))
+        (let ((s3-0 (handle->process (-> this array s4-1))))
+          (when (and s3-0
+                     (logtest? (-> (the-as process-drawable s3-0) rbody flags) (rigid-body-flag enable-physics))
+                     (not (logtest? (-> (the-as process-drawable s3-0) rbody flags) (rigid-body-flag disable-queue)))
+                     )
+            (when (not (logtest? s5-1 (-> s3-0 mask)))
+              (let ((s2-0 pp))
+                (set! pp s3-0)
+                0
+                0
+                (rigid-body-object-method-86 (the-as rigid-body-object s3-0))
+                (rigid-body-object-method-87 (the-as rigid-body-object s3-0))
+                (rigid-body-object-method-88 (the-as rigid-body-object s3-0))
+                0
+                (set! pp s2-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod add-to-queue ((this rigid-body-queue) (arg0 process))
+  (let ((v1-0 -1))
+    (dotimes (a2-0 (-> this count))
+      (b! (handle->process (-> this array a2-0)) cfg-8 :delay (empty-form))
+      (set! v1-0 a2-0)
+      (b! #t cfg-11 :delay (nop!))
+      (label cfg-8)
+      )
+    (label cfg-11)
+    (cond
+      ((!= v1-0 -1)
+       (set! (-> this array v1-0) (process->handle arg0))
+       )
+      (else
+        (when (< (-> this count) 128)
+          (set! (-> this array (-> this count)) (process->handle arg0))
+          (+! (-> this count) 1)
+          )
+        )
+      )
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod move-index-before ((this rigid-body-queue) (arg0 int) (arg1 int))
+  (when (< arg0 arg1)
+    (let ((v1-1 arg1)
+          (a3-0 (+ arg1 -1))
+          (a2-3 (-> this array arg1))
+          )
+      (while (>= a3-0 arg0)
+        (set! (-> this array v1-1) (-> this array a3-0))
+        (+! a3-0 -1)
+        (+! v1-1 -1)
+        )
+      (set! (-> this array arg0) a2-3)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod move-process-before ((this rigid-body-queue) (arg0 int) (arg1 process))
+  (let ((v1-2 (process->handle arg1))
+        (a2-4 (+ arg0 1))
+        )
+    (while (< a2-4 (-> this count))
+      (b! (!= (-> this array a2-4) v1-2) cfg-8 :delay (empty-form))
+      (move-index-before this arg0 a2-4)
+      (b! #t cfg-11 :delay (nop!))
+      (label cfg-8)
+      (+! a2-4 1)
+      )
+    )
+  (label cfg-11)
+  0
+  0
+  (none)
+  )
+
+(defmethod remove-at-index ((this rigid-body-queue) (arg0 int))
+  (let ((v1-0 arg0)
+        (a1-1 (+ arg0 1))
+        )
+    (while (< a1-1 (-> this count))
+      (set! (-> this array v1-0) (-> this array a1-1))
+      (+! a1-1 1)
+      (+! v1-0 1)
+      )
+    )
+  (+! (-> this count) -1)
+  0
+  (none)
+  )
+
+(defmethod remove-from-queue ((this rigid-body-queue) (arg0 process))
+  (let ((v1-2 (process->handle arg0)))
+    (dotimes (a1-4 (-> this count))
+      (b! (!= (-> this array a1-4) v1-2) cfg-8 :delay (empty-form))
+      (remove-at-index this a1-4)
+      (b! #t cfg-11 :delay (nop!))
+      (label cfg-8)
+      )
+    )
+  (label cfg-11)
+  0
+  0
+  (none)
+  )
+
+(deftype rigid-body-queue-manager (process)
+  ((queue       rigid-body-queue)
+   (time-val    uint32)
+   (pad         uint32)
+   (state-time  time-frame)
+   (delay       uint32)
+   (times       uint32  4)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defmethod deactivate ((this rigid-body-queue-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *rigid-body-queue-manager* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs rigid-body-queue-manager.
+(defmethod relocate ((this rigid-body-queue-manager) (offset int))
+  (set! *rigid-body-queue-manager* this)
+  (if *rigid-body-queue-manager*
+      (set! *rigid-body-queue-manager* (&+ *rigid-body-queue-manager* offset))
+      )
+  (the-as rigid-body-queue-manager ((method-of-type process relocate) this offset))
+  )
+
+;; WARN: Return type mismatch int vs object.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
+(defun rb-cpu-delay ((arg0 int))
+  (local-vars (v1-2 int) (a1-0 int) (a1-1 int))
+  0
+  0
+  (.mfc0 v1-2 Count)
+  (until (>= (the-as uint a1-1) (the-as uint arg0))
+    (.mfc0 a1-0 Count)
+    (nop!)
+    (set! a1-1 (- a1-0 v1-2))
+    (nop!)
+    )
+  0
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defbehavior rigid-body-queue-manager-post rigid-body-queue-manager ()
+  (local-vars (v1-2 int) (v1-5 int))
+  0
+  0
+  (.mfc0 v1-2 Count)
+  (update-rigid-bodies (-> self queue))
+  (.mfc0 v1-5 Count)
+  0
+  (none)
+  )
+
+(defstate idle (rigid-body-queue-manager)
+  :virtual #t
+  :exit (behavior ()
+    (set! (-> self queue count) 0)
+    0
+    )
+  :code sleep-code
+  :post (behavior ()
+    (rigid-body-queue-manager-post)
+    )
+  )
+
+(defbehavior rigid-body-queue-manager-init-by-other rigid-body-queue-manager ((arg0 rigid-body-queue))
+  (stack-size-set! (-> self main-thread) 128)
+  (set! (-> self queue) arg0)
+  (init-queue! (-> self queue) self)
+  (go-virtual idle)
+  )
+
+(defun rigid-body-queue-manager-spawn ((arg0 rigid-body-queue) (arg1 process-tree))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn rigid-body-queue-manager arg0 :name "rigid-body-queue-manager" :to arg1)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    gp-0
+    )
+  )

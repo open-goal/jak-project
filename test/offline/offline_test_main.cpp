@@ -106,8 +106,12 @@ int main(int argc, char* argv[]) {
 
   if (!total.compile.ok) {
     for (auto& f : total.compile.failing_files) {
-      lg::error("{}", f.filename);
+      fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, "{}\n", f.filename);
       fmt::print("{}\n", f.error);
+    }
+    lg::error("Failing compiles:");
+    for (auto& f : total.compile.failing_files) {
+      lg::error("- {}", f.filename);
     }
   }
 

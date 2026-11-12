@@ -7,3 +7,157 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-generic-blast collectables -1 -1
+              ((-1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 50)
+              :texture-level 18
+              :sort 4
+              )
+
+(defskelgroup skel-generic-ripples collectables collectables-generic-ripples-lod0-jg collectables-generic-ripples-idle-ja
+              ((collectables-generic-ripples-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :texture-level 18
+              :sort 4
+              )
+
+(deftype target-bank (basic)
+  ((attack-timeout                    time-frame)
+   (ground-timeout                    time-frame)
+   (slide-down-timeout                time-frame)
+   (fall-timeout                      time-frame)
+   (fall-stumble-threshold            meters)
+   (hit-invulnerable-timeout          time-frame)
+   (same-attack-invulnerable-timeout  time-frame)
+   (min-dive-depth                    meters)
+   (root-radius                       meters)
+   (root-offset                       vector  :inline)
+   (body-radius                       meters)
+   (head-radius                       meters)
+   (head-height                       meters)
+   (head-offset                       vector  :inline)
+   (fall-height                       meters)
+   )
+  )
+
+
+(define *TARGET-bank* (new 'static 'target-bank
+                        :attack-timeout (seconds 0.3)
+                        :ground-timeout (seconds 0.2)
+                        :slide-down-timeout (seconds 0.2)
+                        :fall-timeout (seconds 1)
+                        :fall-stumble-threshold (meters 39.9)
+                        :hit-invulnerable-timeout (seconds 1)
+                        :same-attack-invulnerable-timeout (seconds 2)
+                        :min-dive-depth (meters 2)
+                        :root-radius (meters 2.2)
+                        :root-offset (new 'static 'vector :y 4915.2 :w 1.0)
+                        :body-radius (meters 0.7)
+                        :head-radius (meters 0.7)
+                        :head-height (meters 1.4)
+                        :head-offset (new 'static 'vector :y 4915.2 :w 1.0)
+                        :fall-height (meters 1)
+                        )
+        )
+
+(defbehavior debounce-speed target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector))
+  (if (and (< 0.3 arg0) (< arg0 0.7) (< 0.0 arg1) (< (vector-dot arg2 arg3) 0.2))
+      (set! arg0 0.0)
+      )
+  arg0
+  )
+
+(defmethod process-focusable-method-57 ((this target))
+  (if (focus-test? this mech)
+      0.1
+      1.0
+      )
+  )
+
+(defmethod attack-info-method-9 ((this attack-info) (arg0 attack-info) (arg1 process-drawable) (arg2 process-drawable))
+  (let ((s5-0 (as-type arg1 process-drawable)))
+    (let ((v1-0 (as-type arg2 process-drawable)))
+      (cond
+        ((logtest? (attack-mask attacker-velocity) (-> this mask))
+         (set! (-> arg0 attacker-velocity quad) (-> this attacker-velocity quad))
+         (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
+         )
+        (v1-0
+          (cond
+            (s5-0
+              (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
+              )
+            (else
+              (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root rotation))
+              (vector-negate-in-place! (-> arg0 trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
+              )
+            )
+          )
+        (else
+          (set! (-> arg0 trans quad) (the-as uint128 0))
+          (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
+          )
+        )
+      )
+    (if s5-0
+        (set! (-> arg0 intersection quad) (-> s5-0 root trans quad))
+        (set! (-> arg0 intersection quad) (-> (target-pos 0) quad))
+        )
+    )
+  (cond
+    ((!= (vector-length-squared (-> arg0 trans)) 0.0)
+     (set! (-> arg0 vector quad) (-> arg0 trans quad))
+     (set! (-> arg0 vector y) 0.0)
+     (vector-xz-normalize! (-> arg0 vector) 1.0)
+     )
+    (else
+      (set! (-> arg0 vector quad) (the-as uint128 0))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun target-pos ((arg0 int))
+  (let ((v1-0 (the-as target (view-get-active-target))))
+    (cond
+      (v1-0
+        (if (zero? arg0)
+            (-> v1-0 root trans)
+            (vector<-cspace! (new 'static 'vector) (-> v1-0 node-list data arg0))
+            )
+        )
+      (else
+        (camera-pos)
+        )
+      )
+    )
+  )
+
+(defun target-rot ()
+  (let ((v1-0 (the-as target (view-get-active-target))))
+    (if v1-0
+        (-> v1-0 root rotation)
+        *unity-quaternion*
+        )
+    )
+  )
+
+(defmethod get-trans ((this target) (arg0 int))
+  "Get the `trans` for this process."
+  (let ((v1-0 (-> this root)))
+    (if (= arg0 4)
+        (-> this alt-cam-pos)
+        (-> v1-0 trans)
+        )
+    )
+  )
+
+;; WARN: Return type mismatch int vs time-frame.
+(defmethod get-notice-time ((this target))
+  (the-as time-frame 0)
+  )
