@@ -306,14 +306,14 @@ uint32_t link_control::jakx_work_v5() {
 
     // the link segments table is just at the start of the link data:
     m_link_segments_table = (SegmentInfoV5*)link_data;
-    for (u32 seg_id = m_n_segments - 1; seg_id >= 0; --seg_id) {
+    for (s32 seg_id = m_n_segments - 1; seg_id >= 0; --seg_id) {
       // fixup the relocs/data offsets into addresses (again, offsets from g_ee_main_mem)
       // relocs is relative to this link data
-      auto code_infos = m_link_segments_table[seg_id];
-      code_infos.relocs += (link_data - g_ee_main_mem);
+      SegmentInfoV5* code_infos = m_link_segments_table + seg_id;
+      code_infos->relocs += (link_data - g_ee_main_mem);
       // data is relative to usual object_data
-      code_infos.data += m_object_data.offset;
-      ASSERT(code_infos.magic == 1);
+      code_infos->data += m_object_data.offset;
+      ASSERT(code_infos->magic == 1);
 
       const char* segment_text = "main-segment";
       auto heap = m_heap;
@@ -333,28 +333,28 @@ uint32_t link_control::jakx_work_v5() {
 
       // For debug-segment, check if DebugSegment == 0
       if (seg_id == 1 && DebugSegment == 0) {
-        code_infos.data = 0;
-        code_infos.size = 0;
+        code_infos->data = 0;
+        code_infos->size = 0;
       }
       // see if there's even data
-      else if (code_infos.size == 0) {
+      else if (code_infos->size == 0) {
         // no data.
-        code_infos.data = 0;
+        code_infos->data = 0;
       } else {
         // For the main-segment, check of m_moved_link_block is false and that link_length + 0x50 <
         // length to code.
         if (seg_id != 0 || !m_moved_link_block ||
             ((m_link_hdr->link_length + 0x50) <= m_link_hdr->length_to_get_to_code)) {
-          auto old_data_offset = code_infos.data;
-          auto new_data = kmalloc(heap, code_infos.size, segment_flags, segment_text);
-          code_infos.data = new_data.offset;
+          auto old_data_offset = code_infos->data;
+          auto new_data = kmalloc(heap, code_infos->size, segment_flags, segment_text);
+          code_infos->data = new_data.offset;
           if (!new_data.offset) {
             char errorText[512];
             sprintf(errorText, "dkernel: unable to malloc %%d bytes for %s\n", segment_text);
-            MsgErr(errorText, code_infos.size);
+            MsgErr(errorText, code_infos->size);
             return 1;
           }
-          jakx::ultimate_memcpy(new_data.c(), old_data_offset + g_ee_main_mem, code_infos.size);
+          jakx::ultimate_memcpy(new_data.c(), old_data_offset + g_ee_main_mem, code_infos->size);
         } else {
           m_heap->current = m_object_data + m_code_size;
           if (m_heap->top.offset <= m_heap->current.offset) {
