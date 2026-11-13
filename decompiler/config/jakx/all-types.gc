@@ -4984,10 +4984,11 @@
 
 (deftype dma-packet (structure)
   "The header for a DMA transfer, containing an DMA tag, and VIF tags."
-  ((dma  dma-tag   :offset-assert 0)
+  ((dma  dma-tag  :offset-assert 0)
    (vif0 vif-tag  :offset-assert 8) ;; guessed by decompiler
    (vif1 vif-tag  :offset-assert 12) ;; guessed by decompiler
    (quad uint128  :offset-assert 0 :overlay-at dma)
+   (vifs uint64   :offset-assert 8 :overlay-at vif0)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -37895,6 +37896,8 @@
    (double-edge-table      uint32                :offset-assert 8)
    (double-tri-table       uint32                :offset-assert 12)
    (dcache-top             uint32                :offset-assert 16)
+   (dcache-top-1           uint16                :offset 16)
+   (dcache-top-2           uint16                :offset 18)
    (num-facing-single-tris uint32                :offset-assert 20)
    (num-single-edges       uint32                :offset-assert 24)
    (num-double-edges       uint32                :offset-assert 28)
@@ -37918,10 +37921,10 @@
   )
 
 (define-extern *shadow-data* shadow-data)
-(define-extern shadow-invert-z-buf (function dma-buffer none))
+(define-extern shadow-invert-z-buf (function dma-buffer viewport none))
 (define-extern shadow-make-invert-buf (function none)) ;; 
-(define-extern shadow-dma-init (function dma-buffer none))
-(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int none))
+(define-extern shadow-dma-init (function dma-buffer viewport pointer))
+(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int viewport (pointer uint64) none))
 (define-extern shadow-vu0-block vu-function)
 ;; (define-extern shadow-xform-verts function) ;; function
 ;; (define-extern shadow-calc-dual-verts function) ;; function
