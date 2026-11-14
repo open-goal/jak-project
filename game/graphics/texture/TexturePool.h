@@ -156,6 +156,10 @@ struct GpuTexture {
   // texture dimensions
   u16 w, h;
 
+  // dimensions the game expects this texture to be, usually from its texture-page (0 if unknown).
+  // differs from w/h if a texture pack replaced this texture with a different resolution.
+  u16 ps2_w = 0, ps2_h = 0;
+
   // set to true if we have no copies of the texture, and we should use a placeholder
   bool is_placeholder = false;
 
