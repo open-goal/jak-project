@@ -6,6 +6,10 @@
 #include "common/log/log.h"
 #include "common/util/string_util.h"
 
+#if defined(__linux__) && defined(__aarch64__)
+#include <sys/auxv.h>
+#endif
+
 #ifdef __APPLE__
 #include <stdio.h>
 
@@ -164,7 +168,7 @@ void setup_cpu_info_macos(CpuInfo& info) {
   info.has_avx = result[2] & (1 << 28);
   __cpuidex(result, 7, 0);
   info.has_avx2 = result[1] & (1 << 5);
-#elif defined(__aarch64__) || defined(__arm64__)
+#elif defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
   info.brand = "Apple";
   char buf[128];
   size_t len = sizeof(buf);
