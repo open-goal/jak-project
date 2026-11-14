@@ -1247,14 +1247,30 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         auto arg0_matcher =
             Matcher::op(addition_matcher, {Matcher::any(0), Matcher::integer(input.offset)});
         auto match_result = match(arg0_matcher, args.at(0));
+        Form* idx = nullptr;
         if (match_result.matched) {
+          idx = match_result.maps.forms.at(0);
+        } else {
+          auto as_add = args.at(0)->try_as_element<GenericElement>();
+          if (as_add &&
+              (as_add->op().is_fixed(FixedOperatorKind::ADDITION) ||
+               as_add->op().is_fixed(FixedOperatorKind::ADDITION_PTR)) &&
+              as_add->elts().size() > 2) {
+            auto last = get_goal_integer_constant(as_add->elts().back(), env);
+            if (last && (s64)*last == input.offset) {
+              std::vector<Form*> idx_elts(as_add->elts().begin(), as_add->elts().end() - 1);
+              idx = pool.alloc_single_element_form<GenericElement>(nullptr, as_add->op(), idx_elts);
+            }
+          }
+        }
+        if (idx) {
           bool used_index = false;
           std::vector<DerefToken> tokens;
           for (auto& tok : out.tokens) {
             if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
               ASSERT(!used_index);
               used_index = true;
-              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              tokens.push_back(DerefToken::make_int_expr(idx));
             } else {
               tokens.push_back(to_token(tok));
             }
@@ -3515,7 +3531,8 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
           }
         }
       } break;
-      case GameVersion::Jak3: {
+      case GameVersion::Jak3:
+      case GameVersion::JakX: {
         for (int i = 0; i < 4; i++) {
           auto elt = matrix_entries->at(i + 1).elt;
 
