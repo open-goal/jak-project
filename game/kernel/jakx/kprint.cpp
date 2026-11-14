@@ -32,14 +32,13 @@ s32 format_impl_jakx(uint64_t* args) {
   uint64_t* arg_regs = args + 2;
 
   // data for arguments in a format command
-  format_struct argument_data[8];
+  format_struct argument_data[4];
 
   u32 arg_reg_idx = 0;
 
+  u32 original_dest = args[0];
   // the gstring
   char* format_gstring = Ptr<char>(args[1]).c();
-
-  u32 original_dest = args[0];
 
   // set up print pending
   char* print_temp = PrintPending.cast<char>().c();
@@ -52,7 +51,7 @@ s32 format_impl_jakx(uint64_t* args) {
   // what we write to
   char* output_ptr = PrintPending.cast<char>().c();
 
-  // convert gstring to cstring
+  // Address of first byte of buffer within g_string
   char* format_cstring = format_gstring + 4;
 
   // mysteries
@@ -89,7 +88,7 @@ s32 format_impl_jakx(uint64_t* args) {
       char* arg_start = format_ptr;
       // get some arguments
       arg_idx = 0;
-      u8 justify = 0;
+      // u8 justify = 0;
       for (auto& x : argument_data) {
         x.reset();
       }
@@ -192,6 +191,8 @@ s32 format_impl_jakx(uint64_t* args) {
         case 'W':  // 32 -> 57, W
         case 'Y':  // 34 -> 59, Y
         case 'Z':  // 35 -> 5A, Z
+        case '[':
+        case ']':
         case 'h':
         case 'j':
         case 'k':
@@ -243,28 +244,24 @@ s32 format_impl_jakx(uint64_t* args) {
               if (desired_length > 1) {  // mark with tilde that we will truncate
                 output_ptr[desired_length - 1] = '~';
               }
-              output_ptr[desired_length] = 0;  // and truncate
+              output_ptr[desired_length] = '\0';  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if (argument_data[1].data[0] != -1) {
+                pad = argument_data[1].data[0];
+              }
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
               } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                while(0 < (desired_length - print_len)) {
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //
-                //                }
-                //                *output_ptr = 0;
+                // Pad on the right
+                output_ptr = strend(output_ptr);
+                while (desired_length > print_len) {
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
@@ -296,28 +293,21 @@ s32 format_impl_jakx(uint64_t* args) {
               output_ptr[desired_length] = 0;  // and truncate
             } else if (print_len < desired_length) {
               // too short
-              if (justify == 0) {
-                char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
-                  pad = argument_data[1].data[0];
-                }
+              char pad = ' ';
+              if (argument_data[1].data[0] != -1) {
+                pad = argument_data[1].data[0];
+              }
+              if (argument_data[0].data[1] == 0) {
+                // Pad on the left
                 kstrinsert(output_ptr, pad, desired_length - print_len);
-
               } else {
-                ASSERT(false);
-                //                output_ptr = strend(output_ptr);
-                //                u32 l140 = 0;
-                //                while(l140 < (desired_length - print_len)) {
-                //                  char* l108 = output_ptr;
-                //
-                //                  char pad = ' ';
-                //                  if(argument_data[0].data[1] != -1) {
-                //                    pad = argument_data[0].data[1];
-                //                  }
-                //                  output_ptr[0] = pad;
-                //                  output_ptr++;
-                //                }
-                //                *output_ptr = 0;
+                // Pad on the right
+                output_ptr = strend(output_ptr);
+                while (desired_length > print_len) {
+                  *output_ptr = pad;
+                  ++output_ptr;
+                  ++print_len;
+                }
               }
             }
           }
@@ -343,9 +333,13 @@ s32 format_impl_jakx(uint64_t* args) {
               Ptr<Type> type(sym->value());
               if (type.offset) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
+              } else {
+                // jakx::print_object(in);
+                ASSERT(false);  // bad type?
               }
             } else {
-              ASSERT(false);  // bad type.
+              // jakx::print_object(in);
+              ASSERT(false);  // bad sim?
             }
           }
           output_ptr = strend(output_ptr);
@@ -462,28 +456,46 @@ s32 format_impl_jakx(uint64_t* args) {
         case 'E':  // time seconds
         case 'e': {
           s64 in = arg_regs[arg_reg_idx++];
-          s8 pad_length = argument_data[0].data[0];
-          s8 pad_char = argument_data[0].data[1];
-          if (pad_char == -1)
-            pad_char = ' ';
-          s8 precision = argument_data[0].data[2];
-          if (precision == -1)
-            precision = 4;
           float value;
           if (in < 0) {
-            ASSERT(false);  // i don't get this one
+            s64 shifted = in >> 1;
+            in = (in & 1) | shifted;
+            value = ((float)in) * 2;
           } else {
             value = in;
           }
+          s8 pad_length = argument_data[0].data[0];
+          s8 pad_char = argument_data[1].data[0];
+          if (pad_char == -1)
+            pad_char = ' ';
+          s8 precision = argument_data[2].data[0];
+          if (precision == -1)
+            precision = 4;
           ftoa(output_ptr, value / 300.f, pad_length, pad_char, precision, 0);
           output_ptr = strend(output_ptr);
         } break;
-
-        case 'T':
-        case 't': {
-          sprintf(output_ptr, "\t");
-          output_ptr = strend(output_ptr);
-        } break;
+        case 't': {  // 8 or argument_data[0] space indent
+          int indent = 8;
+          if (argument_data[0].data[0] != -1) {
+            indent = argument_data[0].data[0];
+          }
+          for (int j = 0; j < indent; ++j) {
+            *output_ptr = ' ';
+            ++output_ptr;
+          }
+          break;
+        }
+        case 'T': {  // 1 or argument_data[0] tab indent
+          int indent = 1;
+          if (argument_data[0].data[0] != -1) {
+            indent = argument_data[0].data[0];
+          }
+          for (int j = 0; j < indent; ++j) {
+            *output_ptr = '\t';
+            ++output_ptr;
+          }
+          break;
+        }
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
