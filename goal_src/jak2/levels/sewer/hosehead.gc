@@ -1577,11 +1577,14 @@
     (until #f
       (ja-no-eval :group! hosehead-walk-wall-ja :num! (seek! max 1.5) :frame-num 0.0)
       (until (ja-done? 0)
-        (set! (-> self root trans y) (- (-> self root trans y) (* 36864.0 (seconds-per-frame))))
-        (hosehead-method-186 self)
-        (suspend)
-        (ja :num! (seek! max 1.5))
-        )
+        (let ((target-y (- (-> self root trans y) (* 36864.0 (seconds-per-frame))))) ;; og:preserve-this high fps hosehead bugfix
+          (set! (-> self root trans y) target-y) ;; og:preserve-this high fps hosehead bugfix
+          (hosehead-method-186 self)
+          (set! (-> self root trans y) target-y) ;; og:preserve-this conserve the intended vertical crawl position after wall alignment.
+          (suspend)
+          (ja :num! (seek! max 1.5))
+          )
+      )
       (when (< (- (-> self root trans y) (-> self jump-point y)) 40960.0)
         (hosehead-method-196 self)
         (set! (-> self enemy-flags)
