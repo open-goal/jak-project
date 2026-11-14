@@ -1,0 +1,49 @@
+(start-test "scratch-alloc")
+
+(deftype test-scratch-struct (structure)
+  ((a uint64)
+   (b uint32)))
+
+(deftype test-scratch-basic (basic)
+  ((a uint32)
+   (b uint32)))
+
+(set! *scratch-top* (scratchpad-start))
+
+;; malloc
+(let ((mem (malloc 'scratch 256)))
+  (expect-true (= mem (scratchpad-start)))
+  (expect-true (= *scratch-top* (&+ (scratchpad-start) 256))))
+
+;; alignment
+(let ((top *scratch-top*))
+  (expect-true (= top (malloc 'scratch 1)))
+  (expect-true (= (&+ top 16) (malloc 'scratch 17)))
+  (expect-true (= (&+ top 48) *scratch-top*)))
+
+;; arrays
+(let ((top *scratch-top*))
+  (expect-true (= top (new 'scratch 'array 'uint16 3)))
+  (expect-true (= (&+ top 16) (new 'scratch 'inline-array 'vector 3)))
+  (expect-true (= (&+ top 64) *scratch-top*)))
+
+;; structs
+(let* ((top *scratch-top*)
+       (s (new 'scratch 'test-scratch-struct))
+       (b (new 'scratch 'test-scratch-basic)))
+  (expect-true (= top (the pointer s)))
+  (expect-true (= (&+ top 20) (the pointer b)))
+  (expect-true (= (-> b type) test-scratch-basic))
+  (expect-true (= (&+ top 32) *scratch-top*)))
+
+;; resetting top
+(let ((mem (the (pointer uint32) (malloc 'scratch 64))))
+  (set! (-> mem 0) #x12345678)
+  (set! (-> mem 15) #x12345678)
+  (set! *scratch-top* (the pointer mem))
+  (let ((mem2 (the (pointer uint32) (malloc 'scratch 64))))
+    (expect-true (= mem mem2))
+    (expect-true (zero? (-> mem2 0)))
+    (expect-true (zero? (-> mem2 15)))))
+
+(finish-test)

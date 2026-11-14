@@ -4353,7 +4353,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         if (match_result.matched) {
           auto& alloc = match_result.maps.strings.at(allocation);
           if (alloc != "global" && alloc != "debug" && alloc != "process" &&
-              alloc != "loading-level" && alloc != "process-level-heap") {
+              alloc != "loading-level" && alloc != "process-level-heap" && alloc != "scratch") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);

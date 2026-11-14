@@ -124,8 +124,11 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
       return 0;
     }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
-    ASSERT(false);  // nyi, I think unused.
-    return 0;
+    auto& scratch_top = *Ptr<u32>(s7.offset + FIX_SYM_SCRATCH_TOP);
+    u32 start = scratch_top;
+    scratch_top += alignedSize;
+    memset(Ptr<u8>(start).c(), 0, (size_t)alignedSize);
+    return start;
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
     return heapSymbol;
