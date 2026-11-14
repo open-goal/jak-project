@@ -1,5 +1,8 @@
 #include "audio_formats.h"
 
+#include <algorithm>
+#include <cstring>
+
 #include "common/log/log.h"
 #include "common/util/BinaryWriter.h"
 
@@ -160,6 +163,150 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
   }
 
   return {left_samples, right_samples};
+}
+
+namespace {
+constexpr s32 ADPCM_F1[5] = {0, 60, 115, 98, 122};
+constexpr s32 ADPCM_F2[5] = {0, 0, -52, -55, -60};
+constexpr int ADPCM_SAMPLES_PER_BLOCK = 28;
+constexpr int ADPCM_MAX_SHIFT = 12;
+}  // namespace
+
+std::vector<u8> encode_adpcm(const std::vector<s16>& samples) {
+  const size_t block_count =
+      (samples.size() + ADPCM_SAMPLES_PER_BLOCK - 1) / ADPCM_SAMPLES_PER_BLOCK;
+  std::vector<u8> out(block_count * 16, 0);
+
+  // the decoder's history, carried across blocks
+  s32 prev[2] = {0, 0};
+
+  for (size_t block_idx = 0; block_idx < block_count; block_idx++) {
+    s32 input[ADPCM_SAMPLES_PER_BLOCK] = {};
+    for (int i = 0; i < ADPCM_SAMPLES_PER_BLOCK; i++) {
+      size_t idx = block_idx * ADPCM_SAMPLES_PER_BLOCK + i;
+      if (idx < samples.size()) {
+        input[i] = samples[idx];
+      }
+    }
+
+    s64 best_error = INT64_MAX;
+    int best_filter = 0, best_shift = 0;
+    s32 best_nibbles[ADPCM_SAMPLES_PER_BLOCK] = {};
+    s32 best_prev[2] = {0, 0};
+
+    // try everything, this is what makes the output as close to the input as the format allows.
+    for (int filter = 0; filter < 5; filter++) {
+      for (int shift = 0; shift <= ADPCM_MAX_SHIFT; shift++) {
+        // a nibble n decodes to (n << 12) >> shift == n * step
+        const s32 step = 1 << (ADPCM_MAX_SHIFT - shift);
+        s32 hist[2] = {prev[0], prev[1]};
+        s32 nibbles[ADPCM_SAMPLES_PER_BLOCK];
+        s64 error = 0;
+        for (int i = 0; i < ADPCM_SAMPLES_PER_BLOCK; i++) {
+          // same arithmetic (incl. rounding toward zero) as decode_adpcm
+          s32 predicted = (hist[0] * ADPCM_F1[filter] + hist[1] * ADPCM_F2[filter] + 32) / 64;
+          s32 target = input[i] - predicted;
+          s32 n = target >= 0 ? (target + step / 2) / step : -((-target + step / 2) / step);
+          n = std::clamp(n, -8, 7);
+          s32 recon = std::clamp(predicted + n * step, -0x8000, 0x7fff);
+          s64 diff = input[i] - recon;
+          error += diff * diff;
+          nibbles[i] = n;
+          hist[1] = hist[0];
+          hist[0] = recon;
+        }
+        if (error < best_error) {
+          best_error = error;
+          best_filter = filter;
+          best_shift = shift;
+          memcpy(best_nibbles, nibbles, sizeof(nibbles));
+          best_prev[0] = hist[0];
+          best_prev[1] = hist[1];
+        }
+      }
+    }
+
+    u8* block = out.data() + block_idx * 16;
+    block[0] = (best_filter << 4) | best_shift;
+    block[1] = 0;
+    for (int i = 0; i < ADPCM_SAMPLES_PER_BLOCK; i += 2) {
+      block[2 + i / 2] = (best_nibbles[i] & 0xf) | ((best_nibbles[i + 1] & 0xf) << 4);
+    }
+    prev[0] = best_prev[0];
+    prev[1] = best_prev[1];
+  }
+  return out;
+}
+
+bool read_wave_file(const fs::path& name, WaveData* out, std::string* error) {
+  auto fail = [&](const std::string& msg) {
+    if (error) {
+      *error = msg;
+    }
+    return false;
+  };
+
+  if (!fs::exists(name)) {
+    return fail("file does not exist");
+  }
+  auto data = file_util::read_binary_file(name);
+  auto u16_at = [&](size_t p) { return (u16)(data[p] | (data[p + 1] << 8)); };
+  auto u32_at = [&](size_t p) { return (u32)(u16_at(p) | ((u32)u16_at(p + 2) << 16)); };
+
+  if (data.size() < 12 || memcmp(data.data(), "RIFF", 4) != 0 ||
+      memcmp(data.data() + 8, "WAVE", 4) != 0) {
+    return fail("not a RIFF/WAVE file");
+  }
+
+  bool have_fmt = false;
+  u16 format = 0, channels = 0, bits = 0;
+  u32 rate = 0;
+  size_t data_start = 0, data_len = 0;
+  size_t pos = 12;
+  while (pos + 8 <= data.size()) {
+    u32 chunk_len = u32_at(pos + 4);
+    size_t body = pos + 8;
+    if (memcmp(data.data() + pos, "fmt ", 4) == 0 && body + 16 <= data.size()) {
+      have_fmt = true;
+      format = u16_at(body);
+      channels = u16_at(body + 2);
+      rate = u32_at(body + 4);
+      bits = u16_at(body + 14);
+      if (format == 0xFFFE && chunk_len >= 26 && body + 26 <= data.size()) {
+        format = u16_at(body + 24);  // WAVE_FORMAT_EXTENSIBLE: real format is the subformat
+      }
+    } else if (memcmp(data.data() + pos, "data", 4) == 0) {
+      data_start = body;
+      data_len = std::min<size_t>(chunk_len, data.size() - body);
+      break;
+    }
+    pos = body + chunk_len + (chunk_len & 1);
+  }
+
+  if (!have_fmt || !data_start) {
+    return fail("missing fmt or data chunk");
+  }
+  if (format != 1 || bits != 16) {
+    return fail(fmt::format(
+        "only 16-bit PCM wave files are supported (got format {} with {} bits per sample)", format,
+        bits));
+  }
+  if (channels != 1 && channels != 2) {
+    return fail(fmt::format("only mono or stereo is supported (got {} channels)", channels));
+  }
+
+  out->sample_rate = rate;
+  out->left_samples.clear();
+  out->right_samples.clear();
+  size_t frames = data_len / (2 * channels);
+  for (size_t i = 0; i < frames; i++) {
+    size_t p = data_start + i * 2 * channels;
+    out->left_samples.push_back((s16)u16_at(p));
+    if (channels == 2) {
+      out->right_samples.push_back((s16)u16_at(p + 2));
+    }
+  }
+  return true;
 }
 
 // I attempted to write an encoder below, which works, but has some limitations.

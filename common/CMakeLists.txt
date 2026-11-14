@@ -30,6 +30,7 @@ write_revision_h()
 
 add_library(common
         audio/audio_formats.cpp
+        audio/vag.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/XSocket.cpp
         cross_sockets/XSocketClient.cpp
