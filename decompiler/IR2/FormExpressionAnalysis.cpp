@@ -4734,6 +4734,28 @@ ConstantTokenElement* DerefElement::try_as_part_group_const(const Env& env, Form
   return nullptr;
 }
 
+ConstantTokenElement* DerefElement::try_as_sound_info_const(const Env& env, FormPool& pool) {
+  if (env.dts->sound_info_names.empty()) {
+    return nullptr;
+  }
+
+  auto mr = match(
+      Matcher::deref(Matcher::symbol("*sound-info*"), false, {DerefTokenMatcher::any_integer(0)}),
+      this);
+
+  if (mr.matched) {
+    auto sound_name = env.get_sound_info_name(mr.maps.ints.at(0));
+    if (sound_name) {
+      return pool.alloc_element<ConstantTokenElement>(*sound_name);
+    } else {
+      lg::error("function `{}`: did not find sound info name for index {}", env.func->name(),
+                mr.maps.ints.at(0));
+    }
+  }
+
+  return nullptr;
+}
+
 GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
   auto mr =
       match(Matcher::deref(Matcher::s6(), false,
@@ -4834,6 +4856,12 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_part_group = try_as_part_group_const(env, pool);
   if (as_part_group) {
     result->push_back(as_part_group);
+    return;
+  }
+
+  auto as_sound_info = try_as_sound_info_const(env, pool);
+  if (as_sound_info) {
+    result->push_back(as_sound_info);
     return;
   }
 

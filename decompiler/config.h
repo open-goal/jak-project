@@ -125,6 +125,7 @@ struct Config {
   bool dump_joint_geo_info = false;
   bool dump_tex_info = false;
   bool dump_part_group_table = false;
+  bool dump_sound_info = false;
   bool rip_levels = false;
   bool extract_collision = false;
   bool find_functions = false;
@@ -190,6 +191,7 @@ struct Config {
   std::unordered_map<std::string, std::string> joint_node_hacks;
   std::unordered_map<std::string, int> process_stack_size_overrides;
   std::unordered_map<u32, std::string> part_group_table;
+  std::vector<std::string> sound_info_names;
 
   std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 

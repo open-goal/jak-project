@@ -174,6 +174,10 @@ int run_decompilation_process(decompiler::Config config,
     db.dts.part_group_table = config.part_group_table;
   }
 
+  if (!config.sound_info_names.empty()) {
+    db.dts.sound_info_names = config.sound_info_names;
+  }
+
   if (config.process_tpages && !config.texture_info_dump.empty()) {
     db.dts.textures = config.texture_info_dump;
   }
@@ -207,6 +211,15 @@ int run_decompilation_process(decompiler::Config config,
     }
     lg::info("[DUMP] Dumping part group table");
     db.dump_part_group_table(out_folder, config.part_group_table);
+  }
+
+  if (config.dump_sound_info) {
+    if (config.sound_info_names.empty()) {
+      lg::error("[DUMP] 'dump_sound_info' set, but `*sound-info*` was not found");
+    } else {
+      lg::info("[DUMP] Dumping sound info");
+      db.dump_sound_info(out_folder, config.sound_info_names);
+    }
   }
 
   if (config.hexdump_code || config.hexdump_data) {

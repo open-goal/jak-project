@@ -1173,6 +1173,30 @@ void ObjectFileDB::dump_part_group_table(
   lg::info("Written part group table in {:.2f} ms", timer.getMs());
 }
 
+void ObjectFileDB::dump_sound_info(const fs::path& output_dir,
+                                   const std::vector<std::string>& sound_info_names) {
+  lg::info("Writing sound info...");
+  Timer timer;
+
+  auto import_fpath = output_dir / "import" / "sound-infos.gc";
+  std::string result;
+
+  for (size_t i = 0; i < sound_info_names.size(); i++) {
+    result += fmt::format("(defconstant {} (-> *sound-info* {}))", sound_info_names.at(i), i);
+    result += "\n";
+  }
+
+  file_util::create_dir_if_needed_for_file(import_fpath);
+  file_util::write_text_file(import_fpath, result);
+
+  auto dump_fpath = output_dir / "dump" / "sound-info.min.json";
+  nlohmann::json json = sound_info_names;
+  file_util::create_dir_if_needed_for_file(dump_fpath);
+  file_util::write_text_file(dump_fpath, json.dump(-1));
+
+  lg::info("Written sound info in {:.2f} ms", timer.getMs());
+}
+
 void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir / data.to_unique_name();
