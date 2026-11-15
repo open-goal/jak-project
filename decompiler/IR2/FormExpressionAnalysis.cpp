@@ -1171,6 +1171,11 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormStack& stack,
                                                       std::vector<FormElement*>* result,
                                                       bool allow_side_effects) {
+  if (!m_expr.get_arg(0).is_var()) {
+    // daddiu x, r0, <const>
+    throw std::runtime_error(fmt::format("Addition with a constant first argument in op {}: {}",
+                                         m_my_idx, m_expr.to_string(env)));
+  }
   auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
   auto arg0_i = is_int_type(arg0_type.typespec());
   auto arg0_u = is_uint_type(arg0_type.typespec());

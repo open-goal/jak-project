@@ -162,7 +162,7 @@ void clean_up_return(FormPool& pool, ReturnElement* ir) {
   }
 }
 
-void clean_up_return_final(const Function& f, ReturnElement* ir) {
+void clean_up_return_final(Function& f, ReturnElement* ir) {
   SetVarElement* dead = dynamic_cast<SetVarElement*>(ir->dead_code->try_as_single_element());
   if (!dead) {
     dead = dynamic_cast<SetVarElement*>(ir->dead_code->elts().front());
@@ -181,14 +181,19 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
   ASSERT(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
   ASSERT(src);
-  auto ok = src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
-            src->expr().get_arg(0).get_int() == 0;
-  if (!ok) {
+  const auto& expr = src->expr();
+  auto ok = expr.is_identity() && expr.get_arg(0).is_int(0);
+  // look for daddiu x, r0, <const>
+  auto const_add = expr.kind() == SimpleExpression::Kind::ADD && expr.get_arg(0).is_int(0) &&
+                   expr.get_arg(1).is_int();
+  if (!ok && !const_add) {
     throw std::runtime_error(
         fmt::format("secondary assertion hit in `clean_up_return_final` in function: {} ",
                     f.guessed_name.to_string()));
   }
-  ASSERT(ok);
+  if (const_add) {
+    f.warnings.warning("Removed dead code after return: {}", dead->to_string(f.ir2.env));
+  }
   ir->dead_code = nullptr;
 }
 
