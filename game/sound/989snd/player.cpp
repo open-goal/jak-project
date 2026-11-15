@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: ISC
 #include "player.h"
 
+#include <algorithm>
 #include <fstream>
 
 #include "sfxblock.h"
@@ -19,15 +20,15 @@ namespace snd {
 
 u8 g_global_excite = 0;
 
-Player::Player() : mVmanager(mSynth) {
-  InitCubeb();
+Player::Player(bool muted) : mVmanager(mSynth) {
+  InitCubeb(muted);
 }
 
 Player::~Player() {
   DestroyCubeb();
 }
 
-void Player::InitCubeb() {
+void Player::InitCubeb(bool muted) {
 #ifdef _WIN32
   HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   m_coinitialized = SUCCEEDED(hr);
@@ -56,7 +57,7 @@ void Player::InitCubeb() {
   }
 
   err = cubeb_stream_init(mCtx, &mStream, "OpenGOAL", nullptr, nullptr, nullptr, &outparam, latency,
-                          &sound_callback, &state_callback, this);
+                          muted ? &muted_sound_callback : &sound_callback, &state_callback, this);
   if (err != CUBEB_OK) {
     lg::error("Cubeb init failed");
     return;
@@ -88,6 +89,16 @@ long Player::sound_callback([[maybe_unused]] cubeb_stream* stream,
                             long nframes) {
   ((Player*)user)->Tick((s16Output*)output_buffer, nframes);
   return nframes;
+}
+
+long Player::muted_sound_callback(cubeb_stream* stream,
+                                  void* user,
+                                  const void* input,
+                                  void* output_buffer,
+                                  long nframes) {
+  const auto frames = sound_callback(stream, user, input, output_buffer, nframes);
+  std::fill_n(static_cast<s16Output*>(output_buffer), frames, s16Output{});
+  return frames;
 }
 
 void Player::state_callback([[maybe_unused]] cubeb_stream* stream,

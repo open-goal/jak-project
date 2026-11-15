@@ -8,11 +8,12 @@
 #include "common/util/FileUtil.h"
 
 #include "989snd/player.h"
+#include "game/kernel/common/kboot.h"
 
 std::unique_ptr<snd::Player> player;
 
 void snd_StartSoundSystem() {
-  player = std::make_unique<snd::Player>();
+  player = std::make_unique<snd::Player>(masterConfig.disable_sound);
 
   for (auto& voice : voices) {
     voice = std::make_shared<snd::Voice>(snd::Voice::AllocationType::Permanent);

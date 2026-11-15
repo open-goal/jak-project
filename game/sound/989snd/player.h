@@ -24,7 +24,7 @@ namespace snd {
 
 class Player {
  public:
-  Player();
+  explicit Player(bool muted = false);
   ~Player();
   Player(const Player&) = delete;
   Player operator=(const Player&) = delete;
@@ -60,7 +60,7 @@ class Player {
   void SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan);
   void SubmitVoice(std::shared_ptr<Voice>& voice) { mSynth.AddVoice(voice); };
   void SetSoundPmod(s32 sound_handle, s32 mod);
-  void InitCubeb();
+  void InitCubeb(bool muted);
   void DestroyCubeb();
   s32 GetTick() { return mTick; };
   void StopAllSounds();
@@ -94,6 +94,11 @@ class Player {
                              const void* input,
                              void* output_buffer,
                              long len);
+  static long muted_sound_callback(cubeb_stream* stream,
+                                   void* user,
+                                   const void* input,
+                                   void* output_buffer,
+                                   long len);
   static void state_callback(cubeb_stream* stream, void* user, cubeb_state state);
 };
 }  // namespace snd
