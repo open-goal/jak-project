@@ -296,6 +296,7 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size);
 }
 
 uint32_t link_control::jakx_work_v5() {
+  // startTime = kernel.read_clock_G();
   if (m_state == 0) {
     // here, we change length_to_get_to_link to an actual pointer to the link table.
     // since we need 32-bits, we'll store offset from g_ee_mem.
@@ -364,116 +365,132 @@ uint32_t link_control::jakx_work_v5() {
         }
       }
     }
-
+    // if(auto curTime = kernel.read_clock_G(); curTime - startTime >= 200000)
+    //   return 0;
     m_segment_process = 0;
     m_state = 1;
     m_object_data.offset = m_link_segments_table[0].data;
 
-    Ptr<u8> base_ptr(m_link_segments_table[0].data);
-    Ptr<u8> data_ptr = base_ptr - 4;
-    Ptr<u8> link_ptr(m_link_segments_table[0].relocs);
+    while ((int)m_state < m_n_segments + 1 && m_segment_process == 0) {
+      if (m_link_segments_table[m_state - 1].data != 0 &&
+          m_link_segments_table[m_state - 1].size != 0) {
+        m_segment_process = 1;  // Effectively breaks the loop.
+        m_reloc_ptr = Ptr<u8>(m_link_segments_table[m_state - 1].relocs);
+        m_table_toggle = 0;
+        Ptr<u8> base_ptr(m_link_segments_table[m_state - 1].data);
+        Ptr<u8> data_ptr = base_ptr - 4;
+        m_object_data = base_ptr;
+        m_loc_ptr = data_ptr;
+        m_base_ptr = base_ptr;
+      } else {
+        m_state += 1;  // m_segment_process = 0;
+      }
+    }
 
-    bool fixing = false;
-    if (*link_ptr) {
-      // we have pointers
-      while (true) {
-        while (true) {
-          if (!fixing) {
-            // seeking
-            data_ptr.offset += 4 * (*link_ptr);
-          } else {
-            // fixing.
-            for (uint32_t i = 0; i < *link_ptr; i++) {
-              // uint32_t old_code = *(const uint32_t*)(&data.at(data_ptr));
-              u32 old_code = *data_ptr.cast<u32>();
-              if ((old_code >> 24) == 0) {
-                // printf("modifying pointer at 0x%x (old 0x%x) : now ", data_ptr.offset,
-                //      *data_ptr.cast<u32>());
-                *data_ptr.cast<u32>() += base_ptr.offset;
-                // printf("0x%x\n", *data_ptr.cast<u32>());
+    if ((int)m_state < m_n_segments + 1) {
+      if (m_segment_process == 1) {
+        auto counter = 0x400;
+        if (*m_reloc_ptr != 0) {
+          while (true) {
+            u8 m_reloc;
+            while (true) {
+              u32 curTime = 0;
+              if (m_table_toggle == 0) {
+                m_loc_ptr = m_loc_ptr + (uint)*m_reloc_ptr * 4;
               } else {
-                ASSERT_NOT_REACHED();
-                /*
-                f.stats.v3_split_pointers++;
-                auto dest_seg = (old_code >> 8) & 0xf;
-                auto lo_hi_offset = (old_code >> 12) & 0xf;
-                ASSERT(lo_hi_offset);
-                ASSERT(dest_seg < 3);
-                auto offset_upper = old_code & 0xff;
-                uint32_t low_code = *(const uint32_t*)(&data.at(data_ptr + 4 * lo_hi_offset));
-                uint32_t offset = low_code & 0xffff;
-                if (offset_upper) {
-                  offset += (offset_upper << 16);
+                while (curTime < *m_reloc_ptr) {
+                  u32 loc = *(m_loc_ptr.cast<u32>());
+                  u32 destSeg = (loc >> 8) & 0xF;
+                  Ptr<u32> middleNibble = (m_loc_ptr + ((loc >> 10) & 0x3C)).cast<u32>();
+                  if (loc >> 24 == 0) {
+                    *m_loc_ptr = m_base_ptr.offset + loc;
+                  } else {
+                    u32 dataPtrPlusWeirdness;
+                    if ((DebugSegment == 0) && destSeg == 1) {
+                      dataPtrPlusWeirdness = 0;
+                    } else {
+                      dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
+                                             ((loc & 0xff) << 16 | *middleNibble);
+                    }
+                    *m_loc_ptr = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
+                    *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
+                  }
+                  curTime += 1;
+                  m_loc_ptr += 4;
                 }
-                f.pointer_link_split_word(seg_id, data_ptr - base_ptr,
-                                          data_ptr + 4 * lo_hi_offset - base_ptr, dest_seg, offset);
-                */
               }
-              data_ptr.offset += 4;
+              m_reloc = *m_reloc_ptr;
+              m_reloc_ptr += 1;
+
+              if (m_reloc == 0xff)
+                continue;
+
+              m_table_toggle = !m_table_toggle;
+              counter -= 1;
+              if (*m_reloc_ptr == 0 || counter == 0)
+                break;
             }
-          }
-
-          if (*link_ptr != 0xff)
-            break;
-          link_ptr.offset++;
-          if (*link_ptr == 0) {
-            link_ptr.offset++;
-            fixing = !fixing;
+            if (*m_reloc_ptr == 0) {
+              break;
+            }
+            counter = 0x400;
+            // if(auto curTime = (*kernel.read_clock_G()); curTime - startTime >= 200000)
+            //   return 0;
           }
         }
 
-        link_ptr.offset++;
-        fixing = !fixing;
-        if (*link_ptr == 0)
-          break;
+        m_reloc_ptr += 1;
+        m_segment_process += 1;
       }
-    }
-    link_ptr.offset++;
-
-    // symbol linking.
-    if (*link_ptr) {
-      auto sub_link_ptr = link_ptr;
-
-      while (true) {
-        auto reloc = *sub_link_ptr;
-        auto next_link_ptr = sub_link_ptr + 1;
-        link_ptr = next_link_ptr;
-
+      if (m_segment_process != 2) {
+        // update_goal_fns();
+        return 1;
+      }
+      // u32 magic = m_link_segments_table[m_state -1].magic;
+      u8 reloc;
+      while ((reloc = *m_reloc_ptr) != 0) {
+        m_reloc_ptr += 1;
+        u16 sym_id;
+        char* name;
+        Ptr<u8> goalObj;
         if ((reloc & 0x80) == 0) {
-          link_ptr = sub_link_ptr + 3;  //
-          const char* sname = link_ptr.cast<char>().c();
-          link_ptr.offset += strlen(sname) + 1;
-          // printf("linking symbol %s\n", sname);
-          auto goalObj = jakx::intern_from_c(-1, 0, sname);
-          link_ptr = c_symlink2(m_object_data, goalObj.cast<u8>(), link_ptr);
-
-        } else if ((reloc & 0x3f) == 0x3f) {
-          ASSERT(false);  // todo, does this ever get hit?
+          sym_id = *(m_reloc_ptr.cast<u16>());
+          m_reloc_ptr += 2;
+          name = m_reloc_ptr.cast<char>().c();
+          goalObj = jakx::intern_from_c(sym_id, reloc, name).cast<u8>();
         } else {
-          int n_methods_base = reloc & 0x3f;
-          int n_methods = n_methods_base * 4;
-          if (n_methods_base) {
-            n_methods += 3;
+          u32 methods;
+          if ((reloc & 0x3F) == 0x3F) {
+            u8 nextReloc = *m_reloc_ptr;
+            m_reloc_ptr += 1;
+            methods = nextReloc * 4 + 3;
+          } else {
+            if ((reloc & 0x3F) != 0) {
+              methods = (reloc & 0x3F) * 4 + 3;
+            } else
+              methods = 0;
           }
-          link_ptr.offset +=
-              2;  // ghidra misses some aliasing here and would have you think this is +1!
-          const char* sname = link_ptr.cast<char>().c();
-          // printf("linking type %s\n", sname);
-          link_ptr.offset += strlen(sname) + 1;
-          auto goalObj = jakx::intern_type_from_c(-1, 0, sname, n_methods);
-          link_ptr = c_symlink2(m_object_data, goalObj.cast<u8>(), link_ptr);
+          sym_id = *(m_reloc_ptr.cast<u16>());
+          name = (m_reloc_ptr + 2).cast<char>().c();
+          m_reloc_ptr += 2;
+          goalObj = jakx::intern_type_from_c(sym_id, reloc, name, methods).cast<u8>();
         }
+        m_reloc_ptr += strlen(name) + 1;
 
-        sub_link_ptr = link_ptr;
-        if (!*sub_link_ptr)
-          break;
+        // TODO: if magic & 1 == 0, use c_symlink3 instead of c_symlink2.
+        //  if((magic & 1) == 0)
+        //    m_reloc_ptr = c_symlink3(m_object_data, goalObj, m_reloc_ptr);
+        //  else
+        m_reloc_ptr = c_symlink2(m_object_data, goalObj, m_reloc_ptr);
+        // if(auto curTime = kernel.read_clock_G(); curTime - startTime >= 200000)
+        //   return 0;
       }
+      m_segment_process = 0;
+      m_state += 1;
+      m_entry = m_object_data + 4;
     }
-    m_entry = m_object_data + 4;
-    return 1;
-  } else {
-    ASSERT_NOT_REACHED();
   }
+  return 1;
 }
 
 namespace {
@@ -818,12 +835,14 @@ void link_control::jakx_finish(bool jump_from_c_to_goal) {
             call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
           }
           // Call nothing function? Might wanna omit this.
-          auto otherFunction = *Ptr<Ptr<Function>>(s7.offset + jakx_symbols::FIX_SYM_NOTHING_FUNC - 1);
+          auto otherFunction =
+              *Ptr<Ptr<Function>>(s7.offset + jakx_symbols::FIX_SYM_NOTHING_FUNC - 1);
           call_goal(otherFunction, 0, 0, 0, s7.offset, g_ee_main_mem);
 
           // inform compiler that we loaded.
           if (m_flags & LINK_FLAG_OUTPUT_LOAD) {
-            output_segment_load(m_object_name, m_link_block_ptr, m_flags);
+            output_segment_load(m_link_hdr->name, Ptr<u8>(m_link_hdr->length_to_get_to_link),
+                                m_flags);
           }
         } else if (m_flags & LINK_FLAG_EXECUTE) {
           auto name = basename_goal(m_object_name);

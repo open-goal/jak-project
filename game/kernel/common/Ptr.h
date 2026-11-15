@@ -31,12 +31,12 @@ struct Ptr {
   /*!
    * Pointer from manual offset.
    */
-  explicit Ptr(u32 v) { offset = v; }
+  explicit Ptr(const u32 v) { offset = v; }
 
   /*!
    * Dereference a pointer. Will error if you do this on a null pointer.
    */
-  T* operator->() {
+  T* operator->() const {
     ASSERT(offset);
     return (T*)(g_ee_main_mem + offset);
   }
@@ -44,15 +44,17 @@ struct Ptr {
   /*!
    * Dereference a pointer. Will error if you do this on a null pointer.
    */
-  T& operator*() {
+  T& operator*() const {
     ASSERT(offset);
     return *(T*)(g_ee_main_mem + offset);
   }
 
   // pointer math
-  Ptr operator+(s32 diff) { return Ptr(offset + diff); }
-  s32 operator-(Ptr<T> x) { return offset - x.offset; }
-  Ptr operator-(s32 diff) { return Ptr(offset - diff); }
+  Ptr& operator+= (const s32 diff) { offset += diff; }
+  Ptr& operator-= (const s32 diff) { offset -= diff; }
+  Ptr operator+(const s32 diff) const { return Ptr(offset + diff); }
+  s32 operator-(const Ptr<T> x) const { return offset - x.offset; }
+  Ptr operator-(const s32 diff) const { return Ptr(offset - diff); }
   bool operator==(const Ptr<T>& x) const { return offset == x.offset; }
   bool operator!=(const Ptr<T>& x) const { return offset != x.offset; }
 
@@ -67,7 +69,7 @@ struct Ptr {
   }
 
   template <typename T2>
-  Ptr<T2> cast() {
+  Ptr<T2> cast() const{
     return Ptr<T2>(offset);
   }
 };
