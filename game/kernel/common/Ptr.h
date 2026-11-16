@@ -50,8 +50,8 @@ struct Ptr {
   }
 
   // pointer math
-  Ptr& operator+=(const s32 diff) { offset += diff; }
-  Ptr& operator-=(const s32 diff) { offset -= diff; }
+  Ptr& operator+=(const s32 diff) { offset += diff; return *this; }
+  Ptr& operator-=(const s32 diff) { offset -= diff; return *this; }
   Ptr operator+(const s32 diff) const { return Ptr(offset + diff); }
   s32 operator-(const Ptr<T> x) const { return offset - x.offset; }
   Ptr operator-(const s32 diff) const { return Ptr(offset - diff); }
