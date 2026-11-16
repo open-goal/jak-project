@@ -400,7 +400,7 @@ uint32_t link_control::jakx_work_v5() {
             while (true) {
               u32 curTime = 0;
               if (m_table_toggle == 0) {
-                m_loc_ptr = m_loc_ptr + (uint)*m_reloc_ptr * 4;
+                m_loc_ptr = m_loc_ptr + (u32)*m_reloc_ptr * 4;
               } else {
                 while (curTime < *m_reloc_ptr) {
                   u32 loc = *(m_loc_ptr.cast<u32>());
