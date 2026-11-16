@@ -371,7 +371,7 @@ uint32_t link_control::jakx_work_v5() {
     m_state = 1;
     m_object_data.offset = m_link_segments_table[0].data;
   }
-  while(true){
+  while (true) {
     while ((int)m_state < m_n_segments + 1 && m_segment_process == 0) {
       if (m_link_segments_table[m_state - 1].data != 0 &&
           m_link_segments_table[m_state - 1].size != 0) {
@@ -388,11 +388,10 @@ uint32_t link_control::jakx_work_v5() {
       }
     }
 
-    if((int)m_state >= m_n_segments + 1){
-      //update_goal_fns();
+    if ((int)m_state >= m_n_segments + 1) {
+      // update_goal_fns();
       return 1;
-    }
-    else {
+    } else {
       if (m_segment_process == 1) {
         auto counter = 0x400;
         if (*m_reloc_ptr != 0) {
@@ -415,7 +414,7 @@ uint32_t link_control::jakx_work_v5() {
                       dataPtrPlusWeirdness = 0;
                     } else {
                       dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
-                                              ((loc & 0xff) << 16 | *middleNibble);
+                                             ((loc & 0xff) << 16 | *middleNibble);
                     }
                     *m_loc_ptr = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
                     *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
@@ -495,7 +494,7 @@ uint32_t link_control::jakx_work_v5() {
       m_entry = m_object_data + 4;
     }
   }
-  //return 1; // Pretty sure this is unreachable.
+  // return 1; // Pretty sure this is unreachable.
 }
 
 namespace {
