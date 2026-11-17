@@ -267,9 +267,13 @@ bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
   }
 
   if (branch->op()->condition().kind() == IR2_Condition::Kind::FALSE) {
+    auto& cond = branch->op()->condition();
+    if (delay.src().is_identity() && !cond.src(0).is_var()) {
+      // constant condition, like (and 0 ...)
+      return delay.src().get_arg(0) == cond.src(0);
+    }
     if (delay.src().is_identity() && delay.src().get_arg(0).is_var()) {
       auto src_var = delay.src().get_arg(0).var();
-      auto& cond = branch->op()->condition();
       auto cond_reg = cond.src(0).var().reg();
       return cond_reg == src_var.reg();
     }
