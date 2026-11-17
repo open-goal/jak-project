@@ -7,6 +7,17 @@
 
 ;; DECOMP BEGINS
 
+;; og:preserve-this added for high fps
+(defun per-60hz-step-fraction ((frac float) (dt float))
+  "Scale a per-step fraction tuned for 60fps to a step of `dt` seconds."
+  (let ((step-ratio (* 60.0 dt)))
+    (if (or (>= step-ratio 0.999) (<= frac 0.0) (>= frac 1.0))
+        frac
+        (- 1.0 (pow (- 1.0 frac) step-ratio))
+        )
+    )
+  )
+
 (define *wvehicle-surfaces* (new 'static 'inline-array vehicle-wheel-surface 7
                               (new 'static 'vehicle-wheel-surface
                                 :friction 1.0
@@ -302,8 +313,9 @@
                      (-> arg1 probe-work-array 0 world-normal y)
                      )
                   )
+                ;; og:preserve-this changed for high fps
                 (f1-29
-                  (/ (* (/ (-> s2-1 inertia) 2) (-> s2-1 forward-slip-vel))
+                  (/ (* (-> s2-1 inertia) (per-60hz-step-fraction 0.5 arg0) (-> s2-1 forward-slip-vel))
                      (* arg0 (-> arg1 probe-work-array 0 world-normal y))
                      )
                   )
@@ -382,15 +394,25 @@
             (+ f0-71 (* f1-59 (+ f2-29 (* f3-16 (+ f4-5 (* (square (/ 1.0 f5-0)) (-> this drive-wheel-inertia)))))))
             )
       )
-    (let* ((f3-18 (- (* (- (fmax 0.0 (* (-> this total-gear-ratio) (-> this wheel-rev))) (-> this engine-rev))
+    ;; og:preserve-this changed for high fps
+    (let* ((step-ratio (* 60.0 arg0))
+           (c (-> this clutch-grab))
+           (fix? (and (< step-ratio 0.999) (< 0.0 c) (< c 1.0)))
+           (clutch-step (per-60hz-step-fraction c arg0))
+           (engine-torque (if fix?
+                              (* (-> this engine-torque) (/ (* (- 1.0 c) clutch-step) (* step-ratio (- 1.0 clutch-step) c)))
+                              (-> this engine-torque)
+                              )
+                          )
+           (f3-18 (- (* (- (fmax 0.0 (* (-> this total-gear-ratio) (-> this wheel-rev))) (-> this engine-rev))
                         (-> arg1 probe-work-array 0 probe-pos z)
                         (/ 1.0 arg0)
                         )
-                     (-> this engine-torque)
+                     engine-torque
                      )
                   )
            (f0-78 (-> this engine-rev))
-           (f1-69 (* arg0 (+ (-> this engine-torque) (* f3-18 (-> this clutch-grab)))))
+           (f1-69 (* arg0 (+ engine-torque (* f3-18 clutch-step))))
            (f2-35 (-> arg1 probe-work-array 0 probe-pos z))
            )
       (set! (-> this engine-rev) (+ f0-78 (* f1-69 (/ 1.0 f2-35))))
@@ -434,8 +456,9 @@
           (vector-cross! (-> arg1 normal) (-> arg1 tmp) (the-as vector (&-> arg1 impulse)))
           (vector-rotate*! (-> arg1 normal) (-> arg1 normal) (-> sv-16 inv-i-world))
           (vector-cross! (-> arg1 normal) (-> arg1 normal) (-> arg1 tmp))
+          ;; og:preserve-this changed for high fps
           (let ((f0-94
-                  (/ (/ (-> s1-2 forward-slip-vel) -4)
+                  (/ (* (-> s1-2 forward-slip-vel) -1.0 (per-60hz-step-fraction 0.25 arg0))
                      (* arg0 (+ (-> sv-16 info inv-mass) (vector-dot (the-as vector (&-> arg1 impulse)) (-> arg1 normal))))
                      )
                   )
