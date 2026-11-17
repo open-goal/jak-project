@@ -66,7 +66,6 @@ std::string game_arg_documentation() {
   output += "  -debug         Used to set GOAL up for debugging/development\n";
   output += "  -debug-mem     Used to set up GOAL in debug mode, but not to load debug-segments\n";
   output += "  -nokernel      An added mode to allow booting without a KERNEL.CGO for testing\n";
-  output += "  -nosound       An added mode to allow booting without sound for testing\n";
   output += "  -level [name]  Used to inform the game to boot a specific level the default level is `#f`\n";
   // Jak 1 Related
   output += fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::orange), "Jak 1:\n");
