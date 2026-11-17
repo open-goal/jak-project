@@ -1128,6 +1128,41 @@ const std::unordered_map<
                                                       "entries-count")}}},
          }}};
 
+namespace {
+/*!
+ * in jak x, some static boxed base-menu-info arrays actually contain child types,
+ * this looks up the real type based on the type of the menu-type's info-ptr.
+ * e.g.: if menu-type == 'string-menu -> look up the type of string-menu's "info-ptr" and
+ * set the type to that (string-menu-info)
+ */
+std::optional<TypeSpec> get_menu_info_type(const TypeSpec& type,
+                                           const DecompilerLabel& label,
+                                           const std::vector<std::vector<LinkedWord>>& words,
+                                           const TypeSystem& ts) {
+  const TypeSpec base_type("base-menu-info");
+  if (!ts.fully_defined_type_exists(base_type) || !ts.tc(base_type, type)) {
+    return {};
+  }
+
+  const auto& menu_type_word = words.at(label.target_segment).at(label.offset / 4);
+  if (menu_type_word.kind() != LinkedWord::SYM_PTR ||
+      !ts.fully_defined_type_exists(menu_type_word.symbol_name())) {
+    return {};
+  }
+
+  auto menu_type = dynamic_cast<StructureType*>(ts.lookup_type(menu_type_word.symbol_name()));
+  Field info_field;
+  if (!menu_type || !menu_type->lookup_field("info-ptr", &info_field)) {
+    return {};
+  }
+
+  if (info_field.type() == type || !ts.tc(type, info_field.type())) {
+    return {};
+  }
+  return info_field.type();
+}
+}  // namespace
+
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
@@ -1141,6 +1176,14 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (use_fancy_macros && file) {
     if (type == TypeSpec("sound-spec")) {
       return decompile_sound_spec(type, label, labels, words, ts, file, version);
+    }
+  }
+
+  if (version == GameVersion::JakX) {
+    auto menu_info_type = get_menu_info_type(type, label, words, ts);
+    if (menu_info_type) {
+      return decompile_structure(*menu_info_type, label, labels, words, ts, file, use_fancy_macros,
+                                 version);
     }
   }
 
