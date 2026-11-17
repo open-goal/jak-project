@@ -58,15 +58,19 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  const auto iso_folder = file_util::get_iso_dir_for_game(game_version);
+  const auto decomp_folder =
+      file_util::get_jak_project_dir() / "decompiler_out" / version_to_game_name(game_version);
+
   switch (game_version) {
     case GameVersion::Jak1:
-      jak1::run_build_level(input_json, output_file, "jak1/", gen_fr3);
+      jak1::run_build_level(input_json, output_file, "jak1/", gen_fr3, iso_folder, decomp_folder);
       break;
     case GameVersion::Jak2:
-      jak2::run_build_level(input_json, output_file, "jak2/", gen_fr3);
+      jak2::run_build_level(input_json, output_file, "jak2/", gen_fr3, iso_folder, decomp_folder);
       break;
     case GameVersion::Jak3:
-      jak3::run_build_level(input_json, output_file, "jak3/", gen_fr3);
+      jak3::run_build_level(input_json, output_file, "jak3/", gen_fr3, iso_folder, decomp_folder);
       break;
     default:
       ASSERT_NOT_REACHED_MSG("unsupported game version");

@@ -247,6 +247,36 @@ bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
   return true;
 }
 
+namespace {
+/*!
+ * Get the folder a path variable like $ISO or $DECOMP was mapped to by the project file (game.gp),
+ * so we use the same folders as the rest of the build (e.g. from gameVersionFolder or the
+ * extractor). Relative paths are relative to the project directory.
+ */
+fs::path get_mapped_folder(const PathMap& path_map,
+                           const std::string& var,
+                           const fs::path& default_folder) {
+  if (path_map.path_remap.find(var) == path_map.path_remap.end()) {
+    return default_folder;
+  }
+  fs::path folder = path_map.apply_remaps(var);
+  if (folder.is_relative()) {
+    folder = file_util::get_jak_project_dir() / folder;
+  }
+  return folder;
+}
+
+fs::path get_iso_folder(const PathMap& path_map, GameVersion version) {
+  return get_mapped_folder(path_map, "$ISO", file_util::get_iso_dir_for_game(version));
+}
+
+fs::path get_decomp_folder(const PathMap& path_map, GameVersion version) {
+  return get_mapped_folder(
+      path_map, "$DECOMP",
+      file_util::get_jak_project_dir() / "decompiler_out" / version_to_game_name(version));
+}
+}  // namespace
+
 BuildLevelTool::BuildLevelTool() : Tool("build-level") {}
 
 bool BuildLevelTool::needs_run(const ToolInput& task, const PathMap& path_map) {
@@ -264,8 +294,9 @@ bool BuildLevelTool::run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto gen_fr3 = task.input.at(2) == "#t";
-  return jak1::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix,
-                               gen_fr3);
+  return jak1::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix, gen_fr3,
+                               get_iso_folder(path_map, GameVersion::Jak1),
+                               get_decomp_folder(path_map, GameVersion::Jak1));
 }
 
 BuildLevel2Tool::BuildLevel2Tool() : Tool("build-level2") {}
@@ -285,8 +316,9 @@ bool BuildLevel2Tool::run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto gen_fr3 = task.input.at(2) == "#t";
-  return jak2::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix,
-                               gen_fr3);
+  return jak2::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix, gen_fr3,
+                               get_iso_folder(path_map, GameVersion::Jak2),
+                               get_decomp_folder(path_map, GameVersion::Jak2));
 }
 
 BuildLevel3Tool::BuildLevel3Tool() : Tool("build-level3") {}
@@ -306,8 +338,9 @@ bool BuildLevel3Tool::run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto gen_fr3 = task.input.at(2) == "#t";
-  return jak3::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix,
-                               gen_fr3);
+  return jak3::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix, gen_fr3,
+                               get_iso_folder(path_map, GameVersion::Jak3),
+                               get_decomp_folder(path_map, GameVersion::Jak3));
 }
 
 BuildActorTool::BuildActorTool() : Tool("build-actor") {}
