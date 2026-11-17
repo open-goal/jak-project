@@ -400,23 +400,23 @@ uint32_t link_control::jakx_work_v5() {
             while (true) {
               u32 curTime = 0;
               if (m_table_toggle == 0) {
-                m_loc_ptr = m_loc_ptr + (u32)*m_reloc_ptr * 4;
+                m_loc_ptr = m_loc_ptr + *(m_reloc_ptr.cast<u32>()) * 4;
               } else {
                 while (curTime < *m_reloc_ptr) {
                   u32 loc = *(m_loc_ptr.cast<u32>());
                   u32 destSeg = (loc >> 8) & 0xF;
                   Ptr<u32> middleNibble = (m_loc_ptr + ((loc >> 10) & 0x3C)).cast<u32>();
                   if (loc >> 24 == 0) {
-                    *m_loc_ptr = m_base_ptr.offset + loc;
+                    *(m_loc_ptr.cast<u32>()) += m_base_ptr.offset;
                   } else {
                     u32 dataPtrPlusWeirdness;
                     if ((DebugSegment == 0) && destSeg == 1) {
                       dataPtrPlusWeirdness = 0;
                     } else {
                       dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
-                                             ((loc & 0xff) << 16 | *middleNibble);
+                                             ((loc & 0xff) << 16 | *(middleNibble.cast<u16>()));
                     }
-                    *m_loc_ptr = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
+                    *(m_loc_ptr.cast<u32>()) = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
                     *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
                   }
                   curTime += 1;
@@ -434,9 +434,8 @@ uint32_t link_control::jakx_work_v5() {
               if (*m_reloc_ptr == 0 || counter == 0)
                 break;
             }
-            if (*m_reloc_ptr == 0) {
+            if (*m_reloc_ptr == 0)
               break;
-            }
             counter = 0x400;
             // if(auto curTime = (*kernel.read_clock_G()); curTime - startTime >= 200000)
             //   return 0;
