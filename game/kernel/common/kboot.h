@@ -62,8 +62,6 @@ struct MasterConfig {
   u16 timeout;           // todo           8
   u16 jak2_only_unused;  // seems unused   12
   u16 volume;            // todo           14 in jak 2, 12 in jak 1
-
-  u16 disable_sound = 0;  // added. disables all sound code.
 };
 
 extern MasterConfig masterConfig;

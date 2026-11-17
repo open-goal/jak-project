@@ -4984,10 +4984,11 @@
 
 (deftype dma-packet (structure)
   "The header for a DMA transfer, containing an DMA tag, and VIF tags."
-  ((dma  dma-tag   :offset-assert 0)
+  ((dma  dma-tag  :offset-assert 0)
    (vif0 vif-tag  :offset-assert 8) ;; guessed by decompiler
    (vif1 vif-tag  :offset-assert 12) ;; guessed by decompiler
    (quad uint128  :offset-assert 0 :overlay-at dma)
+   (vifs uint64   :offset-assert 8 :overlay-at vif0)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -15867,7 +15868,7 @@
 
 (deftype game-task-node-info (basic)
   ((level                              symbol                             :offset-assert 4) ;; guessed by decompiler
-   (task uint8)
+   (task                               game-task                          :offset-assert 8)
    (net-play-mode                      net-play-mode                      :offset-assert 9)
    (name                               string                             :offset-assert 12) ;; guessed by decompiler
    (max-humans                         int8                               :offset-assert 16)
@@ -21193,7 +21194,7 @@
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (prim-client-method-9 (_type_) none) ;; 9
+    (build-prim-strip! (_type_) none) ;; 9
     )
   )
 
@@ -36601,12 +36602,12 @@
   )
 
 (deftype m2v-info (structure)
-  ((name                basic   :offset-assert 0)
-   (sound               basic   :offset-assert 4)
-   (commentary-sound    basic   :offset-assert 8)
-   (captions            basic   :offset-assert 12)
+  ((name                string  :offset-assert 0)
+   (sound               string  :offset-assert 4)
+   (commentary-sound    string  :offset-assert 8)
+   (captions            (array m2v-caption)   :offset-assert 12)
    (commentary-captions (array m2v-caption)   :offset-assert 16)
-   (id                  uint32  :offset-assert 20)
+   (id                  text-id :offset-assert 20)
    (idx                 int8    :offset-assert 24)
    (driver              uint8   :offset-assert 25)
    (driver2             uint8   :offset-assert 26)
@@ -36628,12 +36629,14 @@
   :method-count-assert 20
   :size-assert         #xb1
   :flag-assert         #x14003000b1
+  (:state-methods
+    idle ;; 15
+    idle-texture ;; 16
+    idle-texture-fma ;; 17
+    )
   (:methods
-    (fmv-player-method-15 () none) ;; 15
-    (fmv-player-method-16 () none) ;; 16
-    (fmv-player-method-17 () none) ;; 17
-    (fmv-player-method-18 () none) ;; 18
-    (fmv-player-method-19 () none) ;; 19
+    (fmv-player-method-18 (_type_ dma-buffer text-id m2v-info) none) ;; 18
+    (fmv-player-method-19 (_type_ dma-buffer m2v-info) none) ;; 19
     )
   )
 
@@ -36672,7 +36675,7 @@
   :size-assert         #x54
   :flag-assert         #xa00000054
   (:methods
-    (fmv-player-params-method-9 () none) ;; 9
+    (init! (_type_ m2v-info) none) ;; 9
     )
   )
 
@@ -37180,7 +37183,7 @@
                "Reset all pending sprites in the aux-list."
                (function none))
 (define-extern add-to-sprite-aux-list (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none))
-(define-extern sprite-setup-frame-data (function sprite-frame-data uint none))
+(define-extern sprite-setup-frame-data (function sprite-frame-data viewport none))
 (define-extern sprite-vu1-block vu-function)
 (define-extern sprite-set-3d-quaternion!
                "Set the quaternion of the vec-data."
@@ -37191,10 +37194,10 @@
 (define-extern sprite-add-matrix-data
                "Set up matrix data DMA to VU1.
                 This changes per sprite mode, but remains constant for all sprites in that mode."
-               (function dma-buffer uint none))
+               (function dma-buffer uint viewport none))
 (define-extern sprite-add-frame-data
                "Set up frame data DMA to VU1."
-               (function dma-buffer uint none))
+               (function dma-buffer viewport none))
 (define-extern sprite-add-2d-chunk
                "Set up DMA for a single chunk of 2D sprites."
                (function sprite-array-2d int int dma-buffer int none))
@@ -37298,25 +37301,25 @@
   )
 
 (deftype sprite-glow-consts (structure)
-  ((camera      matrix :inline :offset-assert 0)
-   (perspective matrix :inline :offset-assert 64)
-   (hvdf-offset vector :inline :offset-assert 128)
-   (hmge-scale  vector :inline :offset-assert 144)
-   (consts      vector :inline :offset-assert 160)
-   (pfog0       float          :offset 160)
-   (deg-to-rad  float          :offset 164)
-   (min-scale   float          :offset 168)
-   (inv-area    float          :offset 172)
-   (sincos-01   vector :inline :offset-assert 176)
-   (sincos-23   vector :inline :offset-assert 192)
-   (sincos-45   vector :inline :offset-assert 208)
-   (sincos-67   vector :inline :offset-assert 224)
-   (sincos-89   vector :inline :offset-assert 240)
-   (basis-x     vector :inline :offset-assert 256)
-   (basis-y     vector :inline :offset-assert 272)
-   (xy-array    vector 4       :offset-assert 288) ;; guessed by decompiler
-   (clamp-min   vector :inline :offset 352)
-   (clamp-max   vector :inline :offset 368)
+  ((camera      matrix :inline      :offset-assert 0)
+   (perspective matrix :inline      :offset-assert 64)
+   (hvdf-offset vector :inline      :offset-assert 128)
+   (hmge-scale  vector :inline      :offset-assert 144)
+   (consts      vector :inline      :offset-assert 160)
+   (pfog0       float               :offset 160)
+   (deg-to-rad  float               :offset 164)
+   (min-scale   float               :offset 168)
+   (inv-area    float               :offset 172)
+   (sincos-01   vector :inline      :offset-assert 176)
+   (sincos-23   vector :inline      :offset-assert 192)
+   (sincos-45   vector :inline      :offset-assert 208)
+   (sincos-67   vector :inline      :offset-assert 224)
+   (sincos-89   vector :inline      :offset-assert 240)
+   (basis-x     vector :inline      :offset-assert 256)
+   (basis-y     vector :inline      :offset-assert 272)
+   (xy-array    vector 4 :inline    :offset-assert 288) ;; guessed by decompiler
+   (clamp-min   vector :inline      :offset 352)
+   (clamp-max   vector :inline      :offset 368)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -37339,6 +37342,7 @@
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
+   (num-sprites-quad   uint128              :overlay-at num-sprites)
    (vecdata-packet dma-packet       :inline :offset-assert 32)
    (vecdata        sprite-glow-data :inline :offset-assert 48)
    (shader-packet  dma-packet       :inline :offset-assert 112)
@@ -37351,13 +37355,15 @@
   )
 
 (deftype sprite-glow-ref-template (structure)
-  ((control-packet dma-packet       :inline :offset-assert 0)
-   (num-sprites    uint32                   :offset-assert 16)
-   (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
-   (vecdata-packet dma-packet       :inline :offset-assert 32)
-   (vecdata        sprite-glow-data :inline :offset-assert 48)
-   (shader-packet  dma-packet       :inline :offset-assert 112)
-   (mscal-packet   dma-packet       :inline :offset-assert 128)
+  ((control-packet      dma-packet       :inline :offset-assert 0)
+   (num-sprites         uint32                   :offset-assert 16)
+   (dummys              uint32           3       :offset-assert 20) ;; guessed by decompiler
+   (num-sprites-quad    uint128                  :overlay-at num-sprites)
+   (vecdata-packet      dma-packet       :inline :offset-assert 32)
+   (vecdata             sprite-glow-data :inline :offset-assert 48)
+   (shader-packet       dma-packet       :inline :offset-assert 112)
+   (shader-packet-ptr   pointer                  :offset 116)
+   (mscal-packet        dma-packet       :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
@@ -37365,15 +37371,15 @@
   )
 
 (define-extern *sprite-glow-templates* (array sprite-glow-template))
-(define-extern sprite-glow-vu1-block vu-function) ;; 
-(define-extern sprite-glow-init-consts (function sprite-glow-consts none)) ;; 
-(define-extern sprite-glow-init-engine (function dma-buffer object none)) ;; NEW input
-(define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data) ;; 
+(define-extern sprite-glow-vu1-block vu-function)
+(define-extern sprite-glow-init-consts (function sprite-glow-consts viewport none))
+(define-extern sprite-glow-init-engine (function dma-buffer viewport none))
+(define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data)
 (define-extern sprite-glow-add-sprite (function dma-buffer sprite-vec-data-2d float float float adgif-shader none)) ;; 
 (define-extern sprite-glow-add-simple-sprite (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none)) ;; 
-(define-extern sprite-glow-draw (function dma-buffer none)) ;; 
-(define-extern add-shader-to-dma (function dma-buffer adgif-shader)) ;; 
-(define-extern *simple-sprite-system* simple-sprite-system) ;; 
+(define-extern sprite-glow-draw (function dma-buffer none))
+(define-extern add-shader-to-dma (function dma-buffer adgif-shader))
+(define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-sphere                   ;;
@@ -37892,6 +37898,8 @@
    (double-edge-table      uint32                :offset-assert 8)
    (double-tri-table       uint32                :offset-assert 12)
    (dcache-top             uint32                :offset-assert 16)
+   (dcache-top-1           uint16                :offset 16)
+   (dcache-top-2           uint16                :offset 18)
    (num-facing-single-tris uint32                :offset-assert 20)
    (num-single-edges       uint32                :offset-assert 24)
    (num-double-edges       uint32                :offset-assert 28)
@@ -37915,10 +37923,10 @@
   )
 
 (define-extern *shadow-data* shadow-data)
-(define-extern shadow-invert-z-buf (function dma-buffer none))
+(define-extern shadow-invert-z-buf (function dma-buffer viewport none))
 (define-extern shadow-make-invert-buf (function none)) ;; 
-(define-extern shadow-dma-init (function dma-buffer none))
-(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int none))
+(define-extern shadow-dma-init (function dma-buffer viewport pointer))
+(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int viewport (pointer uint64) none))
 (define-extern shadow-vu0-block vu-function)
 ;; (define-extern shadow-xform-verts function) ;; function
 ;; (define-extern shadow-calc-dual-verts function) ;; function
@@ -37981,7 +37989,7 @@
 (define-extern *shadow-vu1-data* shadow-vu1-data) ;; 
 (define-extern shadow-vu1-block vu-function) ;; 
 (define-extern shadow-vu1-add-constants (function dma-buffer int viewport none))
-(define-extern shadow-vu1-patch-consts (function symbol int object none))
+(define-extern shadow-vu1-patch-consts (function dma-buffer int int none))
 (define-extern shadow-vu1-add-matrix (function dma-buffer math-camera none))
 (define-extern shadow-vu1-init-buffer (function dma-buffer int viewport none))
 
@@ -41293,6 +41301,16 @@
   :flag-assert         #xe00000010
   )
 
+;; +++light-trails-h:lie-mode
+(defenum lie-mode
+  :type uint64
+  (appearance0)
+  (appearance1)
+  (appearance2)
+  (use-two-strips 3)
+  )
+;; ---light-trails-h:lie-mode
+
 (deftype light-trail-composition (structure)
   ((color-mode        uint64                        :offset-assert 0)
    (color-curve       curve-color-piecewise         :offset-assert 8) ;; guessed by decompiler
@@ -41309,10 +41327,10 @@
    (width-repeat-dist float                         :offset-assert 64)
    (uv-mode           uint64                        :offset-assert 72)
    (uv-repeat-dist    float                         :offset-assert 80)
-   (max-age           uint64                        :offset-assert 88) ;; time-frame
+   (max-age           time-frame                    :offset-assert 88)
    (tex-id            texture-id                    :offset-assert 96) ;; guessed by decompiler
    (tex-name          basic                         :offset-assert 100)
-   (lie-mode          uint64                        :offset-assert 104) ;; lie-mode
+   (lie-mode          lie-mode                      :offset-assert 104)
    (lie-vector        vector                :inline :offset-assert 112)
    (zbuffer?          symbol                        :offset-assert 128) ;; guessed by decompiler
    (use-tape-mode?    symbol                        :offset-assert 132) ;; guessed by decompiler
@@ -41326,7 +41344,7 @@
 
 (deftype light-trail-breadcrumb (structure)
   ((pos        vector :inline :offset-assert 0)
-   (birth-time uint32         :offset 12)
+   (birth-time uint32         :offset 12 :decomp-as time-frame :score 1)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -41341,15 +41359,24 @@
   :flag-assert         #xe00000010
   )
 
+;; +++light-trails-h:light-trail-decision
+(defenum light-trail-decision
+  :type uint64
+  (added 0)
+  (not-added 1)
+  (reset 2)
+  )
+;; ---light-trails-h:light-trail-decision
+
 (deftype light-trail (prim-client)
   ((crumb-array             (array uint8)             :offset-assert 4) ;; guessed by decompiler
    (crumb-size              uint8                     :offset-assert 8)
    (crumb-count             int16                     :offset-assert 10)
    (max-crumb-count         int16                     :offset-assert 12)
    (appearance              light-trail-composition   :offset-assert 16)
-   (start-marker            uint64                    :offset-assert 24)
-   (end-marker              uint64                    :offset-assert 32)
-   (decision                uint64                    :offset-assert 40) ;; light-trail-decision
+   (start-marker            time-frame                :offset-assert 24)
+   (end-marker              time-frame                :offset-assert 32)
+   (decision                light-trail-decision      :offset-assert 40)
    (total-distance-traveled float                     :offset-assert 48)
    (strip                   prim-strip                :offset-assert 52) ;; guessed by decompiler
    (strip2                  prim-strip                :offset-assert 56) ;; guessed by decompiler
@@ -41359,19 +41386,19 @@
   :size-assert         #x80
   :flag-assert         #x1700000080
   (:methods
-    (light-trail-method-10 (_type_ light-trail-composition int) none) ;; 10 ;; (reset! (_type_) none)
-    (light-trail-method-11 () none) ;; 11 ;; (add-crumb! (_type_ vector time-frame) int)
-    (light-trail-method-12 (_type_ vector int) none) ;; 12 ;; (build-prim-strip! (_type_) none)
-    (light-trail-method-13 () none) ;; 13 ;; (common-trans! (_type_) int)
-    (light-trail-method-14 () none) ;; 14 ;; (expire-old-points! (_type_) none)
-    (light-trail-method-15 () none) ;; 15 ;; (light-trail-method-15 (_type_) none)
-    (light-trail-method-16 () none) ;; 16 ;; (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none)
-    (light-trail-method-17 () none) ;; 17 ;; (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol)
-    (light-trail-method-18 () none) ;; 18 ;; (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none)
-    (light-trail-method-19 () none) ;; 19 ;; (crumb-age-out-callback (_type_ float int) none)
-    (light-trail-method-20 () none) ;; 20 ;; (reset-crumbs! (_type_) none)
-    (light-trail-method-21 () none) ;; 21 ;; (replace-last-crumb! (_type_ vector) none)
-    (light-trail-method-22 () none) ;; 22
+    (setup! (_type_ light-trail-composition int) none) ;; 10 
+    (reset! (_type_) none) ;; 11
+    (add-crumb! (_type_ vector time-frame) int) ;; 12
+    (connect! (_type_) connection) ;; 13
+    (common-trans! (_type_) int) ;; 14
+    (expire-old-points! (_type_) none) ;; 15
+    (light-trail-method-16 (_type_) none) ;; 16 ;; (light-trail-method-15 (_type_) none)
+    (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none) ;; 17
+    (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol) ;; 18
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none) ;; 19
+    (crumb-age-out-callback (_type_ float int) none) ;; 20
+    (reset-crumbs! (_type_) none) ;; 21
+    (replace-last-crumb! (_type_ vector) none) ;; 22
     )
   )
 
@@ -41389,8 +41416,8 @@
   :size-assert         #x80
   :flag-assert         #x1900000080
   (:methods
-    (weapon-trail-method-23 () none) ;; 23 ;; (weapon-trail-method-23 (_type_ vector vector) none)
-    (weapon-trail-method-24 () none) ;; 24
+    (add-crumb-with-offset (_type_ vector vector) light-trail-breadcrumb) ;; 23
+    (weapon-trail-method-24 (_type_ vector vector) none) ;; 24
     )
   )
 
@@ -41408,15 +41435,15 @@
   :size-assert         #x80
   :flag-assert         #x1900000080
   (:methods
-    (tread-trail-method-23 () none) ;; 23 ;; (tread-trail-method-23 (_type_ vector vector) none)
-    (tread-trail-method-24 () none) ;; 24
+    (add-crumb-with-offset (_type_ vector vector) none) ;; 23
+    (tread-trail-method-24 (_type_ vector vector) none) ;; 24
     )
   )
 
 (deftype light-trail-tracker-spawn-params (structure)
   ((appearance         light-trail-composition  :offset-assert 0)
    (max-num-crumbs     int32                    :offset-assert 4)
-   (tracked-obj        uint64                   :offset-assert 8) ;; handle
+   (tracked-obj        handle                   :offset-assert 8  :handle-type process-drawable)
    (track-immediately? symbol                   :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -41435,10 +41462,10 @@
 
 (deftype light-trail-tracker (process)
   ((trail                light-trail  :offset-assert 144) ;; guessed by decompiler
-   (tracked-object       handle       :offset-assert 152) ;; handle
+   (tracked-object       handle       :offset-assert 152  :handle-type process-drawable)
    (offscreen?           symbol       :offset-assert 160) ;; guessed by decompiler
-   (offscreen-start-time uint64       :offset-assert 168) ;; time-frame
-   (next-line-check-time uint64       :offset-assert 176) ;; time-frame
+   (offscreen-start-time time-frame   :offset-assert 168)
+   (next-line-check-time time-frame   :offset-assert 176)
    (last-add-frame-val   uint32       :offset-assert 184)
    )
   :method-count-assert 22
@@ -41449,18 +41476,19 @@
     die ;; 15
     )
   (:methods
-    (get-tracked-object-pos (_type_ process-focusable vector) vector)
-    (should-track? (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-18 () none) ;; 18 ;; (should-end? (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-19 () none) ;; 19 ;; (should-draw? (_type_) symbol)
-    (light-trail-tracker-method-20 () none) ;; 20 ;; (add-crumb! (_type_ vector) none)
+    (get-tracked-object-pos (_type_ process-focusable vector) vector) ;; 17
+    (should-track? (_type_ process-focusable) symbol) ;; 18
+    (should-end? (_type_ process-focusable) symbol) ;; 19
+    (should-draw? (_type_) symbol) ;; 20
+    (add-crumb! (_type_ vector) none) ;; 21
     )
   )
 
 (deftype weapon-trail-tracker (light-trail-tracker)
-  ((joint0     int16   :offset-assert 188)
-   (joint1     int16   :offset-assert 190)
-   (state-time uint64  :offset-assert 192) ;; time-frame
+  ((trail      weapon-trail :override)
+   (joint0     int16        :offset-assert 188)
+   (joint1     int16        :offset-assert 190)
+   (state-time time-frame   :offset-assert 192)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -41471,7 +41499,7 @@
   )
 
 (deftype tread-trail-tracker (light-trail-tracker)
-  ()
+  ((trail      tread-trail :override))
   :method-count-assert 22
   :size-assert         #xbc
   :flag-assert         #x16003000bc
@@ -41485,7 +41513,7 @@
   )
 
 (deftype light-trail-tracker-projectile (light-trail-tracker)
-  ((state-time uint64  :offset-assert 192) ;; time-frame
+  ((state-time time-frame  :offset-assert 192)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -41701,11 +41729,11 @@
 ;; light-trails                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern compute-trail-scaled-t function) ;; (function uint float float float float float vector float)
-(define-extern *dist-cache-array* (pointer float)) ;; 
-(define-extern *total-length* float) ;; 
-;; (define-extern light-trail-tracker-common-post function) ;; (function object :behavior light-trail-tracker)
-;; (define-extern estimate-light-trail-mem-usage function) ;; (function uint uint int)
+(define-extern compute-trail-scaled-t (function uint float float float float float vector float))
+(define-extern *dist-cache-array* (pointer float))
+(define-extern *total-length* float)
+(define-extern light-trail-tracker-common-post (function object :behavior light-trail-tracker))
+(define-extern estimate-light-trail-mem-usage (function uint uint uint))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-new                  ;;
@@ -49917,68 +49945,65 @@
 (define-extern fmv-player-set-caption (function pointer int))
 (define-extern fmv-player-get-caption (function pointer))
 (define-extern fmv-player-get-texture (function pointer))
-(define-extern fmv-player-run-texture (function string process-tree pointer))
+(define-extern fmv-player-run-texture (function string process-tree none))
 (define-extern fmv-player-rewind (function none))
 (define-extern fmv-player-terminate (function none))
 
-#|
 (deftype fmv-buffer (structure)
-  ((buff  uint32  :offset-assert 0)
-   (start int32   :offset-assert 4)
+  ((buff    uint32  :offset-assert 0)
+   (start   int32   :offset-assert 4)
+   (start-u uint32  :overlay-at start)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype fmv-work (structure)
-  ((current-buffer uint32                 :offset-assert 0)
-   (buffers        UNKNOWN        2       :offset-assert 4)
-   (buffer-size    uint32                 :offset-assert 36)
-   (cursor         uint32                 :offset-assert 40)
-   (name           basic                  :offset-assert 44)
-   (dma-addr       uint32                 :offset-assert 48)
-   (data-size      uint32                 :offset-assert 52)
-   (num-frames     uint32                 :offset-assert 56)
-   (copied-size    uint32                 :offset-assert 60)
-   (count-frame    uint32                 :offset-assert 64)
-   (own-rpc        basic                  :offset-assert 68)
-   (len-read       int32                  :offset-assert 72)
-   (finished       basic                  :offset-assert 76)
-   (current-frame  int32                  :offset-assert 80)
-   (page           basic                  :offset-assert 84)
-   (tex            basic                  :offset-assert 88)
-   (corner         UNKNOWN        4       :offset-assert 96)
-   (pos            UNKNOWN        4       :offset-assert 160)
-   (uv             UNKNOWN        4       :offset-assert 224)
-   (col            vector4w       :inline :offset-assert 288)
-   (draw-tmpl      dma-gif-packet :inline :offset-assert 304)
+  ((current-buffer uint32                   :offset-assert 0)
+   (buffers        fmv-buffer     2 :inline :offset-assert 4)
+   (buffer-size    uint32                   :offset-assert 36)
+   (cursor         uint32                   :offset-assert 40)
+   (name           string                   :offset-assert 44)
+   (dma-addr       uint32                   :offset-assert 48)
+   (data-size      uint32                   :offset-assert 52)
+   (num-frames     uint32                   :offset-assert 56)
+   (copied-size    uint32                   :offset-assert 60)
+   (count-frame    uint32                   :offset-assert 64)
+   (own-rpc        symbol                   :offset-assert 68)
+   (len-read       int32                    :offset-assert 72)
+   (finished       symbol                   :offset-assert 76)
+   (current-frame  int32                    :offset-assert 80)
+   (page           texture-page             :offset-assert 84)
+   (tex            texture                  :offset-assert 88)
+   (corner         vector         4 :inline :offset-assert 96)
+   (pos            vector         4 :inline :offset-assert 160)
+   (uv             vector         4 :inline :offset-assert 224)
+   (col            vector4w         :inline :offset-assert 288)
+   (draw-tmpl      dma-gif-packet   :inline :offset-assert 304)
    )
   :method-count-assert 9
   :size-assert         #x150
   :flag-assert         #x900000150
   )
-|#
 
-;; (define-extern *subtitles-text* object)
-;; (define-extern *fmv-m2v-name* object)
-;; (define-extern *fmv-snd-name* object)
-;; (define-extern *fmv-old-hflip* object)
-;; (define-extern *fmv-work* object)
-;; (define-extern *menu-movie-texture-anim-array* texture-anim-array)
-;; (define-extern *movie-texture-anim-array* texture-anim-array)
-;; (define-extern movie-texture-anim-init function)
-;; (define-extern movie-texture-anim-func function)
-;; (define-extern fmv-file-init function)
-;; (define-extern fmv-get-time function)
-;; (define-extern fmv-memcpy function)
-;; (define-extern fmv-file-read function)
-;; (define-extern fmv-fade-out function)
-;; (define-extern fmv-player-init-by-other function)
+(define-extern *subtitles-text* game-text-info)
+(define-extern *fmv-m2v-name* string)
+(define-extern *fmv-snd-name* string)
+(define-extern *fmv-old-hflip* symbol)
+(define-extern *fmv-work* fmv-work)
+(define-extern *menu-movie-texture-anim-array* texture-anim-array)
+(define-extern *movie-texture-anim-array* texture-anim-array)
+(define-extern movie-texture-anim-init (function texture-anim none))
+(define-extern movie-texture-anim-func (function fmv-buffer texture-anim-array none))
+(define-extern fmv-file-init (function string none))
+(define-extern fmv-get-time (function int))
+(define-extern fmv-memcpy (function pointer pointer uint int))
+(define-extern fmv-file-read (function pointer int int int int))
+(define-extern fmv-fade-out (function none :behavior fmv-player))
+(define-extern fmv-player-init-by-other (function symbol process int int object :behavior fmv-player))
 (define-extern fmv-player-run (function string process-tree symbol none))
-;; (define-extern fmv-player-run-texture function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; game-save                      ;;
