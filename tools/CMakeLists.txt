@@ -8,6 +8,14 @@ add_executable(dgo_packer
         dgo_packer.cpp)
 target_link_libraries(dgo_packer common)
 
+add_executable(vag_unpacker
+        vag_unpacker.cpp)
+target_link_libraries(vag_unpacker common)
+
+add_executable(vag_packer
+        vag_packer.cpp)
+target_link_libraries(vag_packer common)
+
 add_executable(memory_dump_tool
         memory_dump_tool/main.cpp)
 target_link_libraries(memory_dump_tool common decomp)
