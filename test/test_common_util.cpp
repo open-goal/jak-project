@@ -424,7 +424,6 @@ TEST(CRC32, Reference) {
   }
 }
 
-
 TEST(GltfUtil, ExtrasBool) {
   using gltf_util::extras_bool;
   tinygltf::Value::Object obj;
@@ -441,7 +440,7 @@ TEST(GltfUtil, ExtrasBool) {
   obj["str_other"] = tinygltf::Value(std::string("yes"));
   const tinygltf::Value extras(std::move(obj));
 
-  // what the old code did: Get<int>() on a JSON bool reads the unset int field 
+  // what the old code did: Get<int>() on a JSON bool reads the unset int field
   // which ends up being 0, or false.
   EXPECT_EQ(extras.Get("json_true").Get<int>(), 0);
 
@@ -464,7 +463,6 @@ TEST(GltfUtil, ExtrasBool) {
   EXPECT_FALSE(extras_bool(extras, "str_other"));
   EXPECT_TRUE(extras_bool(extras, "str_other", true));
 }
-
 
 }  // namespace test
 }  // namespace cu

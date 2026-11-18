@@ -112,7 +112,8 @@ void extract(const Input& in,
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
-        if (prim.material >= 0 && gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
+        if (prim.material >= 0 &&
+            gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
           continue;
         }
 
@@ -267,7 +268,8 @@ void extract(const Input& in,
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
-        if (prim.material >= 0 && gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
+        if (prim.material >= 0 &&
+            gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
           continue;
         }
 
@@ -473,7 +475,7 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
     result.pat.set_mode(jak1::PatSurface::Mode(mode));
   }
 
-  if (gltf_util::extras_bool(val,"nocamera")) {
+  if (gltf_util::extras_bool(val, "nocamera")) {
     result.pat.set_nocamera(true);
   }
 
