@@ -116,6 +116,8 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state, int unit);
   bool m_offscreen_mode = false;
+  // largest (loaded size / original size) of textures drawn in offscreen mode since last reset.
+  float m_max_offscreen_uv_upscale = 1.f;
 
   struct TestState {
     void from_register(GsTest reg);
