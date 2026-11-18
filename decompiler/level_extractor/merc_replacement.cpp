@@ -27,18 +27,15 @@ void extract(tfrag3::MercModel& mdl,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+    if (gltf_util::extras_bool(node.extras, "set_invisible")) {
       continue;
     }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
-      has_custom_weights = node.extras.Has("enable_custom_weights") &&
-                           node.extras.Get("enable_custom_weights").Get<int>();
-      copy_eye_draws =
-          node.extras.Has("copy_eye_draws") && node.extras.Get("copy_eye_draws").Get<int>();
-      copy_mod_draws =
-          node.extras.Has("copy_mod_draws") && node.extras.Get("copy_mod_draws").Get<int>();
+      has_custom_weights = gltf_util::extras_bool(node.extras, "enable_custom_weights");
+      copy_eye_draws = gltf_util::extras_bool(node.extras, "copy_eye_draws");
+      copy_mod_draws = gltf_util::extras_bool(node.extras, "copy_mod_draws");
       for (const auto& prim : mesh.primitives) {
         prim_count++;
         // extract index buffer
@@ -168,14 +165,13 @@ void extract(const std::string& name,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+    if (gltf_util::extras_bool(node.extras, "set_invisible")) {
       continue;
     }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
-      has_custom_weights = node.extras.Has("enable_custom_weights") &&
-                           node.extras.Get("enable_custom_weights").Get<int>();
+      has_custom_weights = gltf_util::extras_bool(node.extras, "enable_custom_weights");
       for (const auto& prim : mesh.primitives) {
         prim_count++;
         // extract index buffer

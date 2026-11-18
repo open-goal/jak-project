@@ -11,6 +11,7 @@
 #include "common/util/SmallVector.h"
 #include "common/util/Trie.h"
 #include "common/util/crc32.h"
+#include "common/util/gltf_util.h"
 #include "common/util/json_util.h"
 #include "common/util/os.h"
 #include "common/util/print_float.h"
@@ -421,6 +422,46 @@ TEST(CRC32, Reference) {
     EXPECT_EQ(crc_reference(test_data.data(), test_data.size()),
               crc32(test_data.data(), test_data.size()));
   }
+}
+
+TEST(GltfUtil, ExtrasBool) {
+  using gltf_util::extras_bool;
+  tinygltf::Value::Object obj;
+  obj["json_true"] = tinygltf::Value(true);
+  obj["json_false"] = tinygltf::Value(false);
+  obj["int_1"] = tinygltf::Value(1);
+  obj["int_0"] = tinygltf::Value(0);
+  obj["real_1"] = tinygltf::Value(1.0);
+  obj["real_0"] = tinygltf::Value(0.0);
+  obj["str_true"] = tinygltf::Value(std::string("true"));
+  obj["str_1"] = tinygltf::Value(std::string("1"));
+  obj["str_false"] = tinygltf::Value(std::string("FALSE"));
+  obj["str_0"] = tinygltf::Value(std::string("0"));
+  obj["str_other"] = tinygltf::Value(std::string("yes"));
+  const tinygltf::Value extras(std::move(obj));
+
+  // what the old code did: Get<int>() on a JSON bool reads the unset int field
+  // which ends up being 0, or false.
+  EXPECT_EQ(extras.Get("json_true").Get<int>(), 0);
+
+  EXPECT_TRUE(extras_bool(extras, "json_true"));
+  EXPECT_TRUE(extras_bool(extras, "int_1"));
+  EXPECT_TRUE(extras_bool(extras, "real_1"));
+  EXPECT_TRUE(extras_bool(extras, "str_true"));
+  EXPECT_TRUE(extras_bool(extras, "str_1"));
+
+  // explicit false values win over a true fallback.
+  EXPECT_FALSE(extras_bool(extras, "json_false", true));
+  EXPECT_FALSE(extras_bool(extras, "int_0", true));
+  EXPECT_FALSE(extras_bool(extras, "real_0", true));
+  EXPECT_FALSE(extras_bool(extras, "str_false", true));
+  EXPECT_FALSE(extras_bool(extras, "str_0", true));
+
+  // missing or unrecognized values use the fallback
+  EXPECT_FALSE(extras_bool(extras, "missing"));
+  EXPECT_TRUE(extras_bool(extras, "missing", true));
+  EXPECT_FALSE(extras_bool(extras, "str_other"));
+  EXPECT_TRUE(extras_bool(extras, "str_other", true));
 }
 
 }  // namespace test

@@ -4,8 +4,27 @@
 #include "image_resize.h"
 
 #include "common/log/log.h"
+#include "common/util/string_util.h"
 
 namespace gltf_util {
+
+bool extras_bool(const tinygltf::Value& extras, const std::string& key, bool fallback) {
+  if (!extras.Has(key))
+    return fallback;
+  auto& val = extras.Get(key);
+  if (val.IsBool())
+    return val.Get<bool>();
+  if (val.IsNumber())
+    return val.GetNumberAsInt() != 0;
+  if (val.IsString()) {
+    auto str = str_util::to_lower(val.Get<std::string>());
+    if (str == "true" || str == "1")
+      return true;
+    if (str == "false" || str == "0")
+      return false;
+  }
+  return fallback;
+}
 
 /*!
  * Convert a GLTF position buffer or similar to std::vector<Vec3f>

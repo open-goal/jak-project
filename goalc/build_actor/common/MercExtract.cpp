@@ -25,7 +25,7 @@ void extract(const std::string& name,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+    if (gltf_util::extras_bool(node.extras, "set_invisible")) {
       continue;
     }
     // gltf_mesh_extract::PatResult mesh_default_collide =
