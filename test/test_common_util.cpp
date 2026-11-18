@@ -436,7 +436,7 @@ TEST(GltfUtil, ExtrasBool) {
   obj["real_0"] = tinygltf::Value(0.0);
   obj["str_true"] = tinygltf::Value(std::string("true"));
   obj["str_1"] = tinygltf::Value(std::string("1"));
-  obj["str_false"] = tinygltf::Value(std::string("false"));
+  obj["str_false"] = tinygltf::Value(std::string("FALSE"));
   obj["str_0"] = tinygltf::Value(std::string("0"));
   obj["str_other"] = tinygltf::Value(std::string("yes"));
   const tinygltf::Value extras(std::move(obj));
