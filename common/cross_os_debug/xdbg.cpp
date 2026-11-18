@@ -14,6 +14,7 @@
 #include "fmt/format.h"
 
 #ifdef __linux
+#include <elf.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -22,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #elif _WIN32
@@ -211,29 +213,39 @@ bool detach_and_resume(const ThreadID& tid) {
  * Get all registers now. Must be attached and stopped
  */
 bool get_regs_now(const ThreadID& tid, Regs* out) {
-  user regs = {};
-  if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
-    printf("[Debugger] Failed to PTRACE_GETREGS %s\n", strerror(errno));
+  user_regs_struct regs = {};
+  iovec iov = {};
+  iov.iov_base = &regs;
+  iov.iov_len = sizeof(regs);
+  if (ptrace(PTRACE_GETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_GETREGSET %s\n", strerror(errno));
     return false;
   }
 
-  out->gprs[0] = regs.regs.rax;
-  out->gprs[1] = regs.regs.rcx;
-  out->gprs[2] = regs.regs.rdx;
-  out->gprs[3] = regs.regs.rbx;
-  out->gprs[4] = regs.regs.rsp;
-  out->gprs[5] = regs.regs.rbp;
-  out->gprs[6] = regs.regs.rsi;
-  out->gprs[7] = regs.regs.rdi;
-  out->gprs[8] = regs.regs.r8;
-  out->gprs[9] = regs.regs.r9;
-  out->gprs[10] = regs.regs.r10;
-  out->gprs[11] = regs.regs.r11;
-  out->gprs[12] = regs.regs.r12;
-  out->gprs[13] = regs.regs.r13;
-  out->gprs[14] = regs.regs.r14;
-  out->gprs[15] = regs.regs.r15;
-  out->rip = regs.regs.rip;
+#if defined(__aarch64__)
+  for (int i = 0; i < 16; i++) {
+    out->gprs[i] = regs.regs[i];
+  }
+  out->rip = regs.pc;
+#else
+  out->gprs[0] = regs.rax;
+  out->gprs[1] = regs.rcx;
+  out->gprs[2] = regs.rdx;
+  out->gprs[3] = regs.rbx;
+  out->gprs[4] = regs.rsp;
+  out->gprs[5] = regs.rbp;
+  out->gprs[6] = regs.rsi;
+  out->gprs[7] = regs.rdi;
+  out->gprs[8] = regs.r8;
+  out->gprs[9] = regs.r9;
+  out->gprs[10] = regs.r10;
+  out->gprs[11] = regs.r11;
+  out->gprs[12] = regs.r12;
+  out->gprs[13] = regs.r13;
+  out->gprs[14] = regs.r14;
+  out->gprs[15] = regs.r15;
+  out->rip = regs.rip;
+#endif
 
   // todo, get fprs.
   return true;
@@ -243,32 +255,44 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
  * Set all registers now. Must be attached and stopped
  */
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
-  user regs = {};
-  if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
-    printf("[Debugger] Failed to PTRACE_GETREGS %s\n", strerror(errno));
+  user_regs_struct regs = {};
+  iovec iov = {};
+  iov.iov_base = &regs;
+  iov.iov_len = sizeof(regs);
+  if (ptrace(PTRACE_GETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_GETREGSET %s\n", strerror(errno));
     return false;
   }
 
-  regs.regs.rax = out.gprs[0];
-  regs.regs.rcx = out.gprs[1];
-  regs.regs.rdx = out.gprs[2];
-  regs.regs.rbx = out.gprs[3];
-  regs.regs.rsp = out.gprs[4];
-  regs.regs.rbp = out.gprs[5];
-  regs.regs.rsi = out.gprs[6];
-  regs.regs.rdi = out.gprs[7];
-  regs.regs.r8 = out.gprs[8];
-  regs.regs.r9 = out.gprs[9];
-  regs.regs.r10 = out.gprs[10];
-  regs.regs.r11 = out.gprs[11];
-  regs.regs.r12 = out.gprs[12];
-  regs.regs.r13 = out.gprs[13];
-  regs.regs.r14 = out.gprs[14];
-  regs.regs.r15 = out.gprs[15];
-  regs.regs.rip = out.rip;
+#if defined(__aarch64__)
+  for (int i = 0; i < 16; i++) {
+    regs.regs[i] = out.gprs[i];
+  }
+  regs.pc = out.rip;
+#else
+  regs.rax = out.gprs[0];
+  regs.rcx = out.gprs[1];
+  regs.rdx = out.gprs[2];
+  regs.rbx = out.gprs[3];
+  regs.rsp = out.gprs[4];
+  regs.rbp = out.gprs[5];
+  regs.rsi = out.gprs[6];
+  regs.rdi = out.gprs[7];
+  regs.r8 = out.gprs[8];
+  regs.r9 = out.gprs[9];
+  regs.r10 = out.gprs[10];
+  regs.r11 = out.gprs[11];
+  regs.r12 = out.gprs[12];
+  regs.r13 = out.gprs[13];
+  regs.r14 = out.gprs[14];
+  regs.r15 = out.gprs[15];
+  regs.rip = out.rip;
+#endif
 
-  if (ptrace(PTRACE_SETREGS, tid.id, nullptr, &regs) < 0) {
-    printf("[Debugger] Failed to PTRACE_SETREGS %s\n", strerror(errno));
+  // GETREGSET shrinks iov_len to the bytes actually returned.
+  iov.iov_len = sizeof(regs);
+  if (ptrace(PTRACE_SETREGSET, tid.id, reinterpret_cast<void*>(NT_PRSTATUS), &iov) < 0) {
+    printf("[Debugger] Failed to PTRACE_SETREGSET %s\n", strerror(errno));
     return false;
   }
   // todo, set fprs.
