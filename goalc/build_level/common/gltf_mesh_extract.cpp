@@ -105,15 +105,14 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+    if (gltf_util::extras_bool(node.extras, "set_invisible")) {
       continue;
     }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
-        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
-            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+        if (prim.material >= 0 && gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
           continue;
         }
 
@@ -261,15 +260,14 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+    if (gltf_util::extras_bool(node.extras, "set_invisible")) {
       continue;
     }
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
       for (const auto& prim : mesh.primitives) {
-        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
-            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+        if (prim.material >= 0 && gltf_util::extras_bool(model.materials[prim.material].extras, "set_invisible")) {
           continue;
         }
 
@@ -439,7 +437,7 @@ std::optional<std::vector<jak1::CollideFace>> subdivide_face_if_needed(jak1::Col
 
 PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
   PatResult result;
-  if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
+  if (!val.IsObject() || !gltf_util::extras_bool(val, "set_collision")) {
     // unset.
     result.set = false;
     return result;
@@ -447,7 +445,7 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
 
   result.set = true;
 
-  if (val.Get("ignore").Get<int>()) {
+  if (gltf_util::extras_bool(val, "ignore")) {
     result.ignore = true;
     return result;
   }
@@ -461,11 +459,11 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
   ASSERT(evt < (int)jak1::PatSurface::Event::MAX_EVENT);
   result.pat.set_event(jak1::PatSurface::Event(evt));
 
-  if (val.Get("nolineofsight").Get<int>()) {
+  if (gltf_util::extras_bool(val, "nolineofsight")) {
     result.pat.set_nolineofsight(true);
   }
 
-  if (val.Get("noedge").Get<int>()) {
+  if (gltf_util::extras_bool(val, "noedge")) {
     result.pat.set_noedge(true);
   }
 
@@ -475,11 +473,11 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
     result.pat.set_mode(jak1::PatSurface::Mode(mode));
   }
 
-  if (val.Get("nocamera").Get<int>()) {
+  if (gltf_util::extras_bool(val,"nocamera")) {
     result.pat.set_nocamera(true);
   }
 
-  if (val.Get("noentity").Get<int>()) {
+  if (gltf_util::extras_bool(val, "noentity")) {
     result.pat.set_noentity(true);
   }
 
