@@ -29,6 +29,7 @@ Additionally, you can find further documentation and answers to **frequently ask
   - [Methodology](#methodology)
 - [Setting up a Development Environment](#setting-up-a-development-environment)
   - [OS Setup](#os-setup)
+  - [Compiling](#compiling)
   - [Editor Setup](#editor-setup)
   - [Building and Running the Game](#building-and-running-the-game)
     - [Extract Assets](#extract-assets)
@@ -85,6 +86,46 @@ If this does not sound like you and you just want to play the game, refer to the
 - [MacOS](/docs/setup/system/macos.md)
 - [Docker](/docs/setup/system/docker.md)
 
+### Compiling
+
+If your editor or IDE won't already compile the project for you, use these instructions to compile
+the project.
+
+#### Debug:
+
+```sh
+task gen-cmake-debug
+task build-debug
+```
+
+#### Release:
+
+```sh
+task gen-cmake-release
+task build-release
+```
+
+#### Task compiling with a preset
+
+There are a number of predefined configurations for common compilation parameters (i.e. Debug-linux-clang, Debug-windows-msvc, etc).
+You can find the available presets in `CMakePresets.json`.
+To compile with a particular preset, use the following:
+
+```sh
+task gen-cmake CMAKE_PRESET=<preset>    # Replace <preset> with the name of the preset, like Debug-linux-gcc
+task build-debug                        # Or build-release, depending on the type of build.
+```
+
+#### Compiling directly with cmake:
+```sh
+cmake -B build             # You can optionally use a preset with the --preset <preset> argument
+cmake --build build -j 8   # build is the folder where cmake will compile the project.
+```
+You can change build to a different folder (For example, `cmake -B build_other`, `cmake --build build_other -j 8`).
+The 8 argument in the second command is the number of threads cmake will use to compile the project.
+You can change this to make the compilation faster or slower, but compiling is likely to be slower if this number exceeds the number of hardware threads on your system.
+
+
 ### Editor Setup
 
 You can of course use whatever editor you want, but here is some documentation that should help you get started on some of the editor's we have used and have written about:
@@ -97,7 +138,7 @@ You can of course use whatever editor you want, but here is some documentation t
 
 Getting a running game involves 4 main steps:
 
-1. Build C++ tools (follow Getting Started steps above for your platform)
+1. Build C++ tools (follow "OS Setup" and "Compiling" (or "Editor Setup") steps above for your platform)
 2. Extract assets from the game
 3. Build the game
 4. Run the game

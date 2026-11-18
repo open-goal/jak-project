@@ -2,22 +2,21 @@
 
 - [Linux Environment Setup](#linux-environment-setup)
   - [Packages](#packages)
-    - [Ubuntu (20.04)](#ubuntu-2004)
-  - [Arch](#arch)
-  - [Fedora](#fedora)
-  - [Compiling and Building](#compiling-and-building)
+    - [Ubuntu](#ubuntu)
+    - [Arch](#arch)
+    - [Fedora](#fedora)
 
 
 ## Packages
 
-### Ubuntu (20.04)
+### Ubuntu
 
 ```sh
 sudo apt install gcc make cmake ninja-build build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python libgl1-mesa-dev libssl-dev
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
-## Arch
+### Arch
 
 ```sh
 sudo pacman -S cmake libpulse base-devel nasm python libx11 libxrandr libxinerama libxcursor libxi
@@ -26,35 +25,19 @@ yay -S go-task
 
 > Note: Any later documentation that shows a `task ...` command, would instead be a `go-task ...` command.
 
-## Fedora
+### Fedora
 
 ```sh
-sudo dnf install cmake python lld clang nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel mesa-libGL-devel
+sudo dnf install cmake python nasm libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel pulseaudio-libs-devel mesa-libGL-devel
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
-## Compiling and Building
-
-Compile:
-
+Note: we have found that `clang` and `lld` are significantly faster to compile and link than `gcc`, generate faster code, and have better warning messages. 
+To install these:
 ```sh
-cmake -B build && cmake --build build -j 8
+sudo apt install lld clang  # Substitute 'apt install' for 'pacman -S' on Arch or 'dnf install' on Fedora
 ```
-
-Run tests:
-
-```sh
-./test.sh
-```
-
-Note: we have found that `clang` and `lld` are significantly faster to compile and link than `gcc`, generate faster code, and have better warning messages. To install these:
-
-```sh
-sudo apt install lld clang
-```
-
-and run `cmake` (in a fresh build directory) with:
-
-```sh
-cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
-```
+If you have previously compiled with a different configuration and now would like to compile with clang, delete 
+CMakeCache.txt from your build folder and then build using clang.
+Clang is needed to compile with `task gen-cmake-debug` or `task gen-cmake-release`. 
+If you want to compile with gcc instead of clang, you will either need to compile using cmake directly or use one of the gcc presets from CMakePresets.json. 
