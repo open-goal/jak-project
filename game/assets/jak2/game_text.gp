@@ -38,4 +38,6 @@
   (file-json 20 jak2 "common" '("game/assets/jak2/text/game_custom_text_cs-CZ.json"))
   (file-json 21 jak2 "common" '("game/assets/jak2/text/game_custom_text_hr-HR.json"))
   (file-json 22 jak2 "common" '("game/assets/jak2/text/game_custom_text_gl-ES.json"))
+  (file-json 23 jak2 "common" '("game/assets/jak2/text/game_custom_text_ru-RU.json"
+                               "game/assets/jak2/text/game_base_text_ru-RU.json"))
   )

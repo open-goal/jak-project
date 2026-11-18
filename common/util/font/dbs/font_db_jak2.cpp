@@ -335,6 +335,9 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
      "RIGHT>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~-4H~1L<FLAG_PART_VERT_STRIPE_LEFT>~Z~1L~~"
      "~Z~-11H~7L<FLAG_PART_KOREA_CIRCLE_FILL>~Z~-8V~-8H~3L-~Z~-8V~-4H~3L-~Z~+26H",
      "<FLAG_GALICIA>"},
+    {"~Y~1L~~~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~]~-2H~Y~1L~~"
+     "~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_BOTTOM>~Z~+26H",
+     "<FLAG_RUSSIA>"},
 
     // korean jamo -- only relevant for the language selection since
     // non-korean languages don't run through the `convert-korean-text` function and hence the
@@ -350,6 +353,9 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"~+7Vg~-7V", "g"},
     {"~+7Vq~-7V", "q"},
     {"~+1Vj~-1V", "j"},
+    // cyrillic letters drawn the same way as the latin ones above
+    {"~+7Vр~-7V", "р"},
+    {"~+7Vу~-7V", "у"},
 
     {"\\\\",
      "~%"},  // this is 2 slashes, duplicated because we use an escape sequence when decompiling
@@ -403,6 +409,74 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"~[~39L", "<COLOR_COLOR-39>"}};
 
 std::vector<EncodeInfo> encode_info_jak2 = {
+    // cyrillic (russian), glyphs added via texture_merges/gamefont
+    {"А", "\xb4"},
+    {"Б", "\xb5"},
+    {"В", "\xb6"},
+    {"Г", "\xb7"},
+    {"Д", "\xb8"},
+    {"Е", "\xb9"},
+    {"Ё", "\xba"},
+    {"Ж", "\xbb"},
+    {"З", "\xbc"},
+    {"И", "\xbd"},
+    {"Й", "\xbe"},
+    {"К", "\xbf"},
+    {"Л", "\xc0"},
+    {"М", "\xc1"},
+    {"Н", "\xc2"},
+    {"О", "\xc3"},
+    {"П", "\xc4"},
+    {"Р", "\xc5"},
+    {"С", "\xc6"},
+    {"Т", "\xc7"},
+    {"У", "\xc8"},
+    {"Ф", "\xc9"},
+    {"Х", "\xca"},
+    {"Ц", "\xcb"},
+    {"Ч", "\xcc"},
+    {"Ш", "\xcd"},
+    {"Щ", "\xce"},
+    {"Ъ", "\xcf"},
+    {"Ы", "\xd0"},
+    {"Ь", "\xd1"},
+    {"Э", "\xd2"},
+    {"Ю", "\xd3"},
+    {"Я", "\xd4"},
+    {"а", "\xd5"},
+    {"б", "\xd6"},
+    {"в", "\xd7"},
+    {"г", "\xd8"},
+    {"д", "\xd9"},
+    {"е", "\xda"},
+    {"ё", "\xdb"},
+    {"ж", "\xdc"},
+    {"з", "\xdd"},
+    {"и", "\xde"},
+    {"й", "\xdf"},
+    {"к", "\xe0"},
+    {"л", "\xe1"},
+    {"м", "\xe2"},
+    {"н", "\xe3"},
+    {"о", "\xe4"},
+    {"п", "\xe5"},
+    {"р", "\xe6"},
+    {"с", "\xe7"},
+    {"т", "\xe8"},
+    {"у", "\xe9"},
+    {"ф", "\xea"},
+    {"х", "\xeb"},
+    {"ц", "\xec"},
+    {"ч", "\xed"},
+    {"ш", "\xee"},
+    {"щ", "\xef"},
+    {"ъ", "\xf0"},
+    {"ы", "\xf1"},
+    {"ь", "\xf2"},
+    {"э", "\xf3"},
+    {"ю", "\xf4"},
+    {"я", "\xf5"},
+
     {"ˇ", "\x10"},      // caron
     {"`", "\x11"},      // grave accent
     {"'", "\x12"},      // apostrophe
