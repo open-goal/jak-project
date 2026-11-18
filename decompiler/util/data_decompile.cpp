@@ -1134,9 +1134,12 @@ namespace {
  * this looks up the real type based on the type of the menu-type's info-ptr.
  * e.g.: if menu-type == 'string-menu -> look up the type of string-menu's "info-ptr" and
  * set the type to that (string-menu-info)
+ * a menu can also be given the info of one of its parents (e.g. a string-menu-info for a
+ * scrolling-item), so the most specific info type that fits before the next label is used.
  */
 std::optional<TypeSpec> get_menu_info_type(const TypeSpec& type,
                                            const DecompilerLabel& label,
+                                           const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
                                            const TypeSystem& ts) {
   const TypeSpec base_type("base-menu-info");
@@ -1156,10 +1159,27 @@ std::optional<TypeSpec> get_menu_info_type(const TypeSpec& type,
     return {};
   }
 
-  if (info_field.type() == type || !ts.tc(type, info_field.type())) {
-    return {};
+  const auto& seg_words = words.at(label.target_segment);
+  int end_offset = seg_words.size() * 4;
+  int end_label_idx =
+      index_of_closest_following_label_in_segment(label.offset, label.target_segment, labels);
+  if (end_label_idx >= 0) {
+    end_offset = labels.at(end_label_idx).offset & ~3;
+    if (end_offset - 4 >= label.offset &&
+        seg_words.at(end_offset / 4 - 1).kind() == LinkedWord::TYPE_PTR) {
+      end_offset -= 4;
+    }
   }
-  return info_field.type();
+
+  auto info_type = info_field.type();
+  while (info_type != type && ts.tc(type, info_type)) {
+    auto info = ts.lookup_type(info_type);
+    if (label.offset + info->get_size_in_memory() <= end_offset) {
+      return info_type;
+    }
+    info_type = TypeSpec(info->get_parent());
+  }
+  return {};
 }
 }  // namespace
 
@@ -1180,7 +1200,7 @@ goos::Object decompile_structure(const TypeSpec& type,
   }
 
   if (version == GameVersion::JakX) {
-    auto menu_info_type = get_menu_info_type(type, label, words, ts);
+    auto menu_info_type = get_menu_info_type(type, label, labels, words, ts);
     if (menu_info_type) {
       return decompile_structure(*menu_info_type, label, labels, words, ts, file, use_fancy_macros,
                                  version);
