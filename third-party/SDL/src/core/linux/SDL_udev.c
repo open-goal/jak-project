@@ -158,9 +158,6 @@ bool SDL_UDEV_Init(void)
         _this->syms.udev_monitor_filter_add_match_subsystem_devtype(_this->udev_mon, "sound", NULL);
         _this->syms.udev_monitor_filter_add_match_subsystem_devtype(_this->udev_mon, "video4linux", NULL);
         _this->syms.udev_monitor_enable_receiving(_this->udev_mon);
-
-        // Do an initial scan of existing devices
-        SDL_UDEV_Scan();
     }
 
     _this->ref_count += 1;
@@ -464,6 +461,7 @@ static int device_class(struct udev_device *dev)
 {
     const char *subsystem;
     const char *val = NULL;
+    const char *attr = NULL;
     int devclass = 0;
 
     subsystem = _this->syms.udev_device_get_subsystem(dev);
@@ -475,8 +473,18 @@ static int device_class(struct udev_device *dev)
         devclass = SDL_UDEV_DEVICE_SOUND;
     } else if (SDL_strcmp(subsystem, "video4linux") == 0) {
         val = _this->syms.udev_device_get_property_value(dev, "ID_V4L_CAPABILITIES");
-        if (val && SDL_strcasestr(val, "capture")) {
-            devclass = SDL_UDEV_DEVICE_VIDEO_CAPTURE;
+        if (val) {
+            if (SDL_strcasestr(val, "capture")) {
+                devclass = SDL_UDEV_DEVICE_VIDEO_CAPTURE;
+            }
+            // v4l2loopback may report output caps before reporting capture caps
+            // and ID_V4L_CAPABILITIES is never updated
+            else if (SDL_strcasestr(val, "video_output")) {
+                attr = _this->syms.udev_device_get_sysattr_value(dev, "state");
+                if (attr && SDL_strcmp(attr, "capture") == 0) {
+                    devclass = SDL_UDEV_DEVICE_VIDEO_CAPTURE;
+                }
+            }
         }
     } else if (SDL_strcmp(subsystem, "input") == 0) {
         // udev rules reference: http://cgit.freedesktop.org/systemd/systemd/tree/src/udev/udev-builtin-input_id.c

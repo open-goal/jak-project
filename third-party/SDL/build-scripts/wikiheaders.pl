@@ -50,6 +50,7 @@ my $bugreporturl = 'https://github.com/libsdl-org/sdlwiki/issues/new';
 my $srcpath = undef;
 my $wikipath = undef;
 my $warn_about_missing = 0;
+my $generate_undocumented_page = 0;
 my $copy_direction = 0;
 my $optionsfname = undef;
 my $wikipreamble = undef;
@@ -74,6 +75,7 @@ my $gitrev = undef;
 
 foreach (@ARGV) {
     $warn_about_missing = 1, next if $_ eq '--warn-about-missing';
+    $generate_undocumented_page = 1, next if $_ eq '--generate-undocumented-page';
     $copy_direction = 1, next if $_ eq '--copy-to-headers';
     $copy_direction = 1, next if $_ eq '--copy-to-header';
     $copy_direction = -1, next if $_ eq '--copy-to-wiki';
@@ -118,6 +120,7 @@ if (defined $optionsfname) {
             $val =~ s/\A\s+//;
             $val =~ s/\s+\Z//;
             $warn_about_missing = int($val), next if $key eq 'warn_about_missing';
+            $generate_undocumented_page = int($val), next if $key eq 'generate_undocumented_page';
             $srcpath = $val, next if $key eq 'srcpath';
             $wikipath = $val, next if $key eq 'wikipath';
             $apiprefixregex = $val, next if $key eq 'apiprefixregex';
@@ -396,6 +399,19 @@ sub wikify {
     return $retval;
 }
 
+sub gen_manpage_url {
+    my $url = shift;
+    my $desc = shift;
+
+    # We have to unmangle some mangling we just did.  :/
+    $url =~ s/\\\[char46\]/./g;
+
+    # can't have newlines in this.
+    $desc =~ s/\n/ /g;
+
+    return "\n.URL \"$url\" \"$desc\"\n";
+}
+
 
 my $dewikify_mode = 'md';
 my $dewikify_manpage_code_indent = 1;
@@ -459,7 +475,7 @@ sub dewikify_chunk {
             }
 
             # links
-            $str =~ s/\[(https?\:\/\/.*?)\s+(.*?)\]/\n.URL "$1" "$2"\n/g;
+            $str =~ s/\[(https?\:\/\/.*?)\s+(.*?)\]\s*/gen_manpage_url($1, $2)/ge;
 
             # <code></code> is also popular.  :/
             $str =~ s/\s*\<code>(.*?)<\/code>\s*/\n.BR $1\n/gms;
@@ -496,7 +512,7 @@ sub dewikify_chunk {
             }
 
             # links
-            $str =~ s/\[(.*?)]\((https?\:\/\/.*?)\)/\n.URL "$2" "$1"\n/g;
+            $str =~ s/\[([^\]]*?)]\((https?\:\/\/.*?)\)\s*/gen_manpage_url($2, $1)/ge;
 
             # <code></code> is also popular.  :/
             $str =~ s/\s*(\S*?)\`([^\n]*?)\`(\S*)\s*/\n.BR "" "$1" "$2" "$3"\n/gms;
@@ -655,7 +671,7 @@ sub filecopy {
 }
 
 sub usage {
-    die("USAGE: $0 <source code git clone path> <wiki git clone path> [--copy-to-headers|--copy-to-wiki|--copy-to-manpages] [--warn-about-missing] [--manpath=<man path>]\n\n");
+    die("USAGE: $0 <source code git clone path> <wiki git clone path> [--copy-to-headers|--copy-to-wiki|--copy-to-manpages] [--warn-about-missing] [--generate-undocumented-page] [--manpath=<man path>]\n\n");
 }
 
 usage() if not defined $srcpath;
@@ -1115,8 +1131,8 @@ if (defined $readmesubdir) {
 }
 
 opendir(DH, $incpath) or die("Can't opendir '$incpath': $!\n");
-while (my $d = readdir(DH)) {
-    my $dent = $d;
+foreach (sort(readdir(DH))) {
+    my $dent = $_;
     next if not $dent =~ /$selectheaderregex/;  # just selected headers.
     open(FH, '<', "$incpath/$dent") or die("Can't open '$incpath/$dent': $!\n");
 
@@ -1773,20 +1789,20 @@ while (my $d = readdir(DH)) {
             } elsif (/\A\= (.*?) \=\Z/) {
                 $firstline = 0;
                 $current_section = ($1 eq $sym) ? '[Brief]' : $1;
-                die("Doubly-defined section '$current_section' in '$dent'!\n") if defined $sections{$current_section};
+                die("Doubly-defined section '$current_section' in '$wikipath/$dent'!\n") if defined $sections{$current_section};
                 push @section_order, $current_section;
                 $sections{$current_section} = '';
             } elsif (/\A\=\= (.*?) \=\=\Z/) {
                 $firstline = 0;
                 $current_section = ($1 eq $sym) ? '[Brief]' : $1;
-                die("Doubly-defined section '$current_section' in '$dent'!\n") if defined $sections{$current_section};
+                die("Doubly-defined section '$current_section' in '$wikipath/$dent'!\n") if defined $sections{$current_section};
                 push @section_order, $current_section;
                 $sections{$current_section} = '';
                 next;
             } elsif (/\A\-\-\-\-\Z/) {
                 $firstline = 0;
                 $current_section = '[footer]';
-                die("Doubly-defined section '$current_section' in '$dent'!\n") if defined $sections{$current_section};
+                die("Doubly-defined section '$current_section' in '$wikipath/$dent'!\n") if defined $sections{$current_section};
                 push @section_order, $current_section;
                 $sections{$current_section} = '';
                 next;
@@ -1798,14 +1814,14 @@ while (my $d = readdir(DH)) {
             } elsif (/\A\#+ (.*?)\Z/) {
                 $firstline = 0;
                 $current_section = ($1 eq $sym) ? '[Brief]' : $1;
-                die("Doubly-defined section '$current_section' in '$dent'!\n") if defined $sections{$current_section};
+                die("Doubly-defined section '$current_section' in '$wikipath/$dent'!\n") if defined $sections{$current_section};
                 push @section_order, $current_section;
                 $sections{$current_section} = '';
                 next;
             } elsif (/\A\-\-\-\-\Z/) {
                 $firstline = 0;
                 $current_section = '[footer]';
-                die("Doubly-defined section '$current_section' in '$dent'!\n") if defined $sections{$current_section};
+                die("Doubly-defined section '$current_section' in '$wikipath/$dent'!\n") if defined $sections{$current_section};
                 push @section_order, $current_section;
                 $sections{$current_section} = '';
                 next;
@@ -1853,7 +1869,7 @@ closedir(DH);
 
 delete $wikisyms{"Undocumented"};
 
-{
+if ($generate_undocumented_page) {
     my $path = "$wikipath/Undocumented.md";
     open(my $fh, '>', $path) or die("Can't open '$path': $!\n");
 

@@ -422,6 +422,11 @@ static void offer_source_done_handler(void *data, struct wl_callback *callback, 
         SDL_free(id);
         if (source_is_external) {
             Wayland_data_offer_notify_from_mimes(offer, false);
+        } else {
+            // Recursive data offer; just destroy it.
+            SDL_WaylandDataDevice *data_device = offer->data_device;
+            Wayland_data_offer_destroy(offer);
+            data_device->selection_offer = NULL;
         }
     }
 }
@@ -698,12 +703,9 @@ bool Wayland_data_device_set_selection(SDL_WaylandDataDevice *data_device,
             Wayland_data_device_clear_selection(data_device);
             result = SDL_SetError("No mime data");
         } else {
-            // Only set if there is a valid serial if not set it later
-            if (data_device->selection_serial != 0) {
-                wl_data_device_set_selection(data_device->data_device,
-                                             source->source,
-                                             data_device->selection_serial);
-            }
+            wl_data_device_set_selection(data_device->data_device,
+                                         source->source,
+                                         data_device->seat->last_implicit_grab_serial);
             if (data_device->selection_source) {
                 Wayland_data_source_destroy(data_device->selection_source);
             }
@@ -739,12 +741,9 @@ bool Wayland_primary_selection_device_set_selection(SDL_WaylandPrimarySelectionD
             Wayland_primary_selection_device_clear_selection(primary_selection_device);
             result = SDL_SetError("No mime data");
         } else {
-            // Only set if there is a valid serial if not set it later
-            if (primary_selection_device->selection_serial != 0) {
-                zwp_primary_selection_device_v1_set_selection(primary_selection_device->primary_selection_device,
-                                                              source->source,
-                                                              primary_selection_device->selection_serial);
-            }
+            zwp_primary_selection_device_v1_set_selection(primary_selection_device->primary_selection_device,
+                                                          source->source,
+                                                          primary_selection_device->seat->last_implicit_grab_serial);
             if (primary_selection_device->selection_source) {
                 Wayland_primary_selection_source_destroy(primary_selection_device->selection_source);
             }
@@ -755,34 +754,4 @@ bool Wayland_primary_selection_device_set_selection(SDL_WaylandPrimarySelectionD
 
     return result;
 }
-
-void Wayland_data_device_set_serial(SDL_WaylandDataDevice *data_device, uint32_t serial)
-{
-    if (data_device) {
-        data_device->selection_serial = serial;
-
-        // If there was no serial and there is a pending selection set it now.
-        if (data_device->selection_serial == 0 && data_device->selection_source) {
-            wl_data_device_set_selection(data_device->data_device,
-                                         data_device->selection_source->source,
-                                         data_device->selection_serial);
-        }
-    }
-}
-
-void Wayland_primary_selection_device_set_serial(SDL_WaylandPrimarySelectionDevice *primary_selection_device,
-                                                 uint32_t serial)
-{
-    if (primary_selection_device) {
-        primary_selection_device->selection_serial = serial;
-
-        // If there was no serial and there is a pending selection set it now.
-        if (primary_selection_device->selection_serial == 0 && primary_selection_device->selection_source) {
-            zwp_primary_selection_device_v1_set_selection(primary_selection_device->primary_selection_device,
-                                                          primary_selection_device->selection_source->source,
-                                                          primary_selection_device->selection_serial);
-        }
-    }
-}
-
 #endif // SDL_VIDEO_DRIVER_WAYLAND

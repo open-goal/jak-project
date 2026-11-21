@@ -80,6 +80,10 @@
 #include <sys/auxv.h>
 #endif
 
+#ifndef PPC_FEATURE_HAS_ALTIVEC
+#define PPC_FEATURE_HAS_ALTIVEC 0x10000000
+#endif
+
 #ifdef SDL_PLATFORM_RISCOS
 #include <kernel.h>
 #include <swis.h>
@@ -153,7 +157,7 @@ static int CPU_haveCPUID(void)
     :
     : "%eax", "%ecx"
     );
-#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__)
+#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__) && !defined(__arm64ec__)
 /* Technically, if this is being compiled under __x86_64__ then it has
    CPUid by definition.  But it's nice to be able to prove it.  :)      */
     __asm__ (
@@ -236,7 +240,7 @@ done:
         "        popl %%ebx         \n"      \
         : "=a"(a), "=S"(b), "=c"(c), "=d"(d) \
         : "a"(func))
-#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__)
+#elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__) && !defined(__arm64ec__)
 #define cpuid(func, a, b, c, d)              \
     __asm__ __volatile__(                    \
         "        pushq %%rbx        \n"      \
@@ -303,7 +307,7 @@ static void CPU_calcCPUIDFeatures(void)
                 // Check to make sure we can call xgetbv
                 if (c & 0x08000000) {
                     // Call xgetbv to see if YMM (etc) register state is saved
-#if (defined(__GNUC__) || defined(__llvm__)) && (defined(__i386__) || defined(__x86_64__))
+#if (defined(__GNUC__) || defined(__llvm__)) && (defined(__i386__) || defined(__x86_64__)) && !defined(__arm64ec__)
                     __asm__(".byte 0x0f, 0x01, 0xd0"
                             : "=a"(a)
                             : "c"(0)
@@ -331,10 +335,11 @@ static int CPU_haveAltiVec(void)
     volatile int altivec = 0;
 #ifndef SDL_CPUINFO_DISABLED
 #if (defined(SDL_PLATFORM_FREEBSD) || defined(SDL_PLATFORM_OPENBSD)) && defined(__powerpc__) && defined(HAVE_ELF_AUX_INFO)
-    unsigned long cpufeatures = 0;
-    elf_aux_info(AT_HWCAP, &cpufeatures, sizeof(cpufeatures));
+    unsigned long cpufeatures;
+    if (elf_aux_info(AT_HWCAP, &cpufeatures, sizeof(cpufeatures)) != 0) {
+        cpufeatures = 0;
+    }
     altivec = cpufeatures & PPC_FEATURE_HAS_ALTIVEC;
-    return altivec;
 #elif (defined(SDL_PLATFORM_MACOS) && (defined(__ppc__) || defined(__ppc64__))) || (defined(SDL_PLATFORM_OPENBSD) && defined(__powerpc__))
 #ifdef SDL_PLATFORM_OPENBSD
     int selectors[2] = { CTL_MACHDEP, CPU_ALTIVEC };
@@ -483,9 +488,9 @@ static int CPU_haveNEON(void)
 #elif !defined(__arm__)
     return 0; // not an ARM CPU at all.
 #elif defined(HAVE_ELF_AUX_INFO)
-    unsigned long hasneon = 0;
+    unsigned long hasneon;
     if (elf_aux_info(AT_HWCAP, (void *)&hasneon, (int)sizeof(hasneon)) != 0) {
-        return 0;
+        hasneon = 0;
     }
     return (hasneon & HWCAP_NEON) == HWCAP_NEON;
 #elif (defined(SDL_PLATFORM_LINUX) && defined(HAVE_GETAUXVAL)) || defined(SDL_PLATFORM_ANDROID)

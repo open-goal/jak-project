@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...4.4)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
   set(cmake_build_type_undefined 1)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.4.10")
+project(SDL3 LANGUAGES C VERSION "3.4.20")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -1614,7 +1614,7 @@ if(ANDROID)
       get_property(sdl3_jar_location TARGET SDL3-jar PROPERTY JAR_FILE)
       set_property(TARGET SDL3__Jar PROPERTY JAR_FILE "${sdl3_jar_location}")
       set(javasourcesjar "${SDL3_BINARY_DIR}/SDL3-${SDL3_VERSION}-sources.jar")
-      string(REGEX REPLACE "${android_java_sources_root}/" "" sdl_relative_java_sources "${SDL_JAVA_SOURCES}")
+      string(REPLACE "${android_java_sources_root}/" "" sdl_relative_java_sources "${SDL_JAVA_SOURCES}")
       add_custom_command(
         OUTPUT "${javasourcesjar}"
         COMMAND ${Java_JAR_EXECUTABLE} cf "${javasourcesjar}" ${sdl_relative_java_sources}
@@ -1775,17 +1775,32 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
 
   set(SDL_DISABLE_DLOPEN_NOTES TRUE)
   if(SDL_DLOPEN_NOTES)
-    set(CHECK_ELF_DLNOTES_SRC [==[
-    #ifndef __ELF__
-      ELF DL notes is only supported on ELF platforms
-    #endif
-    __attribute__ ((used,aligned(4),section(".note.dlopen"))) static const struct {
-      struct { int a; int b; int c; } hdr; char name[4]; __attribute__((aligned(4))) char json[24];
-    } dlnote = { { 4, 0x407c0c0aU, 16 }, "FDO", "[\\"a\\":{\\"a\\":\\"1\\",\\"b\\":\\"2\\"}]" };
-    int main(int argc, char *argv[]) {
-      return argc + dlnote.hdr.a;
-    }
-    ]==])
+    if(POLICY CMP0219)
+      set(CHECK_ELF_DLNOTES_SRC [==[
+        #ifndef __ELF__
+          ELF DL notes is only supported on ELF platforms
+        #endif
+        __attribute__ ((used,aligned(4),section(".note.dlopen"))) static const struct {
+          struct { int a; int b; int c; } hdr; char name[4]; __attribute__((aligned(4))) char json[24];
+        } dlnote = { { 4, 0x407c0c0aU, 16 }, "FDO", "[\"a\":{\"a\":\"1\",\"b\":\"2\"}]" };
+        int main(int argc, char *argv[]) {
+          return argc + dlnote.hdr.a;
+        }
+      ]==])
+    else()
+      # FIXME: drop this once minimum CMake version is >= 4.4
+      set(CHECK_ELF_DLNOTES_SRC [==[
+        #ifndef __ELF__
+          ELF DL notes is only supported on ELF platforms
+        #endif
+        __attribute__ ((used,aligned(4),section(".note.dlopen"))) static const struct {
+          struct { int a; int b; int c; } hdr; char name[4]; __attribute__((aligned(4))) char json[24];
+        } dlnote = { { 4, 0x407c0c0aU, 16 }, "FDO", "[\\"a\\":{\\"a\\":\\"1\\",\\"b\\":\\"2\\"}]" };
+        int main(int argc, char *argv[]) {
+          return argc + dlnote.hdr.a;
+        }
+      ]==])
+    endif()
     check_c_source_compiles("${CHECK_ELF_DLNOTES_SRC}" COMPILER_SUPPORTS_ELFNOTES)
     if(COMPILER_SUPPORTS_ELFNOTES)
       set(SDL_DISABLE_DLOPEN_NOTES FALSE)
@@ -2203,11 +2218,32 @@ elseif(WINDOWS)
       string(APPEND CMAKE_REQUIRED_FLAGS " /I\"$ENV{DXSDK_DIR}\\Include\"")
     endif()
 
-    check_include_file(d3d9.h HAVE_D3D9_H)
-    check_include_file(d3d11_1.h HAVE_D3D11_H)
-    check_include_file(ddraw.h HAVE_DDRAW_H)
-    check_include_file(dsound.h HAVE_DSOUND_H)
-    check_include_file(dinput.h HAVE_DINPUT_H)
+    # d3d9.h may need windows.h, but does not include it itself.
+    check_c_source_compiles("
+      #include <windows.h>
+      #include <d3d9.h>
+      int main(int argc, char **argv) { (void)argc; (void)argv; return 0; }" HAVE_D3D9_H
+    )
+    check_c_source_compiles("
+      #include <d3d11_1.h>
+      int main(int argc, char **argv) { (void)argc; (void)argv; return 0; }" HAVE_D3D11_H
+    )
+    # ddraw.h, dsound.h, and dinput.h may need windows.h, but does not include it itself.
+    check_c_source_compiles("
+      #include <windows.h>
+      #include <ddraw.h>
+      int main(int argc, char **argv) { (void)argc; (void)argv; return 0; }" HAVE_DDRAW_H
+    )
+    check_c_source_compiles("
+      #include <windows.h>
+      #include <dsound.h>
+      int main(int argc, char **argv) { (void)argc; (void)argv; return 0; }" HAVE_DSOUND_H
+    )
+    check_c_source_compiles("
+      #include <windows.h>
+      #include <dinput.h>
+      int main(int argc, char **argv) { (void)argc; (void)argv; return 0; }" HAVE_DINPUT_H
+    )
     if(SDL_CPU_ARM32)  # !!! FIXME: this should probably check if we're !(x86 or x86-64) instead of arm.
       set(HAVE_DINPUT_H 0)
     endif()

@@ -110,7 +110,9 @@
 #define SDL_WL_DATA_DEVICE_VERSION 3
 
 // wl_fixes was introduced in 1.24.0
-#if SDL_WAYLAND_CHECK_VERSION(1, 24, 0)
+#if SDL_WAYLAND_CHECK_VERSION(1, 26, 0)
+#define SDL_WL_FIXES_VERSION 2
+#elif SDL_WAYLAND_CHECK_VERSION(1, 24, 0)
 #define SDL_WL_FIXES_VERSION 1
 #endif
 
@@ -506,7 +508,11 @@ static void wayland_preferred_check_handle_global(void *data, struct wl_registry
 
 static void wayland_preferred_check_remove_global(void *data, struct wl_registry *registry, uint32_t id)
 {
-    // No need to do anything here.
+    SDL_WaylandPreferredData *d = (SDL_WaylandPreferredData *)data;
+
+    if (d->wl_fixes && wl_fixes_get_version(d->wl_fixes) >= WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION) {
+        wl_fixes_ack_global_remove(d->wl_fixes, registry, id);
+    }
 }
 
 static const struct wl_registry_listener preferred_registry_listener = {
@@ -1000,22 +1006,27 @@ static void handle_wl_output_done(void *data, struct wl_output *output)
                 internal->scale_factor = (double)native_mode.w / (double)internal->logical_width;
             } else {
                 // ...otherwise, the 'native' pixel values are a multiple of the logical screen size.
-                internal->pixel_width = internal->logical_width * (int)internal->scale_factor;
-                internal->pixel_height = internal->logical_height * (int)internal->scale_factor;
+                internal->scale_factor = internal->integer_scale_factor;
+                internal->pixel_width = internal->logical_width * internal->integer_scale_factor;
+                internal->pixel_height = internal->logical_height * internal->integer_scale_factor;
             }
         } else {
             /* ...and the output viewport is not scaled in the global compositing
              * space, the output dimensions need to be divided by the scale factor.
+             *
+             * NOTE: This path is needed for old versions of GNOME that predate fractional scaling.
              */
-            internal->logical_width /= (int)internal->scale_factor;
-            internal->logical_height /= (int)internal->scale_factor;
+            internal->scale_factor = internal->integer_scale_factor;
+            internal->logical_width /= internal->integer_scale_factor;
+            internal->logical_height /= internal->integer_scale_factor;
         }
     } else {
         /* Calculate the points from the pixel values, if xdg-output isn't present.
          * Use the native mode pixel values since they are pre-transformed.
          */
-        internal->logical_width = native_mode.w / (int)internal->scale_factor;
-        internal->logical_height = native_mode.h / (int)internal->scale_factor;
+        internal->scale_factor = internal->integer_scale_factor;
+        internal->logical_width = native_mode.w / internal->integer_scale_factor;
+        internal->logical_height = native_mode.h / internal->integer_scale_factor;
     }
 
     // The scaled desktop mode
@@ -1104,7 +1115,7 @@ static void handle_wl_output_done(void *data, struct wl_output *output)
 static void handle_wl_output_scale(void *data, struct wl_output *output, int32_t factor)
 {
     SDL_DisplayData *internal = (SDL_DisplayData *)data;
-    internal->scale_factor = factor;
+    internal->integer_scale_factor = factor;
 }
 
 static void handle_wl_output_name(void *data, struct wl_output *wl_output, const char *name)
@@ -1160,6 +1171,7 @@ static bool Wayland_add_display(SDL_VideoData *d, uint32_t id, uint32_t version)
     data->output = output;
     data->registry_id = id;
     data->scale_factor = 1.0f;
+    data->integer_scale_factor = 1;
 
     wl_output_add_listener(output, &output_listener, data);
     SDL_WAYLAND_register_output(output);
@@ -1370,17 +1382,21 @@ static void handle_registry_remove_global(void *data, struct wl_registry *regist
             }
 
             d->output_count--;
-            return;
+            goto ack_remove;
         }
     }
 
     SDL_WaylandSeat *seat, *temp;
-    wl_list_for_each_safe (seat, temp, &d->seat_list, link)
-    {
+    wl_list_for_each_safe (seat, temp, &d->seat_list, link) {
         if (seat->registry_id == id) {
             Wayland_SeatDestroy(seat, false);
-            return;
+            goto ack_remove;
         }
+    }
+
+ack_remove:
+    if (d->wl_fixes && wl_fixes_get_version(d->wl_fixes) >= WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION) {
+        wl_fixes_ack_global_remove(d->wl_fixes, registry, id);
     }
 }
 
