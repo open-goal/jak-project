@@ -1509,9 +1509,6 @@ const SDL_DisplayMode *SDL_GetCurrentDisplayMode(SDL_DisplayID displayID)
 
     CHECK_DISPLAY_MAGIC(display, NULL);
 
-    // Make sure our mode list is updated
-    SDL_UpdateFullscreenDisplayModes(display);
-
     return display->current_mode;
 }
 
@@ -2662,11 +2659,6 @@ static bool SDL_ReconfigureWindowInternal(SDL_Window *window, SDL_WindowFlags fl
         return false;
     }
 
-    // Don't attempt to reconfigure external windows.
-    if (window->flags & SDL_WINDOW_EXTERNAL) {
-        return false;
-    }
-
     // Only attempt to reconfigure if the window has no existing graphics flags.
     if (window->flags & (SDL_WINDOW_OPENGL | SDL_WINDOW_METAL | SDL_WINDOW_VULKAN)) {
         return false;
@@ -3124,9 +3116,13 @@ bool SDL_SetWindowBordered(SDL_Window *window, bool bordered)
     CHECK_WINDOW_MAGIC(window, false);
     CHECK_WINDOW_NOT_POPUP(window, false);
 
-    const bool want = (bordered != false); // normalize the flag.
+    if (!_this->SetWindowBordered) {
+        return SDL_Unsupported();
+    }
+
+    const bool want = bordered;
     const bool have = !(window->flags & SDL_WINDOW_BORDERLESS);
-    if ((want != have) && (_this->SetWindowBordered)) {
+    if (want != have) {
         if (want) {
             window->flags &= ~SDL_WINDOW_BORDERLESS;
         } else {
@@ -3143,9 +3139,13 @@ bool SDL_SetWindowResizable(SDL_Window *window, bool resizable)
     CHECK_WINDOW_MAGIC(window, false);
     CHECK_WINDOW_NOT_POPUP(window, false);
 
-    const bool want = (resizable != false); // normalize the flag.
+    if (!_this->SetWindowResizable) {
+        return SDL_Unsupported();
+    }
+
+    const bool want = resizable;
     const bool have = ((window->flags & SDL_WINDOW_RESIZABLE) != 0);
-    if ((want != have) && (_this->SetWindowResizable)) {
+    if (want != have) {
         if (want) {
             window->flags |= SDL_WINDOW_RESIZABLE;
         } else {
@@ -3163,9 +3163,13 @@ bool SDL_SetWindowAlwaysOnTop(SDL_Window *window, bool on_top)
     CHECK_WINDOW_MAGIC(window, false);
     CHECK_WINDOW_NOT_POPUP(window, false);
 
-    const bool want = (on_top != false); // normalize the flag.
+    if (!_this->SetWindowAlwaysOnTop) {
+        return SDL_Unsupported();
+    }
+
+    const bool want = on_top;
     const bool have = ((window->flags & SDL_WINDOW_ALWAYS_ON_TOP) != 0);
-    if ((want != have) && (_this->SetWindowAlwaysOnTop)) {
+    if (want != have) {
         if (want) {
             window->flags |= SDL_WINDOW_ALWAYS_ON_TOP;
         } else {
@@ -5785,8 +5789,10 @@ static bool AutoShowingScreenKeyboard(void)
 {
     const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
     if (!hint) {
-        // Steam will eventually have smarts about whether a keyboard is active, so always request the on-screen keyboard on Steam Deck
-        hint = SDL_GetHint("SteamDeck");
+        // This hint is currently only used by the X11 video driver
+        if (SDL_strcmp(_this->name, "x11") == 0) {
+            hint = SDL_GetHint(SDL_HINT_ENABLE_STEAM_SCREEN_KEYBOARD);
+        }
     }
     if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
         SDL_GetStringBoolean(hint, false)) {
@@ -6221,6 +6227,12 @@ void SDL_OnApplicationWillEnterBackground(void)
         for (window = _this->windows; window; window = window->next) {
             SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
         }
+
+        // Remember which window had focus so we can restore it when we come back
+        window = SDL_GetKeyboardFocus();
+        if (window) {
+            _this->background_focus_windowID = window->id;
+        }
         SDL_SetKeyboardFocus(NULL);
     }
     SDL_SendAppEvent(SDL_EVENT_WILL_ENTER_BACKGROUND);
@@ -6243,9 +6255,17 @@ void SDL_OnApplicationDidEnterForeground(void)
     if (_this) {
         SDL_Window *window;
         for (window = _this->windows; window; window = window->next) {
-            SDL_SetKeyboardFocus(window);
             SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
         }
+
+        // Restore focus to the window that had it before we went into the background
+        if (_this->background_focus_windowID && !SDL_GetKeyboardFocus()) {
+            window = SDL_GetWindowFromID(_this->background_focus_windowID);
+            if (window) {
+                SDL_SetKeyboardFocus(window);
+            }
+        }
+        _this->background_focus_windowID = 0;
     }
 }
 

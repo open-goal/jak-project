@@ -339,6 +339,10 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     } else {
         format = AAUDIO_FORMAT_PCM_I16;  // sint16 is a safe bet for everything else.
     }
+    if (recording && format == AAUDIO_FORMAT_PCM_FLOAT && SDL_GetAndroidSDKVersion() == 29) {
+        // Android 10 crashes converting recorded 16-bit data to float with a fixed callback size
+        format = AAUDIO_FORMAT_PCM_I16;
+    }
     ctx.AAudioStreamBuilder_setFormat(builder, format);
     ctx.AAudioStreamBuilder_setSampleRate(builder, device->spec.freq);
     ctx.AAudioStreamBuilder_setChannelCount(builder, device->spec.channels);
@@ -368,9 +372,13 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     SetOptionalStreamUsage(builder);
 
     if (recording && ctx.AAudioStreamBuilder_setInputPreset) {    // optional API: requires Android 28
-        // try to use a microphone that is for recording external audio. Otherwise Android might choose the mic used for talking
-        // on the telephone when held to the user's ear, which is often not useful at any distance from the device.
-        ctx.AAudioStreamBuilder_setInputPreset(builder, AAUDIO_INPUT_PRESET_CAMCORDER);
+        const char *hint = SDL_GetHint(SDL_HINT_ANDROID_AAUDIO_INPUT_PRESET);
+        if (hint) {
+            const aaudio_input_preset_t preset = (const aaudio_input_preset_t) SDL_atoi(hint);
+            if (preset) {
+                ctx.AAudioStreamBuilder_setInputPreset(builder, preset);
+            }
+        }
     }
 
     LOGI("AAudio Try to open %u hz %s %u channels samples %u",

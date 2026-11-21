@@ -1307,7 +1307,7 @@ The following platform preprocessor macros have been renamed:
 | `__RISCOS__`      | `SDL_PLATFORM_RISCOS`     |
 | `__SOLARIS__`     | `SDL_PLATFORM_SOLARIS`    |
 | `__TVOS__`        | `SDL_PLATFORM_TVOS`       |
-| `__unix__`        | `SDL_PLATFORM_UNI`        |
+| `__unix__`        | `SDL_PLATFORM_UNIX`       |
 | `__VITA__`        | `SDL_PLATFORM_VITA`       |
 | `__WIN32__`       | `SDL_PLATFORM_WIN32`      |
 | `__WINGDK__`      | `SDL_PLATFORM_WINGDK`     |
@@ -1593,6 +1593,7 @@ static bool SDLCALL stdio_close(void *userdata)
             status = false;
         }
     }
+    SDL_free(rwopsdata);
     return status;
 }
 

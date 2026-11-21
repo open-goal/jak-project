@@ -118,6 +118,33 @@ extern "C" {
 #define SDL_HINT_ANDROID_LOW_LATENCY_AUDIO "SDL_ANDROID_LOW_LATENCY_AUDIO"
 
 /**
+ * A variable to control Android's AAudio input preset.
+ *
+ * This hint only applies to SDL's "aaudio" backend on Android 9+ devices.
+ *
+ * Some devices choose the wrong microphone by default (between the one meant
+ * to be spoken in when the phone is held to the user's ear for a phone call,
+ * or an external microphone that's meant to be used when recording video),
+ * or have DSP effects applied to the recorded audio, and changing the input
+ * preset can help control this.
+ *
+ * This can be any number that maps to an `AAUDIO_INPUT_PRESET_*` enum from
+ * the Android NDK headers. The most reasonable choices are 5 ("camcorder",
+ * for external microphones) and 7 ("voice communication", for speaking
+ * directly into the device like a mobile phone). 6 ("voice recognition")
+ * might also be a useful choice.
+ *
+ * If unset (the default), SDL will not specify an input preset at all, which
+ * lets the system choose. This is usually the correct thing to do unless
+ * your app is having problems.
+ *
+ * This hint should be set before a recording audio device is opened.
+ *
+ * \since This hint is available since SDL 3.4.16.
+ */
+#define SDL_HINT_ANDROID_AAUDIO_INPUT_PRESET "SDL_ANDROID_AAUDIO_INPUT_PRESET"
+
+/**
  * A variable to control whether we trap the Android back button to handle it
  * manually.
  *
@@ -808,6 +835,25 @@ extern "C" {
  * \since This hint is available since SDL 3.2.0.
  */
 #define SDL_HINT_ENABLE_SCREEN_KEYBOARD "SDL_ENABLE_SCREEN_KEYBOARD"
+
+/**
+ * A variable that controls whether the Steam on-screen keyboard should be
+ * shown when text input is active.
+ *
+ * Steam will set this hint via environment variable for games launched in Big
+ * Picture mode. To override this you should call SDL_SetHintWithPriority()
+ * with priority `SDL_HINT_OVERRIDE`.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Do not show the Steam on-screen keyboard.
+ * - "1": Show the Steam on-screen keyboard.
+ *
+ * This hint should be set before SDL is initialized.
+ *
+ * \since This hint is available since SDL 3.4.12.
+ */
+#define SDL_HINT_ENABLE_STEAM_SCREEN_KEYBOARD "SDL_ENABLE_STEAM_SCREEN_KEYBOARD"
 
 /**
  * A variable containing a list of evdev devices to use if udev is not
@@ -2150,7 +2196,8 @@ extern "C" {
  * - "0": Assume this is a generic controller.
  * - "1": Reset the controller to get metadata.
  *
- * By default the controller is not reset.
+ * By default the controller is reset. This is so we can properly detect
+ * the controller type.
  *
  * This hint should be set before initializing joysticks and gamepads.
  *
@@ -3436,6 +3483,19 @@ extern "C" {
  * \since This hint is available since SDL 3.4.0.
  */
 #define SDL_HINT_PS2_GS_MODE    "SDL_PS2_GS_MODE"
+
+/**
+ * A variable controlling the pixel storage mode of the PS2's framebuffer.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "32"
+ * - "24" (default)
+ * - "16"
+ *
+ * \since This hint is available since SDL 3.4.20.
+ */
+#define SDL_HINT_PS2_GS_COLOR_DEPTH "SDL_PS2_GS_COLOR_DEPTH"
 
 /**
  * A variable controlling which Dispmanx layer to use on a Raspberry PI.

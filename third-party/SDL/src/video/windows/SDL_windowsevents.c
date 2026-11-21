@@ -329,7 +329,7 @@ static void WIN_CheckAsyncMouseRelease(Uint64 timestamp, SDL_WindowData *data)
     data->mouse_button_flags = (WPARAM)-1;
 }
 
-static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus, DWORD pos)
+static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus, LPPOINT pos)
 {
     SDL_WindowData *data = window->internal;
     HWND hwnd = data->hwnd;
@@ -366,8 +366,8 @@ static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus, DWORD pos)
 
         // In relative mode we are guaranteed to have mouse focus if we have keyboard focus
         if (!SDL_GetMouse()->relative_mode) {
-            cursorPos.x = (LONG)GET_X_LPARAM(pos);
-            cursorPos.y = (LONG)GET_Y_LPARAM(pos);
+            cursorPos.x = pos->x;
+            cursorPos.y = pos->y;
             ScreenToClient(hwnd, &cursorPos);
             SDL_SendMouseMotion(WIN_GetEventTimestamp(), window, SDL_GLOBAL_MOUSE_ID, false, (float)cursorPos.x, (float)cursorPos.y);
         }
@@ -716,15 +716,9 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
             }
         }
 
-        if (rawmouse->usButtonFlags & RI_MOUSE_WHEEL) {
-            SHORT amount = (SHORT)rawmouse->usButtonData;
-            float fAmount = (float)amount / WHEEL_DELTA;
-            SDL_SendMouseWheel(WIN_GetEventTimestamp(), window, mouseID, 0.0f, fAmount, SDL_MOUSEWHEEL_NORMAL);
-        } else if (rawmouse->usButtonFlags & RI_MOUSE_HWHEEL) {
-            SHORT amount = (SHORT)rawmouse->usButtonData;
-            float fAmount = (float)amount / WHEEL_DELTA;
-            SDL_SendMouseWheel(WIN_GetEventTimestamp(), window, mouseID, fAmount, 0.0f, SDL_MOUSEWHEEL_NORMAL);
-        }
+        /* Note: We don't handle RI_MOUSE_WHEEL and RI_MOUSE_HWHEEL here because some
+           input devices have inverted wheel direction in raw mode. This avoids scroll
+           direction changing unexpectedly when entering/exiting relative mouse mode. */
 
         /* Invalidate the mouse button flags. If we don't do this then disabling raw input
            will cause held down mouse buttons to persist when released. */
@@ -760,7 +754,21 @@ static void WIN_HandleRawKeyboardInput(Uint64 timestamp, SDL_VideoData *data, HA
         return;
     }
 
-    bool down = !(rawkeyboard->Flags & RI_KEY_BREAK);
+    bool down;
+    switch (rawkeyboard->Message) {
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+        down = true;
+        break;
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+        down = false;
+        break;
+    default:
+        down = !(rawkeyboard->Flags & RI_KEY_BREAK);
+        break;
+    }
+
     SDL_Scancode code;
     USHORT rawcode = rawkeyboard->MakeCode;
     if (data->pending_E1_key_sequence) {
@@ -1221,8 +1229,13 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         /* Update the focus here, since it's possible to get WM_ACTIVATE and WM_SETFOCUS without
            actually being the foreground window, but this appears to get called in all cases where
-           the global foreground window changes to and from this window. */
-        WIN_UpdateFocus(data->window, !!wParam, GetMessagePos());
+           the global foreground window changes to and from this window.
+
+           The current cursor position is needed here, as the message position contains old
+           coordinates if the pointer moved while an overlay was active. */
+        POINT pos = { 0, 0 };
+        GetCursorPos(&pos);
+        WIN_UpdateFocus(data->window, !!wParam, &pos);
 
         /* Handle borderless windows; this event is intended for drawing the titlebar, so we need
            to stop that from happening. */
@@ -1246,7 +1259,9 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_ACTIVATE:
     {
         // Update the focus in case we changed focus to a child window and then away from the application
-        WIN_UpdateFocus(data->window, !!LOWORD(wParam), GetMessagePos());
+        const DWORD msgPos = GetMessagePos();
+        POINT pos = { GET_X_LPARAM(msgPos), GET_Y_LPARAM(msgPos) };
+        WIN_UpdateFocus(data->window, !!LOWORD(wParam), &pos);
     } break;
 
     case WM_MOUSEACTIVATE:
@@ -1269,14 +1284,18 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_SETFOCUS:
     {
         // Update the focus in case it's changing between top-level windows in the same application
-        WIN_UpdateFocus(data->window, true, GetMessagePos());
+        const DWORD msgPos = GetMessagePos();
+        POINT pos = { GET_X_LPARAM(msgPos), GET_Y_LPARAM(msgPos) };
+        WIN_UpdateFocus(data->window, true, &pos);
     } break;
 
     case WM_KILLFOCUS:
     case WM_ENTERIDLE:
     {
         // Update the focus in case it's changing between top-level windows in the same application
-        WIN_UpdateFocus(data->window, false, GetMessagePos());
+        const DWORD msgPos = GetMessagePos();
+        POINT pos = { GET_X_LPARAM(msgPos), GET_Y_LPARAM(msgPos) };
+        WIN_UpdateFocus(data->window, false, &pos);
     } break;
 
     case WM_POINTERENTER:
@@ -1514,14 +1533,12 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_MOUSEWHEEL:
     case WM_MOUSEHWHEEL:
     {
-        if (!data->videodata->raw_mouse_enabled) {
-            short amount = GET_WHEEL_DELTA_WPARAM(wParam);
-            float fAmount = (float)amount / WHEEL_DELTA;
-            if (msg == WM_MOUSEWHEEL) {
-                SDL_SendMouseWheel(WIN_GetEventTimestamp(), data->window, SDL_GLOBAL_MOUSE_ID, 0.0f, fAmount, SDL_MOUSEWHEEL_NORMAL);
-            } else {
-                SDL_SendMouseWheel(WIN_GetEventTimestamp(), data->window, SDL_GLOBAL_MOUSE_ID, fAmount, 0.0f, SDL_MOUSEWHEEL_NORMAL);
-            }
+        short amount = GET_WHEEL_DELTA_WPARAM(wParam);
+        float fAmount = (float)amount / WHEEL_DELTA;
+        if (msg == WM_MOUSEWHEEL) {
+            SDL_SendMouseWheel(WIN_GetEventTimestamp(), data->window, SDL_GLOBAL_MOUSE_ID, 0.0f, fAmount, SDL_MOUSEWHEEL_NORMAL);
+        } else {
+            SDL_SendMouseWheel(WIN_GetEventTimestamp(), data->window, SDL_GLOBAL_MOUSE_ID, fAmount, 0.0f, SDL_MOUSEWHEEL_NORMAL);
         }
     } break;
 
@@ -2443,9 +2460,12 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             }
 
             // Interactive user-initiated resizing/movement
-            {
-                /* Calculate the new frame w/h such that
-                   the client area size is maintained. */
+            if (data->window->flags & SDL_WINDOW_RESIZABLE) {
+                // The desktop dictates the size, particularly to maintain a maximized or arranged layout.
+                w = suggestedRect->right - suggestedRect->left;
+                h = suggestedRect->bottom - suggestedRect->top;
+            } else {
+                // Calculate the new frame w/h such that the fixed client area size is maintained.
                 RECT rect = { 0 };
                 rect.right = data->window->w;
                 rect.bottom = data->window->h;

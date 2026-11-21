@@ -450,6 +450,7 @@ static Uint32 initial_blacklist_devices[] = {
     MAKE_VIDPID(0x26ce, 0x01a2), // ASRock LED Controller
     MAKE_VIDPID(0x3297, 0x1969), // Moonlander MK1 Keyboard
     MAKE_VIDPID(0x3434, 0x0121), // Keychron Q3 System Control
+    MAKE_VIDPID(0x3434, 0x0163), // Keychron Q6 System Control
     MAKE_VIDPID(0x3434, 0x0211), // Keychron K1 Pro System Control
     MAKE_VIDPID(0x3434, 0x02a0), // Keychron K10 Pro System Control
     MAKE_VIDPID(0x3434, 0x0353), // Keychron V5 System Control
@@ -479,6 +480,7 @@ static Uint32 initial_flightstick_devices[] = {
     MAKE_VIDPID(0x10f5, 0x7084), // Turtle Beach VelocityOne
     MAKE_VIDPID(0x231d, 0x0126), // Gunfighter Mk.III 'Space Combat Edition' (right)
     MAKE_VIDPID(0x231d, 0x0127), // Gunfighter Mk.III 'Space Combat Edition' (left)
+    MAKE_VIDPID(0x231d, 0x0200), // VKB Gladiator NXT Evo (grip)
     MAKE_VIDPID(0x3344, 0x4391), // VIRPIL Controls R-VPC Stick MT-50CM3
     MAKE_VIDPID(0x3344, 0x8390), // VIRPIL Controls L-VPC Stick MT-50CM3
     MAKE_VIDPID(0x362c, 0x0001), // Yawman Arrow
@@ -496,6 +498,7 @@ static Uint32 initial_gamecube_devices[] = {
     MAKE_VIDPID(0x0079, 0x1846), // DragonRise GameCube Controller Adapter
     MAKE_VIDPID(0x057e, 0x0337), // Nintendo Wii U GameCube Controller Adapter
     MAKE_VIDPID(0x057e, 0x2073), // Nintendo Switch 2 NSO GameCube Controller
+    MAKE_VIDPID(0x05e3, 0x0681), // Austgame GameCube to USB convertor
     MAKE_VIDPID(0x0926, 0x8888), // Cyber Gadget GameCube Controller
     MAKE_VIDPID(0x0e6f, 0x0185), // PDP Wired Fight Pad Pro for Nintendo Switch
     MAKE_VIDPID(0x1a34, 0xf705), // GameCube {HuiJia USB box}
@@ -3039,6 +3042,8 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
     } else if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_SWITCH_JOYCON_GRIP) {
         if (name && SDL_strstr(name, "(L)") != NULL) {
             type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT;
+        } else if (name && SDL_strstr(name, "L+R") != NULL) {
+            type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR;
         } else {
             type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT;
         }
@@ -3057,6 +3062,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
             type = SDL_GAMEPAD_TYPE_XBOX360;
             break;
         case k_eControllerType_XBoxOneController:
+        case k_eControllerType_XBoxEliteController:
             type = SDL_GAMEPAD_TYPE_XBOXONE;
             break;
         case k_eControllerType_PS3Controller:
@@ -3066,6 +3072,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
             type = SDL_GAMEPAD_TYPE_PS4;
             break;
         case k_eControllerType_PS5Controller:
+        case k_eControllerType_PS5EdgeController:
             type = SDL_GAMEPAD_TYPE_PS5;
             break;
         case k_eControllerType_XInputPS4Controller:
@@ -3083,8 +3090,16 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
             if (forUI) {
                 type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO;
             } else {
-                type = SDL_GAMEPAD_TYPE_STANDARD;
+                type = SDL_GAMEPAD_TYPE_XBOX360;
             }
+            break;
+        case k_eControllerType_SteamController:
+        case k_eControllerType_SteamControllerV2:
+        case k_eControllerType_SteamControllerNeptune:
+        case k_eControllerType_SteamControllerTriton:
+        case k_eControllerType_HoriSteamController:
+        case k_eControllerType_UnknownSteamController:
+            type = SDL_GAMEPAD_TYPE_STEAM;
             break;
         default:
             break;
@@ -3133,20 +3148,14 @@ bool SDL_JoystickGUIDUsesVersion(SDL_GUID guid)
 bool SDL_IsJoystickXboxOne(Uint16 vendor_id, Uint16 product_id)
 {
     EControllerType eType = GuessControllerType(vendor_id, product_id);
-    return eType == k_eControllerType_XBoxOneController;
+    return eType == k_eControllerType_XBoxOneController ||
+           eType == k_eControllerType_XBoxEliteController;
 }
 
 bool SDL_IsJoystickXboxOneElite(Uint16 vendor_id, Uint16 product_id)
 {
-    if (vendor_id == USB_VENDOR_MICROSOFT) {
-        if (product_id == USB_PRODUCT_XBOX_ONE_ELITE_SERIES_1 ||
-            product_id == USB_PRODUCT_XBOX_ONE_ELITE_SERIES_2 ||
-            product_id == USB_PRODUCT_XBOX_ONE_ELITE_SERIES_2_BLUETOOTH ||
-            product_id == USB_PRODUCT_XBOX_ONE_ELITE_SERIES_2_BLE) {
-            return true;
-        }
-    }
-    return false;
+    EControllerType eType = GuessControllerType(vendor_id, product_id);
+    return eType == k_eControllerType_XBoxEliteController;
 }
 
 bool SDL_IsJoystickXboxSeriesX(Uint16 vendor_id, Uint16 product_id)
@@ -3185,17 +3194,14 @@ bool SDL_IsJoystickPS4(Uint16 vendor_id, Uint16 product_id)
 bool SDL_IsJoystickPS5(Uint16 vendor_id, Uint16 product_id)
 {
     EControllerType eType = GuessControllerType(vendor_id, product_id);
-    return eType == k_eControllerType_PS5Controller;
+    return eType == k_eControllerType_PS5Controller ||
+           eType == k_eControllerType_PS5EdgeController;
 }
 
 bool SDL_IsJoystickDualSenseEdge(Uint16 vendor_id, Uint16 product_id)
 {
-    if (vendor_id == USB_VENDOR_SONY) {
-        if (product_id == USB_PRODUCT_SONY_DS5_EDGE) {
-            return true;
-        }
-    }
-    return false;
+    EControllerType eType = GuessControllerType(vendor_id, product_id);
+    return eType == k_eControllerType_PS5EdgeController;
 }
 
 bool SDL_IsJoystickNintendoSwitchPro(Uint16 vendor_id, Uint16 product_id)
@@ -3280,7 +3286,8 @@ bool SDL_IsJoystickSteamController(Uint16 vendor_id, Uint16 product_id)
 
 bool SDL_IsJoystickHoriSteamController(Uint16 vendor_id, Uint16 product_id)
 {
-    return vendor_id == USB_VENDOR_HORI && (product_id == USB_PRODUCT_HORI_STEAM_CONTROLLER || product_id == USB_PRODUCT_HORI_STEAM_CONTROLLER_BT);
+    EControllerType eType = GuessControllerType(vendor_id, product_id);
+    return eType == k_eControllerType_HoriSteamController;
 }
 
 bool SDL_IsJoystickSInputController(Uint16 vendor_id, Uint16 product_id)
@@ -3291,6 +3298,11 @@ bool SDL_IsJoystickSInputController(Uint16 vendor_id, Uint16 product_id)
             product_id == USB_PRODUCT_HANDHELDLEGEND_GCULTIMATE ||
             product_id == USB_PRODUCT_BONZIRICHANNEL_FIREBIRD ||
             product_id == USB_PRODUCT_VOIDGAMING_PS4FIREBIRD) {
+            return true;
+        }
+    }
+    if (vendor_id == USB_VENDOR_ANDGAMER) {
+        if (product_id == USB_PRODUCT_VOIDGAMING_GENESIS_SINPUT) {
             return true;
         }
     }
@@ -3305,7 +3317,7 @@ bool SDL_IsJoystickFlydigiController(Uint16 vendor_id, Uint16 product_id)
         }
     }
     if (vendor_id == USB_VENDOR_FLYDIGI_V2) {
-        if (product_id == USB_PRODUCT_FLYDIGI_V2_APEX || product_id == USB_PRODUCT_FLYDIGI_V2_VADER) {
+        if (product_id == USB_PRODUCT_FLYDIGI_V2_APEX || product_id == USB_PRODUCT_FLYDIGI_V2_VADER || product_id == USB_PRODUCT_FLYDIGI_V2_APEX6) {
             return true;
         }
     }

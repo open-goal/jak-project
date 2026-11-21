@@ -287,9 +287,11 @@ static bool Cocoa_ShowCursor(SDL_Cursor *cursor)
         for (; window != NULL; window = window->next) {
             SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->internal;
             if (data) {
-                [data.nswindow performSelectorOnMainThread:@selector(invalidateCursorRectsForView:)
-                                                withObject:[data.nswindow contentView]
-                                             waitUntilDone:NO];
+                NSWindow *nsWindow = data.nswindow;
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [nsWindow invalidateCursorRectsForView: [nsWindow contentView]];
+                });
             }
         }
         return true;
@@ -618,17 +620,18 @@ void Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
     SDL_MouseWheelDirection direction;
     CGFloat x, y;
 
-    x = -[event deltaX];
-    y = [event deltaY];
     direction = SDL_MOUSEWHEEL_NORMAL;
 
     if ([event isDirectionInvertedFromDevice] == YES) {
         direction = SDL_MOUSEWHEEL_FLIPPED;
     }
 
-    /* For discrete scroll events from conventional mice, always send a full tick.
-       For continuous scroll events from trackpads, send fractional deltas for smoother scrolling. */
-    if (![event hasPreciseScrollingDeltas]) {
+    if ([event hasPreciseScrollingDeltas]) {
+        x = -[event scrollingDeltaX] * 0.1f;
+        y = [event scrollingDeltaY] * 0.1f;
+    } else {
+        x = -[event deltaX];
+        y = [event deltaY];
         if (x > 0) {
             x = SDL_ceil(x);
         } else if (x < 0) {

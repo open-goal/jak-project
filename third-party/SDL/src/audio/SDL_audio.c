@@ -736,11 +736,29 @@ SDL_AudioDevice *SDL_AddAudioDevice(bool recording, const char *name, const SDL_
     return device;
 }
 
+// you must hold the device lock when calling this!
+static void SetAudioDeviceZombieFunctions(SDL_AudioDevice *device)
+{
+    // Swap in "Zombie" versions of the usual platform interfaces, so the device will keep
+    // making progress until the app closes it. Otherwise, streams might continue to
+    // accumulate waste data that never drains, apps that depend on audio callbacks to
+    // progress will freeze, etc.
+    device->WaitDevice = ZombieWaitDevice;
+    device->GetDeviceBuf = ZombieGetDeviceBuf;
+    device->PlayDevice = ZombiePlayDevice;
+    device->WaitRecordingDevice = ZombieWaitDevice;
+    device->RecordDevice = ZombieRecordDevice;
+    device->FlushRecording = ZombieFlushRecording;
+}
+
 // Called when a device is removed from the system, or it fails unexpectedly, from any thread, possibly even the audio device's thread.
 static void SDLCALL SDL_AudioDeviceDisconnected_OnMainThread(void *userdata)
 {
-    SDL_AudioDevice *device = (SDL_AudioDevice *) userdata;
-    SDL_assert(device != NULL);
+    const SDL_AudioDeviceID devid = (SDL_AudioDeviceID) (size_t) userdata;
+    SDL_AudioDevice *device = ObtainPhysicalAudioDevice(devid);
+    if (device == NULL) {
+        return;  // apparently it went away already.
+    }
 
     // Save off removal info in a list so we can send events for each, next
     //  time the event queue pumps, in case something tries to close a device
@@ -750,25 +768,14 @@ static void SDLCALL SDL_AudioDeviceDisconnected_OnMainThread(void *userdata)
     pending.next = NULL;
     SDL_PendingAudioDeviceEvent *pending_tail = &pending;
 
-    ObtainPhysicalAudioDeviceObj(device);
-
     SDL_LockRWLockForReading(current_audio.subsystem_rwlock);
-    const SDL_AudioDeviceID devid = device->instance_id;
     const bool is_default_device = ((devid == current_audio.default_playback_device_id) || (devid == current_audio.default_recording_device_id));
     SDL_UnlockRWLock(current_audio.subsystem_rwlock);
 
-    const bool first_disconnect = SDL_CompareAndSwapAtomicInt(&device->zombie, 0, 1);
+    // zombie==2 means "we've handled the disconnect events". 1=="we marked this as dead from a random thread but haven't done anything else"  0==we think we're still alive.
+    const bool first_disconnect = SDL_CompareAndSwapAtomicInt(&device->zombie, 0, 2) || SDL_CompareAndSwapAtomicInt(&device->zombie, 1, 2);
     if (first_disconnect) {   // if already disconnected this device, don't do it twice.
-        // Swap in "Zombie" versions of the usual platform interfaces, so the device will keep
-        // making progress until the app closes it. Otherwise, streams might continue to
-        // accumulate waste data that never drains, apps that depend on audio callbacks to
-        // progress will freeze, etc.
-        device->WaitDevice = ZombieWaitDevice;
-        device->GetDeviceBuf = ZombieGetDeviceBuf;
-        device->PlayDevice = ZombiePlayDevice;
-        device->WaitRecordingDevice = ZombieWaitDevice;
-        device->RecordDevice = ZombieRecordDevice;
-        device->FlushRecording = ZombieFlushRecording;
+        SetAudioDeviceZombieFunctions(device);  // in case we beat the device thread to this.
 
         // on default devices, dump any logical devices that explicitly opened this device. Things that opened the system default can stay.
         // on non-default devices, dump everything.
@@ -819,13 +826,16 @@ static void SDLCALL SDL_AudioDeviceDisconnected_OnMainThread(void *userdata)
 
 void SDL_AudioDeviceDisconnected(SDL_AudioDevice *device)
 {
+    //SDL_Log("AUDIO DEVICE DISCONNECTED %p '%s'", device, device ? device->name : NULL);
+
     // lots of risk of various audio backends deadlocking because they're calling
     // this while holding a backend-specific lock, which causes problems when we
     // want to obtain the device lock while its audio thread is also waiting for
     // that lock to be released. So just queue the work on the main thread.
     if (device) {
         RefPhysicalAudioDevice(device);
-        SDL_RunOnMainThread(SDL_AudioDeviceDisconnected_OnMainThread, device, false);
+        SDL_CompareAndSwapAtomicInt(&device->zombie, 0, 1);  // note that we're (un)dead right now, if we haven't already, but leave the event notifications for the main thread.
+        SDL_RunOnMainThread(SDL_AudioDeviceDisconnected_OnMainThread, (void *) (size_t) device->instance_id, false);
     }
 }
 
@@ -876,12 +886,18 @@ static bool SDL_AudioOpenDevice_Default(SDL_AudioDevice *device)
     return SDL_Unsupported();
 }
 
+static bool SDL_AudioPostOpenDevice_Default(SDL_AudioDevice *device)
+{
+    return true;  // just call this success by default. This exists as a special case used by a few backends.
+}
+
 // Fill in stub functions for unused driver entry points. This lets us blindly call them without having to check for validity first.
 static void CompleteAudioEntryPoints(void)
 {
     #define FILL_STUB(x) if (!current_audio.impl.x) { current_audio.impl.x = SDL_Audio##x##_Default; }
     FILL_STUB(DetectDevices);
     FILL_STUB(OpenDevice);
+    FILL_STUB(PostOpenDevice);
     FILL_STUB(ThreadInit);
     FILL_STUB(ThreadDeinit);
     FILL_STUB(WaitDevice);
@@ -1180,6 +1196,11 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
         return false;  // we're done, shut it down.
     }
 
+    if (SDL_GetAtomicInt(&device->zombie) == 1) {
+        // we've been marked as (un)dead but not fully processed. Set up the zombie functions so we stop talking to the real backend.
+        SetAudioDeviceZombieFunctions(device);
+    }
+
     bool failed = false;
     int buffer_size = device->buffer_size;
     Uint8 *device_buffer = device->GetDeviceBuf(device, &buffer_size);
@@ -1344,6 +1365,11 @@ bool SDL_RecordingAudioThreadIterate(SDL_AudioDevice *device)
     if (SDL_GetAtomicInt(&device->shutdown)) {
         SDL_UnlockMutex(device->lock);
         return false;  // we're done, shut it down.
+    }
+
+    if (SDL_GetAtomicInt(&device->zombie) == 1) {
+        // we've been marked as (un)dead but not fully processed. Set up the zombie functions so we stop talking to the real backend.
+        SetAudioDeviceZombieFunctions(device);
     }
 
     bool failed = false;
@@ -1783,8 +1809,10 @@ char *SDL_GetAudioThreadName(SDL_AudioDevice *device, char *buf, size_t buflen)
 
 
 // this expects the device lock to be held.
-static bool OpenPhysicalAudioDevice(SDL_AudioDevice *device, const SDL_AudioSpec *inspec)
+static bool OpenPhysicalAudioDevice(SDL_AudioDevice *device, const SDL_AudioSpec *inspec, bool *need_postopen)
 {
+    *need_postopen = false;
+
     SerializePhysicalDeviceClose(device);  // make sure another thread that's closing didn't release the lock to let the device thread join...
 
     if (device->currently_opened) {
@@ -1828,6 +1856,8 @@ static bool OpenPhysicalAudioDevice(SDL_AudioDevice *device, const SDL_AudioSpec
         ClosePhysicalAudioDevice(device);  // clean up anything the backend left half-initialized.
         return false;
     }
+
+    *need_postopen = true;  // definitely ran OpenDevice, so we'll need PostOpenDevice.
 
     SDL_UpdatedAudioDeviceFormat(device);  // in case the backend changed things and forgot to call this.
 
@@ -1882,6 +1912,7 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(SDL_AudioDeviceID devid, const SDL_AudioSp
     }
 
     SDL_AudioDeviceID result = 0;
+    bool need_postopen = false;
 
     if (device) {
         SDL_LogicalAudioDevice *logdev = NULL;
@@ -1890,7 +1921,7 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(SDL_AudioDeviceID devid, const SDL_AudioSp
             SDL_SetError("Device was already lost and can't accept new opens");
         } else if ((logdev = (SDL_LogicalAudioDevice *) SDL_calloc(1, sizeof (SDL_LogicalAudioDevice))) == NULL) {
             // SDL_calloc already called SDL_OutOfMemory
-        } else if (!OpenPhysicalAudioDevice(device, spec)) {  // if this is the first thing using this physical device, open at the OS level if necessary...
+        } else if (!OpenPhysicalAudioDevice(device, spec, &need_postopen)) {  // if this is the first thing using this physical device, open at the OS level if necessary...
             SDL_free(logdev);
         } else {
             RefPhysicalAudioDevice(device);  // unref'd on successful SDL_CloseAudioDevice
@@ -1907,6 +1938,15 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(SDL_AudioDeviceID devid, const SDL_AudioSp
             UpdateAudioStreamFormatsPhysical(device);
         }
         ReleaseAudioDevice(device);
+
+        if (result && need_postopen) {
+            if (!current_audio.impl.PostOpenDevice(device)) {
+                const char *devtypestr = device->recording ? "recording" : "playback";
+                SDL_LogDebug(SDL_LOG_CATEGORY_AUDIO, "AUDIO: post-open of %s device '%s' failed: %s", devtypestr, device->name, SDL_GetError());
+                SDL_CloseAudioDevice(result);
+                result = 0;
+            }
+        }
 
         if (result) {
             SDL_LockRWLockForWriting(current_audio.subsystem_rwlock);
@@ -2424,8 +2464,19 @@ void SDL_DefaultAudioDeviceChanged(SDL_AudioDevice *new_default_device)
 
         if (needs_migration) {
             // New default physical device not been opened yet? Open at the OS level...
-            if (!OpenPhysicalAudioDevice(new_default_device, &spec)) {
+            bool need_postopen = false;
+            if (!OpenPhysicalAudioDevice(new_default_device, &spec, &need_postopen)) {
                 needs_migration = false;  // uhoh, just leave everything on the old default, nothing to be done.
+            } else if (need_postopen) {
+                // drop the lock to do PostOpenDevice. This feels risky, but we don't want to migrate things if this fails.
+                ReleaseAudioDevice(new_default_device);
+                if (!current_audio.impl.PostOpenDevice(new_default_device)) {
+                    const char *devtypestr = new_default_device->recording ? "recording" : "playback";
+                    SDL_LogDebug(SDL_LOG_CATEGORY_AUDIO, "AUDIO: post-open of new default %s device '%s' failed: %s", devtypestr, new_default_device->name, SDL_GetError());
+                    ClosePhysicalAudioDevice(new_default_device);  // clean up anything the backend left half-initialized.
+                    needs_migration = false;  // uhoh, just leave everything on the old default, nothing to be done.
+                }
+                ObtainPhysicalAudioDeviceObj(new_default_device);
             }
         }
 
@@ -2455,6 +2506,9 @@ void SDL_DefaultAudioDeviceChanged(SDL_AudioDevice *new_default_device)
                 logdev->physical_device = new_default_device;
                 logdev->prev = NULL;
                 logdev->next = new_default_device->logical_devices;
+                if (new_default_device->logical_devices) {
+                    new_default_device->logical_devices->prev = logdev;
+                }
                 new_default_device->logical_devices = logdev;
                 SDL_UnlockRWLock(current_audio.subsystem_rwlock);
 

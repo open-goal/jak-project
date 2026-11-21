@@ -175,6 +175,8 @@ bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
         return true;
     case USB_VENDOR_DRAGONRISE:
         return true;
+    case USB_VENDOR_CORSAIR:
+        return true;
     case USB_VENDOR_HORI:
         return true;
     case USB_VENDOR_LOGITECH:
@@ -213,6 +215,8 @@ bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
          *            https://github.com/libsdl-org/SDL/issues/6799
          */
         return false;
+    case USB_VENDOR_RED_OCTANE_GAMES:
+        return true;
     case USB_VENDOR_SHANWAN:
         return true;
     case USB_VENDOR_SHANWAN_ALT:
@@ -261,6 +265,7 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
 
         static const int SUPPORTED_VENDORS[] = {
             0x0079, // GPD Win 2
+            0x0351, // CRKD
             0x044f, // Thrustmaster
             0x045e, // Microsoft
             0x046d, // Logitech
@@ -271,7 +276,9 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
             0x0e6f, // PDP
             0x0f0d, // Hori
             0x1038, // SteelSeries
+            0x10f5, // Turtle Beach
             0x11c9, // Nacon
+            0x1209, // Generic
             0x12ab, // Unknown
             0x1430, // RedOctane
             0x146b, // BigBen
@@ -286,7 +293,9 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
             0x2c22, // Qanba
             0x2dc8, // 8BitDo
             0x3537, // GameSir
+            0x3651, // CRKD
             0x37d7, // Flydigi
+            0x3958, // Red Octane Games
             0x9886, // ASTRO Gaming
         };
 
@@ -305,6 +314,7 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
         interface_protocol == XBONE_IFACE_PROTOCOL) {
 
         static const int SUPPORTED_VENDORS[] = {
+            0x0351, // CRKD
             0x03f0, // HP
             0x044f, // Thrustmaster
             0x045e, // Microsoft
@@ -313,6 +323,7 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
             0x0e6f, // PDP
             0x0f0d, // Hori
             0x10f5, // Turtle Beach
+            0x1209, // Generic
             0x1532, // Razer
             0x20d6, // PowerA
             0x24c6, // PowerA
@@ -322,7 +333,9 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
             0x2e95, // SCUF
             0x3285, // Nacon
             0x3537, // GameSir
+            0x3651, // CRKD
             0x366c, // ByoWave
+            0x3958, // Red Octane Games
         };
 
         int i;
@@ -1328,7 +1341,7 @@ bool HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version,
         // changes when that happens, we'll pretend the driver isn't available so the XInput
         // interface will always show up (but won't have any input when the controller is in
         // enhanced mode)
-        if (device->vendor_id == USB_VENDOR_FLYDIGI_V2) {
+        if (device->vendor_id == USB_VENDOR_FLYDIGI_V2 && device->driver == &SDL_HIDAPI_DriverFlydigi) {
             continue;
         }
 

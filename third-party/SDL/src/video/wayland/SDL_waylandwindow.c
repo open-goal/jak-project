@@ -2136,8 +2136,11 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     Wayland_SetWindowResizable(_this, window, !!(window->flags & SDL_WINDOW_RESIZABLE));
 
     // We're finally done putting the window together, raise if possible
-    if (c->activation_manager) {
-        /* Note that we don't check for empty strings, as that is still
+    if (c->activation_manager && SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, true)) {
+        /* if the process was passed an activation token, use it when showing
+         * the initial window.
+         *
+         * Note that we don't check for empty strings, as that is still
          * considered a valid activation token!
          */
         const char *activation_token = SDL_getenv("XDG_ACTIVATION_TOKEN");
@@ -2148,7 +2151,13 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
             // Clear this variable, per the protocol's request
             SDL_unsetenv_unsafe("XDG_ACTIVATION_TOKEN");
+        } else {
+            // Try to generate an activation token for this window.
+            Wayland_RaiseWindow(_this, window);
         }
+    } else {
+        // Clear the ignored activation token, as it won't be used.
+        SDL_unsetenv_unsafe("XDG_ACTIVATION_TOKEN");
     }
 
     // No frame callback on an external surface, as it may already have one attached.
@@ -2654,7 +2663,9 @@ bool Wayland_ReconfigureWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_W
 {
     SDL_WindowData *data = window->internal;
 
-    if (data->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_SHOWN) {
+    // Don't try to reconfigure mapped windows, unless they are custom or external.
+    if (data->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_SHOWN &&
+        data->shell_surface_type != WAYLAND_SHELL_SURFACE_TYPE_CUSTOM) {
         // Window is already mapped; abort.
         return false;
     }
@@ -2859,6 +2870,11 @@ bool Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Proper
         // Roleless and external surfaces are always considered to be in the shown state by the backend.
         data->shell_surface_type = WAYLAND_SHELL_SURFACE_TYPE_CUSTOM;
         data->shell_surface_status = WAYLAND_SHELL_SURFACE_STATUS_SHOWN;
+
+        // External windows are presumed to be shown.
+        if (window->flags & SDL_WINDOW_EXTERNAL) {
+            window->flags &= ~SDL_WINDOW_HIDDEN;
+        }
     }
 
     if (SDL_GetHintBoolean(SDL_HINT_VIDEO_DOUBLE_BUFFER, false)) {
@@ -3019,8 +3035,8 @@ void Wayland_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
 
 static int icon_sort_callback(const void *a, const void *b)
 {
-    SDL_Surface *s1 = (SDL_Surface *)a;
-    SDL_Surface *s2 = (SDL_Surface *)b;
+    const SDL_Surface *s1 = *(const SDL_Surface **)a;
+    const SDL_Surface *s2 = *(const SDL_Surface **)b;
 
     return (s1->w * s1->h) <= (s2->w * s2->h) ? -1 : 1;
 }
@@ -3300,6 +3316,8 @@ void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
          * no internal structures are left pointing to the destroyed window.
          */
         if (wind->show_hide_sync_required) {
+            /* Make sure hit test isn't executed during roundtrip */
+            window->hit_test = NULL;
             WAYLAND_wl_display_roundtrip(data->display);
         }
 

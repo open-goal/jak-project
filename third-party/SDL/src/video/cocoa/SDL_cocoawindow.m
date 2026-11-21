@@ -1340,6 +1340,9 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
 
     if (isFullscreenSpace && !window->fullscreen_exclusive) {
         Cocoa_ToggleFullscreenSpaceMenuVisibility(window);
+    } else if (!isFullscreenSpace && ![NSMenu menuBarVisible]) {
+        // windowDidResignKey skips restoring the menu bar if the app was deactivated.
+        [NSMenu setMenuBarVisible:YES];
     }
     {
         const unsigned int newflags = [NSEvent modifierFlags] & NSEventModifierFlagCapsLock;
@@ -1369,7 +1372,17 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
     }
 
     if (isFullscreenSpace) {
-        [NSMenu setMenuBarVisible:YES];
+        /* Showing the menu bar while the app is being deactivated can make macOS
+         * reactivate it, so defer it and skip it if another app or a fullscreen
+         * window has taken key. */
+        NSWindow *nswindow = _data.nswindow;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSWindow *key = [NSApp keyWindow];
+            if ([NSApp isActive] && ![nswindow isKeyWindow] &&
+                !(key && ([key styleMask] & NSWindowStyleMaskFullScreen))) {
+                [NSMenu setMenuBarVisible:YES];
+            }
+        });
     }
 }
 
@@ -1430,12 +1443,18 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
 }
 
 /* This is usually sent after an unexpected windowDidExitFullscreen if the window
- * failed to become fullscreen.
+ * failed to become fullscreen, but not always, so ensure that the state variables
+ * are cleared.
  *
  * Since something went wrong and the current state is unknown, dump any pending events.
+ *
+ * For testing purposes, this error can usually be induced by starting something that
+ * immedately enters a fullscreen space from a terminal that is in a fullscreen space.
  */
 - (void)windowDidFailToEnterFullScreen:(NSNotification *)aNotification
 {
+    inFullscreenTransition = NO;
+    isFullscreenSpace = NO;
     [self clearAllPendingWindowOperations];
 }
 
@@ -1566,7 +1585,10 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
         } else {
             [nswindow setCollectionBehavior:NSWindowCollectionBehaviorManaged];
         }
-        [NSMenu setMenuBarVisible:YES];
+
+        if (![NSMenu menuBarVisible]) {
+            [NSMenu setMenuBarVisible:YES];
+        }
 
         // Toggle zoom, if changed while fullscreen.
         if ([self windowOperationIsPending:PENDING_OPERATION_ZOOM]) {
@@ -1906,16 +1928,20 @@ static void Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL
     y = (window->h - point.y);
 
     // On macOS 26 if you move away from a space and then back, mouse motion events will have incorrect
-    // values at the top of the screen. The global mouse position query is still correct, so we'll fall
-    // back to that until this is fixed by Apple. Mouse button events are interestingly not affected.
+    // values at the top of the screen. Apparently non-fullscreen windows suffer from this from time
+    // to time when mouse leaves/enters a window and/or focus changes, too. The global mouse position query
+    // is still correct, so we'll fall back to that until this is fixed by Apple. Mouse button events are
+    // interestingly not affected.
     if (@available(macOS 26.0, *)) {
-        if ([_data.listener isInFullscreenSpace]) {
+        // do for all windows for now, not just fullscreen spaces. And hopefully remove this code entirely soon.
+        //if ([_data.listener isInFullscreenSpace]) {
             int posx = 0, posy = 0;
             SDL_GetWindowPosition(window, &posx, &posy);
+            SDL_RelativeToGlobalForWindow(window, posx, posy, &posx, &posy);
             SDL_GetGlobalMouseState(&x, &y);
             x -= posx;
             y -= posy;
-        }
+        //}
     }
 
     if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_13_2) {

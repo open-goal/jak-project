@@ -693,7 +693,8 @@ static void pointer_dispatch_absolute_motion(SDL_WaylandSeat *seat)
             Wayland_SeatUpdatePointerGrab(seat);
         }
 
-        if (window->hit_test) {
+        // Don't perform hit testing if an implicit grab is active.
+        if (!(window->flags & SDL_WINDOW_MOUSE_CAPTURE) && window->hit_test) {
             SDL_HitTestResult rc = window->hit_test(window, &seat->pointer.last_motion, window->hit_test_data);
 
             // Apply the toplevel constraints if the window isn't resizable from those directions.
@@ -1001,12 +1002,12 @@ static void pointer_handle_button_common(SDL_WaylandSeat *seat, uint32_t serial,
         if (state) {
             Wayland_UpdateImplicitGrabSerial(seat, serial);
             seat->pointer.buttons_pressed |= SDL_BUTTON_MASK(sdl_button);
+
+            if (sdl_button == SDL_BUTTON_LEFT && Wayland_ProcessHitTest(seat, seat->last_implicit_grab_serial)) {
+                return; // don't pass this event on to app.
+            }
         } else {
             seat->pointer.buttons_pressed &= ~(SDL_BUTTON_MASK(sdl_button));
-        }
-
-        if (sdl_button == SDL_BUTTON_LEFT && Wayland_ProcessHitTest(seat, serial)) {
-            return; // don't pass this event on to app.
         }
 
         // Possibly ignore this click if it was to gain focus.
@@ -2035,6 +2036,8 @@ static void keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
         return;
     }
 
+    Wayland_UpdateImplicitGrabSerial(seat, serial);
+
     SDL_WindowData *window = Wayland_GetWindowDataForOwnedSurface(surface);
     if (!window) {
         // Not a surface owned by SDL.
@@ -2147,6 +2150,13 @@ static void keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
      */
     if (SDL_GetMouseFocus() == window->sdlwindow && !window->pointer_focus_count && !window->active_touch_count) {
         SDL_SetMouseFocus(NULL);
+    }
+
+    // The spec says that data offers are no longer valid when keyboard focus is lost.
+    if (seat->data_device->selection_offer) {
+        Wayland_data_offer_destroy(seat->data_device->selection_offer);
+        seat->data_device->selection_offer = NULL;
+        Wayland_data_offer_notify_from_mimes(NULL, false);
     }
 }
 
@@ -2472,7 +2482,7 @@ static void Wayland_SeatDestroyTouch(SDL_WaylandSeat *seat)
     WAYLAND_wl_list_init(&seat->touch.points);
 }
 
-static void seat_handle_capabilities(void *data, struct wl_seat *wl_seat, enum wl_seat_capability capabilities)
+static void seat_handle_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 {
     SDL_WaylandSeat *seat = (SDL_WaylandSeat *)data;
     char name_fmt[256];
@@ -2990,12 +3000,14 @@ static void data_device_handle_selection(void *data, struct wl_data_device *wl_d
     SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                  ". In data_device_listener . data_device_handle_selection on data_offer 0x%08x",
                  (id ? WAYLAND_wl_proxy_get_id((struct wl_proxy *)id) : -1));
-    if (data_device->selection_offer != offer) {
-        Wayland_data_offer_destroy(data_device->selection_offer);
-        data_device->selection_offer = offer;
-    }
 
-    Wayland_data_offer_notify_from_mimes(offer, true);
+    // Don't notify when clearing the old selection offer if doing so will inadvertently clear the selection source.
+    const bool notify = offer || (!offer && data_device->selection_offer && (!data_device->selection_offer->callback || !data_device->selection_source));
+    Wayland_data_offer_destroy(data_device->selection_offer);
+    data_device->selection_offer = offer;
+    if (notify) {
+        Wayland_data_offer_notify_from_mimes(offer, data_device->selection_source != NULL);
+    }
 }
 
 static const struct wl_data_device_listener data_device_listener = {
@@ -3428,6 +3440,7 @@ static void tablet_tool_handle_frame(void *data, struct zwp_tablet_tool_v2 *tool
 
     const Uint64 timestamp = Wayland_AdjustEventTimestampBase(Wayland_EventTimestampMSToNS(time));
     SDL_Window *window = sdltool->focus ? sdltool->focus->sdlwindow : NULL;
+    const bool is_eraser = sdltool->info.subtype == SDL_PEN_TYPE_ERASER;
 
     if (sdltool->frame.have_proximity && sdltool->frame.in_proximity) {
         SDL_SendPenProximity(timestamp, instance_id, window, true, true);
@@ -3440,14 +3453,14 @@ static void tablet_tool_handle_frame(void *data, struct zwp_tablet_tool_v2 *tool
     if (sdltool->frame.have_motion && sdltool->frame.tool_state) {
         if (sdltool->frame.tool_state == WAYLAND_TABLET_TOOL_STATE_DOWN) {
             SDL_SendPenMotion(timestamp, instance_id, window, sdltool->frame.x, sdltool->frame.y);
-            SDL_SendPenTouch(timestamp, instance_id, window, false, true);  // !!! FIXME: how do we know what tip is in use?
+            SDL_SendPenTouch(timestamp, instance_id, window, is_eraser, true);
         } else {
-            SDL_SendPenTouch(timestamp, instance_id, window, false, false); // !!! FIXME: how do we know what tip is in use?
+            SDL_SendPenTouch(timestamp, instance_id, window, is_eraser, false);
             SDL_SendPenMotion(timestamp, instance_id, window, sdltool->frame.x, sdltool->frame.y);
         }
     } else {
         if (sdltool->frame.tool_state) {
-            SDL_SendPenTouch(timestamp, instance_id, window, false, sdltool->frame.tool_state == WAYLAND_TABLET_TOOL_STATE_DOWN);  // !!! FIXME: how do we know what tip is in use?
+            SDL_SendPenTouch(timestamp, instance_id, window, is_eraser, sdltool->frame.tool_state == WAYLAND_TABLET_TOOL_STATE_DOWN);
         }
 
         if (sdltool->frame.have_motion) {
@@ -3923,8 +3936,6 @@ void Wayland_UpdateImplicitGrabSerial(SDL_WaylandSeat *seat, Uint32 serial)
     if (serial > seat->last_implicit_grab_serial) {
         seat->last_implicit_grab_serial = serial;
         seat->display->last_implicit_grab_seat = seat;
-        Wayland_data_device_set_serial(seat->data_device, serial);
-        Wayland_primary_selection_device_set_serial(seat->primary_selection_device, serial);
     }
 }
 
