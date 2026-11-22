@@ -393,47 +393,41 @@ uint32_t link_control::jakx_work_v5() {
       return 1;
     } else {
       if (m_segment_process == 1) {
-        if (*m_reloc_ptr != 0) {
-          while (true) {
-            u8 m_reloc;
-            for (uint16_t counter = 0x400; counter > 0; --counter) {
-              if (m_table_toggle == 0) {
-                m_loc_ptr = m_loc_ptr + *(m_reloc_ptr.cast<u32>()) * 4;
-              } else {
-                for (u32 curTime = 0; curTime < *m_reloc_ptr; ++curTime) {
-                  u32 loc = *(m_loc_ptr.cast<u32>());
-                  u32 destSeg = (loc >> 8) & 0xF;
-                  Ptr<u32> middleNibble = (m_loc_ptr + ((loc >> 10) & 0x3C)).cast<u32>();
-                  if (loc >> 24 == 0) {
-                    *(m_loc_ptr.cast<u32>()) += m_base_ptr.offset;
+        while(*m_reloc_ptr != 0) {
+          u8 m_reloc;
+          for (uint16_t counter = 0x400; counter > 0; --counter) {
+            if (m_table_toggle == 0) {
+              m_loc_ptr = m_loc_ptr + *(m_reloc_ptr.cast<u32>()) * 4;
+            } else {
+              for (u32 curTime = 0; curTime < *m_reloc_ptr; ++curTime) {
+                u32 loc = *(m_loc_ptr.cast<u32>());
+                u32 destSeg = (loc >> 8) & 0xF;
+                Ptr<u32> middleNibble = (m_loc_ptr + ((loc >> 10) & 0x3C)).cast<u32>();
+                if (loc >> 24 == 0) {
+                  *(m_loc_ptr.cast<u32>()) += m_base_ptr.offset;
+                } else {
+                  u32 dataPtrPlusWeirdness;
+                  if ((DebugSegment == 0) && destSeg == 1) {
+                    dataPtrPlusWeirdness = 0;
                   } else {
-                    u32 dataPtrPlusWeirdness;
-                    if ((DebugSegment == 0) && destSeg == 1) {
-                      dataPtrPlusWeirdness = 0;
-                    } else {
-                      dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
-                                             ((loc & 0xff) << 16 | *(middleNibble.cast<u16>()));
-                    }
-                    *(m_loc_ptr.cast<u32>()) = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
-                    *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
+                    dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
+                                            ((loc & 0xff) << 16 | *(middleNibble.cast<u16>()));
                   }
-                  m_loc_ptr += 4;
+                  *(m_loc_ptr.cast<u32>()) = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
+                  *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
                 }
+                m_loc_ptr += 4;
               }
-              m_reloc = *m_reloc_ptr;
-              m_reloc_ptr += 1;
-
-              if (m_reloc == 0xff)
-                continue;
-
-              m_table_toggle = !m_table_toggle;
-              if (*m_reloc_ptr == 0)
-                break;
             }
+            m_reloc = *m_reloc_ptr;
+            m_reloc_ptr += 1;
+
+            if (m_reloc == 0xff)
+              continue;
+
+            m_table_toggle = !m_table_toggle;
             if (*m_reloc_ptr == 0)
               break;
-            // if(auto curTime = (*kernel.read_clock_G()); curTime - startTime >= 200000)
-            //   return 0;
           }
         }
 
