@@ -397,7 +397,7 @@ uint32_t link_control::jakx_work_v5() {
           u8 m_reloc;
           for (uint16_t counter = 0x400; counter > 0; --counter) {
             if (m_table_toggle == 0) {
-              m_loc_ptr = m_loc_ptr + *(m_reloc_ptr.cast<u32>()) * 4;
+              m_loc_ptr += *(m_reloc_ptr.cast<u32>()) * 4;
             } else {
               for (u32 curTime = 0; curTime < *m_reloc_ptr; ++curTime) {
                 u32 loc = *(m_loc_ptr.cast<u32>());
@@ -482,7 +482,6 @@ uint32_t link_control::jakx_work_v5() {
       m_entry = m_object_data + 4;
     }
   }
-  // return 1; // Pretty sure this is unreachable.
 }
 
 namespace {
