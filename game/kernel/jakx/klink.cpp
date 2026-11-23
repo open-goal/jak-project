@@ -393,7 +393,7 @@ uint32_t link_control::jakx_work_v5() {
       return 1;
     } else {
       if (m_segment_process == 1) {
-        while(*m_reloc_ptr != 0) {
+        while (*m_reloc_ptr != 0) {
           u8 m_reloc;
           for (uint16_t counter = 0x400; counter > 0; --counter) {
             if (m_table_toggle == 0) {
@@ -411,7 +411,7 @@ uint32_t link_control::jakx_work_v5() {
                     dataPtrPlusWeirdness = 0;
                   } else {
                     dataPtrPlusWeirdness = m_link_segments_table[destSeg].data +
-                                            ((loc & 0xff) << 16 | *(middleNibble.cast<u16>()));
+                                           ((loc & 0xff) << 16 | *(middleNibble.cast<u16>()));
                   }
                   *(m_loc_ptr.cast<u32>()) = (loc & 0xFFFF0000) | (dataPtrPlusWeirdness >> 16);
                   *middleNibble = (*middleNibble & 0xFFFF0000) | (dataPtrPlusWeirdness & 0xFFFF);
