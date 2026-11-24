@@ -2318,6 +2318,12 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     result.append(2 + (longest_field_name - int(field.name().size())), ' ');
     result += field.type().print();
     result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+    if (field.is_dynamic()) {
+      result += dynamic_string + " ";
+    }
+    if (field.is_inline()) {
+      result += inline_string + " ";
+    }
     result.append(":override)\n   ");
   }
 
