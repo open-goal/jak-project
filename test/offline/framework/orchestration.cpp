@@ -67,17 +67,17 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
     }
   }
 
-  if (db_files.size() != object_files.size()) {
-    lg::error("DB file error: has {} entries, but expected {}", db_files.size(),
-              object_files.size());
-    for (auto& file : work.work_collection.source_files) {
-      if (!db_files.count(file.unique_name)) {
-        lg::error(
-            "didn't find {}, make sure it's part of the DGO inputs and not in the banned objects "
-            "list\n",
-            file.unique_name);
-      }
+  bool missing_files = false;
+  for (auto& file : work.work_collection.source_files) {
+    if (!db_files.count(file.unique_name)) {
+      lg::error(
+          "didn't find {}, make sure it's part of the DGO inputs and not in the banned objects "
+          "list\n",
+          file.unique_name);
+      missing_files = true;
     }
+  }
+  if (missing_files) {
     exit(1);
   }
 
