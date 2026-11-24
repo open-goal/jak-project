@@ -498,6 +498,11 @@ int guess_array_size_inline_array(int start_offset,
     // pair, and we should not treat those 2 bytes as padding for this check
     end_offset &= ~3;
     // fmt::print("detected end label of {}\n", end_label.name);
+    // if the next label is a basic, ignore its type tag if it happens to fits into the array stride
+    if (end_offset - 4 >= start_offset &&
+        all_words.at(segment).at(end_offset / 4 - 1).kind() == LinkedWord::TYPE_PTR) {
+      end_offset -= 4;
+    }
   }
 
   // lg::print("Data is from {} to {}\n", start_label.name, end_label.name);
