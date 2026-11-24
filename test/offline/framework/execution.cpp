@@ -130,6 +130,7 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
     compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "joint-nodes.gc"});
     compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "textures.gc"});
     compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "part-groups.gc"});
+    compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "sound-infos.gc"});
   }
 
   int total_lines = 0;
