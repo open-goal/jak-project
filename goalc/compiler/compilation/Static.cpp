@@ -108,7 +108,11 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
 
       if (is_inline) {
         if (field_info.field.is_dynamic()) {
-          throw_compiler_error(form, "Dynamic fields are not supported for inline");
+          // make room for the array
+          ASSERT(type_info->get_size_in_memory() == (int)structure->data.size());
+          auto array_type = m_ts.make_inline_array_typespec(field_info.field.type());
+          int array_end = field_offset + m_ts.get_deref_info(array_type).stride * elt_array_len;
+          structure->data.resize(std::max((int)structure->data.size(), array_end));
         }
         fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
                                         field_offset, env);
