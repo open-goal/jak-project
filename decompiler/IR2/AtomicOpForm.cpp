@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "AtomicOp.h"
 #include "Form.h"
 
@@ -357,7 +359,14 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           }
 
           if (sym_int) {
-            // do nothing for set.
+            // check for enum
+            auto enum_info = env.dts->ts.try_enum_lookup(symbol_type);
+            if (enum_info &&
+                (enum_info->is_bitfield() ||
+                 std::any_of(enum_info->entries().begin(), enum_info->entries().end(),
+                             [&](const auto& e) { return e.second == m_value.get_int(); }))) {
+              cast_for_set = symbol_type;
+            }
           } else {
             // for uint or other
             cast_for_set = symbol_type;
