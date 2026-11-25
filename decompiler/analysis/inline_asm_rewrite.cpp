@@ -13,6 +13,36 @@
 
 namespace decompiler {
 
+namespace {
+// lw ra, return-from-thread(s7) followed by jr ra
+bool is_abandon_thread(const std::vector<FormElement*>& elts, size_t idx) {
+  if (idx + 1 >= elts.size()) {
+    return false;
+  }
+  auto load = dynamic_cast<AsmOpElement*>(elts.at(idx));
+  auto jump = dynamic_cast<AsmOpElement*>(elts.at(idx + 1));
+  if (!load || !jump) {
+    return false;
+  }
+  const auto& lw = load->op()->instruction();
+  const auto& jr = jump->op()->instruction();
+  const Register ra(Reg::GPR, Reg::RA);
+  return lw.kind == InstructionKind::LW && lw.get_dst(0).is_reg(ra) &&
+         lw.get_src(0).is_sym("return-from-thread") &&
+         lw.get_src(1).is_reg(Register(Reg::GPR, Reg::S7)) && jr.kind == InstructionKind::JR &&
+         jr.get_src(0).is_reg(ra);
+}
+
+bool is_nop(FormElement* elt) {
+  auto as_atomic = dynamic_cast<AtomicOpElement*>(elt);
+  if (!as_atomic) {
+    return false;
+  }
+  auto as_special = dynamic_cast<const SpecialOp*>(as_atomic->op());
+  return as_special && as_special->kind() == SpecialOp::Kind::NOP;
+}
+}  // namespace
+
 bool rewrite_inline_asm_instructions(Form* top_level_form,
                                      FormPool& pool,
                                      Function& f,
@@ -24,7 +54,16 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
     // Iterate through all TLFs
     top_level_form->apply_form([&](Form* form) {
       std::vector<FormElement*> new_entries;
-      for (auto& entry : form->elts()) {
+      const auto& elts = form->elts();
+      for (size_t i = 0; i < elts.size(); i++) {
+        auto entry = elts.at(i);
+        if (is_abandon_thread(elts, i)) {
+          new_entries.push_back(pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("abandon-thread"))));
+          // jump + delay slot
+          i += (i + 2 < elts.size() && is_nop(elts.at(i + 2))) ? 2 : 1;
+          continue;
+        }
         // All vector instructions are inline assembly, so we only care to re-write assembly
         // operations
         AsmOpElement* elem = dynamic_cast<AsmOpElement*>(entry);
