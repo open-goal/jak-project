@@ -63,7 +63,7 @@
         (set! (-> v1-0 volume) -4)
         (set! (-> v1-0 auto-time) 120)
         (set! (-> v1-0 auto-from) 2)
-        (logior! (-> v1-0 flags) 128)
+        (logior! (-> v1-0 flags) (sound-spec-flag stopping))
         (logior! (-> v1-0 mask) 4)
         (-> v1-0 id)
         )
@@ -370,19 +370,19 @@
 
 ;; definition for function sound-instance-play
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch uint vs none.
+;; WARN: Return type mismatch sound-id vs none.
 (defun sound-instance-play ((arg0 sound-instance))
   (when (-> arg0 info)
     (when *sound-player-enable*
       (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
         (set! (-> s5-0 command) (the-as uint 4))
-        (set! (-> s5-0 id) (the-as sound-id (-> arg0 id)))
+        (set! (-> s5-0 id) (-> arg0 id))
         (set! (-> s5-0 name) (-> arg0 info name))
         (set! (-> arg0 group) (-> arg0 info group))
         (quad-copy! (the-as pointer (-> s5-0 params)) (the-as pointer arg0) 1)
         (set! (-> s5-0 params volume) (max 0 (min 1024 (the int (* (the float (-> arg0 volume)) (-> arg0 volumef))))))
         )
-      (logand! (-> arg0 flags) -65)
+      (logclear! (-> arg0 flags) (sound-spec-flag needs-update))
       )
     )
   (-> arg0 id)
@@ -390,16 +390,16 @@
   )
 
 ;; definition for function sound-instance-update
-;; WARN: Return type mismatch uint vs none.
+;; WARN: Return type mismatch sound-id vs none.
 (defun sound-instance-update ((arg0 sound-instance))
-  (when (or *sound-player-enable* (logtest? (-> arg0 flags) 128))
+  (when (or *sound-player-enable* (logtest? (-> arg0 flags) (sound-spec-flag stopping)))
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (the-as uint 8))
-      (set! (-> s5-0 id) (the-as sound-id (-> arg0 id)))
+      (set! (-> s5-0 id) (-> arg0 id))
       (set! (-> arg0 group) (-> arg0 info group))
       (quad-copy! (the-as pointer (-> s5-0 params)) (the-as pointer arg0) 3)
       (set! (-> s5-0 params volume) (max 0 (min 1024 (the int (* (the float (-> arg0 volume)) (-> arg0 volumef))))))
-      (logand! (-> arg0 flags) -65)
+      (logclear! (-> arg0 flags) (sound-spec-flag needs-update))
       (when (and *debug-sound-info-item* #f)
         (if (= (-> arg0 info index) *debug-sound-info-item*)
             (format #t "~D ~D~%" (-> s5-0 params group) (-> s5-0 params volume))
@@ -536,7 +536,7 @@
             (let ((v1-25 (as-type (handle->process arg0) process-focusable)))
               (when v1-25
                 (if (focus-test? (the-as process-focusable v1-25) fs35)
-                    (logior! (-> s5-0 flags) 1)
+                    (logior! (-> s5-0 flags) (sound-handle-flag player))
                     )
                 )
               )
@@ -615,7 +615,7 @@
   )
 
 ;; definition for function make-sound-instance
-(defun make-sound-instance ((arg0 sound-info) (arg1 sound-id) (arg2 symbol))
+(defun make-sound-instance ((arg0 sound-info) (arg1 sound-id) (arg2 handle))
   (when arg0
     (let ((s3-0 (the-as sound-instance #f)))
       (let ((s2-0 (the-as sound-handle #f))
@@ -633,7 +633,7 @@
         (when (not s3-0)
           (cond
             ((< (-> *sound-instances* length) 128)
-             (set! s2-0 (get-sound-handle (the-as handle arg2)))
+             (set! s2-0 (get-sound-handle arg2))
              (cond
                (s2-0
                  (set! s3-0 (-> *sound-instances* (-> *sound-instances* length)))
@@ -654,17 +654,17 @@
           )
         (mem-clear! (the-as pointer s3-0) 92)
         (set! (-> s3-0 sh) s2-0)
-        (set! (-> s3-0 last-update) (the-as uint s4-0))
+        (set! (-> s3-0 last-update) (the-as time-frame s4-0))
         (set! (-> s3-0 pan-angle) f30-0)
         )
       (set! (-> s3-0 info) arg0)
       (if (zero? arg1)
           (set! arg1 (new-sound-id))
           )
-      (set! (-> s3-0 id) (the-as uint arg1))
+      (set! (-> s3-0 id) arg1)
       (set! (-> s3-0 volume) 1024)
       (set! (-> s3-0 volumef) 1.0)
-      (logior! (-> s3-0 flags) 64)
+      (logior! (-> s3-0 flags) (sound-spec-flag needs-update))
       (return s3-0)
       )
     )
@@ -681,13 +681,13 @@
   (let ((v1-8 (as-type (handle->process (-> arg0 sh proc)) process-focusable)))
     (cond
       ((and v1-8 (nonzero? (-> (the-as process-focusable v1-8) root)))
-       (when (not (logtest? (-> arg0 sh flags) 1))
+       (when (not (logtest? (-> arg0 sh flags) (sound-handle-flag player)))
          (handle->process (-> *game-info* player-info 0 vehicle))
          (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-focusable v1-8) root transv) (camera-vel)))
                (s4-2 (vector-! (new 'stack-no-clear 'vector) (-> arg0 trans) (camera-pos)))
                )
            (cond
-             ((and (logtest? (-> arg0 flags) 512) (< (vector-length s5-2) 245760.0))
+             ((and (logtest? (-> arg0 flags) (sound-spec-flag mute-when-slow)) (< (vector-length s5-2) 245760.0))
               (set! (-> arg0 volumef) 0.0)
               )
              (else
@@ -703,7 +703,7 @@
               (s4-5 (vector-! (new 'stack-no-clear 'vector) (-> arg0 trans) (camera-pos)))
               )
           (cond
-            ((and (logtest? (-> arg0 flags) 512) (< (vector-length s5-4) 245760.0))
+            ((and (logtest? (-> arg0 flags) (sound-spec-flag mute-when-slow)) (< (vector-length s5-4) 245760.0))
              (set! (-> arg0 volumef) 0.0)
              )
             (else
@@ -723,7 +723,7 @@
 (defun update-tracking-position ((arg0 sound-instance))
   (let ((v1-1 (-> arg0 sh proc)))
     (cond
-      ((logtest? (-> arg0 flags) 32)
+      ((logtest? (-> arg0 flags) (sound-spec-flag no-track))
        (return #t)
        )
       ((nonzero? v1-1)
@@ -740,7 +740,7 @@
                (return #t)
                )
               (else
-                (logior! (-> arg0 flags) 32)
+                (logior! (-> arg0 flags) (sound-spec-flag no-track))
                 )
               )
             )
@@ -749,7 +749,7 @@
                (cond
                  (v1-15
                    (cond
-                     ((logtest? (-> arg0 flags) 16)
+                     ((logtest? (-> arg0 flags) (sound-spec-flag track-joint))
                       (set! s5-0 (-> (the-as process-drawable v1-15) node-list data (-> arg0 joint) bone transform trans))
                       )
                      ((nonzero? (-> (the-as process-drawable v1-15) root))
@@ -762,7 +762,7 @@
                    (return #t)
                    )
                  (else
-                   (logior! (-> arg0 flags) 32)
+                   (logior! (-> arg0 flags) (sound-spec-flag no-track))
                    (return #f)
                    )
                  )
@@ -820,7 +820,7 @@
 ;; definition for function update-pan-angle
 (defun update-pan-angle ((arg0 sound-instance) (arg1 symbol))
   (let ((s4-0 (-> arg0 info)))
-    (when (logtest? (-> s4-0 flags) 1)
+    (when (logtest? (-> s4-0 flags) (sound-info-flag no-pan))
       (let ((f0-0 0.0))
         (set! (-> arg0 pan-angle) f0-0)
         (return f0-0)
@@ -833,7 +833,14 @@
         )
       )
     0.0
-    (let ((f30-0 (calculate-pan-angle (-> arg0 trans) (logtest? (-> s4-0 flags) 2) arg1 (logtest? (-> s4-0 flags) 4) 0))
+    (let ((f30-0 (calculate-pan-angle
+                   (-> arg0 trans)
+                   (logtest? (-> s4-0 flags) (sound-info-flag bit1))
+                   arg1
+                   (logtest? (-> s4-0 flags) (sound-info-flag player-ear))
+                   0
+                   )
+                 )
           )
       (cond
         ((zero? (-> *viewport-array* mode))
@@ -843,7 +850,14 @@
           0.0
           (let ((f28-0 (vector-vector-distance (-> arg0 trans) (ear-trans 0 0)))
                 (f26-0 (vector-vector-distance (-> arg0 trans) (ear-trans 0 1)))
-                (f0-6 (calculate-pan-angle (-> arg0 trans) (logtest? (-> s4-0 flags) 2) arg1 (logtest? (-> s4-0 flags) 4) 1))
+                (f0-6 (calculate-pan-angle
+                        (-> arg0 trans)
+                        (logtest? (-> s4-0 flags) (sound-info-flag bit1))
+                        arg1
+                        (logtest? (-> s4-0 flags) (sound-info-flag player-ear))
+                        1
+                        )
+                      )
                 )
             (cond
               ((and (< f28-0 1638400.0) (< f26-0 1638400.0))
@@ -902,17 +916,17 @@
           (f26-0 (-> s5-0 fo-min))
           (f24-0 (-> s5-0 fo-max))
           )
-      (if (logtest? (-> s5-0 flags) 4)
+      (if (logtest? (-> s5-0 flags) (sound-info-flag player-ear))
           (set! s4-0 (ear-trans 1 0))
           (set! s4-0 (ear-trans 0 0))
           )
-      (if (logtest? (-> arg0 flags) 8)
+      (if (logtest? (-> arg0 flags) (sound-spec-flag fo-power))
           (set! f28-0 (-> arg0 fo-power))
           )
-      (if (logtest? (-> arg0 flags) 2)
+      (if (logtest? (-> arg0 flags) (sound-spec-flag fo-min))
           (set! f26-0 (-> arg0 fo-min))
           )
-      (if (logtest? (-> arg0 flags) 4)
+      (if (logtest? (-> arg0 flags) (sound-spec-flag fo-max))
           (set! f24-0 (-> arg0 fo-max))
           )
       (if (!= (-> s5-0 fo-power) 0.0)
@@ -920,7 +934,7 @@
           )
       (when (nonzero? (-> *viewport-array* mode))
         (let ((f22-0 (-> arg0 volumef)))
-          (if (logtest? (-> s5-0 flags) 4)
+          (if (logtest? (-> s5-0 flags) (sound-info-flag player-ear))
               (set! s3-0 (ear-trans 1 1))
               (set! s3-0 (ear-trans 0 1))
               )
@@ -976,15 +990,15 @@
          )
     (while (< s4-0 s5-0)
       (cond
-        ((logtest? (-> s3-0 flags) 1)
+        ((logtest? (-> s3-0 flags) (sound-handle-flag player))
          (if (and (zero? (-> *viewport-array* mode))
                   (cond
                     ((send-event (handle->process (-> s3-0 proc)) 'query 'camera-inside-view)
-                     (logior! (-> s3-0 flags) 2)
+                     (logior! (-> s3-0 flags) (sound-handle-flag camera-inside-view))
                      #t
                      )
                     (else
-                      (logand! (-> s3-0 flags) -3)
+                      (logclear! (-> s3-0 flags) (sound-handle-flag camera-inside-view))
                       #f
                       )
                     )
@@ -1034,8 +1048,10 @@
             (set! (-> s3-1 volumef) (* (-> s3-1 volumef) (- 1.0 f30-0)))
             )
         (if (and (or (< *target-time-speed* 0.01)
-                     (or (and (< *target-time-speed* 1.0) (not (logtest? (-> s0-0 flags) 192)))
-                         (and (-> *setting-control* user-current event-finished?) (not (logtest? (-> s0-0 flags) 256)))
+                     (or (and (< *target-time-speed* 1.0) (not (logtest? (-> s0-0 flags) (sound-info-flag slow-mo slow-mo-nopitch))))
+                         (and (-> *setting-control* user-current event-finished?)
+                              (not (logtest? (-> s0-0 flags) (sound-info-flag play-after-event-finished)))
+                              )
                          )
                      )
                  (!= (-> s0-0 group) 14)
@@ -1043,16 +1059,16 @@
             (set! (-> s3-1 volumef) 0.0)
             )
         (when (or (= (-> s3-1 volumef) 0.0) (zero? (-> s3-1 volume)))
-          (sound-stop (the-as sound-id (-> s3-1 id)) #f)
+          (sound-stop (-> s3-1 id) #f)
           (remove-sound-instance-by-index s4-1)
           (+! s4-1 -1)
           (goto cfg-154)
           )
-        (when (or (nonzero? (-> s3-1 last-update)) (not (logtest? (-> s3-1 flags) 64)))
+        (when (or (nonzero? (-> s3-1 last-update)) (not (logtest? (-> s3-1 flags) (sound-spec-flag needs-update))))
           (dotimes (v1-79 48)
             (when (= (-> s3-1 id) (-> *sound-iop-info* id-info v1-79))
-              (set! (-> s3-1 last-update) (the-as uint (current-time)))
-              (logior! (-> s3-1 flags) 64)
+              (set-time! (-> s3-1 last-update))
+              (logior! (-> s3-1 flags) (sound-spec-flag needs-update))
               #t
               (goto cfg-73)
               )
@@ -1060,14 +1076,14 @@
           (label cfg-73)
           (cond
             ((= (-> s0-0 group) 14)
-             (when (>= (- (-> *display* real-clock frame-counter) (the-as int (-> s3-1 last-update))) (seconds 0.167))
+             (when (>= (- (-> *display* real-clock frame-counter) (-> s3-1 last-update)) (seconds 0.167))
                (remove-sound-instance-by-index s4-1)
                (+! s4-1 -1)
                (goto cfg-154)
                )
              )
             (else
-              (when (time-elapsed? (the-as int (-> s3-1 last-update)) (seconds 0.167))
+              (when (time-elapsed? (-> s3-1 last-update) (seconds 0.167))
                 (remove-sound-instance-by-index s4-1)
                 (+! s4-1 -1)
                 (goto cfg-154)
@@ -1075,7 +1091,10 @@
               )
             )
           )
-        (when (and (< *target-time-speed* 1.0) (not (logtest? (-> s0-0 flags) 128)) (!= (-> s0-0 group) 14))
+        (when (and (< *target-time-speed* 1.0)
+                   (not (logtest? (-> s0-0 flags) (sound-info-flag slow-mo-nopitch)))
+                   (!= (-> s0-0 group) 14)
+                   )
           (let* ((f0-19 (* 0.000656168 (the float s1-0)))
                  (f1-10 (fabs f0-19))
                  )
@@ -1088,12 +1107,15 @@
             )
           (logior! (-> s3-1 mask) 1)
           )
-        (when (and (or (not (paused?)) (= (-> s0-0 group) 14)) (logtest? (-> s3-1 flags) 192))
+        (when (and (or (not (paused?)) (= (-> s0-0 group) 14))
+                   (logtest? (-> s3-1 flags) (sound-spec-flag needs-update stopping))
+                   )
           (cond
-            ((or (logtest? (-> s3-1 flags) 256) (and (not (logtest? (-> s0-0 flags) 1024))
-                                                     (= (logand (-> s3-1 sh flags) 3) 3)
-                                                     (zero? (-> *viewport-array* mode))
-                                                     )
+            ((or (logtest? (-> s3-1 flags) (sound-spec-flag non-positional))
+                 (and (not (logtest? (-> s0-0 flags) (sound-info-flag always-positional)))
+                      (= (logand (-> s3-1 sh flags) (sound-handle-flag player camera-inside-view)) 3)
+                      (zero? (-> *viewport-array* mode))
+                      )
                  )
              (set! (-> s3-1 volumef) (* (-> s3-1 volumef) (-> s0-0 volume)))
              (set! (-> s3-1 pan) (the int (-> s0-0 pan)))
@@ -1102,7 +1124,7 @@
               (update-tracking-position s3-1)
               (update-volume-with-falloff s3-1)
               (when (!= (-> s3-1 volumef) 0.0)
-                (if (logtest? (-> s0-0 flags) 32)
+                (if (logtest? (-> s0-0 flags) (sound-info-flag doppler))
                     (update-pitch-with-doppler s3-1)
                     )
                 (set! (-> s3-1 pan) (the int (* 0.005493164 (update-pan-angle s3-1 #t))))
@@ -1113,21 +1135,25 @@
             (when (or (< *sound-priority-level* (-> s0-0 priority))
                       (and (= (-> s0-0 priority) *sound-priority-level*)
                            (and (< *sound-duck-amount* (-> s0-0 duck-amount))
-                                (or (not (logtest? (-> s0-0 flags) 4096)) (logtest? (-> s3-1 sh flags) 1))
+                                (or (not (logtest? (-> s0-0 flags) (sound-info-flag duck-only-for-player)))
+                                    (logtest? (-> s3-1 sh flags) (sound-handle-flag player))
+                                    )
                                 )
                            )
                       )
               (set! *sound-priority-level* (-> s0-0 priority))
               (set! *sound-duck-amount* (-> s0-0 duck-amount))
               )
-            (if (and (logtest? (-> s0-0 flags) 2048)
-                     (or (not (logtest? (-> s0-0 flags) 4096)) (logtest? (-> s3-1 sh flags) 1))
+            (if (and (logtest? (-> s0-0 flags) (sound-info-flag duck-music))
+                     (or (not (logtest? (-> s0-0 flags) (sound-info-flag duck-only-for-player)))
+                         (logtest? (-> s3-1 sh flags) (sound-handle-flag player))
+                         )
                      )
                 (set! gp-1 #t)
                 )
             (cond
               ((zero? (-> s3-1 last-update))
-               (set! (-> s3-1 last-update) (the-as uint (current-time)))
+               (set-time! (-> s3-1 last-update))
                (sound-instance-play s3-1)
                )
               (else
@@ -1137,7 +1163,7 @@
             )
           )
         (when (= (-> s3-1 volumef) 0.0)
-          (sound-stop (the-as sound-id (-> s3-1 id)) #f)
+          (sound-stop (-> s3-1 id) #f)
           (remove-sound-instance-by-index s4-1)
           (+! s4-1 -1)
           (goto cfg-154)
@@ -1155,7 +1181,7 @@
             (max 0 (min 1024 (the int (* (the float (-> s3-1 volume)) (-> s3-1 volumef)))))
             (-> s3-1 pitch-mod)
             (-> s3-1 pan)
-            (if (logtest? (-> s0-0 flags) 4)
+            (if (logtest? (-> s0-0 flags) (sound-info-flag player-ear))
                 1
                 0
                 )
@@ -1460,11 +1486,11 @@
               )
             )
           (when (-> s5-1 info)
-            (let ((s4-0 (make-sound-instance (-> *sound-info* (-> s5-1 info index)) (-> this playing-id) #f)))
+            (let ((s4-0 (make-sound-instance (-> *sound-info* (-> s5-1 info index)) (-> this playing-id) (the-as handle #f))))
               (set! (-> this playing-id) (the-as sound-id (cond
                                                             (s4-0
                                                               (quad-copy! (the-as pointer s4-0) (the-as pointer s5-1) 4)
-                                                              (logior! (-> s4-0 flags) 64)
+                                                              (logior! (-> s4-0 flags) (sound-spec-flag needs-update))
                                                               (the-as int (-> s4-0 id))
                                                               )
                                                             (else
@@ -1513,7 +1539,7 @@
 ;; definition for method 14 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-falloff-far! ((this ambient-sound) (arg0 float))
-  (logior! (-> this spec flags) 4)
+  (logior! (-> this spec flags) (sound-spec-flag fo-max))
   (set! (-> this spec fo-max) arg0)
   0
   (none)
@@ -1522,7 +1548,7 @@
 ;; definition for method 15 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-falloff-mode! ((this ambient-sound) (arg0 float))
-  (logior! (-> this spec flags) 8)
+  (logior! (-> this spec flags) (sound-spec-flag fo-power))
   (set! (-> this spec fo-power) arg0)
   0
   (none)

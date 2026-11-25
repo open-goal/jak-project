@@ -1,0 +1,1951 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 7 of type net-process-mgr
+;; WARN: Return type mismatch process vs net-process-mgr.
+(defmethod relocate ((this net-process-mgr) (offset int))
+  (set! *net-process-mgr* this)
+  (if *net-process-mgr*
+      (set! *net-process-mgr* (&+ *net-process-mgr* offset))
+      )
+  (the-as net-process-mgr ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type net-process-mgr
+(defmethod deactivate ((this net-process-mgr))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *net-process-mgr* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for function net-process-mgr-init-by-other
+(defbehavior net-process-mgr-init-by-other net-process-mgr ()
+  (logclear! (-> self mask) (process-mask pause menu))
+  (reset! self)
+  (go-virtual startup)
+  )
+
+;; definition for function spawn-net-entity
+;; WARN: Return type mismatch int vs object.
+(defun spawn-net-entity ((arg0 entity-links))
+  (birth! (-> arg0 entity))
+  (if (-> arg0 process)
+      (logior! (-> arg0 process mask) (process-mask no-kill))
+      )
+  0
+  )
+
+;; definition for symbol *net-process-table*, type (array process-nettable)
+(define *net-process-table*
+  (new 'static 'boxed-array :type process-nettable :length 0 :allocated-length 1024)
+  )
+
+;; definition of type owner-and-flags
+(deftype owner-and-flags (int8)
+  ((owner-idx int8 :offset   0 :size   7)
+   (entity    int8 :offset   7 :size   1)
+   )
+  )
+
+;; definition of type nospawn
+(deftype nospawn (process)
+  ()
+  )
+
+;; definition for method 3 of type nospawn
+(defmethod inspect ((this nospawn))
+  (when (not this)
+    (set! this this)
+    (goto cfg-62)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand (process-mask network) s5-0) (process-mask network))
+        (format #t "network ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> this clock))
+  (format #t "~1Tview: ~A~%" (-> this view))
+  (format #t "~1Tparent: #x~X~%" (-> this parent))
+  (format #t "~1Tbrother: #x~X~%" (-> this brother))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tprofile-ticks: ~D~%" (-> this profile-ticks))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tstate: ~A~%" (-> this state))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tstate-stack: ~A~%" (-> this state-stack))
+  (format #t "~1Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> this connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> this stack))
+  (label cfg-62)
+  this
+  )
+
+;; definition for function net-process-mgr-start
+;; WARN: Return type mismatch int vs none.
+(defun net-process-mgr-start ()
+  (when (not *net-process-mgr*)
+    (let ((gp-0 (get-process *default-dead-pool* net-process-mgr #x4000 1)))
+      (set! *net-process-mgr*
+            (the-as net-process-mgr
+              (-> (when gp-0
+                    (let ((t9-1 (method-of-type net-process-mgr activate)))
+                      (t9-1 (the-as net-process-mgr gp-0) *default-pool* "net-process-mgr" (the-as pointer #x70004000))
+                      )
+                    (run-now-in-process gp-0 net-process-mgr-init-by-other)
+                    (-> gp-0 ppointer)
+                    )
+                  0
+                  )
+              )
+            )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function net-process-mgr-stop
+;; WARN: Return type mismatch int vs none.
+(defun net-process-mgr-stop ()
+  (when *net-process-mgr*
+    (format 0 "net-process-mgr: destroying all net-processes~%")
+    (destroy-all-processes *net-process-mgr* #f)
+    (send-event *net-process-mgr* 'go-die)
+    )
+  0
+  (none)
+  )
+
+;; definition for function net-process-mgr-handle-aux-msg-recv-end
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-process-mgr-handle-aux-msg-recv-end net-process-mgr ((arg0 mem-buffer) (arg1 int))
+  (when *net-process-mgr*
+    (let ((s4-0 self))
+      (set! self *net-process-mgr*)
+      (read-int8 arg0)
+      (read-int8 arg0)
+      (handle-aux-msg-recv-end *net-process-mgr* arg0 arg1)
+      (set! self s4-0)
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *net-aux-msg-handlers* 1 handler-func) net-process-mgr-handle-aux-msg-recv-end)
+
+;; definition for function net-process-mgr-handle-aux-msg-recv-end-ack
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-process-mgr-handle-aux-msg-recv-end-ack net-process-mgr ((arg0 mem-buffer) (arg1 int))
+  (when *net-process-mgr*
+    (let ((s4-0 self))
+      (set! self *net-process-mgr*)
+      (read-int8 arg0)
+      (read-int8 arg0)
+      (handle-aux-msg-recv-end-ack *net-process-mgr* arg0 arg1)
+      (set! self s4-0)
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *net-aux-msg-handlers* 2 handler-func) net-process-mgr-handle-aux-msg-recv-end-ack)
+
+;; definition for function net-process-mgr-handle-aux-msg-spawn-entities
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-process-mgr-handle-aux-msg-spawn-entities net-process-mgr ((arg0 mem-buffer) (arg1 int))
+  (when *net-process-mgr*
+    (let ((s4-0 self))
+      (set! self *net-process-mgr*)
+      (read-int8 arg0)
+      (read-int8 arg0)
+      (handle-aux-msg-spawn-entities *net-process-mgr* arg0 arg1)
+      (set! self s4-0)
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(set! (-> *net-aux-msg-handlers* 3 handler-func) net-process-mgr-handle-aux-msg-spawn-entities)
+
+;; definition for method 37 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! ((this net-process-mgr))
+  (update! *level-bounding-box*)
+  (set! (-> this local-machine-idx) -1)
+  (set! (-> this session-master-idx) -1)
+  (set! (-> this last-allocated-local-id) -1)
+  (set! (-> this last-allocated-global-id) -1)
+  (set! (-> this cur-proc-valid) #f)
+  (set! *net-start-view-ct* 1)
+  (dotimes (v1-7 8)
+    (set! (-> this machines v1-7 state) (net-process-mgr-machine-state none))
+    (set! (-> this machines v1-7 acct-id) 0)
+    (set! (-> this machines v1-7 clan-id) 0)
+    (set! (-> this machines v1-7 local-player-ct) 0)
+    (set! (-> this machines v1-7 reported-ping) -1)
+    )
+  (clear! (-> this active-list))
+  (dotimes (s5-0 10)
+    (clear! (-> this owner-lists s5-0))
+    )
+  (dotimes (v1-18 1024)
+    (set! (-> *net-process-table* v1-18) #f)
+    )
+  (let ((s5-1 (-> this machines (if *net-mgr*
+                                    (-> *net-mgr* game-state local-machine-idx)
+                                    0
+                                    )
+                  )
+              )
+        )
+    (set! (-> s5-1 acct-id) (if (nonzero? (-> *net-mgr* lobby-state connect-handle))
+                                (-> *net-mgr* lobby-state my-account-id)
+                                0
+                                )
+          )
+    (set! (-> s5-1 clan-id) (if (nonzero? (-> *net-mgr* lobby-state connect-handle))
+                                (-> *medius-my-clan* medius-id)
+                                0
+                                )
+          )
+    (set! (-> s5-1 local-player-ct) (get-selected-local-player-count))
+    )
+  (update-tod this)
+  0
+  (none)
+  )
+
+;; definition for function net-process-mgr-default-handler
+(defbehavior net-process-mgr-default-handler net-process-mgr ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('go-die)
+     (format 0 "net-process-mgr: received go-die~%")
+     (go-virtual die)
+     )
+    (('session-master-change)
+     (session-master-change self (the-as int (-> arg3 param 0)))
+     )
+    (('client-joined)
+     (client-joined
+       self
+       (the-as int (-> arg3 param 0))
+       (the-as int (-> arg3 param 1))
+       (the-as int (-> arg3 param 2))
+       (the-as int (-> arg3 param 3))
+       )
+     )
+    (('client-left)
+     (client-left self (the-as int (-> arg3 param 0)))
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate startup (net-process-mgr)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self snap-time-of-day) #t)
+    (remove-from-process (-> *net-mgr* notify) self)
+    (net-mgr-notify-connect self 12)
+    (set! (-> self local-machine-idx) (if *net-mgr*
+                                          (-> *net-mgr* game-state local-machine-idx)
+                                          0
+                                          )
+          )
+    (let ((gp-0 (new 'stack-no-clear 'array 'int32 1)))
+      (set! (-> gp-0 0) (-> *net-mgr* game-state session-master-idx))
+      (format 0 "setting initial SM=~D~%" (-> gp-0 0))
+      (session-master-change self (-> gp-0 0))
+      )
+    (set! (-> self
+              machines
+              (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              state
+              )
+          (net-process-mgr-machine-state staging)
+          )
+    (format 0 "go staging~%")
+    (go-virtual staging)
+    )
+  )
+
+;; definition for function go-running
+;; WARN: Return type mismatch int vs object.
+(defbehavior go-running net-process-mgr ()
+  (set! *should-update-stats* #f)
+  (when (or (= (-> *net-mgr* game-type) 1) (= (-> *net-mgr* game-type) 3))
+    (set! *should-update-stats* #t)
+    (set! *stats-adjusted* #f)
+    )
+  (format 0 "marking staging players as running...~%")
+  (dotimes (v1-9 8)
+    (if (= (-> self machines v1-9 state) (net-process-mgr-machine-state staging))
+        (set! (-> self machines v1-9 state) (net-process-mgr-machine-state running))
+        )
+    )
+  (if (-> *net-world* is-late-join)
+      (late-join-spawn-players)
+      )
+  (when (nonzero? (-> *net-mgr* lobby-state connect-handle))
+    (dotimes (gp-0 8)
+      (set! (-> self machines gp-0 overall-score) 0)
+      (when (nonzero? (-> self machines gp-0 state))
+        (let ((a0-7 (lookup *medius-player-cache* (-> self machines gp-0 acct-id) -1 #f #f)))
+          (when a0-7
+            (if (!= a0-7 'error)
+                (set! (-> self machines gp-0 overall-score)
+                      (the-as int (-> (the-as medius-cached-info-player a0-7) ladder-stats overall-score))
+                      )
+                )
+            )
+          )
+        )
+      )
+    (set! (-> *net-process-mgr*
+              machines
+              (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              overall-score
+              )
+          (the-as int (-> *medius-my-player* ladder-stats overall-score))
+          )
+    )
+  (go-virtual running)
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate staging (net-process-mgr)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('start-game)
+       (format
+         0
+         "start-game!!! game-time=~D (real=~D)~%"
+         (- (- (if *net-mgr*
+                   (-> *net-mgr* game-state time)
+                   0
+                   )
+               (if *net-world*
+                   (-> *net-world* net-state game-start-time)
+                   0
+                   )
+               )
+            (if *net-world*
+                (-> *net-world* net-state total-pause-time)
+                0
+                )
+            )
+         (-> *net-mgr* game-state time)
+         )
+       (set! (-> self snap-time-of-day) #t)
+       (go-running)
+       )
+      (('go-recv-objects)
+       (go-virtual recv-objects)
+       )
+      (else
+        (net-process-mgr-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self last-allocated-local-id) -1)
+    (set! (-> self last-allocated-global-id) -1)
+    (if (and (= (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                (-> *net-mgr* game-state session-master-idx)
+                )
+             (not *net-world*)
+             )
+        (init-local-world)
+        )
+    )
+  :trans (behavior ()
+    (update-tod self)
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate recv-objects (net-process-mgr)
+  :virtual #t
+  :event net-process-mgr-default-handler
+  :trans (behavior ()
+    (tweak-local-net-entities)
+    (update-tod self)
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate running (net-process-mgr)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-staging)
+       (go-virtual staging)
+       )
+      (else
+        (net-process-mgr-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (powerup-build-static-hash)
+    (powerup-build-dynamic-hash)
+    (net-colarb-clear)
+    (spawn-game-mgr #f)
+    )
+  :trans (behavior ()
+    (update-tod self)
+    (powerup-build-dynamic-hash)
+    (when (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+      (dotimes (gp-0 1)
+        (send-pending-objects self)
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate die (net-process-mgr)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+;; definition for symbol *prev-time-of-day-time*, type int
+(define *prev-time-of-day-time* 0)
+
+;; definition for method 38 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 38 net-process-mgr) has a return type of none, but the expression builder found a return statement.
+(defmethod update-tod ((this net-process-mgr))
+  (if (!= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+      (return #f)
+      )
+  (let ((s5-0 (- (- (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    (if *net-world*
+                        (-> *net-world* net-state game-start-time)
+                        0
+                        )
+                    )
+                 (if *net-world*
+                     (-> *net-world* net-state total-pause-time)
+                     0
+                     )
+                 )
+              )
+        (s4-0 0)
+        )
+    (when (or (-> this snap-time-of-day) (!= (/ s5-0 9000) (/ *prev-time-of-day-time* 9000)))
+      (cond
+        ((!= (-> *net-world* net-state time-of-day) -1)
+         (let ((v1-14 (-> *net-world* net-state time-of-day)))
+           (set! s4-0 (* #x107ac0 v1-14))
+           )
+         )
+        (else
+          (let ((v1-16 (get-open-task-node-info)))
+            (if v1-16
+                (set! s4-0 (* #x107ac0 (-> v1-16 time-of-day)))
+                )
+            )
+          )
+        )
+      (set! *prev-time-of-day-time* s5-0)
+      (when (not *record-fma*)
+        (send-event (ppointer->process *time-of-day*) 'change 'hours (* 0.0000009259259 (the float (+ s4-0 s5-0))))
+        (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+        )
+      (set! (-> this snap-time-of-day) #f)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 44 of type net-process-mgr
+(defmethod alloc-local-net-id ((this net-process-mgr))
+  (let ((s4-0 (logand (logior (logand 0 -449) (shr (shl (-> this local-machine-idx) 61) 55)) -513)))
+    (dotimes (s5-0 64)
+      (+! (-> this last-allocated-local-id) 1)
+      (set! s4-0 (logior (logand s4-0 -64) (shr (shl (-> this last-allocated-local-id) 58) 58)))
+      (if (not (get-process-by-net-id this s4-0))
+          (return s4-0)
+          )
+      )
+    )
+  #xffff
+  )
+
+;; definition for method 46 of type net-process-mgr
+(defmethod get-process-by-net-id ((this net-process-mgr) (arg0 int))
+  (if (= arg0 #xffff)
+      (the-as process-nettable #f)
+      (-> *net-process-table* arg0)
+      )
+  )
+
+;; definition for method 48 of type net-process-mgr
+(defmethod get-next-send-pending ((this net-process-mgr))
+  (when (-> this have-send-pending-objects)
+    (let ((a1-0 (the-as object (-> this active-list head))))
+      (while (the-as list-link a1-0)
+        (let ((v1-2 (-> (the-as list-link a1-0) next)))
+          (let ((gp-0 (if (the-as list-link a1-0)
+                          (&+ (the-as pointer a1-0) -176)
+                          #f
+                          )
+                      )
+                )
+            (when (nonzero? (-> (the-as process-nettable gp-0) jump-in-send-pending))
+              (format 0 "GETNEXTSENDPENDING -> ~A~%" (the-as process-nettable gp-0))
+              (return (the-as process-nettable gp-0))
+              )
+            )
+          (set! a1-0 v1-2)
+          )
+        )
+      )
+    (set! (-> this have-send-pending-objects) #f)
+    )
+  (the-as process-nettable #f)
+  )
+
+;; definition for method 47 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod update-send-pending ((this net-process-mgr) (arg0 int) (arg1 int))
+  (let ((v1-1 (logxor (the-as uint #xffffffff) (the-as uint arg1))))
+    (set! (-> this have-send-pending-objects) #f)
+    (let ((a3-0 (the-as object (-> this active-list head))))
+      (while (the-as list-link a3-0)
+        (let ((a2-1 (-> (the-as list-link a3-0) next)))
+          (let ((a3-1 (if (the-as list-link a3-0)
+                          (&+ (the-as pointer a3-0) -176)
+                          #f
+                          )
+                      )
+                )
+            (set! (-> (the-as process-nettable a3-1) jump-in-send-pending)
+                  (logior (logand (-> (the-as process-nettable a3-1) jump-in-send-pending) v1-1) arg0)
+                  )
+            (if (nonzero? (-> (the-as process-nettable a3-1) jump-in-send-pending))
+                (set! (-> this have-send-pending-objects) #t)
+                )
+            )
+          (set! a3-0 a2-1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 49 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod relocate-process ((this net-process-mgr) (arg0 process-nettable) (arg1 int))
+  (when (registered? arg0)
+    (if (!= (-> arg0 owner-idx) -1)
+        (fixup-relocated-link
+          (the-as linked-list (-> arg0 owner-link))
+          (the-as int (-> this owner-lists (-> arg0 owner-idx)))
+          arg1
+          )
+        )
+    (fixup-relocated-link (the-as linked-list (-> arg0 active-link)) (the-as int (-> this active-list)) arg1)
+    (set! (-> *net-process-table* (-> arg0 net-id)) (the-as process-nettable (&+ (the-as pointer arg0) arg1)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 50 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 50 net-process-mgr) has a return type of none, but the expression builder found a return statement.
+(defmethod send-process-create ((this net-process-mgr) (arg0 net-world) (arg1 int) (arg2 symbol))
+  (case arg1
+    ((-1)
+     (set! arg1 (-> *net-mgr* game-state connected-bitfield))
+     )
+    ((-2)
+     (set! arg1 (logclear
+                  (-> *net-mgr* game-state connected-bitfield)
+                  (ash 1 (if *net-mgr*
+                             (-> *net-mgr* game-state local-machine-idx)
+                             0
+                             )
+                       )
+                  )
+           )
+     )
+    )
+  (when (not arg2)
+    (dotimes (s3-0 8)
+      (when (or (= (-> this machines s3-0 state) (net-process-mgr-machine-state recv-objects))
+                (= (-> this machines s3-0 state) (net-process-mgr-machine-state recv-end-sent))
+                )
+        (format 0 "   not sending to ~D because it's not recv object~%" s3-0)
+        (set! arg1 (logclear arg1 (ash 1 s3-0)))
+        )
+      )
+    )
+  (if (and (-> arg0 entity) (not (-> this entity-creation-messages-enabled)))
+      (return #f)
+      )
+  (let ((s3-1 (copy-and-set-field (new 'static 'owner-and-flags) owner-idx (-> arg0 owner-idx))))
+    (if (-> arg0 entity)
+        (set! s3-1 (copy-and-set-field s3-1 entity 1))
+        )
+    (when (!= (-> arg0 type) net-world)
+      (dotimes (s2-0 8)
+        (when (= (-> this machines s2-0 state) (net-process-mgr-machine-state staging))
+          (format 0 "not sending object ~A to staging machine: ~D~%" arg0 s2-0)
+          (set! arg1 (logclear arg1 (ash 1 s2-0)))
+          )
+        )
+      )
+    (format 0 "sending object ~A to bitfield ~D~%" arg0 arg1)
+    (let ((s4-1 (alloc-msg arg0 'create)))
+      (write-uint8 s4-1 (the-as uint s3-1))
+      (write-symbol s4-1 (-> (get-class-info arg0) owner-type symbol))
+      (if (-> arg0 entity)
+          (write-uint32 s4-1 (the-as uint (-> arg0 entity aid)))
+          )
+      (write-create-data arg0 s4-1)
+      (send-msg arg0 s4-1 arg1 80)
+      (free-msg arg0 s4-1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod cleanup-left-machines ((this net-process-mgr))
+  (with-pp
+    (dotimes (s5-0 8)
+      (when (= (-> this machines s5-0 state) (net-process-mgr-machine-state left))
+        (when (= (if *net-mgr*
+                     (-> *net-mgr* game-state local-machine-idx)
+                     0
+                     )
+                 (-> *net-mgr* game-state session-master-idx)
+                 )
+          (let ((v1-7 (the-as object (-> this owner-lists s5-0 head))))
+            (while (the-as list-link v1-7)
+              (let ((s4-0 (-> (the-as list-link v1-7) next)))
+                (let ((a0-7 (if (the-as list-link v1-7)
+                                (&+ (the-as pointer v1-7) -168)
+                                #f
+                                )
+                            )
+                      (s3-0 pp)
+                      )
+                  (set! pp (the-as process-nettable a0-7))
+                  (on-owner-left (the-as process-nettable a0-7))
+                  (set! pp s3-0)
+                  )
+                (set! v1-7 s4-0)
+                )
+              )
+            )
+          )
+        (set! (-> this machines s5-0 state) (net-process-mgr-machine-state none))
+        0
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 40 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod send-pending-objects ((this net-process-mgr))
+  (let ((s5-0 (get-next-send-pending this))
+        (v1-1 #f)
+        )
+    (cond
+      (s5-0
+        (dotimes (a0-2 8)
+          (when (= (-> this machines a0-2 state) (net-process-mgr-machine-state recv-objects))
+            (when (> (-> this machines a0-2 delay) 0)
+              (set! v1-1 #t)
+              (+! (-> this machines a0-2 delay) -1)
+              )
+            )
+          )
+        (when (not v1-1)
+          (let ((s4-0 (-> s5-0 jump-in-send-pending)))
+            (if (not (type? s5-0 net-world))
+                (send-process-create this (the-as net-world s5-0) (the-as int s4-0) #t)
+                )
+            )
+          (set! (-> s5-0 jump-in-send-pending) (the-as uint 0))
+          0
+          )
+        )
+      (else
+        (dotimes (s5-1 8)
+          (when (= (-> this machines s5-1 state) (net-process-mgr-machine-state recv-objects))
+            (let ((s4-1 (alloc-msg-buffer)))
+              (write-int8 s4-1 0)
+              (write-int8 s4-1 0)
+              (write-int8 s4-1 1)
+              (set! (-> (the-as (pointer int8) (-> s4-1 base)) 1) (+ (bytes-used s4-1) -1))
+              (net-send-msg 80 s4-1 (ash 1 s5-1))
+              (set! (-> this machines s5-1 state) (net-process-mgr-machine-state recv-end-sent))
+              (free-msg-buffer s4-1)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 20 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod session-master-change ((this net-process-mgr) (arg0 int))
+  (when (!= (-> this session-master-idx) arg0)
+    (format 0 "session-master changed!~%")
+    (set! (-> this session-master-idx) arg0)
+    )
+  (cleanup-left-machines this)
+  (if *eco-mgr*
+      (eco-mgr-method-50 *eco-mgr*)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod client-joined ((this net-process-mgr) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (+! (-> this machines arg0 cookie) 1)
+  (set! (-> this machines arg0 acct-id) arg1)
+  (set! (-> this machines arg0 clan-id) arg2)
+  (set! (-> this machines arg0 local-player-ct) arg3)
+  (set! (-> this machines arg0 reported-ping) -1)
+  (if (and *net-world* (logtest? (-> *net-world* net-state flags) 1))
+      (set! (-> this machines arg0 state) (net-process-mgr-machine-state late-join))
+      (set! (-> this machines arg0 state) (net-process-mgr-machine-state staging))
+      )
+  (when (= (if *net-mgr*
+               (-> *net-mgr* game-state local-machine-idx)
+               0
+               )
+           (-> *net-mgr* game-state session-master-idx)
+           )
+    (format 0 "sending world...~%")
+    (when *net-world*
+      (cond
+        ((try-add-machine *net-world* arg0)
+         (send-process-create this *net-world* (ash 1 arg0) #f)
+         (set! (-> *medius-local-game-players* data arg0 id) arg1)
+         (if (logtest? (-> *net-world* net-state flags) 1)
+             (set! (-> this machines arg0 state) (net-process-mgr-machine-state late-join))
+             )
+         (if (nonzero? (-> *net-mgr* lobby-state connect-handle))
+             (lookup *medius-player-cache* (-> this machines arg0 acct-id) 9000 #f #f)
+             )
+         )
+        (else
+          (kick-machines (ash 1 arg0) 'game-unavailable)
+          (set! (-> this machines arg0 acct-id) 0)
+          (set! (-> this machines arg0 clan-id) 0)
+          (set! (-> this machines arg0 local-player-ct) 0)
+          0
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 22 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod client-left ((this net-process-mgr) (arg0 int))
+  (with-pp
+    (set! (-> this machines arg0 acct-id) 0)
+    (set! (-> this machines arg0 clan-id) 0)
+    (set! (-> this machines arg0 local-player-ct) 0)
+    (set! (-> this machines arg0 reported-ping) -1)
+    (set! (-> this machines arg0 overall-score) -1)
+    (set! (-> *medius-local-game-players* data arg0 id) -1)
+    (if *net-world*
+        (remove-machine *net-world* arg0)
+        )
+    (update-send-pending this 0 (ash 1 arg0))
+    (if *eco-mgr*
+        (eco-mgr-method-49 *eco-mgr*)
+        )
+    (if (< (- (- (if *net-mgr*
+                     (-> *net-mgr* game-state time)
+                     0
+                     )
+                 (if *net-world*
+                     (-> *net-world* net-state game-start-time)
+                     0
+                     )
+                 )
+              (if *net-world*
+                  (-> *net-world* net-state total-pause-time)
+                  0
+                  )
+              )
+           4500
+           )
+        (set! *total-pts-at-stake* (max 0 (- *total-pts-at-stake* *user-pts-at-stake*)))
+        )
+    (set! (-> this machines arg0 state) (net-process-mgr-machine-state left))
+    (when (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+      (let ((v1-34 (the-as object (-> this owner-lists arg0 head))))
+        (while (the-as list-link v1-34)
+          (let ((s4-0 (-> (the-as list-link v1-34) next)))
+            (let ((a0-23 (if (the-as list-link v1-34)
+                             (&+ (the-as pointer v1-34) -168)
+                             #f
+                             )
+                         )
+                  (s3-0 pp)
+                  )
+              (set! pp (the-as process-nettable a0-23))
+              (on-owner-left (the-as process-nettable a0-23))
+              (set! pp s3-0)
+              )
+            (set! v1-34 s4-0)
+            )
+          )
+        )
+      (set! (-> this machines arg0 state) (net-process-mgr-machine-state none))
+      0
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 42 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod destroy-all-processes ((this net-process-mgr) (arg0 symbol))
+  (with-pp
+    (dotimes (s5-0 1024)
+      (let ((s4-0 (-> *net-process-table* s5-0)))
+        (when s4-0
+          (when (not (and arg0 (type? s4-0 net-world)))
+            (let ((s3-0 pp))
+              (set! pp s4-0)
+              (on-destroy-silent s4-0)
+              (set! pp s3-0)
+              )
+            )
+          )
+        )
+      )
+    (dotimes (s5-1 1024)
+      (let ((s4-1 (-> *net-process-table* s5-1)))
+        (when s4-1
+          (when (not (and arg0 (type? s4-1 net-world)))
+            (let ((s3-1 pp))
+              (set! pp s4-1)
+              (format 0 "forcing ~A to deactivate~%" s4-1)
+              (deactivate s4-1)
+              (set! pp s3-1)
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 56 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod unregister-process ((this net-process-mgr) (arg0 process-nettable) (arg1 symbol) (arg2 mem-buffer))
+  (when (not (registered? arg0))
+    (format 0 "process-nettable not registered!!!~%")
+    (break!)
+    0
+    )
+  (when arg1
+    (let ((s3-1 (alloc-msg arg0 'destroy)))
+      (if arg2
+          (copy-buffer s3-1 arg2)
+          )
+      (send-msg arg0 s3-1 -2 80)
+      (free-msg arg0 s3-1)
+      )
+    )
+  (remove-link (-> this owner-lists (-> arg0 owner-idx)) (-> arg0 owner-link))
+  (remove-link (-> this active-list) (-> arg0 active-link))
+  (set! (-> *net-process-table* (-> arg0 net-id)) #f)
+  (logclear! (-> arg0 net-flags) (net-flag registered))
+  0
+  (none)
+  )
+
+;; definition for method 36 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod set-owner ((this net-process-mgr) (arg0 process-nettable) (arg1 uint))
+  (remove-link (-> this owner-lists (-> arg0 owner-idx)) (-> arg0 owner-link))
+  (set! (-> arg0 owner-idx) (the-as int arg1))
+  (add-link (-> this owner-lists arg1) (-> arg0 owner-link))
+  0
+  (none)
+  )
+
+;; definition for method 39 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod try-change-owner ((this net-process-mgr) (arg0 process-nettable) (arg1 int) (arg2 int))
+  (when (not (registered? arg0))
+    (format 0 "process-nettable not registered!!!~%")
+    (break!)
+    0
+    )
+  (let ((s1-0 (-> arg0 owner-idx))
+        (s3-0 #f)
+        )
+    (if (and (has-owner? arg0) (!= (-> this machines s1-0 state) 4))
+        (set! s3-0 #t)
+        )
+    (set! s3-0
+          (and (or (= arg1 8)
+                   (and (>= arg1 0) (< arg1 8) (= (-> this machines arg1 state) (net-process-mgr-machine-state running)))
+                   )
+               (or (= s1-0 arg2) (= s1-0 8) (or (= s1-0 9) s3-0))
+               )
+          )
+    (if s3-0
+        (set-owner this arg0 (the-as uint arg1))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 54 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod request-ownership ((this net-process-mgr) (arg0 process-nettable) (arg1 int))
+  (when (not (registered? arg0))
+    (format 0 "process-nettable not registered!!!~%")
+    (break!)
+    0
+    )
+  (send-ownership-msg this 0 (ash 1 (-> this session-master-idx)) (the-as int (-> arg0 net-id)) arg1)
+  (if (and (owner-is-local? arg0) (!= arg1 (if *net-mgr*
+                                               (-> *net-mgr* game-state local-machine-idx)
+                                               0
+                                               )
+                                      )
+           )
+      (set-owner this arg0 (the-as uint 9))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 43 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod send-ownership-msg ((this net-process-mgr) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (let ((s3-0 (logior arg2 (shl (+ arg0 3) 10)))
+        (s5-0 (alloc-msg-buffer))
+        )
+    (write-int8 s5-0 0)
+    (write-uint16 s5-0 (the-as uint s3-0))
+    (write-uint8 s5-0 (the-as uint arg3))
+    (set! (-> (the-as (pointer int8) (-> s5-0 base))) (bytes-used s5-0))
+    (net-send-msg 80 s5-0 arg1)
+    (free-msg-buffer s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 53 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod send-process-msg ((this net-process-mgr) (arg0 process-nettable) (arg1 mem-buffer) (arg2 int) (arg3 int))
+  (when (not (registered? arg0))
+    (format 0 "process-nettable not registered!!!~%")
+    (break!)
+    0
+    )
+  (net-send-msg arg3 arg1 arg2)
+  0
+  (none)
+  )
+
+;; definition for method 51 of type net-process-mgr
+(defmethod get-game-time ((this net-process-mgr))
+  (- (- (if *net-mgr*
+            (-> *net-mgr* game-state time)
+            0
+            )
+        (if *net-world*
+            (-> *net-world* net-state game-start-time)
+            0
+            )
+        )
+     (if *net-world*
+         (-> *net-world* net-state total-pause-time)
+         0
+         )
+     )
+  )
+
+;; definition for method 52 of type net-process-mgr
+(defmethod net-process-mgr-method-52 ((this net-process-mgr) (arg0 int))
+  (let ((v1-7 (sar
+                (shl
+                  (- (- (- (if *net-mgr*
+                               (-> *net-mgr* game-state time)
+                               0
+                               )
+                           (if *net-world*
+                               (-> *net-world* net-state game-start-time)
+                               0
+                               )
+                           )
+                        (if *net-world*
+                            (-> *net-world* net-state total-pause-time)
+                            0
+                            )
+                        )
+                     arg0
+                     )
+                  48
+                  )
+                48
+                )
+              )
+        )
+    (- (- (- (if *net-mgr*
+                 (-> *net-mgr* game-state time)
+                 0
+                 )
+             (if *net-world*
+                 (-> *net-world* net-state game-start-time)
+                 0
+                 )
+             )
+          (if *net-world*
+              (-> *net-world* net-state total-pause-time)
+              0
+              )
+          )
+       v1-7
+       )
+    )
+  )
+
+;; definition for method 45 of type net-process-mgr
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod alloc-entity-net-id ((this net-process-mgr))
+  (local-vars (s5-0 int))
+  0
+  (until #f
+    (+! (-> this last-allocated-global-id) 1)
+    (set! s5-0 (logior (logand (logand (-> this last-allocated-global-id) 511) -513) 512))
+    (when (not (get-process-by-net-id this s5-0))
+      (empty)
+      (goto cfg-5)
+      )
+    )
+  #f
+  (label cfg-5)
+  s5-0
+  )
+
+;; definition for method 55 of type net-process-mgr
+(defmethod register-process ((this net-process-mgr) (arg0 process-nettable) (arg1 int) (arg2 int))
+  (when (registered? arg0)
+    (format 0 "process-nettable already registered!!!~%")
+    (break!)
+    0
+    )
+  (cond
+    ((-> this cur-proc-valid)
+     (set! (-> arg0 net-id) (-> this cur-proc-id))
+     (set! (-> arg0 owner-idx) (-> this cur-proc-owner-idx))
+     (set! (-> arg0 desired-owner-idx) -1)
+     (let ((v1-8 (-> this cur-proc-entity)))
+       (when v1-8
+         (set! (-> arg0 entity) (the-as entity-actor (-> v1-8 entity)))
+         (set! (-> arg0 level) (-> v1-8 entity extra level))
+         (set! (-> v1-8 process) arg0)
+         (set! (-> arg0 name) (-> v1-8 entity name))
+         (logior! (-> arg0 mask) (process-mask no-kill))
+         )
+       )
+     )
+    (else
+      (cond
+        ((!= arg2 #xffff)
+         (let ((t0-0 (get-process-by-net-id this arg2)))
+           (when t0-0
+             (format 0 "process ~A is trying to reserve id ~D, already in use by ~A~%" arg0 arg2 t0-0)
+             (break!)
+             0
+             )
+           )
+         (set! (-> arg0 net-id) (the-as uint arg2))
+         )
+        (else
+          (set! (-> arg0 net-id) (the-as uint (if (-> arg0 entity)
+                                                  (alloc-entity-net-id this)
+                                                  (alloc-local-net-id this)
+                                                  )
+                                         )
+                )
+          (if (= (-> arg0 net-id) #xffff)
+              (return #f)
+              )
+          )
+        )
+      (when (= arg1 -1)
+        (format #t "ERROR: process-nettable registered with invalid owner-idx~%")
+        (break!)
+        0
+        )
+      (set! (-> arg0 desired-owner-idx) arg1)
+      (set! (-> arg0 owner-idx) arg1)
+      )
+    )
+  (set! (-> arg0 jump-in-send-pending) (the-as uint 0))
+  (add-link (-> this owner-lists (-> arg0 owner-idx)) (-> arg0 owner-link))
+  (add-link (-> this active-list) (-> arg0 active-link))
+  (set! (-> *net-process-table* (-> arg0 net-id)) arg0)
+  (logior! (-> arg0 net-flags) (net-flag registered))
+  (logclear! (-> arg0 net-flags) (net-flag updated))
+  (if (not (-> this cur-proc-valid))
+      (send-process-create this (the-as net-world arg0) -2 #f)
+      )
+  (set! (-> this cur-proc-valid) #f)
+  #t
+  )
+
+;; definition for method 24 of type net-process-mgr
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+;; WARN: disable def twice: 126. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 183. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod handle-msg-process-create ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (let ((s3-0 (the-as owner-and-flags (read-uint8 arg0))))
+    (let ((s2-0 (read-symbol arg0)))
+      (format 0 "net-process-mgr::handle-msg-process-create, type=~A~%" s2-0)
+      (case (-> this next-state name)
+        (('recv-objects)
+         (when (!= arg1 (-> *net-mgr* game-state session-master-idx))
+           (format 0 " .... discarding since we're still recv-objects, and it didn't come from SM~%")
+           (return (the-as object #f))
+           )
+         )
+        (('staging)
+         (when (!= s2-0 'net-world)
+           (format 0 "... refusing to create object type ~A in staging state~%" s2-0)
+           (return (the-as object #f))
+           )
+         )
+        (('running)
+         )
+        (else
+          (format 0 "bad state for object creation~%")
+          (return (the-as object #f))
+          )
+        )
+      (when (get-process-by-net-id this arg2)
+        (format 0 "not creating dupe of ~D: ~A~%" arg2 (get-process-by-net-id this arg2))
+        (return (the-as object #f))
+        )
+      (set! (-> this cur-proc-id) (the-as uint arg2))
+      (set! (-> this cur-proc-type) (the-as type (-> s2-0 value)))
+      )
+    (set! (-> this cur-proc-owner-idx) (-> s3-0 owner-idx))
+    (set! (-> this cur-proc-valid) #t)
+    (set! (-> this cur-proc-entity) #f)
+    (when (nonzero? (-> s3-0 entity))
+      (let ((s4-1 (read-uint32 arg0)))
+        (let ((v0-11 (get-shared-level)))
+          (when v0-11
+            (let* ((s3-2 (-> v0-11 entity))
+                   (s2-2 (-> s3-2 length))
+                   )
+              (dotimes (s1-2 s2-2)
+                (let* ((s0-0 (-> s3-2 data s1-2))
+                       (v1-30
+                         (and (logtest? (-> s0-0 kill-mask) (task-mask network))
+                              (let ((v1-32 (as-type (-> s0-0 entity) entity-actor)))
+                                (cond
+                                  (v1-32
+                                    (let ((sv-32 (-> (the-as entity-actor v1-32) etype)))
+                                      (and (nonzero? sv-32)
+                                           (= (-> sv-32 type symbol) 'type)
+                                           (type-type? sv-32 process-nettable)
+                                           (nonzero? (-> sv-32 method-table 40))
+                                           )
+                                      )
+                                    )
+                                  (else
+                                    #f
+                                    )
+                                  )
+                                )
+                              )
+                         )
+                       )
+                  (when v1-30
+                    (if (= (-> s0-0 entity aid) s4-1)
+                        (set! (-> this cur-proc-entity) s0-0)
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (let ((v0-14 (get-event-level)))
+          (when v0-14
+            (let* ((s3-3 (-> v0-14 entity))
+                   (s2-3 (-> s3-3 length))
+                   )
+              (dotimes (s1-3 s2-3)
+                (let* ((s0-1 (-> s3-3 data s1-3))
+                       (v1-51
+                         (and (logtest? (-> s0-1 kill-mask) (task-mask network))
+                              (let ((v1-53 (as-type (-> s0-1 entity) entity-actor)))
+                                (cond
+                                  (v1-53
+                                    (let ((sv-64 (-> (the-as entity-actor v1-53) etype)))
+                                      (and (nonzero? sv-64)
+                                           (= (-> sv-64 type symbol) 'type)
+                                           (type-type? sv-64 process-nettable)
+                                           (nonzero? (-> sv-64 method-table 40))
+                                           )
+                                      )
+                                    )
+                                  (else
+                                    #f
+                                    )
+                                  )
+                                )
+                              )
+                         )
+                       )
+                  (when v1-51
+                    (if (= (-> s0-1 entity aid) s4-1)
+                        (set! (-> this cur-proc-entity) s0-1)
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (if (not (-> this cur-proc-entity))
+            (format 0 "WARNING: UNABLE TO LOCATE NET-ENTITY ~D!!!~%" s4-1)
+            )
+        )
+      )
+    )
+  ((the-as (function process-nettable mem-buffer process-nettable) (-> this cur-proc-type method-table 41))
+   (the-as process-nettable #f)
+   arg0
+   )
+  (when (-> this cur-proc-valid)
+    (format 0 "net-process-mgr::handle-msg-process-create : ERROR - process failed to spawn~%")
+    (set! (-> this cur-proc-valid) #f)
+    )
+  0
+  )
+
+;; definition for method 25 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-msg-process-kill ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (with-pp
+    (let ((a0-1 (get-process-by-net-id this arg2)))
+      (when a0-1
+        (logior! (-> a0-1 net-flags) (net-flag updated))
+        (let ((s5-0 pp))
+          (set! pp a0-1)
+          (on-destroy a0-1)
+          (set! pp s5-0)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 26 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-msg-process-destroy ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (with-pp
+    (let ((a0-1 (get-process-by-net-id this arg2)))
+      (when a0-1
+        (let ((gp-0 pp))
+          (set! pp a0-1)
+          (on-destroy-silent a0-1)
+          (set! pp gp-0)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 27 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-msg-ownership-request ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (with-pp
+    (let ((s4-0 (get-process-by-net-id this arg2))
+          (a2-1 (read-uint8 arg0))
+          )
+      (cond
+        ((!= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+         (send-ownership-msg this 2 (ash 1 arg1) arg2 -1)
+         )
+        ((not s4-0)
+         (send-ownership-msg this 2 (ash 1 arg1) arg2 -1)
+         )
+        (else
+          (let ((s2-1 (-> s4-0 owner-idx)))
+            (try-change-owner this s4-0 (the-as int a2-1) arg1)
+            (if (!= (-> s4-0 owner-idx) s2-1)
+                (logior! (-> s4-0 net-flags) (net-flag updated))
+                )
+            (send-ownership-msg
+              this
+              1
+              (if (= (-> s4-0 owner-idx) s2-1)
+                  (ash 1 arg1)
+                  -2
+                  )
+              arg2
+              (-> s4-0 owner-idx)
+              )
+            )
+          (let ((gp-1 pp))
+            (set! pp s4-0)
+            (on-owner-change s4-0)
+            (set! pp gp-1)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 28 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 28 net-process-mgr) has a return type of none, but the expression builder found a return statement.
+(defmethod handle-msg-ownership-grant ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (with-pp
+    (let ((gp-0 (get-process-by-net-id this arg2)))
+      (let ((a2-1 (read-uint8 arg0)))
+        (when (not gp-0)
+          (request-missing-object this arg2 arg1)
+          (return #f)
+          )
+        (logior! (-> gp-0 net-flags) (net-flag updated))
+        (-> gp-0 owner-idx)
+        (set-owner this gp-0 a2-1)
+        )
+      (let ((s5-1 pp))
+        (set! pp gp-0)
+        (on-owner-change gp-0)
+        (set! pp s5-1)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 32 of type net-process-mgr
+;; WARN: Return type mismatch int vs object.
+(defmethod request-missing-object ((this net-process-mgr) (arg0 int) (arg1 int))
+  (when (and (-> this next-state) (= (-> this next-state name) 'running))
+    (when *net-world*
+      (if (not (-> *net-world* is-late-join))
+          (return (the-as object #f))
+          )
+      )
+    (let ((s4-0 (alloc-msg-buffer)))
+      (write-int8 s4-0 0)
+      (write-int16 s4-0 (logior arg0 6144))
+      (set! (-> (the-as (pointer int8) (-> s4-0 base))) (bytes-used s4-0))
+      (format 0 "Requesting missing object : ~D~%" arg0)
+      (if (!= (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              (-> *net-mgr* game-state session-master-idx)
+              )
+          (set! arg1 (-> *net-mgr* game-state session-master-idx))
+          )
+      (net-send-msg 64 s4-0 (ash 1 arg1))
+      (free-msg-buffer s4-0)
+      )
+    )
+  0
+  )
+
+;; definition for method 29 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-msg-ownership-deny ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  0
+  (none)
+  )
+
+;; definition for method 30 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 30 net-process-mgr) has a return type of none, but the expression builder found a return statement.
+(defmethod handle-msg-process-event ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int) (arg3 int))
+  (with-pp
+    (let ((s4-0 (get-process-by-net-id this arg2)))
+      (when (not s4-0)
+        (request-missing-object this arg2 arg1)
+        (return #f)
+        )
+      (logior! (-> s4-0 net-flags) (net-flag updated))
+      (let ((s2-1 pp))
+        (set! pp s4-0)
+        (let ((a1-4 (msg-map-idx->val s4-0 arg3)))
+          (if a1-4
+              (handle-net-msg s4-0 a1-4 arg0 arg1)
+              )
+          )
+        (set! pp s2-1)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 33 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-aux-msg-recv-end ((this net-process-mgr) (arg0 mem-buffer) (arg1 int))
+  (with-pp
+    (when (and (= (-> this machines (-> this local-machine-idx) state) (net-process-mgr-machine-state recv-objects))
+               (= arg1 (-> this session-master-idx))
+               )
+      (set! (-> this machines (-> this local-machine-idx) state) (net-process-mgr-machine-state running))
+      (let ((gp-0 (alloc-msg-buffer)))
+        (write-int8 gp-0 0)
+        (write-int8 gp-0 0)
+        (write-int8 gp-0 2)
+        (set! (-> (the-as (pointer int8) (-> gp-0 base)) 1) (+ (bytes-used gp-0) -1))
+        (net-send-msg 80 gp-0 -2)
+        (free-msg-buffer gp-0)
+        )
+      (let ((gp-1 pp))
+        (set! pp *net-process-mgr*)
+        (go-running)
+        (set! pp gp-1)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 34 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-aux-msg-recv-end-ack ((this net-process-mgr) (arg0 mem-buffer) (arg1 int))
+  (set! (-> this machines arg1 state) (net-process-mgr-machine-state running))
+  0
+  (none)
+  )
+
+;; definition for function tweak-local-net-entities
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+;; WARN: disable def twice: 161. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 198. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defun tweak-local-net-entities ()
+  (let ((gp-0 (-> *net-play-mode-names* (cond
+                                          (*net-world*
+                                            (if *net-world*
+                                                (the-as int (-> *net-world* task-node-info net-play-mode))
+                                                18
+                                                )
+                                            )
+                                          (else
+                                            18
+                                            )
+                                          )
+                  )
+              )
+        )
+    (dotimes (s5-0 6)
+      (let ((s4-0 (-> *level* level s5-0)))
+        (when (= (-> s4-0 status) 'active)
+          (format 0 "processing level ~A~%" (-> s4-0 name))
+          (let ((s4-1 (-> s4-0 entity)))
+            (dotimes (s3-0 (-> s4-1 length))
+              (let* ((s2-0 (-> s4-1 data s3-0))
+                     (s1-0 (as-type (-> s2-0 entity) entity-actor))
+                     )
+                (when s1-0
+                  (when (and *record-fma* (type-type? (-> s1-0 etype) eco))
+                    (logior! (-> s2-0 kill-mask) (task-mask never))
+                    (logior! (-> s1-0 extra perm status) (entity-perm-status dead))
+                    )
+                  (let* ((sv-16 (new 'static 'res-tag))
+                         (v1-24 (res-lump-data s1-0 'switch-mode (pointer symbol) :tag-ptr (& sv-16)))
+                         )
+                    (when v1-24
+                      (let ((a0-13 (shr (-> sv-16 elt-count) 1)))
+                        (dotimes (a1-4 (the-as int a0-13))
+                          (let* ((a3-1 (* a1-4 2))
+                                 (a2-4 (-> v1-24 a3-1))
+                                 (a3-5 (-> v1-24 (+ a3-1 1)))
+                                 )
+                            (if (= a2-4 gp-0)
+                                (set! (-> s1-0 etype) (the-as type (-> a3-5 value)))
+                                )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  (when *net-world*
+                    (if (and (= (-> s1-0 etype symbol) 'eco-yellow) (should-suppress-eco? 'yellow))
+                        (logior! (-> s2-0 kill-mask) (task-mask never))
+                        )
+                    (if (and (= (-> s1-0 etype symbol) 'eco-red) (should-suppress-eco? 'red))
+                        (logior! (-> s2-0 kill-mask) (task-mask never))
+                        )
+                    (if (and (= (if *net-world*
+                                    (the-as int (-> *net-world* task-node-info net-play-mode))
+                                    18
+                                    )
+                                3
+                                )
+                             (or (= (-> s1-0 etype symbol) 'eco-red) (= (-> s1-0 etype symbol) 'eco-yellow))
+                             )
+                        (logior! (-> s2-0 kill-mask) (task-mask never))
+                        )
+                    )
+                  (let* ((v1-53 (as-type s1-0 entity-actor))
+                         (v1-54 (cond
+                                  (v1-53
+                                    (let ((s0-2 (-> v1-53 etype)))
+                                      (and (nonzero? s0-2)
+                                           (= (-> s0-2 type symbol) 'type)
+                                           (type-type? s0-2 process-nettable)
+                                           (nonzero? (-> s0-2 method-table 40))
+                                           )
+                                      )
+                                    )
+                                  (else
+                                    #f
+                                    )
+                                  )
+                                )
+                         )
+                    (if (not v1-54)
+                        (logclear! (-> s2-0 kill-mask) (task-mask network))
+                        )
+                    )
+                  (let ((v1-63
+                          (and (not (logtest? (-> s2-0 kill-mask) (task-mask never))) (let ((v1-64 (as-type s1-0 entity-actor)))
+                                                                                        (cond
+                                                                                          (v1-64
+                                                                                            (let ((s0-4 (-> v1-64 etype)))
+                                                                                              (and (nonzero? s0-4)
+                                                                                                   (= (-> s0-4 type symbol) 'type)
+                                                                                                   (type-type? s0-4 process-nettable)
+                                                                                                   (nonzero? (-> s0-4 method-table 40))
+                                                                                                   )
+                                                                                              )
+                                                                                            )
+                                                                                          (else
+                                                                                            #f
+                                                                                            )
+                                                                                          )
+                                                                                        )
+                               )
+                          )
+                        )
+                    (if v1-63
+                        (logior! (-> s2-0 kill-mask) (task-mask network never))
+                        )
+                    )
+                  (when (= (-> s1-0 etype) nospawn)
+                    (logior! (-> s2-0 kill-mask) (task-mask never))
+                    (logclear! (-> s2-0 kill-mask) (task-mask network))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function update-local-net-entities
+;; WARN: Return type mismatch int vs object.
+;; WARN: disable def twice: 72. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 160. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defun update-local-net-entities ((arg0 task-mask))
+  (with-pp
+    (format 0 ">>>> enter update-local-net-entities: ~D~%" arg0)
+    (when (not (and *net-process-mgr* *net-world*))
+      (format 0 "not spawing entities due to lack of net-world~%")
+      (return (the-as object #f))
+      )
+    (when (is-late-join?)
+      (format 0 "not spawing entities due to late join~%")
+      (return (the-as object #f))
+      )
+    (when (not (logtest? (-> *net-world* net-state flags) 1))
+      (format 0 "not spawning entities because world is not yet locked~%")
+      (return (the-as object #f))
+      )
+    (set-entity-creation-messages-enabled *net-process-mgr* #f)
+    (let ((gp-1 (logclear arg0 (task-mask network never))))
+      (let ((v1-14 (get-shared-level)))
+        (when v1-14
+          (let* ((s5-0 (-> v1-14 entity))
+                 (s4-0 (-> s5-0 length))
+                 )
+            (dotimes (s3-0 s4-0)
+              (let* ((s2-0 (-> s5-0 data s3-0))
+                     (v1-19 (and (logtest? (-> s2-0 kill-mask) (task-mask network))
+                                 (let ((v1-20 (as-type (-> s2-0 entity) entity-actor)))
+                                   (cond
+                                     (v1-20
+                                       (let ((s1-1 (-> (the-as entity-actor v1-20) etype)))
+                                         (and (nonzero? s1-1)
+                                              (= (-> s1-1 type symbol) 'type)
+                                              (type-type? s1-1 process-nettable)
+                                              (nonzero? (-> s1-1 method-table 40))
+                                              )
+                                         )
+                                       )
+                                     (else
+                                       #f
+                                       )
+                                     )
+                                   )
+                                 )
+                            )
+                     )
+                (when v1-19
+                  (cond
+                    ((not (logtest? (-> s2-0 kill-mask) gp-1))
+                     (if (not (-> s2-0 process))
+                         (spawn-net-entity s2-0)
+                         )
+                     )
+                    (else
+                      (let ((s2-1 (-> s2-0 process)))
+                        (when s2-1
+                          (let ((s1-2 (alloc-msg (the-as process-nettable s2-1) 'destroy-silent)))
+                            (send-msg (the-as process-nettable s2-1) s1-2 -2 80)
+                            (free-msg (the-as process-nettable s2-1) s1-2)
+                            )
+                          (let ((s1-3 pp))
+                            (set! pp s2-1)
+                            (on-destroy-silent (the-as process-nettable s2-1))
+                            (set! pp s1-3)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (let ((v1-39 (get-event-level)))
+        (when v1-39
+          (let* ((s5-1 (-> v1-39 entity))
+                 (s4-1 (-> s5-1 length))
+                 )
+            (dotimes (s3-1 s4-1)
+              (let* ((s2-2 (-> s5-1 data s3-1))
+                     (v1-44 (and (logtest? (-> s2-2 kill-mask) (task-mask network))
+                                 (let ((v1-45 (as-type (-> s2-2 entity) entity-actor)))
+                                   (cond
+                                     (v1-45
+                                       (let ((s1-5 (-> (the-as entity-actor v1-45) etype)))
+                                         (and (nonzero? s1-5)
+                                              (= (-> s1-5 type symbol) 'type)
+                                              (type-type? s1-5 process-nettable)
+                                              (nonzero? (-> s1-5 method-table 40))
+                                              )
+                                         )
+                                       )
+                                     (else
+                                       #f
+                                       )
+                                     )
+                                   )
+                                 )
+                            )
+                     )
+                (when v1-44
+                  (cond
+                    ((not (logtest? (-> s2-2 kill-mask) gp-1))
+                     (if (not (-> s2-2 process))
+                         (spawn-net-entity s2-2)
+                         )
+                     )
+                    (else
+                      (let ((s2-3 (-> s2-2 process)))
+                        (when s2-3
+                          (let ((s1-6 (alloc-msg (the-as process-nettable s2-3) 'destroy-silent)))
+                            (send-msg (the-as process-nettable s2-3) s1-6 -2 80)
+                            (free-msg (the-as process-nettable s2-3) s1-6)
+                            )
+                          (let ((s1-7 pp))
+                            (set! pp s2-3)
+                            (on-destroy-silent (the-as process-nettable s2-3))
+                            (set! pp s1-7)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (set-entity-creation-messages-enabled *net-process-mgr* #t)
+      (format 0 ">>>> exit update-local-net-entities: ~D~%" gp-1)
+      )
+    0
+    )
+  )
+
+;; definition for method 57 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod start-sending-objects ((this net-process-mgr) (arg0 int))
+  (set! (-> this machines arg0 state) (net-process-mgr-machine-state recv-objects))
+  (set! (-> this machines arg0 delay) 10)
+  (update-send-pending this (ash 1 arg0) 0)
+  0
+  (none)
+  )
+
+;; definition for function net-process-msg-handler
+;; WARN: Return type mismatch int vs object.
+(defun net-process-msg-handler ((arg0 mem-buffer) (arg1 int))
+  (if (not *net-process-mgr*)
+      (return (the-as object #f))
+      )
+  (let* ((v1-4 (read-uint16 arg0))
+         (a3-0 (logand v1-4 1023))
+         (t0-0 (shr v1-4 10))
+         )
+    (case (the-as net-process-msg-handler-opcode t0-0)
+      (((net-process-msg-handler-opcode process-create))
+       (handle-msg-process-create *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode process-kill))
+       (handle-msg-process-kill *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode process-destroy))
+       (handle-msg-process-destroy *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode ownership-request))
+       (handle-msg-ownership-request *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode ownership-grant))
+       (handle-msg-ownership-grant *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode ownership-deny))
+       (handle-msg-ownership-deny *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (((net-process-msg-handler-opcode object-request))
+       (handle-msg-object-request *net-process-mgr* arg0 arg1 (the-as int a3-0))
+       )
+      (else
+        (handle-msg-process-event *net-process-mgr* arg0 arg1 (the-as int a3-0) (the-as int t0-0))
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 31 of type net-process-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-msg-object-request ((this net-process-mgr) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (let ((a1-2 (get-process-by-net-id this arg2)))
+    (if a1-2
+        (send-process-create this (the-as net-world a1-2) (ash 1 arg1) #f)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 58 of type net-process-mgr
+(defmethod set-entity-creation-messages-enabled ((this net-process-mgr) (arg0 symbol))
+  (set! (-> this entity-creation-messages-enabled) arg0)
+  0
+  )
+
+
+
+

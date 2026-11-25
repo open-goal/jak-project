@@ -36,17 +36,18 @@
 ;; definition of type net-game-mgr
 (deftype net-game-mgr (process-nettable)
   ((scheduled-finish-time  int32)
-   (scheduled-finish-mode  basic)
+   (scheduled-finish-mode  symbol)
    (sorted-ct              int8)
    (human-ct               int8)
    (sorted-ids             uint8   24)
+   (sorted-ids-s8          int8    24 :overlay-at (-> sorted-ids 0))
    (intro-end-time         int32)
    (hud-player-indicators  handle  2)
    (net-players            (array net-player))
    (stats-hud              handle  2)
    (intro-handle           handle  2)
    (cheats                 uint16  4)
-   (state-time             uint64)
+   (state-time             time-frame)
    )
   (:methods
     (net-game-mgr-method-42 () none)
@@ -118,21 +119,21 @@
 ;; definition for function net-game-mgr-init-remote
 ;; WARN: Return type mismatch int vs none.
 (defbehavior net-game-mgr-init-remote net-game-mgr ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   (none)
   )
 
 ;; definition for method 41 of type net-game-mgr
-(defmethod process-nettable-method-41 ((this net-game-mgr) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr) (arg0 mem-buffer))
   (ppointer->process (process-spawn net-game-mgr :init net-game-mgr-init-remote arg0 :name "net-game-mgr"))
   )
 
 ;; definition for method 37 of type net-game-mgr
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'game-finished)
   (+! (-> arg0 msg-count) 1)
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'disable-turbos)
@@ -168,7 +169,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr*)
 
 ;; definition for method 40 of type net-game-mgr
-(defmethod process-nettable-method-40 ((this net-game-mgr))
+(defmethod get-class-info ((this net-game-mgr))
   *net-process-class-info-net-game-mgr*
   )
 

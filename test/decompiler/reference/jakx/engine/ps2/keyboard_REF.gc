@@ -1,0 +1,1382 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function cpad-or-kbd-pressed-var?
+(defun cpad-or-kbd-pressed-var? ((arg0 uint) (arg1 pad-buttons))
+  (or (logtest? (-> *cpad-list* cpads arg0 button0-rel 0) arg1) (case arg1
+                                                                  (((pad-buttons up))
+                                                                   (= (-> *keybd* keys 82) 1)
+                                                                   )
+                                                                  (((pad-buttons down))
+                                                                   (= (-> *keybd* keys 81) 1)
+                                                                   )
+                                                                  (((pad-buttons left))
+                                                                   (= (-> *keybd* keys 80) 1)
+                                                                   )
+                                                                  (((pad-buttons right))
+                                                                   (= (-> *keybd* keys 79) 1)
+                                                                   )
+                                                                  (((pad-buttons x))
+                                                                   (= (-> *keybd* keys 40) 1)
+                                                                   )
+                                                                  (((pad-buttons triangle))
+                                                                   (= (-> *keybd* keys 41) 1)
+                                                                   )
+                                                                  (else
+                                                                    #f
+                                                                    )
+                                                                  )
+      )
+  )
+
+;; definition for function kbd-clear!
+(defun kbd-clear! ((arg0 int))
+  (if (!= (-> *keybd* keys arg0) 1)
+      (return (the-as int #f))
+      )
+  (set! (-> *keybd* keys arg0) (the-as uint 3))
+  0
+  )
+
+;; definition for function cpad-or-kbd-clear-func!
+(defun cpad-or-kbd-clear-func! ((arg0 uint) (arg1 pad-buttons))
+  (if (logtest? arg1 (pad-buttons up))
+      (kbd-clear! 82)
+      )
+  (if (logtest? arg1 (pad-buttons down))
+      (kbd-clear! 81)
+      )
+  (if (logtest? arg1 (pad-buttons left))
+      (kbd-clear! 80)
+      )
+  (if (logtest? arg1 (pad-buttons right))
+      (kbd-clear! 79)
+      )
+  (if (logtest? arg1 (pad-buttons x))
+      (kbd-clear! 40)
+      )
+  (if (logtest? arg1 (pad-buttons triangle))
+      (kbd-clear! 41)
+      )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-keyboard keyboard keyboard-lod0-jg keyboard-idle-ja
+              ((keyboard-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4000)
+              :global-effects 4
+              )
+
+;; definition for symbol *keyboard-proc*, type handle-wrapper
+(define *keyboard-proc* (new 'static 'handle-wrapper))
+
+;; failed to figure out what this is:
+(set! (-> *keyboard-proc* handle) (the-as handle #f))
+
+;; definition of type keyboard-key
+(deftype keyboard-key (structure)
+  ((data   uint8  4)
+   (char   uint8  :overlay-at (-> data 0))
+   (char2  uint8  :overlay-at (-> data 1))
+   (char3  uint8  :overlay-at (-> data 2))
+   (char4  uint8  :overlay-at (-> data 3))
+   (pos-x  int8)
+   (pos-y  int8)
+   (size   int8)
+   (dummy  uint8)
+   (tid    uint32)
+   (tid2   uint32)
+   (scale  float)
+   )
+  )
+
+;; definition for method 3 of type keyboard-key
+(defmethod inspect ((this keyboard-key))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'keyboard-key)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tchar: ~D~%" (-> this char))
+  (format #t "~1Tchar2: ~D~%" (-> this char2))
+  (format #t "~1Tchar3: ~D~%" (-> this char3))
+  (format #t "~1Tchar4: ~D~%" (-> this char4))
+  (format #t "~1Tpos-x: ~D~%" (-> this pos-x))
+  (format #t "~1Tpos-y: ~D~%" (-> this pos-y))
+  (format #t "~1Tsize: ~D~%" (-> this size))
+  (format #t "~1Tdummy: ~D~%" (-> this dummy))
+  (format #t "~1Ttid: ~D~%" (-> this tid))
+  (format #t "~1Ttid2: ~D~%" (-> this tid2))
+  (format #t "~1Tscale: ~f~%" (-> this scale))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *keyboard-string-buf*, type string
+(define *keyboard-string-buf* (the-as string (new 'static 'array uint32 32
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               #x0
+                                               )
+                                             )
+        )
+
+;; definition for symbol *keyboard-init-state*, type symbol
+(define *keyboard-init-state* #f)
+
+;; definition for symbol *keyboard-layout-default*, type (array keyboard-key)
+(define *keyboard-layout-default*
+  (new 'static 'boxed-array :type keyboard-key
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x61 #x41 #x2e #x0) :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x62 #x42 #x2c #x0) :pos-x 1 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x63 #x43 #x27 #x0) :pos-x 2 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x64 #x44 #x3f #x0) :pos-x 3 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x65 #x45 #x21 #x0) :pos-x 4 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x66 #x46 #x22 #x0) :pos-x 5 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x67 #x47 #x3a #x0) :pos-x 6 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x68 #x48 #x3b #x0) :pos-x 7 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x69 #x49 #xbf #x0) :pos-x 8 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x6a #x4a #xa1 #x0) :pos-x 9 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x31 #x31 #x24 #x0) :pos-x 10 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x32 #x32 #x80 #x0) :pos-x 11 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x33 #x33 #xa5 #x0) :pos-x 12 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x6b #x4b #x2b #x0) :pos-y 1 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x6c #x4c #x2d #x0)
+      :pos-x 1
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x6d #x4d #x2a #x0)
+      :pos-x 2
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x6e #x4e #x2f #x0)
+      :pos-x 3
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x6f #x4f #x3d #x0)
+      :pos-x 4
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x70 #x50 #x3c #x0)
+      :pos-x 5
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x71 #x51 #x3e #x0)
+      :pos-x 6
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x72 #x52 #x28 #x0)
+      :pos-x 7
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x73 #x53 #x29 #x0)
+      :pos-x 8
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x34 #x34 #x5b #x0)
+      :pos-x 10
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x35 #x35 #x5d #x0)
+      :pos-x 11
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x36 #x36 #xa3 #x0)
+      :pos-x 12
+      :pos-y 1
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key :data (new 'static 'array uint8 4 #x74 #x54 #x5f #x0) :pos-y 2 :size 1 :scale 1.0)
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x75 #x55 #x23 #x0)
+      :pos-x 1
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x76 #x56 #x25 #x0)
+      :pos-x 2
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x77 #x57 #x5e #x0)
+      :pos-x 3
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x78 #x58 #x26 #x0)
+      :pos-x 4
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x79 #x59 #x40 #x0)
+      :pos-x 5
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x7a #x5a #x7c #x0)
+      :pos-x 6
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key :pos-x 7 :pos-y 2 :size 3 :tid #x65c :tid2 #x10a1 :scale 0.7)
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x37 #x37 #x7f #x0)
+      :pos-x 10
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x38 #x38 #x8f #x0)
+      :pos-x 11
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x39 #x39 #x9a #x0)
+      :pos-x 12
+      :pos-y 2
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key :pos-y 3 :size 5 :tid #x65f :tid2 #x10a0 :scale 0.7)
+    (new 'static 'keyboard-key :pos-x 5 :pos-y 3 :size 5 :tid #xe3e :tid2 #x109e :scale 0.7)
+    (new 'static 'keyboard-key
+      :data (new 'static 'array uint8 4 #x30 #x30 #x9b #x0)
+      :pos-x 11
+      :pos-y 3
+      :size 1
+      :scale 1.0
+      )
+    (new 'static 'keyboard-key :pos-y 4 :size 8 :tid #x65d :tid2 #x109d :scale 0.7)
+    (new 'static 'keyboard-key :pos-x 8 :pos-y 4 :size 5 :tid #x65e :tid2 #x10a2 :scale 0.7)
+    )
+  )
+
+;; definition for function char-allowed
+;; WARN: disable def twice: 36. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 49. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defun char-allowed ((arg0 int) (arg1 uint))
+  (if (or (< arg1 (the-as uint 32)) (< (the-as uint 127) arg1))
+      (return #f)
+      )
+  (if (not (or (logtest? arg0 8) (logtest? arg0 16)))
+      (return #t)
+      )
+  (if (= arg1 32)
+      (return #t)
+      )
+  (cond
+    ((logtest? arg0 32)
+     (if (logtest? arg0 8)
+         (or (and (>= arg1 (the-as uint 97)) (>= (the-as uint 122) arg1))
+             (and (>= arg1 (the-as uint 65)) (>= (the-as uint 90) arg1))
+             )
+         (or (and (>= arg1 (the-as uint 97)) (>= (the-as uint 122) arg1))
+             (and (>= arg1 (the-as uint 65)) (>= (the-as uint 90) arg1))
+             (and (>= arg1 (the-as uint 48)) (>= (the-as uint 57) arg1))
+             )
+         )
+     )
+    (else
+      (or (and (>= arg1 (the-as uint 97)) (>= (the-as uint 122) arg1))
+          (and (>= arg1 (the-as uint 65)) (>= (the-as uint 90) arg1))
+          (and (>= arg1 (the-as uint 48)) (>= (the-as uint 57) arg1))
+          (or (= arg1 45) (= arg1 46) (= arg1 95))
+          )
+      )
+    )
+  )
+
+;; definition of type keyboard-control
+(deftype keyboard-control (process-drawable)
+  ((selected       int32)
+   (pos-x          int32)
+   (pos-y          int32)
+   (up             basic)
+   (down           basic)
+   (left           basic)
+   (right          basic)
+   (up-count       int32)
+   (down-count     int32)
+   (left-count     int32)
+   (right-count    int32)
+   (layout-select  int32)
+   (pad            uint32)
+   (screen-pos-x   int32)
+   (screen-pos-y   int32)
+   (max-chars      int32)
+   (flags          keyboard-control-flag)
+   (alpha          float)
+   (j-mod          joint-mod-set-world  :inline)
+   )
+  (:state-methods
+    idle
+    done
+    cancel
+    )
+  (:methods
+    (keyboard-control-method-53 (_type_) int)
+    (keyboard-control-method-54 (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type keyboard-control
+(defmethod inspect ((this keyboard-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tselected: ~D~%" (-> this selected))
+  (format #t "~2Tpos-x: ~D~%" (-> this pos-x))
+  (format #t "~2Tpos-y: ~D~%" (-> this pos-y))
+  (format #t "~2Tup: ~A~%" (-> this up))
+  (format #t "~2Tdown: ~A~%" (-> this down))
+  (format #t "~2Tleft: ~A~%" (-> this left))
+  (format #t "~2Tright: ~A~%" (-> this right))
+  (format #t "~2Tup-count: ~D~%" (-> this up-count))
+  (format #t "~2Tdown-count: ~D~%" (-> this down-count))
+  (format #t "~2Tleft-count: ~D~%" (-> this left-count))
+  (format #t "~2Tright-count: ~D~%" (-> this right-count))
+  (format #t "~2Tlayout-select: ~D~%" (-> this layout-select))
+  (format #t "~2Tname: ~A~%" (-> this name))
+  (format #t "~2Tscreen-pos-x: ~D~%" (-> this screen-pos-x))
+  (format #t "~2Tscreen-pos-y: ~D~%" (-> this screen-pos-y))
+  (format #t "~2Tmax-chars: ~D~%" (-> this max-chars))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Talpha: ~f~%" (-> this alpha))
+  (format #t "~2Tj-mod: #<joint-mod-set-world @ #x~X>~%" (-> this j-mod))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 53 of type keyboard-control
+(defmethod keyboard-control-method-53 ((this keyboard-control))
+  (when (and (logtest? (-> this flags) (keyboard-control-flag allow-space))
+             (< (length (-> this name)) (-> this max-chars))
+             )
+    (when (or (logtest? (-> this flags) (keyboard-control-flag allow-leading-space)) (> (length (-> this name)) 0))
+      (when (or (logtest? (-> this flags) (keyboard-control-flag allow-multiple-spaces))
+                (zero? (length (-> this name)))
+                (!= (-> this name data (+ (length (-> this name)) -1)) 32)
+                )
+        (let ((v1-24 (make-sound-instance snd-key-click (new 'static 'sound-id) (the-as handle #f))))
+          (cond
+            (v1-24
+              (logior! (-> v1-24 flags) (sound-spec-flag needs-update non-positional))
+              (-> v1-24 id)
+              )
+            (else
+              0
+              )
+            )
+          )
+        (format (-> this name) " ")
+        )
+      )
+    )
+  (when (and (= (length (-> this name)) 1) (= (-> this layout-select) 1))
+    (set! (-> this layout-select) 0)
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate done (keyboard-control)
+  :virtual #t
+  :enter (behavior ()
+    (send-event (ppointer->process (-> self parent)) 'notify 'done (-> self name))
+    (set! *keyboard-init-state* #f)
+    )
+  :code (behavior ()
+    (service-keybd)
+    (suspend)
+    (suspend)
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cancel (keyboard-control)
+  :virtual #t
+  :enter (behavior ()
+    (charp<-string (the-as (pointer uint8) *keyboard-string-buf*) (-> self name))
+    (set! *keyboard-init-state* (-> *lobby-menu-manager* state name))
+    )
+  :code (behavior ()
+    (dotimes (gp-0 5)
+      (set! (-> self alpha) (lerp 0.0 1.0 (* 0.2 (the float gp-0))))
+      (suspend)
+      )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 20.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 20.0))
+      )
+    (format #t "finished-animation~%")
+    (send-event (ppointer->process (-> self parent)) 'notify 'cancel)
+    )
+  :post ja-post
+  )
+
+;; definition for function set-keyboard-jmod
+;; INFO: Used lq/sq
+(defun set-keyboard-jmod ((arg0 keyboard-control))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 x) 245.76)
+    (set! (-> s5-0 y) -1064.96)
+    (set! (-> s5-0 z) 0.0)
+    (set! (-> s5-0 w) 1.0)
+    (vector-matrix*! s5-0 s5-0 (math-camera-matrix))
+    (set! (-> arg0 j-mod transform trans quad) (-> s5-0 quad))
+    )
+  (set! (-> arg0 j-mod transform scale x) 0.08)
+  (set! (-> arg0 j-mod transform scale y) 0.08)
+  (set! (-> arg0 j-mod transform scale z) 0.08)
+  )
+
+;; definition for function render-entered-text
+(defbehavior render-entered-text keyboard-control ((arg0 keyboard-control) (arg1 font-context))
+  (let ((a0-1 arg1))
+    (set! (-> a0-1 color) (font-color pad-x))
+    )
+  (set-width! arg1 9999)
+  (let ((v1-3 (the int (-> (get-string-length (-> arg0 name) arg1) length))))
+    0
+    (let* ((a0-6 (min 0 (- 335 v1-3)))
+           (v1-5 arg1)
+           (a1-4 (+ (-> arg0 screen-pos-x) a0-6))
+           (a0-7 (-> arg0 screen-pos-y))
+           )
+      (set! (-> v1-5 origin x) (the float a1-4))
+      (set! (-> v1-5 origin y) (the float a0-7))
+      )
+    )
+  (set! (-> arg1 flags) (font-flags kerning large))
+  (let ((a0-8 arg1))
+    (set! (-> a0-8 color) (font-color pad-x))
+    )
+  (set! (-> arg1 alpha) (-> arg0 alpha))
+  (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id debug)
+                               )
+    (draw-sprite2d-xy-absolute
+      s3-0
+      (-> arg0 screen-pos-x)
+      (the int (-> arg1 origin y))
+      (the int (* 335.0 (-> *video-params* relative-x-scale)))
+      (the int (-> arg1 height))
+      (new 'static 'rgba :r #x20 :g #x40 :b #x60 :a (the int (* 128.0 (-> arg0 alpha))))
+      #x3fffff
+      )
+    (dma-buffer-add-gs-set s3-0
+                           (scissor-1
+                             (new 'static 'gs-scissor
+                               :scax0 (-> arg0 screen-pos-x)
+                               :scay0 (the int (-> arg1 origin y))
+                               :scax1 (the int (+ (* 335.0 (-> *video-params* relative-x-scale)) (the float (-> arg0 screen-pos-x))))
+                               :scay1 (the int (+ (-> arg1 height) (-> arg1 origin y)))
+                               )
+                             )
+                           )
+    (when (nonzero? (length (-> arg0 name)))
+      (format (clear *temp-string*) "~S" (-> arg0 name))
+      (let* ((s5-1 print-game-text)
+             (a0-20 *common-text*)
+             (t9-5 (method-of-object a0-20 expand-text))
+             (a1-19 *temp-string*)
+             )
+        (s5-1 (t9-5 a0-20 a1-19) arg1 #f 44 (bucket-id hud-draw-hud-alpha) (the-as string #f) s3-0)
+        )
+      )
+    (dma-buffer-add-gs-set s3-0 (scissor-1 (-> *viewport-array* default scissor)))
+    )
+  0
+  )
+
+;; definition for method 54 of type keyboard-control
+(defmethod keyboard-control-method-54 ((this keyboard-control))
+  (when (cpad-pressed? 0 l2)
+    (let ((v1-5 (-> this layout-select)))
+      (cond
+        ((zero? v1-5)
+         (set! (-> this layout-select) 1)
+         (let ((v1-8 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-8
+               (logior! (-> v1-8 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-8 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        ((= v1-5 1)
+         (set! (-> this layout-select) 0)
+         (let ((v1-12 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-12
+               (logior! (-> v1-12 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-12 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        ((= v1-5 2)
+         (set! (-> this layout-select) 1)
+         (let ((v1-18 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-18
+               (logior! (-> v1-18 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-18 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  (when (cpad-pressed? 0 r2)
+    (let ((v1-26 (-> this layout-select)))
+      (cond
+        ((zero? v1-26)
+         (set! (-> this layout-select) 2)
+         (let ((v1-29 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-29
+               (logior! (-> v1-29 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-29 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        ((= v1-26 1)
+         (set! (-> this layout-select) 2)
+         (let ((v1-34 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-34
+               (logior! (-> v1-34 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-34 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        ((= v1-26 2)
+         (set! (-> this layout-select) 0)
+         (let ((v1-39 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-39
+               (logior! (-> v1-39 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-39 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  (cond
+    ((cpad-hold? 0 down)
+     (+! (-> this down-count) 1)
+     )
+    (else
+      (set! (-> this down-count) 0)
+      0
+      )
+    )
+  (cond
+    ((cpad-hold? 0 up)
+     (+! (-> this up-count) 1)
+     )
+    (else
+      (set! (-> this up-count) 0)
+      0
+      )
+    )
+  (cond
+    ((cpad-hold? 0 left)
+     (+! (-> this left-count) 1)
+     )
+    (else
+      (set! (-> this left-count) 0)
+      0
+      )
+    )
+  (cond
+    ((cpad-hold? 0 right)
+     (+! (-> this right-count) 1)
+     )
+    (else
+      (set! (-> this right-count) 0)
+      0
+      )
+    )
+  (set! (-> this up) #f)
+  (set! (-> this down) #f)
+  (set! (-> this left) #f)
+  (set! (-> this right) #f)
+  (if (= (-> this down-count) 1)
+      (set! (-> this down) (the-as basic #t))
+      )
+  (when (= (-> this down-count) 10)
+    (set! (-> this down-count) 5)
+    (set! (-> this down) (the-as basic #t))
+    )
+  (if (= (-> this up-count) 1)
+      (set! (-> this up) (the-as basic #t))
+      )
+  (when (= (-> this up-count) 10)
+    (set! (-> this up-count) 5)
+    (set! (-> this up) (the-as basic #t))
+    )
+  (if (= (-> this right-count) 1)
+      (set! (-> this right) (the-as basic #t))
+      )
+  (when (= (-> this right-count) 10)
+    (set! (-> this right-count) 5)
+    (set! (-> this right) (the-as basic #t))
+    )
+  (if (= (-> this left-count) 1)
+      (set! (-> this left) (the-as basic #t))
+      )
+  (when (= (-> this left-count) 10)
+    (set! (-> this left-count) 5)
+    (set! (-> this left) (the-as basic #t))
+    )
+  (when (-> this down)
+    (let ((v1-101 (make-sound-instance snd-key-highlight (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-101
+          (logior! (-> v1-101 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-101 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-0 #t))
+      (while s5-0
+        (+! (-> this pos-y) 1)
+        (when (< 4 (-> this pos-y))
+          (set! (-> this pos-y) 0)
+          0
+          )
+        (dotimes (s4-0 (length *keyboard-layout-default*))
+          (let ((v1-111 (-> *keyboard-layout-default* s4-0)))
+            (when (and (>= (-> this pos-x) (-> v1-111 pos-x))
+                       (< (-> this pos-x) (+ (-> v1-111 pos-x) (-> v1-111 size)))
+                       (= (-> v1-111 pos-y) (-> this pos-y))
+                       )
+              (set! s5-0 #f)
+              (set! (-> this selected) s4-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  (when (-> this up)
+    (let ((v1-124 (make-sound-instance snd-key-highlight (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-124
+          (logior! (-> v1-124 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-124 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-1 #t))
+      (while s5-1
+        (+! (-> this pos-y) -1)
+        (if (< (-> this pos-y) 0)
+            (set! (-> this pos-y) 4)
+            )
+        (dotimes (s4-1 (length *keyboard-layout-default*))
+          (let ((v1-134 (-> *keyboard-layout-default* s4-1)))
+            (when (and (>= (-> this pos-x) (-> v1-134 pos-x))
+                       (< (-> this pos-x) (+ (-> v1-134 pos-x) (-> v1-134 size)))
+                       (= (-> v1-134 pos-y) (-> this pos-y))
+                       )
+              (set! s5-1 #f)
+              (set! (-> this selected) s4-1)
+              )
+            )
+          )
+        )
+      )
+    )
+  (when (-> this right)
+    (let ((v1-147 (make-sound-instance snd-key-highlight (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-147
+          (logior! (-> v1-147 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-147 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-2 -1))
+      (dotimes (s4-2 (+ (length *keyboard-layout-default*) -1))
+        (let ((v1-152 (-> *keyboard-layout-default* s4-2)))
+          (when (and (>= (-> this pos-x) (-> v1-152 pos-x))
+                     (< (-> this pos-x) (+ (-> v1-152 pos-x) (-> v1-152 size)))
+                     (= (-> v1-152 pos-y) (-> this pos-y))
+                     )
+            (let ((v1-158 (-> *keyboard-layout-default* (+ s4-2 1))))
+              (when (= (-> v1-158 pos-y) (-> this pos-y))
+                (set! (-> this selected) (+ s4-2 1))
+                (set! s5-2 (-> v1-158 pos-x))
+                )
+              )
+            )
+          )
+        )
+      (when (= s5-2 -1)
+        (dotimes (s4-3 (+ (length *keyboard-layout-default*) -1))
+          (let ((v1-168 (-> *keyboard-layout-default* s4-3)))
+            (when (and (zero? (-> v1-168 pos-x)) (= (-> v1-168 pos-y) (-> this pos-y)))
+              (set! (-> this selected) s4-3)
+              (set! s5-2 (-> v1-168 pos-x))
+              )
+            )
+          )
+        )
+      (set! (-> this pos-x) s5-2)
+      )
+    )
+  (when (-> this left)
+    (let ((v1-177 (make-sound-instance snd-key-highlight (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-177
+          (logior! (-> v1-177 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-177 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (let ((s5-3 -1))
+      (dotimes (s4-4 (+ (length *keyboard-layout-default*) -1))
+        (let ((v1-183 (-> *keyboard-layout-default* (+ s4-4 1))))
+          (when (and (>= (-> this pos-x) (-> v1-183 pos-x))
+                     (< (-> this pos-x) (+ (-> v1-183 pos-x) (-> v1-183 size)))
+                     (= (-> v1-183 pos-y) (-> this pos-y))
+                     )
+            (let ((v1-188 (-> *keyboard-layout-default* s4-4)))
+              (when (= (-> v1-188 pos-y) (-> this pos-y))
+                (set! (-> this selected) s4-4)
+                (set! s5-3 (+ (-> v1-188 size) -1 (-> v1-188 pos-x)))
+                )
+              )
+            )
+          )
+        )
+      (when (= s5-3 -1)
+        (dotimes (s4-5 (length *keyboard-layout-default*))
+          (let ((v1-199 (-> *keyboard-layout-default* s4-5)))
+            (when (= (-> v1-199 pos-y) (-> this pos-y))
+              (when (< s5-3 (-> v1-199 pos-x))
+                (set! (-> this selected) s4-5)
+                (set! s5-3 (+ (-> v1-199 size) -1 (-> v1-199 pos-x)))
+                )
+              )
+            )
+          )
+        )
+      (set! (-> this pos-x) s5-3)
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate idle (keyboard-control)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self up-count) 0)
+    (set! (-> self down-count) 0)
+    (set! (-> self left-count) 0)
+    (set! (-> self right-count) 0)
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+    (set! (-> self layout-select) 1)
+    )
+  :trans (behavior ()
+    (let ((s5-0 (keybd-read-ascii)))
+      (if (or (cpad-pressed? 0 triangle) (= s5-0 27))
+          (go-virtual cancel)
+          )
+      (keyboard-control-method-54 self)
+      (let ((gp-0 (new
+                    'stack
+                    'font-context
+                    *font-default-matrix*
+                    0
+                    0
+                    8396850.0
+                    (font-color default)
+                    (font-flags shadow kerning)
+                    )
+                  )
+            )
+        (set-height! gp-0 23)
+        (set! (-> gp-0 flags) (font-flags kerning middle large))
+        (dotimes (s4-0 (length *keyboard-layout-default*))
+          (let ((s3-0 (-> *keyboard-layout-default* s4-0)))
+            (set-scale! gp-0 (/ (-> s3-0 scale) 2))
+            (let ((v1-17 gp-0))
+              (set! (-> v1-17 width)
+                    (* (-> *video-params* relative-x-scale) (the float (+ (* 3 (+ (-> s3-0 size) -1)) (* 23 (-> s3-0 size)))))
+                    )
+              )
+            (set-origin!
+              gp-0
+              (+ (-> self screen-pos-x) (the int (* 26.0 (the float (-> s3-0 pos-x)) (-> *video-params* relative-x-scale))))
+              (+ (* 26 (-> s3-0 pos-y)) 38 (-> self screen-pos-y))
+              )
+            (let ((f1-6 (-> gp-0 origin x))
+                  (f0-14 (-> gp-0 origin y))
+                  )
+              (cond
+                ((= s4-0 (-> self selected))
+                 (let ((a0-12 gp-0))
+                   (set! (-> a0-12 color) (font-color red))
+                   )
+                 (with-dma-buffer-add-bucket ((s1-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                              (bucket-id debug)
+                                              )
+                   (draw-sprite2d-xy-absolute
+                     s1-0
+                     (the int f1-6)
+                     (the int f0-14)
+                     (the int (-> gp-0 width))
+                     (the int (-> gp-0 height))
+                     (new 'static 'rgba :r #x60 :g #x40 :b #x20 :a (the int (* 128.0 (-> self alpha))))
+                     #x3fffff
+                     )
+                   )
+                 )
+                (else
+                  (let ((a0-18 gp-0))
+                    (set! (-> a0-18 color) (font-color pad-x))
+                    )
+                  (with-dma-buffer-add-bucket ((s1-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                               (bucket-id debug)
+                                               )
+                    (draw-sprite2d-xy-absolute
+                      s1-1
+                      (the int f1-6)
+                      (the int f0-14)
+                      (the int (-> gp-0 width))
+                      (the int (-> gp-0 height))
+                      (new 'static 'rgba :r #x20 :g #x40 :b #x60 :a (the int (* 128.0 (-> self alpha))))
+                      #x3fffff
+                      )
+                    )
+                  )
+                )
+              )
+            (+! (-> gp-0 origin y) 4.0)
+            (set! (-> gp-0 alpha) (-> self alpha))
+            (cond
+              ((nonzero? (-> s3-0 data (-> self layout-select)))
+               (if (not (char-allowed (the-as int (-> self flags)) (-> s3-0 data (-> self layout-select))))
+                   (set! (-> gp-0 alpha) (/ (-> self alpha) 2))
+                   )
+               (format (clear *temp-string*) "~C" (-> s3-0 data (-> self layout-select)))
+               (let* ((s3-1 print-game-text)
+                      (a0-27 *common-text*)
+                      (t9-11 (method-of-object a0-27 expand-text))
+                      (a1-19 *temp-string*)
+                      )
+                 (s3-1 (t9-11 a0-27 a1-19) gp-0 #f 44 (bucket-id debug) (the-as string #f) (the-as dma-buffer #f))
+                 )
+               )
+              (else
+                (+! (-> gp-0 origin y) 2.0)
+                (let ((v1-66 gp-0))
+                  (set! (-> v1-66 width)
+                        (* (-> *video-params* relative-x-scale) (the float (+ (* 23 (-> s3-0 size)) -26 (* 3 (+ (-> s3-0 size) -2)))))
+                        )
+                  )
+                (let ((v1-68 (get-string-length (lookup-text! *common-text* (the-as text-id (-> s3-0 tid)) #f) gp-0)))
+                  (when (< (-> gp-0 width) (-> v1-68 length))
+                    (let* ((f0-41 0.01)
+                           (f1-18 (* 100.0 (/ (-> gp-0 width) (-> v1-68 length))))
+                           (f0-42 (* f0-41 (the float (the int (+ 0.5 f1-18)))))
+                           )
+                      (set-scale! gp-0 (* (-> gp-0 scale) f0-42))
+                      )
+                    )
+                  )
+                (print-game-text
+                  (lookup-text! *common-text* (the-as text-id (-> s3-0 tid)) #f)
+                  gp-0
+                  #f
+                  44
+                  (bucket-id debug)
+                  (the-as string #f)
+                  (the-as dma-buffer #f)
+                  )
+                (let ((v1-73 gp-0))
+                  (set! (-> v1-73 width) (* 40.0 (-> *video-params* relative-x-scale)))
+                  )
+                (set-height! gp-0 40)
+                (set-origin!
+                  gp-0
+                  (+ (-> self screen-pos-x)
+                     (the int
+                          (* (-> *video-params* relative-x-scale) (the float (+ (* 26 (+ (-> s3-0 pos-x) -1 (-> s3-0 size))) -10)))
+                          )
+                     )
+                  (+ (* 26 (-> s3-0 pos-y)) 38 (-> self screen-pos-y))
+                  )
+                (set-scale! gp-0 0.45)
+                (+! (-> gp-0 origin y) 4.0)
+                (print-game-text
+                  (lookup-text! *common-text* (the-as text-id (-> s3-0 tid2)) #f)
+                  gp-0
+                  #f
+                  44
+                  (bucket-id debug)
+                  (the-as string #f)
+                  (the-as dma-buffer #f)
+                  )
+                (set-height! gp-0 23)
+                )
+              )
+            )
+          )
+        (when (or (cpad-pressed? 0 square) (= s5-0 8))
+          (when (nonzero? (length (-> self name)))
+            (let ((v1-94 (make-sound-instance snd-delete (new 'static 'sound-id) (the-as handle #f))))
+              (cond
+                (v1-94
+                  (logior! (-> v1-94 flags) (sound-spec-flag needs-update non-positional))
+                  (-> v1-94 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            (set! (-> self name data (+ (length (-> self name)) -1)) (the-as uint 0))
+            0
+            )
+          )
+        (when (or (cpad-pressed? 0 circle) (= s5-0 13))
+          (when (> (length (-> self name)) 0)
+            (let ((v1-112 (make-sound-instance snd-done (new 'static 'sound-id) (the-as handle #f))))
+              (cond
+                (v1-112
+                  (logior! (-> v1-112 flags) (sound-spec-flag needs-update non-positional))
+                  (-> v1-112 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            (go-virtual done)
+            )
+          )
+        (if (cpad-pressed? 0 r1)
+            (keyboard-control-method-53 self)
+            )
+        (when (cpad-pressed? 0 x)
+          (let ((s4-1 (-> *keyboard-layout-default* (-> self selected))))
+            (cond
+              ((= (-> s4-1 tid) 1628)
+               (when (nonzero? (length (-> self name)))
+                 (let ((v1-139 (make-sound-instance snd-delete (new 'static 'sound-id) (the-as handle #f))))
+                   (cond
+                     (v1-139
+                       (logior! (-> v1-139 flags) (sound-spec-flag needs-update non-positional))
+                       (-> v1-139 id)
+                       )
+                     (else
+                       0
+                       )
+                     )
+                   )
+                 (set! (-> self name data (+ (length (-> self name)) -1)) (the-as uint 0))
+                 0
+                 )
+               )
+              ((= (-> s4-1 tid) 1630)
+               (when (> (length (-> self name)) 0)
+                 (let ((v1-153 (make-sound-instance snd-done (new 'static 'sound-id) (the-as handle #f))))
+                   (cond
+                     (v1-153
+                       (logior! (-> v1-153 flags) (sound-spec-flag needs-update non-positional))
+                       (-> v1-153 id)
+                       )
+                     (else
+                       0
+                       )
+                     )
+                   )
+                 (go-virtual done)
+                 )
+               )
+              ((= (-> s4-1 tid) 1631)
+               (let ((v1-161 (-> self layout-select)))
+                 (cond
+                   ((zero? v1-161)
+                    (set! (-> self layout-select) 1)
+                    (let ((v1-164 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-164
+                          (logior! (-> v1-164 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-164 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   ((= v1-161 1)
+                    (set! (-> self layout-select) 0)
+                    (let ((v1-168 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-168
+                          (logior! (-> v1-168 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-168 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   ((= v1-161 2)
+                    (set! (-> self layout-select) 1)
+                    (let ((v1-174 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-174
+                          (logior! (-> v1-174 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-174 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   )
+                 )
+               )
+              ((= (-> s4-1 tid) 3646)
+               (let ((v1-179 (-> self layout-select)))
+                 (cond
+                   ((zero? v1-179)
+                    (set! (-> self layout-select) 2)
+                    (let ((v1-182 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-182
+                          (logior! (-> v1-182 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-182 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   ((= v1-179 1)
+                    (set! (-> self layout-select) 2)
+                    (let ((v1-187 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-187
+                          (logior! (-> v1-187 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-187 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   ((= v1-179 2)
+                    (set! (-> self layout-select) 0)
+                    (let ((v1-192 (make-sound-instance snd-case-toggle (new 'static 'sound-id) (the-as handle #f))))
+                      (cond
+                        (v1-192
+                          (logior! (-> v1-192 flags) (sound-spec-flag needs-update non-positional))
+                          (-> v1-192 id)
+                          )
+                        (else
+                          0
+                          )
+                        )
+                      )
+                    )
+                   )
+                 )
+               )
+              ((= (-> s4-1 tid) 1629)
+               (keyboard-control-method-53 self)
+               )
+              ((nonzero? (-> s4-1 data (-> self layout-select)))
+               (when (< (length (-> self name)) (-> self max-chars))
+                 (let ((v1-207 (make-sound-instance snd-key-click (new 'static 'sound-id) (the-as handle #f))))
+                   (cond
+                     (v1-207
+                       (logior! (-> v1-207 flags) (sound-spec-flag needs-update non-positional))
+                       (-> v1-207 id)
+                       )
+                     (else
+                       0
+                       )
+                     )
+                   )
+                 (when (nonzero? (-> *common-text* dic-data (-> *common-text* dic-index (+ (-> s4-1 data (-> self layout-select)) -32)))
+                                 )
+                   (if (char-allowed (the-as int (-> self flags)) (-> s4-1 data (-> self layout-select)))
+                       (set! s5-0 (the-as int (-> s4-1 data (-> self layout-select))))
+                       )
+                   )
+                 )
+               )
+              )
+            )
+          )
+        (when (> s5-0 0)
+          (cond
+            ((= s5-0 32)
+             (when (and (logtest? (-> self flags) (keyboard-control-flag allow-space))
+                        (< (length (-> self name)) (-> self max-chars))
+                        )
+               (when (or (logtest? (-> self flags) (keyboard-control-flag allow-leading-space)) (> (length (-> self name)) 0))
+                 (when (or (logtest? (-> self flags) (keyboard-control-flag allow-multiple-spaces))
+                           (zero? (length (-> self name)))
+                           (!= (-> self name data (+ (length (-> self name)) -1)) 32)
+                           )
+                   (let ((v1-248 (make-sound-instance snd-key-click (new 'static 'sound-id) (the-as handle #f))))
+                     (cond
+                       (v1-248
+                         (logior! (-> v1-248 flags) (sound-spec-flag needs-update non-positional))
+                         (-> v1-248 id)
+                         )
+                       (else
+                         0
+                         )
+                       )
+                     )
+                   (format (-> self name) " ")
+                   )
+                 )
+               )
+             )
+            ((and (char-allowed (the-as int (-> self flags)) (the-as uint s5-0))
+                  (< (length (-> self name)) (-> self max-chars))
+                  )
+             (let ((v1-257 (make-sound-instance snd-key-click (new 'static 'sound-id) (the-as handle #f))))
+               (cond
+                 (v1-257
+                   (logior! (-> v1-257 flags) (sound-spec-flag needs-update non-positional))
+                   (-> v1-257 id)
+                   )
+                 (else
+                   0
+                   )
+                 )
+               )
+             (format (-> self name) "~C" s5-0)
+             )
+            )
+          (when (and (= (length (-> self name)) 1) (= (-> self layout-select) 1))
+            (set! (-> self layout-select) 0)
+            0
+            )
+          )
+        (render-entered-text self gp-0)
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek! max 20.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 20.0))
+      )
+    (dotimes (gp-0 5)
+      (set! (-> self alpha) (lerp 0.0 1.0 (* 0.2 (the float gp-0))))
+      (suspend)
+      )
+    (format #t "finished-animation~%")
+    (sleep-code)
+    )
+  :post (behavior ()
+    (matrix->transformq (-> self j-mod transform) (math-camera-matrix))
+    (set-keyboard-jmod self)
+    (ja-post)
+    )
+  )
+
+;; definition for method 7 of type keyboard-control
+;; WARN: Return type mismatch process-drawable vs keyboard-control.
+(defmethod relocate ((this keyboard-control) (offset int))
+  (if (-> this name)
+      (&+! (-> this name) offset)
+      )
+  (the-as keyboard-control ((method-of-type process-drawable relocate) this offset))
+  )
+
+;; definition for function keyboard-control-init-by-other
+(defbehavior keyboard-control-init-by-other keyboard-control ((arg0 int) (arg1 keyboard-control-flag) (arg2 (pointer uint8)))
+  (set! (-> self screen-pos-x) (- 256 (the int (* 180.0 (-> *video-params* relative-x-scale)))))
+  (set! (-> self screen-pos-y) 200)
+  (set! (-> self max-chars) arg0)
+  (set! (-> self flags) arg1)
+  (set! (-> self pos-x) 0)
+  (set! (-> self pos-y) 0)
+  (set! (-> self selected) 0)
+  (set! (-> self name) (new 'process 'string 64 ""))
+  (set! (-> self alpha) 0.0)
+  (set! (-> self level) (level-get *level* 'menu2))
+  (set! (-> self root) (new 'process 'trsqv))
+  (process-drawable-method-42
+    self
+    (art-group-get-by-name *level* "skel-keyboard" (the-as (pointer level) #f))
+    0
+    )
+  (logior! (-> self skel status) (joint-control-status sync-math))
+  (logior! (-> self draw status) (draw-control-status force-vu1))
+  (init (-> self j-mod) self (the-as uint 3) (joint-mod-base-flags attached))
+  (matrix->transformq (-> self j-mod transform) (math-camera-matrix))
+  (if (and *lobby-menu-manager*
+           (not (logtest? arg1 (keyboard-control-flag no-restore)))
+           (= *keyboard-init-state* (-> *lobby-menu-manager* state name))
+           )
+      (copy-charp<-charp (-> self name data) (the-as (pointer uint8) *keyboard-string-buf*))
+      )
+  (when arg2
+    (copy-charp<-charp (-> self name data) arg2)
+    (set! (-> self pos-x) 8)
+    (set! (-> self pos-y) 4)
+    (set! (-> self selected) 40)
+    )
+  (go-virtual idle)
+  )
+
+;; definition for function keyboard-control-spawn
+;; WARN: Return type mismatch int vs handle.
+(defun keyboard-control-spawn ((arg0 int) (arg1 process) (arg2 keyboard-control-flag) (arg3 (pointer uint8)))
+  (kill-by-type keyboard-control *active-pool*)
+  (let ((v0-4 (ppointer->handle (process-spawn keyboard-control arg0 arg2 arg3 :name "keyboard-control" :to arg1))))
+    (set! (-> *keyboard-proc* handle) (the-as handle v0-4))
+    (the-as handle v0-4)
+    )
+  )
+
+;; definition for function kill-keyboard-control
+(defun kill-keyboard-control ()
+  (kill-by-type keyboard-control *active-pool*)
+  )
+
+;; definition for function get-keyboard-control
+(defun get-keyboard-control ()
+  (handle->process (-> *keyboard-proc* handle))
+  )

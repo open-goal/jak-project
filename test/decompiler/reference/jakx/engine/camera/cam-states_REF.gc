@@ -1,0 +1,3494 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defstate cam-fixed (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (not (-> self enter-has-run))
+      (set! (-> self saved-pt quad) (-> self trans quad))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+      0
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (when (not (paused?))
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (set! (-> self fov) (-> (the-as camera-master (view-get-active-camera)) slave 0 fov))
+          (set! (-> self trans quad) (-> self saved-pt quad))
+          (cam-curve-pos (-> self trans) gp-0 (the-as curve #f) #f)
+          (when (!= (-> gp-0 w) 0.0)
+            (vector-normalize! gp-0 1.0)
+            (forward-down->inv-matrix
+              (-> self tracking inv-mat)
+              gp-0
+              (-> (the-as camera-master (view-get-active-camera)) local-down)
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-fixed-read-entity (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (cond
+      ((-> self enter-has-run)
+       )
+      ((-> self cam-entity)
+       (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) (-> self trans) 'trans)
+       (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
+       (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
+       (cam-curve-setup (-> self trans))
+       ((-> cam-fixed enter))
+       )
+      (else
+        (format #t "ERROR <GMJ>: cam-fixed-read-entity enter without entity~%")
+        )
+      )
+    (go cam-fixed)
+    )
+  :code (behavior ()
+    (until #f
+      (format *stdcon* "ERROR <GMJ>: stayed in cam-fixed-read-entity~%")
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for function cam-standoff-calc-trans
+(defbehavior cam-standoff-calc-trans camera-slave ()
+  (if (-> self tracking no-follow)
+      (vector+!
+        (-> self trans)
+        (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+        (-> self pivot-pt)
+        )
+      (vector+! (-> self trans) (-> self tracking follow-pt) (-> self pivot-pt))
+      )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-standoff (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-standoff-dist)
+       (vector-normalize! (-> self pivot-pt) (the-as float (-> block param 0)))
+       (cam-standoff-calc-trans)
+       )
+      (('set-standoff-height)
+       (vector-flatten!
+         (-> self pivot-pt)
+         (-> self pivot-pt)
+         (-> (the-as camera-master (view-get-active-camera)) local-down)
+         )
+       (vector--float*!
+         (-> self pivot-pt)
+         (-> self pivot-pt)
+         (-> (the-as camera-master (view-get-active-camera)) local-down)
+         (the-as float (-> block param 0))
+         )
+       (cam-standoff-calc-trans)
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (not (-> self enter-has-run))
+      (vector-!
+        (-> self pivot-pt)
+        (-> self trans)
+        (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+        )
+      (cond
+        ((logtest? (-> self options) (cam-slave-options-u32 NO_ROTATE))
+         (set! (-> self blend-from-type) (camera-blend-from-type unknown-0))
+         (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+         0
+         )
+        (else
+          (set! (-> self blend-from-type) (camera-blend-from-type unknown-2))
+          (set! (-> self blend-to-type) (camera-blend-to-type unknown-2))
+          )
+        )
+      )
+    (cam-calc-follow! (-> self tracking) (-> self trans) #f)
+    )
+  :trans (behavior ()
+    (if (not (logtest? (-> (the-as camera-master (view-get-active-camera)) master-options)
+                       (cam-master-options-u32 HAVE_TARGET)
+                       )
+             )
+        (cam-slave-go cam-free-floating)
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (when (not (paused?))
+        (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+        (cam-standoff-calc-trans)
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-standoff-read-entity (camera-slave)
+  :event cam-standard-event-handler
+  :enter (behavior ()
+    (cond
+      ((-> self enter-has-run)
+       )
+      ((-> self cam-entity)
+       (let ((gp-0 (new-stack-vector0))
+             (s5-0 (new-stack-vector0))
+             )
+         (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) gp-0 'trans)
+         (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) s5-0 'align)
+         (vector-! (-> self pivot-pt) gp-0 s5-0)
+         )
+       (vector+!
+         (-> self trans)
+         (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj)
+         (-> self pivot-pt)
+         )
+       (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
+       (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
+       (if (logtest? (-> self options) (cam-slave-options-u32 NO_ROTATE))
+           (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
+           (set! (-> self tracking tilt-adjust target)
+                 (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))
+                 )
+           )
+       ((-> cam-standoff enter))
+       )
+      (else
+        (format #t "ERROR <GMJ>: cam-standoff-read-entity enter without entity~%")
+        )
+      )
+    (go cam-standoff)
+    )
+  :code (behavior ()
+    (until #f
+      (format *stdcon* "ERROR <GMJ>: stayed in cam-standoff-read-entity~%")
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for function cam-curve-closest-point
+(defun cam-curve-closest-point ((arg0 curve) (arg1 vector) (arg2 float) (arg3 float) (arg4 int))
+  (let ((s4-0 1)
+        (s2-0 40.96)
+        (f30-1 (/ 1.0 (* 3.0 (curve-length arg0))))
+        (f28-1 0.01)
+        )
+    (if (< 0.0 s2-0)
+        (set! f28-1 (* s2-0 f30-1))
+        )
+    (while (> s4-0 0)
+      (+! s4-0 -1)
+      (let* ((v1-6 (fmax 0.0 (fmin 1.0 arg2)))
+             (f26-0 (fmax 0.0 (- v1-6 f28-1)))
+             (f24-0 (fmin 1.0 (+ v1-6 f28-1)))
+             (s3-1 (new 'stack-no-clear 'vector))
+             (s2-1 (new 'stack-no-clear 'vector))
+             (s1-0 (new 'stack-no-clear 'vector))
+             (s0-0 (* 0.5 (+ f26-0 f24-0)))
+             )
+        (curve-get-pos! s3-1 s0-0 arg0)
+        (vector-! s3-1 arg1 s3-1)
+        (curve-get-pos! s2-1 f24-0 arg0)
+        (curve-get-pos! s1-0 f26-0 arg0)
+        (vector-! s2-1 s2-1 s1-0)
+        (vector-normalize! s2-1 1.0)
+        (let ((v1-11 (+ s0-0 (* (vector-dot s2-1 s3-1) f30-1))))
+          (set! arg2 (fmax 0.0 (fmin 1.0 v1-11)))
+          )
+        )
+      )
+    )
+  arg2
+  )
+
+;; failed to figure out what this is:
+(defstate cam-spline (camera-slave)
+  :event cam-standard-event-handler
+  :enter (behavior ()
+    (cond
+      ((-> self enter-has-run)
+       )
+      ((-> self cam-entity)
+       (let ((gp-0 (new-stack-vector0)))
+         (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
+         (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
+         (if (logtest? (-> self options) (cam-slave-options-u32 NO_ROTATE))
+             (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
+             (set! (-> self tracking tilt-adjust target)
+                   (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))
+                   )
+             )
+         (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) gp-0 'trans)
+         (cam-curve-setup gp-0)
+         )
+       (vector-negate! (-> self saved-pt) (-> self spline-offset))
+       (let ((a0-8 (res-lump-struct (-> self cam-entity) 'spline-offset vector)))
+         (if a0-8
+             (vector+! (-> self spline-offset) (-> self spline-offset) a0-8)
+             )
+         )
+       (set! (-> self trans quad) (-> self saved-pt quad))
+       (cam-calc-follow! (-> self tracking) (-> self trans) #f)
+       (set! (-> self spline-follow-dist) (cam-slave-get-float (-> self cam-entity) 'spline-follow-dist 0.0))
+       (cond
+         ((< 0.0 (-> self spline-follow-dist))
+          (let ((s5-1 (new 'stack-no-clear 'vector))
+                (gp-1 (new 'stack-no-clear 'vector))
+                )
+            (curve-get-pos! s5-1 0.0 (-> self spline-curve))
+            (curve-get-pos! gp-1 1.0 (-> self spline-curve))
+            (if (< (vector-vector-distance-squared s5-1 (-> self tracking follow-pt))
+                   (vector-vector-distance-squared gp-1 (-> self tracking follow-pt))
+                   )
+                (set! (-> self spline-follow-dist) (- (-> self spline-follow-dist)))
+                )
+            )
+          (set! (-> self spline-tt) (curve-closest-point
+                                      (-> self spline-curve)
+                                      (-> self tracking follow-pt)
+                                      0.5
+                                      -4096.0
+                                      10
+                                      (-> self spline-follow-dist)
+                                      )
+                )
+          )
+         (else
+           (set! (-> self spline-follow-dist) 0.0)
+           )
+         )
+       (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t)
+       (cond
+         ((logtest? (-> self options) (cam-slave-options-u32 NO_ROTATE))
+          (set! (-> self blend-from-type) (camera-blend-from-type unknown-0))
+          (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+          0
+          )
+         (else
+           (set! (-> self blend-from-type) (camera-blend-from-type unknown-2))
+           (set! (-> self blend-to-type) (camera-blend-to-type unknown-2))
+           )
+         )
+       )
+      (else
+        (format #t "ERROR <GMJ>: cam-spline enter without entity~%")
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (not (logtest? (-> (the-as camera-master (view-get-active-camera)) master-options)
+                       (cam-master-options-u32 HAVE_TARGET)
+                       )
+             )
+        (cam-slave-go cam-free-floating)
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (when (not (paused?))
+        (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+        (new 'stack 'curve)
+        (set! (-> self trans quad) (-> self saved-pt quad))
+        (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t)
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-decel (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (not (-> self enter-has-run))
+      (set! (-> self saved-pt quad) (-> self trans quad))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-1))
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (when (not (paused?))
+        (let ((s5-0 (new-stack-vector0))
+              (gp-0 (new-stack-vector0))
+              )
+          (when (!= (-> (the-as camera-master (view-get-active-camera)) outro-t-step) 0.0)
+            (curve-get-pos!
+              s5-0
+              (parameter-ease-sin-clamp (-> (the-as camera-master (view-get-active-camera)) outro-t))
+              (-> (the-as camera-master (view-get-active-camera)) outro-curve)
+              )
+            (+! (-> (the-as camera-master (view-get-active-camera)) outro-t)
+                (* (-> (the-as camera-master (view-get-active-camera)) outro-t-step) (-> self clock time-adjust-ratio))
+                )
+            (curve-get-pos!
+              gp-0
+              (parameter-ease-sin-clamp (-> (the-as camera-master (view-get-active-camera)) outro-t))
+              (-> (the-as camera-master (view-get-active-camera)) outro-curve)
+              )
+            (vector-! gp-0 gp-0 s5-0)
+            (cond
+              ((or (and (< (-> (the-as camera-master (view-get-active-camera)) outro-t-step) 0.0)
+                        (>= (-> (the-as camera-master (view-get-active-camera)) outro-exit-value)
+                            (-> (the-as camera-master (view-get-active-camera)) outro-t)
+                            )
+                        )
+                   (and (< 0.0 (-> (the-as camera-master (view-get-active-camera)) outro-t-step))
+                        (>= (-> (the-as camera-master (view-get-active-camera)) outro-t)
+                            (-> (the-as camera-master (view-get-active-camera)) outro-exit-value)
+                            )
+                        )
+                   )
+               (set! (-> (the-as camera-master (view-get-active-camera)) outro-t)
+                     (-> (the-as camera-master (view-get-active-camera)) outro-exit-value)
+                     )
+               (set! (-> (the-as camera-master (view-get-active-camera)) outro-t-step) 0.0)
+               (vector+! (-> self velocity) (-> self velocity) gp-0)
+               (send-event (view-get-active-camera) 'outro-done)
+               )
+              (else
+                (vector+! (-> self trans) (-> self trans) gp-0)
+                )
+              )
+            )
+          )
+        (vector-float*! (-> self velocity) (-> self velocity) 0.9)
+        (vector+! (-> self trans) (-> self trans) (-> self velocity))
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-endlessfall (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (not (-> self enter-has-run))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-2))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-2))
+      )
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'cam-vector-seeker))
+          (f30-0 (-> self velocity y))
+          )
+      (let ((a1-0 (new 'stack-no-clear 'vector))
+            (s5-0 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a1-0 quad) (-> self trans quad))
+        (set! (-> a1-0 y) 0.0)
+        (set! (-> s5-0 quad) (-> self velocity quad))
+        (set! (-> s5-0 y) 0.0)
+        (init gp-0 a1-0 81.92 (fmax 819.2 (vector-length s5-0)) 0.75)
+        (set! (-> gp-0 vel quad) (-> s5-0 quad))
+        )
+      (until #f
+        (when (not (paused?))
+          (update! gp-0 (the-as vector #f))
+          (when (< 819.2 (-> gp-0 max-vel))
+            (set! (-> gp-0 max-vel) (* 0.9 (-> gp-0 max-vel)))
+            (if (< (-> gp-0 max-vel) 819.2)
+                (set! (-> gp-0 max-vel) 819.2)
+                )
+            )
+          (set! f30-0 (* 0.9 f30-0))
+          (+! (-> self trans y) f30-0)
+          (set! (-> self trans x) (-> gp-0 value x))
+          (set! (-> self trans z) (-> gp-0 value z))
+          )
+        (suspend)
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for function cam-vehicle-update
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defbehavior cam-vehicle-update camera-slave ()
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (the-as wvehicle #f)))
+      (let ((a0-1 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                      (-> *net-mgr* game-state local-machine-idx)
+                                                                      0
+                                                                      )
+                                                                  2
+                                                                  )
+                                       )
+                      )
+                  )
+            )
+        (if a0-1
+            (set! gp-0 (get-vehicle a0-1))
+            )
+        )
+      (if (and gp-0 (= (-> gp-0 state name) 'sink))
+          (return (the-as object #f))
+          )
+      )
+    (let ((s3-0 (new 'stack-no-clear 'vector))
+          (s2-0 (new 'stack-no-clear 'vector))
+          )
+      (new 'stack-no-clear 'matrix)
+      (new 'stack-no-clear 'vector)
+      (let ((gp-1 (new 'stack-no-clear 'vector))
+            (s4-0 (new 'stack-no-clear 'vector))
+            (s5-0 (new 'stack-no-clear 'vector))
+            )
+        (new 'stack-no-clear 'vector)
+        (vector-normalize-copy! s3-0 (-> self view-flat) 1.0)
+        (set! (-> s2-0 quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+        (if (< 0.0 (-> s2-0 y))
+            (set! (-> s2-0 y) 0.0)
+            )
+        (vector-normalize! s2-0 1.0)
+        (set! (-> self string-trans x) (-> (the-as camera-master (view-get-active-camera)) tpos-curr x))
+        (set! (-> self string-trans z) (-> (the-as camera-master (view-get-active-camera)) tpos-curr z))
+        (+! (-> self string-trans y)
+            (* 20.0
+               (seconds-per-frame)
+               (- (-> (the-as camera-master (view-get-active-camera)) tpos-curr y) (-> self string-trans y))
+               )
+            )
+        (set! (-> self saved-pt quad) (-> self string-trans quad))
+        (add-debug-sphere
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> self saved-pt)
+          (meters 1)
+          *color-blue*
+          )
+        (vector-vector-deg-slerp! (-> self view-flat) s3-0 s2-0 (* 3.0 (seconds-per-frame)) *up-vector*)
+        (set! (-> s4-0 quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat uvec quad))
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+          s4-0
+          (meters 2)
+          *color-red*
+          )
+        (+! (-> s4-0 y) 2.0)
+        (vector-normalize! s4-0 1.0)
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+          s4-0
+          (meters 2)
+          *color-light-red*
+          )
+        (vector-vector-deg-slerp! (-> self vehicle-up) (-> self vehicle-up) s4-0 (seconds-per-frame) *up-vector*)
+        (vector-vector-deg-slerp!
+          (-> self vehicle-at)
+          (-> self vehicle-at)
+          (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec)
+          (* 5.0 (seconds-per-frame))
+          *up-vector*
+          )
+        (set! (-> s5-0 quad) (-> self view-flat quad))
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+          s5-0
+          (meters 2)
+          *color-blue*
+          )
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+          s4-0
+          (meters 3)
+          *color-light-green*
+          )
+        (vector+*!
+          (-> self saved-pt)
+          (-> self saved-pt)
+          s5-0
+          (- (-> (the-as camera-master (view-get-active-camera)) string-max target z))
+          )
+        (vector+*!
+          (-> self saved-pt)
+          (-> self saved-pt)
+          s4-0
+          (-> (the-as camera-master (view-get-active-camera)) string-max target y)
+          )
+        (set! (-> self saved-pt y)
+              (fmax
+                (fmin
+                  (-> self saved-pt y)
+                  (-> (the-as camera-master (view-get-active-camera)) settings string-camera-ceiling)
+                  )
+                (-> (the-as camera-master (view-get-active-camera)) settings string-camera-floor)
+                )
+              )
+        (add-debug-sphere
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> self saved-pt)
+          (meters 1)
+          *color-light-red*
+          )
+        (tracking-spline-method-17 (-> self position-spline) (-> self saved-pt) 0.04096 4096.0 #t)
+        (let ((f30-3 (-> self clock clock-ratio)))
+          (let ((s4-2 (max 2 (the int (+ 0.5 (-> self clock time-adjust-ratio))))))
+            (update-rates! (-> self clock) (/ f30-3 (the float s4-2)))
+            (while (nonzero? s4-2)
+              (+! s4-2 -1)
+              (tracking-spline-method-21
+                (-> self position-spline)
+                (-> self trans)
+                4096.0
+                40960.0
+                0.5
+                0.0
+                (the-as vector #f)
+                )
+              )
+            )
+          (update-rates! (-> self clock) f30-3)
+          )
+        (let ((s4-3 (new 'stack-no-clear 'inline-array 'collide-query 1)))
+          (let ((s3-9 (the-as wvehicle #f)))
+            (let ((a0-24 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                             (-> *net-mgr* game-state local-machine-idx)
+                                                                             0
+                                                                             )
+                                                                         2
+                                                                         )
+                                              )
+                             )
+                         )
+                  )
+              (if a0-24
+                  (set! s3-9 (get-vehicle a0-24))
+                  )
+              )
+            (let ((v1-60 (-> s4-3 0)))
+              (set! (-> v1-60 radius) 2048.0)
+              (set! (-> v1-60 collide-with) (collide-spec backgnd hit-by-others-list camera-blocker))
+              (set! (-> v1-60 ignore-process0) s3-9)
+              (set! (-> v1-60 ignore-process1) #f)
+              (set! (-> v1-60 ignore-pat)
+                    (new 'static 'pat-surface :nocamera #x1 :nogrind #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                    )
+              (set! (-> v1-60 action-mask) (collide-action solid))
+              (set! (-> v1-60 nav-mesh) #f)
+              )
+            )
+          (set! (-> s4-3 0 start-pos quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr quad))
+          (vector-! (-> s4-3 0 move-dist) (-> self trans) (-> s4-3 0 start-pos))
+          (let ((f0-29 (fill-and-probe-using-line-sphere *collide-cache* (-> s4-3 0))))
+            (when (>= f0-29 0.0)
+              (vector+float*! (-> self trans) (-> s4-3 0 start-pos) (-> s4-3 0 move-dist) f0-29)
+              (vector+float*!
+                (-> self trans)
+                (-> self trans)
+                *up-vector*
+                (* (vector-length (-> s4-3 0 move-dist)) (- 1.0 f0-29))
+                )
+              )
+            )
+          )
+        (let ((s4-4 (new 'stack-no-clear 'inline-array 'collide-query 1)))
+          (let ((s3-11 (the-as wvehicle #f)))
+            (let ((a0-34 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                             (-> *net-mgr* game-state local-machine-idx)
+                                                                             0
+                                                                             )
+                                                                         2
+                                                                         )
+                                              )
+                             )
+                         )
+                  )
+              (if a0-34
+                  (set! s3-11 (get-vehicle a0-34))
+                  )
+              )
+            (let ((v1-81 (-> s4-4 0)))
+              (set! (-> v1-81 radius) 2048.0)
+              (set! (-> v1-81 collide-with) (collide-spec backgnd hit-by-others-list camera-blocker))
+              (set! (-> v1-81 ignore-process0) s3-11)
+              (set! (-> v1-81 ignore-process1) #f)
+              (set! (-> v1-81 ignore-pat)
+                    (new 'static 'pat-surface :nocamera #x1 :nogrind #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                    )
+              (set! (-> v1-81 action-mask) (collide-action solid))
+              (set! (-> v1-81 nav-mesh) #f)
+              )
+            )
+          (set! (-> s4-4 0 start-pos quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr quad))
+          (vector-! (-> s4-4 0 move-dist) (-> self trans) (-> s4-4 0 start-pos))
+          (let ((f0-33 (fill-and-probe-using-line-sphere *collide-cache* (-> s4-4 0))))
+            (if (>= f0-33 0.0)
+                (vector+float*! (-> self trans) (-> s4-4 0 start-pos) (-> s4-4 0 move-dist) f0-33)
+                )
+            )
+          )
+        (vector-! s5-0 (-> self string-trans) (-> self trans))
+        (+! (-> s5-0 y) 8192.0)
+        (vector-normalize! s5-0 1.0)
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> self trans)
+          s5-0
+          (meters 2)
+          *color-blue*
+          )
+        (set! (-> gp-1 x) (-> self vehicle-at x))
+        (set! (-> gp-1 y) (-> s5-0 y))
+        (set! (-> gp-1 z) (-> self vehicle-at z))
+        (vector-normalize! gp-1 1.0)
+        (add-debug-vector
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf1)
+          (-> self trans)
+          (-> self vehicle-at)
+          (meters 10.5)
+          *color-green*
+          )
+        (let ((s2-9 (new 'stack-no-clear 'vector)))
+          (set! (-> s2-9 quad) (-> s5-0 quad))
+          (let ((s1-8 (new 'stack-no-clear 'vector)))
+            (set! (-> s1-8 quad) (-> self vehicle-at quad))
+            (let ((s5-1 (new 'stack-no-clear 'matrix))
+                  (s0-0 (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)))
+                  )
+              (when s0-0
+                (set! (-> s2-9 y) 0.0)
+                (set! (-> s1-8 y) 0.0)
+                (vector-xz-normalize! s2-9 1.0)
+                (vector-xz-normalize! s1-8 1.0)
+                (let ((s4-5 matrix-rotate-z!)
+                      (s3-13 s5-1)
+                      (f30-4 182.04445)
+                      (f0-41 -15.0)
+                      (v1-101 (new 'stack-no-clear 'vector))
+                      )
+                  (.lvf vf1 (&-> s2-9 quad))
+                  (.lvf vf2 (&-> s1-8 quad))
+                  (.add.x.vf.y vf1 vf0 vf0)
+                  (.add.x.vf.y vf2 vf0 vf0)
+                  (.outer.product.a.vf acc vf1 vf2)
+                  (.outer.product.b.vf vf3 vf2 vf1 acc)
+                  (.svf (&-> v1-101 quad) vf3)
+                  (let ((f28-1 (* f0-41 (-> v1-101 y)))
+                        (t9-47 lerp-scale)
+                        (a0-52 0.0)
+                        (a1-34 1.0)
+                        (v1-103 (-> (the-as process-focusable s0-0) root transv))
+                        )
+                    (s4-5
+                      s3-13
+                      (* f30-4
+                         (* f28-1
+                            (t9-47
+                              a0-52
+                              a1-34
+                              (sqrtf (+ (* (-> v1-103 x) (-> v1-103 x)) (* (-> v1-103 z) (-> v1-103 z))))
+                              409600.0
+                              491520.0
+                              )
+                            )
+                         )
+                      )
+                    )
+                  )
+                (forward-down->inv-matrix
+                  (-> self tracking inv-mat)
+                  gp-1
+                  (-> (the-as camera-master (view-get-active-camera)) local-down)
+                  )
+                (matrix*! (-> self tracking inv-mat) s5-1 (-> self tracking inv-mat))
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((f30-5 1.0))
+      (if (or (= (-> *viewport-array* mode) 1) (= (-> *viewport-array* mode) 2))
+          (set! f30-5 1.1)
+          )
+      (set! (-> self fov) (* f30-5 (-> (the-as camera-master (view-get-active-camera)) settings fov)))
+      )
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-vehicle (camera-slave)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       (set! (-> self vehicle-up quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat uvec quad))
+       (set! (-> self vehicle-at quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+       (set! (-> self view-flat quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+       (tracking-spline-method-10
+         (-> self position-spline)
+         (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+         )
+       (let ((gp-4 (the-as object (-> self string-trans))))
+         (set! (-> (the-as vector gp-4) quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr quad))
+         gp-4
+         )
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self vehicle-up quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat uvec quad))
+    (set! (-> self vehicle-at quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+    (set! (-> self view-flat quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+    (let ((gp-3 (new 'stack-no-clear 'inline-array 'vector 1)))
+      (set! (-> gp-3 0 quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr quad))
+      (vector+*!
+        (-> gp-3 0)
+        (-> gp-3 0)
+        (-> self view-flat)
+        (- (-> (the-as camera-master (view-get-active-camera)) string-max target z))
+        )
+      (vector+*!
+        (-> gp-3 0)
+        (-> gp-3 0)
+        (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat uvec)
+        (-> (the-as camera-master (view-get-active-camera)) string-max target y)
+        )
+      (set! (-> self string-trans quad) (-> gp-3 0 quad))
+      (tracking-spline-method-10 (-> self position-spline) (-> gp-3 0))
+      )
+    (when (not (-> self enter-has-run))
+      (set! (-> self saved-pt quad) (-> self trans quad))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+      0
+      )
+    (cam-vehicle-update)
+    )
+  :code (behavior ()
+    (until #f
+      (when (not (paused?))
+        (cam-vehicle-update)
+        (tracking-spline-method-9 (-> self position-spline))
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition of type target-camera-runtime-info
+(deftype target-camera-runtime-info (structure)
+  ((active                 symbol)
+   (shot                   handle)
+   (mirror                 symbol)
+   (need-new-cam           symbol)
+   (prefix                 string)
+   (interp                 float)
+   (last-good-los          int32)
+   (cur-cam-idx            int8)
+   (num-camera-changes     int8)
+   (cur-trans              vector      :inline)
+   (cur-quat               quaternion  :inline)
+   (interp-from-trans      vector      :inline)
+   (interp-from-quat       quaternion  :inline)
+   (vehicle-release-timer  handle)
+   (state-time             time-frame)
+   )
+  )
+
+;; definition for method 3 of type target-camera-runtime-info
+(defmethod inspect ((this target-camera-runtime-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'target-camera-runtime-info)
+  (format #t "~1Tactive: ~A~%" (-> this active))
+  (format #t "~1Tshot: ~D~%" (-> this shot))
+  (format #t "~1Tmirror: ~A~%" (-> this mirror))
+  (format #t "~1Tneed-new-cam: ~A~%" (-> this need-new-cam))
+  (format #t "~1Tprefix: ~A~%" (-> this prefix))
+  (format #t "~1Tinterp: ~f~%" (-> this interp))
+  (format #t "~1Tlast-good-los: ~D~%" (-> this last-good-los))
+  (format #t "~1Tcur-cam-idx: ~D~%" (-> this cur-cam-idx))
+  (format #t "~1Tnum-camera-changes: ~D~%" (-> this num-camera-changes))
+  (format #t "~1Tcur-trans: #<vector @ #x~X>~%" (-> this cur-trans))
+  (format #t "~1Tcur-quat: #<quaternion @ #x~X>~%" (-> this cur-quat))
+  (format #t "~1Tinterp-from-trans: #<vector @ #x~X>~%" (-> this interp-from-trans))
+  (format #t "~1Tinterp-from-quat: #<quaternion @ #x~X>~%" (-> this interp-from-quat))
+  (format #t "~1Tvehicle-release-timer: ~D~%" (-> this vehicle-release-timer))
+  (format #t "~1Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *target-camera-runtime*, type target-camera-runtime-info
+(define *target-camera-runtime*
+  (new 'static 'target-camera-runtime-info :active #f :mirror #f :need-new-cam #f :prefix #f)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *target-camera-runtime* shot) (the-as handle #f))
+
+;; failed to figure out what this is:
+(set! (-> *target-camera-runtime* vehicle-release-timer) (the-as handle #f))
+
+;; definition for function target-cam-runtime-push
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch structure vs vector.
+(defun target-cam-runtime-push ((arg0 target-camera-runtime-info) (arg1 camera-slave))
+  (the-as vector (cond
+                   ((>= (-> arg0 interp) 1.0)
+                    (quaternion->matrix (-> arg1 tracking inv-mat) (-> arg0 cur-quat))
+                    (let ((v0-1 (the-as structure (-> arg1 trans))))
+                      (set! (-> (the-as vector v0-1) quad) (-> arg0 cur-trans quad))
+                      v0-1
+                      )
+                    )
+                   (else
+                     (let ((s4-0 (new 'stack-no-clear 'quaternion)))
+                       (let* ((f0-1 (-> arg0 interp))
+                              (f1-1 (square f0-1))
+                              (f0-2 (* f0-1 f1-1))
+                              (f30-0 (- (* 3.0 f1-1) (* 2.0 f0-2)))
+                              )
+                         (vector-lerp! (-> arg1 trans) (-> arg0 interp-from-trans) (-> arg0 cur-trans) f30-0)
+                         (quaternion-slerp! s4-0 (-> arg0 interp-from-quat) (-> arg0 cur-quat) f30-0)
+                         )
+                       (quaternion->matrix (-> arg1 tracking inv-mat) s4-0)
+                       )
+                     )
+                   )
+          )
+  )
+
+;; definition of type crash-camera
+(deftype crash-camera (basic)
+  ((camera-type              uint64)
+   (world-position           vector  :inline)
+   (last-target-position     vector  :inline)
+   (rating                   float)
+   (master-mult              float)
+   (offset                   vector  :inline)
+   (follow                   float)
+   (percent-delta-y-move     float)
+   (diverge-distance         float)
+   (zoom-factor              float)
+   (start-time               int32)
+   (sparks-reset-in          int32)
+   (camera-rotation          float)
+   (likelyhood               float)
+   (group                    int32)
+   (camera-valid?            symbol)
+   (allow-shake?             symbol)
+   (last-visible-check-time  int32)
+   (last-car-visible-time    int32)
+   (force-cut                symbol)
+   (force-freeze             symbol)
+   )
+  (:methods
+    (crash-camera-method-9 (_type_) none)
+    (crash-camera-method-10 (_type_ float float) float)
+    (crash-camera-method-11 (_type_ matrix) float)
+    (crash-camera-method-12 (_type_ camera-slave vector) none)
+    (crash-camera-method-13 (_type_ camera-slave symbol cam-rotation-tracker) none)
+    (copy-crash-cam! (_type_ crash-camera) none)
+    (crash-camera-method-15 (_type_) symbol)
+    (crash-camera-method-16 (_type_ symbol) symbol)
+    (crash-camera-method-17 (_type_ symbol) symbol)
+    (crash-camera-method-18 (_type_) nav-mesh)
+    )
+  )
+
+;; definition for method 3 of type crash-camera
+(defmethod inspect ((this crash-camera))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcamera-type: ~D~%" (-> this camera-type))
+  (format #t "~1Tworld-position: #<vector @ #x~X>~%" (-> this world-position))
+  (format #t "~1Tlast-target-position: #<vector @ #x~X>~%" (-> this last-target-position))
+  (format #t "~1Trating: ~f~%" (-> this rating))
+  (format #t "~1Tmaster-mult: ~f~%" (-> this master-mult))
+  (format #t "~1Toffset: #<vector @ #x~X>~%" (-> this offset))
+  (format #t "~1Tfollow: ~f~%" (-> this follow))
+  (format #t "~1Tpercent-delta-y-move: ~f~%" (-> this percent-delta-y-move))
+  (format #t "~1Tdiverge-distance: ~f~%" (-> this diverge-distance))
+  (format #t "~1Tzoom-factor: ~f~%" (-> this zoom-factor))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Tsparks-reset-in: ~D~%" (-> this sparks-reset-in))
+  (format #t "~1Tcamera-rotation: ~f~%" (-> this camera-rotation))
+  (format #t "~1Tlikelyhood: ~f~%" (-> this likelyhood))
+  (format #t "~1Tgroup: ~D~%" (-> this group))
+  (format #t "~1Tcamera-valid?: ~A~%" (-> this camera-valid?))
+  (format #t "~1Tallow-shake?: ~A~%" (-> this allow-shake?))
+  (format #t "~1Tlast-visible-check-time: ~D~%" (-> this last-visible-check-time))
+  (format #t "~1Tlast-car-visible-time: ~D~%" (-> this last-car-visible-time))
+  (format #t "~1Tforce-cut: ~A~%" (-> this force-cut))
+  (format #t "~1Tforce-freeze: ~A~%" (-> this force-freeze))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 10 of type crash-camera
+;; INFO: Used lq/sq
+(defmethod crash-camera-method-10 ((this crash-camera) (arg0 float) (arg1 float))
+  (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+    (set! (-> gp-0 start-pos quad)
+          (-> (cond
+                ((-> *target-camera-runtime* active)
+                 (let ((v1-4 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                   (if v1-4
+                       (-> v1-4 root trans)
+                       (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                       )
+                   )
+                 )
+                (else
+                  (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                  )
+                )
+              quad
+              )
+          )
+    (vector-! (-> gp-0 move-dist) (-> this world-position) (-> gp-0 start-pos))
+    (let ((v1-10 gp-0))
+      (set! (-> v1-10 radius) arg0)
+      (set! (-> v1-10 collide-with) (collide-spec backgnd obstacle hit-by-others-list camera-blocker))
+      (set! (-> v1-10 ignore-process0) #f)
+      (set! (-> v1-10 ignore-process1) #f)
+      (set! (-> v1-10 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-10 action-mask) (collide-action solid))
+      (set! (-> v1-10 nav-mesh) #f)
+      )
+    (let ((f0-1 (fill-and-probe-using-line-sphere *collide-cache* gp-0)))
+      (cond
+        ((= f0-1 -100000000.0)
+         1.0
+         )
+        (else
+          (if (or (= (-> gp-0 best-other-tri pat mode) (pat-mode ground))
+                  (= (-> gp-0 best-other-tri pat mode) (pat-mode halfpipe))
+                  )
+              (set! (-> this force-cut) #t)
+              )
+          (if (< arg1 f0-1)
+              (vector+float*! (-> this world-position) (-> gp-0 start-pos) (-> gp-0 move-dist) f0-1)
+              )
+          f0-1
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 18 of type crash-camera
+(defmethod crash-camera-method-18 ((this crash-camera))
+  (let ((v1-0 (new 'stack-no-clear 'collide-query)))
+    (find-nav-mesh v1-0 (-> this world-position) 81920.0 163840.0 8192.0 *collide-cache*)
+    )
+  )
+
+;; definition for method 14 of type crash-camera
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defmethod copy-crash-cam! ((this crash-camera) (arg0 crash-camera))
+  (set! (-> this start-time) (the-as int (current-time)))
+  (cond
+    (arg0
+      (set! (-> this last-car-visible-time) (-> arg0 last-car-visible-time))
+      )
+    (else
+      (set! (-> this last-car-visible-time) 0)
+      0
+      )
+    )
+  (set! (-> this last-target-position quad)
+        (-> (cond
+              ((-> *target-camera-runtime* active)
+               (let ((v1-8 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                 (if v1-8
+                     (-> v1-8 root trans)
+                     (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                     )
+                 )
+               )
+              (else
+                (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                )
+              )
+            quad
+            )
+        )
+  (none)
+  )
+
+;; definition for method 15 of type crash-camera
+(defmethod crash-camera-method-15 ((this crash-camera))
+  (when (-> this force-cut)
+    (set! (-> this force-cut) #f)
+    (return #t)
+    )
+  (if (not (time-elapsed? (the-as time-frame (-> this start-time)) (seconds 0.5)))
+      (return #f)
+      )
+  (not (crash-camera-method-17 this #t))
+  )
+
+;; definition for method 17 of type crash-camera
+(defmethod crash-camera-method-17 ((this crash-camera) (arg0 symbol))
+  (set! (-> this camera-valid?) #t)
+  (when (or (< (+ -40960.0 (-> this world-position y))
+               (-> (the-as camera-master (view-get-active-camera)) settings string-camera-floor)
+               )
+            (< (-> (the-as camera-master (view-get-active-camera)) settings string-camera-ceiling)
+               (+ 40960.0 (-> this world-position y))
+               )
+            )
+    (set! (-> this camera-valid?) #f)
+    (return #f)
+    )
+  (when (not (crash-camera-method-18 this))
+    (set! (-> this camera-valid?) #f)
+    (return #f)
+    )
+  (when (not (crash-camera-method-16 this arg0))
+    (set! (-> this camera-valid?) #f)
+    (return #f)
+    )
+  (-> this camera-valid?)
+  )
+
+;; definition for method 16 of type crash-camera
+(defmethod crash-camera-method-16 ((this crash-camera) (arg0 symbol))
+  (cond
+    ((!= (-> this last-visible-check-time) (current-time))
+     (set! (-> this last-visible-check-time) (the-as int (current-time)))
+     (if (= 1.0 (crash-camera-method-10 this 8192.0 0.98))
+         (set! (-> this last-car-visible-time) (the-as int (current-time)))
+         )
+     )
+    (arg0
+      (return (= 1.0 (crash-camera-method-10 this 8192.0 0.98)))
+      )
+    )
+  (not (time-elapsed? (the-as time-frame (-> this last-car-visible-time)) (seconds 0.25)))
+  )
+
+;; definition for method 11 of type crash-camera
+(defmethod crash-camera-method-11 ((this crash-camera) (arg0 matrix))
+  (let ((f30-0 (the-as number (crash-camera-method-10 this 8192.0 1.0))))
+    (cond
+      (arg0
+        (let ((s4-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+          (vector-!
+            (-> s4-0 0)
+            (cond
+              ((-> *target-camera-runtime* active)
+               (let ((v1-6 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                 (if v1-6
+                     (-> v1-6 root trans)
+                     (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                     )
+                 )
+               )
+              (else
+                (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                )
+              )
+            (-> this world-position)
+            )
+          (vector-normalize! (-> s4-0 0) 1.0)
+          (let ((f28-0 (vector-dot (-> s4-0 0) (-> arg0 fvec))))
+            (let ((f0-2 (fmin 1.0 (- 1.0 f28-0))))
+              (set! f30-0 (+ (the-as float f30-0) (/ f0-2 10)))
+              )
+            (if (or (< f28-0 (cos 21845.334)) (< (cos 5461.3335) f28-0))
+                (set! f30-0 0.0)
+                )
+            )
+          )
+        (if (zero? (-> this camera-type))
+            (set! f30-0 0.1)
+            )
+        )
+      (else
+        (if (= (-> this camera-type) 1)
+            (set! f30-0 0.1)
+            )
+        )
+      )
+    (if (not (crash-camera-method-18 this))
+        (set! f30-0 0.0)
+        )
+    (the-as float f30-0)
+    )
+  )
+
+;; definition for method 12 of type crash-camera
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defmethod crash-camera-method-12 ((this crash-camera) (arg0 camera-slave) (arg1 vector))
+  (crash-camera-method-9 this)
+  (let ((s4-0 (cond
+                ((-> *target-camera-runtime* active)
+                 (let ((v1-6 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                   (if v1-6
+                       (-> v1-6 root trans)
+                       (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                       )
+                   )
+                 )
+                (else
+                  (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                  )
+                )
+              )
+        )
+    (let ((s0-0 (-> this last-target-position)))
+      (when (crash-camera-method-16 this #f)
+        (let ((f28-0 (vector-vector-distance (-> arg0 trans) s4-0))
+              (f30-0 (vector-vector-distance arg1 s4-0))
+              (s3-0 (new 'stack-no-clear 'vector))
+              )
+          (when (and (not (or (-> this force-freeze)
+                              (-> *setting-control* cam-settings (view-get-active-index) current crash-cam-force-freeze)
+                              )
+                          )
+                     (crash-camera-method-17 this #f)
+                     )
+            (let ((s1-1 (new 'stack-no-clear 'vector)))
+              (vector-! s1-1 s4-0 s0-0)
+              (set! (-> s1-1 y) (* (-> s1-1 y) (-> this percent-delta-y-move)))
+              (let ((v1-20 (new 'stack-no-clear 'vector)))
+                (vector-! v1-20 (-> arg0 trans) s4-0)
+                (set! (-> v1-20 y) 0.0)
+                (let* ((f0-3 (vector-length v1-20))
+                       (f0-4 (lerp-scale (-> this follow) 1.0 f0-3 102400.0 40960.0))
+                       )
+                  (vector+float*! (-> this world-position) (-> this world-position) s1-1 f0-4)
+                  )
+                )
+              )
+            )
+          (+! (-> arg0 fov)
+              (* 0.05
+                 (+ (- 10922.667 (-> arg0 fov)) (* (-> this zoom-factor) (lerp-scale 0.0 -4551.1113 f28-0 122880.0 409600.0)))
+                 )
+              )
+          (vector-lerp! s3-0 arg1 s4-0 (- 1.0 (fmin 1.0 (/ (-> this diverge-distance) f30-0))))
+          (let ((s2-1 (new 'stack-no-clear 'inline-array 'quaternion 2)))
+            (vector-! (-> s2-1 1 vec) s3-0 (-> this world-position))
+            (let ((f30-1 (vector-normalize-ret-len! (-> s2-1 1 vec) 1.0)))
+              (quaternion-look-at! (-> s2-1 0) (-> s2-1 1 vec) *up-vector*)
+              (if (crash-camera-method-17 this #f)
+                  (quaternion-rotate-y! (-> s2-1 0) (-> s2-1 0) (* 2457600.0 (-> this camera-rotation) (seconds-per-frame)))
+                  )
+              (quaternion->matrix (-> arg0 tracking inv-mat) (-> s2-1 0))
+              (vector+float*! (-> arg0 trans) s3-0 (-> arg0 tracking inv-mat fvec) (- f30-1))
+              )
+            )
+          )
+        (set! (-> this world-position quad) (-> arg0 trans quad))
+        )
+      )
+    (set! (-> this last-target-position quad) (-> s4-0 quad))
+    )
+  (none)
+  )
+
+;; definition for method 13 of type crash-camera
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defmethod crash-camera-method-13 ((this crash-camera) (arg0 camera-slave) (arg1 symbol) (arg2 cam-rotation-tracker))
+  (set! (-> this force-cut) #f)
+  (set! (-> this force-freeze) #f)
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'matrix 1)))
+    (let* ((v1-0 (-> s5-0 0))
+           (a3-1 (if arg2
+                     arg2
+                     (-> arg0 tracking)
+                     )
+                 )
+           (a0-1 (-> a3-1 inv-mat rvec quad))
+           (a1-1 (-> a3-1 inv-mat uvec quad))
+           (a2-1 (-> a3-1 inv-mat fvec quad))
+           (a3-2 (-> a3-1 inv-mat trans quad))
+           )
+      (set! (-> v1-0 rvec quad) a0-1)
+      (set! (-> v1-0 uvec quad) a1-1)
+      (set! (-> v1-0 fvec quad) a2-1)
+      (set! (-> v1-0 trans quad) a3-2)
+      )
+    (set! (-> s5-0 0 trans quad)
+          (-> (cond
+                ((-> *target-camera-runtime* active)
+                 (let ((v1-5 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                   (if v1-5
+                       (-> v1-5 root trans)
+                       (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                       )
+                   )
+                 )
+                (else
+                  (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                  )
+                )
+              quad
+              )
+          )
+    (vector-matrix*! (-> this world-position) (-> this offset) (-> s5-0 0))
+    (cond
+      (arg2
+        (set! (-> this rating) (crash-camera-method-11 this (-> s5-0 0)))
+        )
+      ((not arg1)
+       (set! (-> this rating) (crash-camera-method-11 this (the-as matrix #f)))
+       )
+      (else
+        (set! (-> this rating) (crash-camera-method-11 this (-> s5-0 0)))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 9 of type crash-camera
+;; WARN: Return type mismatch smush-control vs none.
+(defmethod crash-camera-method-9 ((this crash-camera))
+  (cond
+    ((zero? (view-get-active-index))
+     (set-zero! *camera-smush-control*)
+     (set-zero! *camera-smush-control-horizontal*)
+     )
+    (else
+      (set-zero! *camera-smush-control-2*)
+      (set-zero! *camera-smush-control-horizontal-2*)
+      )
+    )
+  (none)
+  )
+
+;; definition for symbol *freeze-camera*, type (array crash-camera)
+(define *freeze-camera* (new 'static 'boxed-array :type crash-camera
+                          (new 'static 'crash-camera
+                            :camera-type #x2
+                            :offset (new 'static 'vector :w 1.0)
+                            :percent-delta-y-move 0.3
+                            :diverge-distance 40960.0
+                            :zoom-factor 1.0
+                            :likelyhood 1.0
+                            :allow-shake? #f
+                            )
+                          (new 'static 'crash-camera
+                            :camera-type #x2
+                            :offset (new 'static 'vector :w 1.0)
+                            :percent-delta-y-move 0.3
+                            :diverge-distance 40960.0
+                            :zoom-factor 1.0
+                            :likelyhood 1.0
+                            :allow-shake? #f
+                            )
+                          )
+        )
+
+;; definition for symbol *crash-camera-array*, type (array (array crash-camera))
+(define *crash-camera-array*
+  (the-as (array (array crash-camera)) (new 'static 'boxed-array :type array
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :y 12288.0 :z -69632.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :y 12288.0 :z -69632.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -40960.0 :y 12288.0 :z 20480.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation -0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -40960.0 :y 12288.0 :z 20480.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation -0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 40960.0 :y 12288.0 :z 20480.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation 0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 40960.0 :y 12288.0 :z 20480.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation 0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 12288.0 :z -204800.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 12288.0 :z -204800.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 40960.0 :z -163840.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.125
+                                             :group 1
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 40960.0 :z -163840.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.125
+                                             :group 1
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 40960.0 :z 163840.0 :w 1.0)
+                                             :follow 0.4
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 2.0
+                                             :group 4
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 40960.0 :z 163840.0 :w 1.0)
+                                             :follow 0.4
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 2.0
+                                             :group 4
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type crash-camera
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 24576.0 :z -69632.0 :w 1.0)
+                                             :follow 0.3
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 1.0
+                                             :likelyhood 1.0
+                                             :group 5
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'crash-camera
+                                             :offset (new 'static 'vector :y 24576.0 :z -69632.0 :w 1.0)
+                                             :follow 0.3
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 1.0
+                                             :likelyhood 1.0
+                                             :group 5
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         )
+                                       )
+  )
+
+;; definition for symbol *crash-camera-force-position*, type vector
+(define *crash-camera-force-position* (new 'static 'vector :w 1.0))
+
+;; definition for symbol *crash-camera-force-position-valid*, type symbol
+(define *crash-camera-force-position-valid* #f)
+
+;; definition for symbol *target-time-speed*, type float
+(define *target-time-speed* 1.0)
+
+;; definition for function target-time-go-slow
+(defun target-time-go-slow ((arg0 float) (arg1 symbol))
+  (when (and (zero? (-> *viewport-array* mode)) (= (-> *net-mgr* game-type) 4))
+    (set! (-> *display* entity-clock clock-ratio) arg0)
+    (set! (-> *display* camera-clock clock-ratio) arg0)
+    (set! (-> *display* bg-clock clock-ratio) arg0)
+    (set! *target-time-speed* arg0)
+    (if arg1
+        (spawn-hud-slowmo)
+        )
+    )
+  )
+
+;; definition for function target-time-go-normal
+;; WARN: Return type mismatch symbol vs object.
+(defun target-time-go-normal ()
+  (set! (-> *display* entity-clock clock-ratio) 1.0)
+  (set! (-> *display* camera-clock clock-ratio) 1.0)
+  (set! (-> *display* bg-clock clock-ratio) 1.0)
+  (set! *target-time-speed* 1.0)
+  (kill-by-type hud-slowmo *active-pool*)
+  )
+
+;; definition for symbol *plow-camera*, type (array crash-camera)
+(define *plow-camera* (new 'static 'boxed-array :type crash-camera
+                        (new 'static 'crash-camera
+                          :camera-type #x2
+                          :offset (new 'static 'vector :w 1.0)
+                          :follow 0.8
+                          :percent-delta-y-move 0.3
+                          :diverge-distance 40960.0
+                          :zoom-factor 0.5
+                          :likelyhood 0.5
+                          :group 3
+                          :allow-shake? #f
+                          )
+                        (new 'static 'crash-camera
+                          :camera-type #x2
+                          :offset (new 'static 'vector :w 1.0)
+                          :follow 0.8
+                          :percent-delta-y-move 0.3
+                          :diverge-distance 40960.0
+                          :zoom-factor 0.5
+                          :likelyhood 0.5
+                          :group 3
+                          :allow-shake? #f
+                          )
+                        )
+        )
+
+;; definition for function choose-crash-camera
+;; INFO: Used lq/sq
+(defbehavior choose-crash-camera camera-slave ((arg0 crash-camera) (arg1 symbol))
+  (when *crash-camera-force-position-valid*
+    (set! *crash-camera-force-position-valid* #f)
+    (crash-camera-method-13
+      (-> *plow-camera* (view-get-active-index))
+      self
+      (the-as symbol arg0)
+      (the-as cam-rotation-tracker #f)
+      )
+    (set! (-> *plow-camera* (view-get-active-index) world-position quad) (-> *crash-camera-force-position* quad))
+    (return (-> *plow-camera* (view-get-active-index)))
+    )
+  (let ((s5-0 (-> *crash-camera-array* length)))
+    0.0
+    (let ((gp-0 (view-get-active-index)))
+      (zero? crash-camera)
+      (set! arg0 (cond
+                   ((nonzero? arg0)
+                    (empty)
+                    arg0
+                    )
+                   (else
+                     (the-as crash-camera #f)
+                     )
+                   )
+            )
+      (dotimes (s2-0 s5-0)
+        (crash-camera-method-13
+          (-> *crash-camera-array* s2-0 gp-0)
+          self
+          (the-as symbol arg0)
+          (the-as cam-rotation-tracker #f)
+          )
+        )
+      (let ((f30-0 0.0))
+        (dotimes (v1-22 s5-0)
+          (if (>= (-> *crash-camera-array* v1-22 gp-0 rating) f30-0)
+              (set! f30-0 (-> *crash-camera-array* v1-22 gp-0 rating))
+              )
+          )
+        (when (or (= 0.0 f30-0) arg1)
+          (set! (-> *freeze-camera* gp-0 force-freeze) arg1)
+          (set! (-> *freeze-camera* gp-0 world-position quad) (-> self trans quad))
+          (set! (-> *freeze-camera* gp-0 sparks-reset-in) -1)
+          (return (-> *freeze-camera* gp-0))
+          )
+        (let ((f28-0 0.0))
+          (dotimes (v1-40 s5-0)
+            (if (= (-> *crash-camera-array* v1-40 gp-0 rating) f30-0)
+                (+! f28-0 (-> *crash-camera-array* v1-40 gp-0 likelyhood))
+                )
+            )
+          (let* ((v1-44 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                 (v1-45 (the-as number (logior #x3f800000 v1-44)))
+                 (f0-8 (* (+ -1.0 (the-as float v1-45)) f28-0))
+                 )
+            (dotimes (v1-47 s5-0)
+              (when (= (-> *crash-camera-array* v1-47 gp-0 rating) f30-0)
+                (set! f0-8 (- f0-8 (-> *crash-camera-array* v1-47 gp-0 likelyhood)))
+                (if (>= 0.0 f0-8)
+                    (return (-> *crash-camera-array* v1-47 gp-0))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as crash-camera #f)
+  )
+
+;; failed to figure out what this is:
+(defstate cam-vehicle-crash (camera-slave)
+  :enter (behavior ()
+    (if (-> *setting-control* user-default crash-cam)
+        (target-time-go-slow 0.25 #t)
+        )
+    (set! (-> self fov) 10922.667)
+    (let ((a1-1 (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle))))
+      (when a1-1
+        (let ((gp-1 (add-process *gui-control* a1-1 (gui-channel background) (gui-action play) "crshwall" -99.0 0)))
+          (sound-params-set! *gui-control* gp-1 #f -1.0 -1.0 1.0 0.5 #t)
+          (set! (-> self slow-mo-sound-id) (the-as uint gp-1))
+          )
+        )
+      )
+    (set! (-> self vehicle-up quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat uvec quad))
+    (set! (-> self vehicle-at quad) (-> (the-as camera-master (view-get-active-camera)) tgt-rot-mat fvec quad))
+    (when (not (-> self enter-has-run))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+      0
+      )
+    (if (-> (the-as camera-master (view-get-active-camera)) focus handle)
+        (send-event
+          (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle))
+          'set
+          'force-lod
+          0
+          )
+        )
+    (if (zero? (-> *viewport-array* mode))
+        (set-setting! 'letterbox 'abs 0.01 0)
+        )
+    )
+  :exit (behavior ()
+    (set! *teleport* #t)
+    (remove-setting! 'letterbox)
+    (target-time-go-normal)
+    )
+  :trans (behavior ()
+    (when (= (-> *net-mgr* game-type) 4)
+      (when (cpad-pressed? (view-get-active-index) x)
+        (set! *target-time-speed* 1.0)
+        (kill-by-type hud-slowmo *active-pool*)
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (the-as sound-id (-> self slow-mo-sound-id))
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+      (+! (-> *display* entity-clock clock-ratio)
+          (* 0.1 (- *target-time-speed* (-> *display* entity-clock clock-ratio)))
+          )
+      (+! (-> *display* camera-clock clock-ratio)
+          (* 0.1 (- *target-time-speed* (-> *display* camera-clock clock-ratio)))
+          )
+      (+! (-> *display* bg-clock clock-ratio) (* 0.1 (- *target-time-speed* (-> *display* bg-clock clock-ratio))))
+      )
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+      (set! (-> gp-0 0 quad)
+            (-> (cond
+                  ((-> *target-camera-runtime* active)
+                   (let ((v1-4 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                     (if v1-4
+                         (-> v1-4 root trans)
+                         (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                         )
+                     )
+                   )
+                  (else
+                    (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                    )
+                  )
+                quad
+                )
+            )
+      #t
+      (let ((s5-1 (the-as crash-camera #f))
+            (s4-1 (-> *setting-control* cam-settings (view-get-active-index) current crash-cam-force-freeze))
+            )
+        (set! *teleport* #t)
+        (until #f
+          (when (not (and (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle))
+                          (type? (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)) vehicle)
+                          )
+                     )
+            (until #f
+              (suspend)
+              )
+            #f
+            )
+          (let ((s3-1 (choose-crash-camera s5-1 s4-1)))
+            (copy-crash-cam! s3-1 s5-1)
+            (set! s5-1 s3-1)
+            (suspend-for (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 301) 450)
+              (set! s4-1
+                    (or s4-1 (-> *setting-control* cam-settings (view-get-active-index) current crash-cam-force-freeze))
+                    )
+              (if (and (crash-camera-method-15 s3-1) (not s4-1))
+                  (goto cfg-40)
+                  )
+              (crash-camera-method-12 s3-1 self (-> gp-0 0))
+              )
+            )
+          (label cfg-40)
+          (suspend)
+          (set! *teleport* #t)
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for symbol *camera-training-lifetime*, type float
+(define *camera-training-lifetime* 0.0)
+
+;; definition for function set-training-camera-lifetime
+;; WARN: Return type mismatch int vs object.
+(defun set-training-camera-lifetime ((arg0 float))
+  (set! *camera-training-lifetime* arg0)
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate cam-training (camera-slave)
+  :enter (behavior ()
+    (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+    (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+    (set! *target-time-speed* 0.001)
+    )
+  :exit (behavior ()
+    (set! *target-time-speed* 1.0)
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 5)))
+      (set! (-> gp-0 0 quad) (-> (the-as camera-master (view-get-active-camera)) tpos-curr quad))
+      (+! (-> gp-0 0 y) 8192.0)
+      (let* ((a2-0 (the-as matrix (-> gp-0 1)))
+             (a3-0 (-> self tracking))
+             (v1-3 (-> a3-0 inv-mat rvec quad))
+             (a0-0 (-> a3-0 inv-mat uvec quad))
+             (a1-0 (-> a3-0 inv-mat fvec quad))
+             (a3-1 (-> a3-0 inv-mat trans quad))
+             )
+        (set! (-> a2-0 rvec quad) v1-3)
+        (set! (-> a2-0 uvec quad) a0-0)
+        (set! (-> a2-0 fvec quad) a1-0)
+        (set! (-> a2-0 trans quad) a3-1)
+        )
+      (let ((f30-0 (vector-vector-distance (-> gp-0 0) (-> self trans)))
+            (s5-1 (current-time))
+            )
+        0.0
+        (let* ((f28-0 32768.0)
+               (f0-3 *camera-training-lifetime*)
+               (f26-0 32768.0)
+               (f24-0 (- (/ (* 2.0 f28-0) (square f0-3))))
+               (f22-0 (- (* f24-0 f0-3)))
+               )
+          (until #f
+            (let ((s4-0 (new 'stack-no-clear 'inline-array 'matrix 1))
+                  (f20-0 (* 0.0033333334 (the float (- (current-time) s5-1))))
+                  )
+              (let ((f0-10 (+ (* 0.5 (square f20-0) f24-0) (* f22-0 f20-0) f26-0)))
+                (+! f28-0 (* 0.1 (- f0-10 f28-0)))
+                )
+              (matrix-rotate-y! (-> s4-0 0) f28-0)
+              (matrix*! (-> self tracking inv-mat) (the-as matrix (-> gp-0 1)) (-> s4-0 0))
+              (vector+float*!
+                (-> self trans)
+                (-> gp-0 0)
+                (-> self tracking inv-mat fvec)
+                (- (lerp-scale 20480.0 f30-0 f20-0 0.0 *camera-training-lifetime*))
+                )
+              )
+            (suspend)
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition of type victor-prefix-camera
+(deftype victor-prefix-camera (crash-camera)
+  ()
+  )
+
+;; definition for method 3 of type victor-prefix-camera
+(defmethod inspect ((this victor-prefix-camera))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcamera-type: ~D~%" (-> this camera-type))
+  (format #t "~1Tworld-position: #<vector @ #x~X>~%" (-> this world-position))
+  (format #t "~1Tlast-target-position: #<vector @ #x~X>~%" (-> this last-target-position))
+  (format #t "~1Trating: ~f~%" (-> this rating))
+  (format #t "~1Tmaster-mult: ~f~%" (-> this master-mult))
+  (format #t "~1Toffset: #<vector @ #x~X>~%" (-> this offset))
+  (format #t "~1Tfollow: ~f~%" (-> this follow))
+  (format #t "~1Tpercent-delta-y-move: ~f~%" (-> this percent-delta-y-move))
+  (format #t "~1Tdiverge-distance: ~f~%" (-> this diverge-distance))
+  (format #t "~1Tzoom-factor: ~f~%" (-> this zoom-factor))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Tsparks-reset-in: ~D~%" (-> this sparks-reset-in))
+  (format #t "~1Tcamera-rotation: ~f~%" (-> this camera-rotation))
+  (format #t "~1Tlikelyhood: ~f~%" (-> this likelyhood))
+  (format #t "~1Tgroup: ~D~%" (-> this group))
+  (format #t "~1Tcamera-valid?: ~A~%" (-> this camera-valid?))
+  (format #t "~1Tallow-shake?: ~A~%" (-> this allow-shake?))
+  (format #t "~1Tlast-visible-check-time: ~D~%" (-> this last-visible-check-time))
+  (format #t "~1Tlast-car-visible-time: ~D~%" (-> this last-car-visible-time))
+  (format #t "~1Tforce-cut: ~A~%" (-> this force-cut))
+  (format #t "~1Tforce-freeze: ~A~%" (-> this force-freeze))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *victor-prefix-camera-array*, type (array (array victor-prefix-camera))
+(define *victor-prefix-camera-array* (the-as (array (array victor-prefix-camera))
+                                       (new 'static 'boxed-array :type array
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 20480.0 :y 45056.0 :z -86016.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 20480.0 :y 45056.0 :z -86016.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -20480.0 :y 45056.0 :z -86016.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -20480.0 :y 45056.0 :z -86016.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 0.3
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 1
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -40960.0 :y 12288.0 :z 36864.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation -0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x -40960.0 :y 12288.0 :z 36864.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation -0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 40960.0 :y 12288.0 :z 36864.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation 0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x1
+                                             :offset (new 'static 'vector :x 40960.0 :y 12288.0 :z 36864.0 :w 1.0)
+                                             :follow 1.0
+                                             :percent-delta-y-move 1.0
+                                             :zoom-factor 0.5
+                                             :camera-rotation 0.0075
+                                             :likelyhood 0.5
+                                             :group 2
+                                             :allow-shake? #t
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x -163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z 81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         (new 'static 'boxed-array :type victor-prefix-camera
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           (new 'static 'victor-prefix-camera
+                                             :camera-type #x2
+                                             :offset (new 'static 'vector :x 163840.0 :y 40960.0 :z -81920.0 :w 1.0)
+                                             :follow 0.8
+                                             :percent-delta-y-move 0.3
+                                             :diverge-distance 40960.0
+                                             :zoom-factor 0.5
+                                             :likelyhood 0.5
+                                             :group 3
+                                             :allow-shake? #f
+                                             )
+                                           )
+                                         )
+                                       )
+        )
+
+;; definition for function choose-victor-prefix-camera
+;; INFO: Used lq/sq
+(defbehavior choose-victor-prefix-camera camera-slave ()
+  (when *crash-camera-force-position-valid*
+    (set! *crash-camera-force-position-valid* #f)
+    (set! (-> *plow-camera* (view-get-active-index) world-position quad) (-> *crash-camera-force-position* quad))
+    (return (-> *plow-camera* (view-get-active-index)))
+    )
+  (let* ((gp-0 *victor-prefix-camera-array*)
+         (s5-0 (-> gp-0 length))
+         )
+    0.0
+    (let ((s4-0 (view-get-active-index)))
+      (zero? crash-camera)
+      (dotimes (s3-0 s5-0)
+        (crash-camera-method-13 (-> gp-0 s3-0 s4-0) self #f (-> self tracking))
+        )
+      (let ((f30-0 0.0))
+        (dotimes (v1-17 s5-0)
+          (if (>= (-> gp-0 v1-17 s4-0 rating) f30-0)
+              (set! f30-0 (-> gp-0 v1-17 s4-0 rating))
+              )
+          )
+        (if (= 0.0 f30-0)
+            (return (the-as crash-camera #f))
+            )
+        (let ((f28-0 0.0))
+          (dotimes (v1-22 s5-0)
+            (if (= (-> gp-0 v1-22 s4-0 rating) f30-0)
+                (+! f28-0 (-> gp-0 v1-22 s4-0 likelyhood))
+                )
+            )
+          (let* ((v1-26 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                 (v1-27 (the-as number (logior #x3f800000 v1-26)))
+                 (f0-8 (* (+ -1.0 (the-as float v1-27)) f28-0))
+                 )
+            (dotimes (v1-29 s5-0)
+              (when (= (-> gp-0 v1-29 s4-0 rating) f30-0)
+                (set! f0-8 (- f0-8 (-> gp-0 v1-29 s4-0 likelyhood)))
+                (if (>= 0.0 f0-8)
+                    (return (-> gp-0 v1-29 s4-0))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as crash-camera #f)
+  )
+
+;; definition for method 11 of type victor-prefix-camera
+(defmethod crash-camera-method-11 ((this victor-prefix-camera) (arg0 matrix))
+  (let ((f30-0 (the-as number (crash-camera-method-10 this 8192.0 1.0))))
+    (cond
+      (arg0
+        (let ((s4-0 (new 'stack-no-clear 'vector)))
+          (vector-!
+            (the-as vector (&-> s4-0 x))
+            (cond
+              ((-> *target-camera-runtime* active)
+               (let ((v1-6 (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))))
+                 (if v1-6
+                     (-> v1-6 root trans)
+                     (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                     )
+                 )
+               )
+              (else
+                (-> (the-as camera-master (view-get-active-camera)) tpos-curr)
+                )
+              )
+            (-> this world-position)
+            )
+          (vector-normalize! (the-as vector (&-> s4-0 x)) 1.0)
+          (let ((f28-0 (vector-dot (the-as vector (&-> s4-0 x)) (-> arg0 fvec))))
+            (set! f30-0 (+ (the-as float f30-0) (/ f28-0 2)))
+            (if (< (cos 16384.0) f28-0)
+                (set! f30-0 (+ -0.5 (the-as float f30-0)))
+                )
+            )
+          )
+        (if (zero? (-> this camera-type))
+            (set! f30-0 0.0011)
+            )
+        )
+      (else
+        (if (= (-> this camera-type) 1)
+            (set! f30-0 (* 0.4 (the-as float f30-0)))
+            )
+        (if (zero? (-> this camera-type))
+            (set! f30-0 0.0001)
+            )
+        )
+      )
+    (if (not (crash-camera-method-18 this))
+        (set! f30-0 0.0)
+        )
+    (the-as float f30-0)
+    )
+  )
+
+;; definition of type target-camera
+(deftype target-camera (basic)
+  ((offset-mode    symbol)
+   (behind-offset  float)
+   (up-offset      float)
+   (perp-offset    float)
+   (look-at-along  float)
+   (fov            float)
+   (flags          target-camera-flag)
+   )
+  (:methods
+    (target-camera-method-9 (_type_ camera-slave process-focusable process-focusable) none)
+    (target-camera-method-10 (_type_ process-focusable process-focusable vector object) float)
+    )
+  )
+
+;; definition for method 3 of type target-camera
+(defmethod inspect ((this target-camera))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Toffset-mode: ~A~%" (-> this offset-mode))
+  (format #t "~1Tbehind-offset: ~f~%" (-> this behind-offset))
+  (format #t "~1Tup-offset: ~f~%" (-> this up-offset))
+  (format #t "~1Tperp-offset: ~f~%" (-> this perp-offset))
+  (format #t "~1Tlook-at-along: ~f~%" (-> this look-at-along))
+  (format #t "~1Tfov: ~f~%" (-> this fov))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function target-camera-active?
+;; WARN: Return type mismatch object vs symbol.
+(defun target-camera-active? ()
+  (the-as symbol (or (-> *target-camera-runtime* active)
+                     (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))
+                     )
+          )
+  )
+
+;; definition for symbol *target-camera-array*, type (array target-camera)
+(define *target-camera-array* (new 'static 'boxed-array :type target-camera
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 38912.0
+                                  :up-offset 15769.6
+                                  :perp-offset 20480.0
+                                  :look-at-along 0.1
+                                  :fov 3640.889
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 81920.0
+                                  :up-offset 12288.0
+                                  :perp-offset 32768.0
+                                  :look-at-along 0.2
+                                  :fov 4551.1113
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 122880.0
+                                  :up-offset 20480.0
+                                  :perp-offset 24576.0
+                                  :look-at-along 0.4
+                                  :fov 4551.1113
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 122880.0
+                                  :up-offset 40960.0
+                                  :perp-offset 28672.0
+                                  :look-at-along 0.3
+                                  :fov 12743.111
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 204800.0
+                                  :up-offset 20480.0
+                                  :perp-offset 45056.0
+                                  :look-at-along 0.3
+                                  :fov 3640.889
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #t
+                                  :behind-offset 0.3
+                                  :up-offset 36864.0
+                                  :perp-offset 0.2
+                                  :look-at-along 0.4
+                                  :fov 4551.1113
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 81920.0
+                                  :up-offset 49152.0
+                                  :perp-offset 12288.0
+                                  :look-at-along 0.2
+                                  :fov 8192.0
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset 266240.0
+                                  :up-offset 73728.0
+                                  :perp-offset 32768.0
+                                  :look-at-along 0.2
+                                  :fov 8192.0
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #t
+                                  :behind-offset 0.5
+                                  :up-offset 61440.0
+                                  :perp-offset 0.2
+                                  :look-at-along 0.4
+                                  :fov 4551.1113
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #t
+                                  :behind-offset 0.1
+                                  :up-offset 163840.0
+                                  :look-at-along 0.2
+                                  :fov 16384.0
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset -32768.0
+                                  :up-offset 7577.6
+                                  :perp-offset 8192.0
+                                  :look-at-along 0.4
+                                  :fov 3640.889
+                                  :flags (target-camera-flag tcf0)
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset -53248.0
+                                  :up-offset 12288.0
+                                  :perp-offset 12288.0
+                                  :look-at-along 0.4
+                                  :fov 3640.889
+                                  :flags (target-camera-flag tcf0)
+                                  )
+                                (new 'static 'target-camera
+                                  :offset-mode #f
+                                  :behind-offset -73728.0
+                                  :up-offset 16384.0
+                                  :perp-offset 20480.0
+                                  :look-at-along 0.4
+                                  :fov 3640.889
+                                  :flags (target-camera-flag tcf0)
+                                  )
+                                )
+        )
+
+;; definition of type vehicle-AI-control-timer
+(deftype vehicle-AI-control-timer (process)
+  ((timeout    int32)
+   (veh        handle)
+   (cam-timer  float)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type vehicle-AI-control-timer
+(defmethod inspect ((this vehicle-AI-control-timer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttimeout: ~D~%" (-> this timeout))
+  (format #t "~2Tveh: ~D~%" (-> this veh))
+  (format #t "~2Tcam-timer: ~f~%" (-> this cam-timer))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function vehicle-AI-control-timer-init-by-other
+(defbehavior vehicle-AI-control-timer-init-by-other vehicle-AI-control-timer ((arg0 handle) (arg1 int) (arg2 float))
+  (stack-size-set! (-> self main-thread) 32)
+  (set! (-> self veh) arg0)
+  (set! (-> self timeout) arg1)
+  (set! (-> self cam-timer) arg2)
+  (set-setting! 'letterbox 'abs 1.0 0)
+  (go-virtual idle)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (vehicle-AI-control-timer)
+  :virtual #t
+  :enter (behavior ()
+    '()
+    )
+  :exit (behavior ()
+    (send-event (the-as vehicle (handle->process (-> self veh))) 'go 'player-control)
+    )
+  :trans (behavior ()
+    (if (or (not (the-as vehicle (handle->process (-> self veh))))
+            (< (-> self timeout) (- (- (if *net-mgr*
+                                           (-> *net-mgr* game-state time)
+                                           0
+                                           )
+                                       (if *net-world*
+                                           (-> *net-world* net-state game-start-time)
+                                           0
+                                           )
+                                       )
+                                    (if *net-world*
+                                        (-> *net-world* net-state total-pause-time)
+                                        0
+                                        )
+                                    )
+               )
+            )
+        (go empty-state)
+        )
+    (let ((v1-9 (- (-> self timeout) (- (- (if *net-mgr*
+                                               (-> *net-mgr* game-state time)
+                                               0
+                                               )
+                                           (if *net-world*
+                                               (-> *net-world* net-state game-start-time)
+                                               0
+                                               )
+                                           )
+                                        (if *net-world*
+                                            (-> *net-world* net-state total-pause-time)
+                                            0
+                                            )
+                                        )
+                   )
+                )
+          )
+      (if (< v1-9 300)
+          (set-setting! 'letterbox 'abs (* 0.0033333334 (the float v1-9)) 0)
+          )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for function target-camera-heuristic-cam-point!
+;; INFO: Used lq/sq
+(defun target-camera-heuristic-cam-point! ((arg0 vector)
+                                  (arg1 process-focusable)
+                                  (arg2 process-focusable)
+                                  (arg3 float)
+                                  (arg4 symbol)
+                                  (arg5 float)
+                                  (arg6 float)
+                                  )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let* ((sv-64 (get-trans arg1 0))
+           (a2-1 (get-trans arg2 0))
+           (s3-1 (vector-xz-! (new 'stack-no-clear 'vector) sv-64 a2-1))
+           )
+      (let ((v0-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0)))
+        (cond
+          (arg4
+            (let ((v1-2 arg0))
+              (let ((a0-5 s3-1)
+                    (f0-0 arg3)
+                    )
+                (.lvf vf2 (&-> a0-5 quad))
+                (.lvf vf1 (&-> sv-64 quad))
+                (let ((a0-7 f0-0))
+                  (.mov vf3 a0-7)
+                  )
+                )
+              (.add.x.vf.w vf4 vf0 vf0)
+              (.mul.x.vf acc vf2 vf3)
+              (.add.mul.w.vf.xyz vf4 vf1 vf0 acc)
+              (.svf (&-> v1-2 quad) vf4)
+              )
+            )
+          (else
+            (vector+float*! arg0 sv-64 v0-3 arg3)
+            )
+          )
+        )
+      (vector+float*! arg0 arg0 (-> arg1 node-list data 0 bone transform uvec) arg5)
+      (let ((v1-8 (vector-cross! (new 'stack-no-clear 'vector) s3-1 *y-vector*)))
+        (cond
+          (arg4
+            (vector+float*! arg0 arg0 v1-8 arg6)
+            )
+          (else
+            (let ((a0-13 v1-8))
+              (let ((f0-4 1.0))
+                (.lvf vf1 (&-> a0-13 quad))
+                (.mul.vf.xyz vf2 vf1 vf1)
+                (let ((a1-11 f0-4))
+                  (.mov vf3 a1-11)
+                  )
+                )
+              (.mul.x.vf.w acc vf0 vf2)
+              (.add.mul.y.vf.w acc vf0 vf2 acc)
+              (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+              (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+              (.wait.vf)
+              (.mul.vf.xyz vf1 vf1 Q)
+              (.nop.vf)
+              (.nop.vf)
+              (.nop.vf)
+              (.svf (&-> a0-13 quad) vf1)
+              )
+            (vector+float*! arg0 arg0 v1-8 (- arg6))
+            )
+          )
+        )
+      )
+    arg0
+    )
+  )
+
+;; definition for function target-camera-heuristic-look-at!
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs object.
+(defun target-camera-heuristic-look-at! ((arg0 vector) (arg1 process-focusable) (arg2 process-focusable) (arg3 vector) (arg4 float))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 9)))
+    (set! (-> s5-0 0 quad) (-> (get-trans arg1 0) quad))
+    (set! (-> s5-0 1 quad) (-> (get-trans arg2 0) quad))
+    (vector-! (-> s5-0 2) (-> s5-0 1) (-> s5-0 0))
+    (vector-! (-> s5-0 3) arg3 (-> s5-0 0))
+    (vector-! (-> s5-0 4) (-> s5-0 1) arg3)
+    (vector-negate! (-> s5-0 6) (-> s5-0 2))
+    (vector-negate! (-> s5-0 5) (-> s5-0 3))
+    (vector-negate! (-> s5-0 7) (-> s5-0 4))
+    (set! (-> s5-0 8 x) (vector-length (-> s5-0 3)))
+    (set! (-> s5-0 8 y) (vector-length (-> s5-0 4)))
+    (set! (-> s5-0 8 z) (vector-length (-> s5-0 6)))
+    (let* ((f0-4 (/ (vector-length (vector-cross! (new 'stack-no-clear 'vector) (-> s5-0 5) (-> s5-0 4)))
+                    (* (-> s5-0 8 x) (-> s5-0 8 y))
+                    )
+                 )
+           (f28-0 (/ (vector-length (vector-cross! (new 'stack-no-clear 'vector) (-> s5-0 3) (-> s5-0 2)))
+                     (* (-> s5-0 8 x) (-> s5-0 8 z))
+                     )
+                  )
+           (f30-1 (* 0.8 (asin f0-4)))
+           (f0-6 (asin f28-0))
+           (f26-0 (- 32768.0 (+ f30-1 f0-6)))
+           (f0-10 (* (-> s5-0 8 x) (/ (sin f30-1) (sin f26-0))))
+           )
+      (vector-normalize-copy! arg0 (-> s5-0 2) f0-10)
+      )
+    (vector+! arg0 arg0 (-> s5-0 0))
+    )
+  arg0
+  )
+
+;; definition for function target-camera-heuristic-fov
+(defun target-camera-heuristic-fov ((arg0 target-camera) (arg1 process-focusable) (arg2 process-focusable) (arg3 vector))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+      (vector-! (-> s5-0 0) (get-trans arg1 0) arg3)
+      (vector-! (-> s5-0 1) (get-trans arg2 0) arg3)
+      (let ((v1-4 (-> s5-0 0)))
+        (let ((f0-0 1.0))
+          (.lvf vf1 (&-> v1-4 quad))
+          (.mul.vf.xyz vf2 vf1 vf1)
+          (let ((a0-5 f0-0))
+            (.mov vf3 a0-5)
+            )
+          )
+        (.mul.x.vf.w acc vf0 vf2)
+        (.add.mul.y.vf.w acc vf0 vf2 acc)
+        (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf.xyz vf1 vf1 Q)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-4 quad) vf1)
+        )
+      (let ((v1-5 (-> s5-0 1)))
+        (let ((f0-1 1.0))
+          (.lvf vf1 (&-> v1-5 quad))
+          (.mul.vf.xyz vf2 vf1 vf1)
+          (let ((a0-7 f0-1))
+            (.mov vf3 a0-7)
+            )
+          )
+        (.mul.x.vf.w acc vf0 vf2)
+        (.add.mul.y.vf.w acc vf0 vf2 acc)
+        (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf.xyz vf1 vf1 Q)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-5 quad) vf1)
+        )
+      (let ((f30-1 (* 1.7 (acos (vector-dot (-> s5-0 0) (-> s5-0 1))))))
+        (format *stdebug* "necessary fov: ~f~%" (* 0.005493164 f30-1))
+        (fmin 18204.445 (fmax (-> arg0 fov) f30-1))
+        )
+      )
+    )
+  )
+
+;; definition for function target-camera-test-los
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs object.
+(defun target-camera-test-los ((arg0 vector) (arg1 process-focusable) (arg2 process-focusable) (arg3 float))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'collide-query 1)))
+    (let ((s1-0 (get-trans arg1 0))
+          (s2-0 (get-trans arg2 0))
+          )
+      (set! (-> gp-0 0 start-pos quad) (-> s1-0 quad))
+      (vector-! (-> gp-0 0 move-dist) arg0 s1-0)
+      (let ((v1-4 (-> gp-0 0)))
+        (set! (-> v1-4 radius) arg3)
+        (set! (-> v1-4 collide-with) (collide-spec backgnd camera-blocker))
+        (set! (-> v1-4 ignore-process0) #f)
+        (set! (-> v1-4 ignore-process1) arg2)
+        (set! (-> v1-4 ignore-pat)
+              (new 'static 'pat-surface :nocamera #x1 :nogrind #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        (set! (-> v1-4 action-mask) (collide-action solid))
+        (set! (-> v1-4 nav-mesh) #f)
+        )
+      (let ((f0-1 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 0))))
+        (if (< 0.0 f0-1)
+            (return (the-as object #f))
+            )
+        )
+      (set! (-> gp-0 0 start-pos quad) (-> s2-0 quad))
+      (vector-! (-> gp-0 0 move-dist) arg0 s2-0)
+      )
+    (let ((v1-12 (-> gp-0 0)))
+      (set! (-> v1-12 radius) arg3)
+      (set! (-> v1-12 collide-with) (collide-spec backgnd camera-blocker))
+      (set! (-> v1-12 ignore-process0) arg2)
+      (set! (-> v1-12 ignore-process1) #f)
+      (set! (-> v1-12 ignore-pat)
+            (new 'static 'pat-surface :nocamera #x1 :nogrind #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-12 action-mask) (collide-action solid))
+      (set! (-> v1-12 nav-mesh) #f)
+      )
+    (let ((f0-3 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 0))))
+      (if (< 0.0 f0-3)
+          (return (the-as object #f))
+          )
+      )
+    )
+  #t
+  )
+
+;; definition for method 10 of type target-camera
+;; INFO: Used lq/sq
+(defmethod target-camera-method-10 ((this target-camera) (arg0 process-focusable) (arg1 process-focusable) (arg2 vector) (arg3 object))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((sv-48 (target-camera-heuristic-cam-point!
+                   (new 'stack-no-clear 'vector)
+                   arg0
+                   arg1
+                   (-> this behind-offset)
+                   (-> this offset-mode)
+                   (-> this up-offset)
+                   (-> this perp-offset)
+                   )
+                 )
+          (sv-52 (target-camera-heuristic-cam-point!
+                   (new 'stack-no-clear 'vector)
+                   arg0
+                   arg1
+                   (-> this behind-offset)
+                   (-> this offset-mode)
+                   (-> this up-offset)
+                   (- (-> this perp-offset))
+                   )
+                 )
+          (sv-56 arg0)
+          (sv-60 arg1)
+          )
+      0.0
+      0.0
+      (let ((f28-0 0.0)
+            (f30-0 0.0)
+            )
+        (let* ((v1-0 sv-48)
+               (s3-2 (vector-! (new 'stack-no-clear 'vector) arg2 v1-0))
+               (s4-2 (vector-! (new 'stack-no-clear 'vector) (the-as vector arg3) v1-0))
+               )
+          (let ((v1-1 s3-2))
+            (let ((f0-9 1.0))
+              (.lvf vf1 (&-> v1-1 quad))
+              (.mul.vf.xyz vf2 vf1 vf1)
+              (let ((a0-6 f0-9))
+                (.mov vf3 a0-6)
+                )
+              )
+            (.mul.x.vf.w acc vf0 vf2)
+            (.add.mul.y.vf.w acc vf0 vf2 acc)
+            (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+            (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+            (.wait.vf)
+            (.mul.vf.xyz vf1 vf1 Q)
+            (.nop.vf)
+            (.nop.vf)
+            (.nop.vf)
+            (.svf (&-> v1-1 quad) vf1)
+            )
+          (let ((v1-2 s4-2))
+            (let ((f0-10 1.0))
+              (.lvf vf1 (&-> v1-2 quad))
+              (.mul.vf.xyz vf2 vf1 vf1)
+              (let ((a0-8 f0-10))
+                (.mov vf3 a0-8)
+                )
+              )
+            (.mul.x.vf.w acc vf0 vf2)
+            (.add.mul.y.vf.w acc vf0 vf2 acc)
+            (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+            (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+            (.wait.vf)
+            (.mul.vf.xyz vf1 vf1 Q)
+            (.nop.vf)
+            (.nop.vf)
+            (.nop.vf)
+            (.svf (&-> v1-2 quad) vf1)
+            )
+          (vector-dot s3-2 s4-2)
+          (let ((a0-10 s3-2))
+            (set! (-> a0-10 quad) (-> s3-2 quad))
+            (set! (-> a0-10 y) 0.0)
+            (vector-normalize! a0-10 1.0)
+            )
+          (let ((a0-11 s4-2))
+            (set! (-> a0-11 quad) (-> s4-2 quad))
+            (set! (-> a0-11 y) 0.0)
+            (vector-normalize! a0-11 1.0)
+            )
+          (vector-dot s3-2 s4-2)
+          )
+        (let* ((v1-11 sv-52)
+               (s4-4 (vector-! (new 'stack-no-clear 'vector) arg2 v1-11))
+               (s5-2 (vector-! (new 'stack-no-clear 'vector) (the-as vector arg3) v1-11))
+               )
+          (let ((v1-12 s4-4))
+            (let ((f0-17 1.0))
+              (.lvf vf1 (&-> v1-12 quad))
+              (.mul.vf.xyz vf2 vf1 vf1)
+              (let ((a0-14 f0-17))
+                (.mov vf3 a0-14)
+                )
+              )
+            (.mul.x.vf.w acc vf0 vf2)
+            (.add.mul.y.vf.w acc vf0 vf2 acc)
+            (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+            (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+            (.wait.vf)
+            (.mul.vf.xyz vf1 vf1 Q)
+            (.nop.vf)
+            (.nop.vf)
+            (.nop.vf)
+            (.svf (&-> v1-12 quad) vf1)
+            )
+          (let ((v1-13 s5-2))
+            (let ((f0-18 1.0))
+              (.lvf vf1 (&-> v1-13 quad))
+              (.mul.vf.xyz vf2 vf1 vf1)
+              (let ((a0-16 f0-18))
+                (.mov vf3 a0-16)
+                )
+              )
+            (.mul.x.vf.w acc vf0 vf2)
+            (.add.mul.y.vf.w acc vf0 vf2 acc)
+            (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+            (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+            (.wait.vf)
+            (.mul.vf.xyz vf1 vf1 Q)
+            (.nop.vf)
+            (.nop.vf)
+            (.nop.vf)
+            (.svf (&-> v1-13 quad) vf1)
+            )
+          (let ((f26-0 (vector-dot s4-4 s5-2)))
+            (let ((a0-18 s4-4))
+              (set! (-> a0-18 quad) (-> s4-4 quad))
+              (set! (-> a0-18 y) 0.0)
+              (vector-normalize! a0-18 1.0)
+              )
+            (let ((a0-19 s5-2))
+              (set! (-> a0-19 quad) (-> s5-2 quad))
+              (set! (-> a0-19 y) 0.0)
+              (vector-normalize! a0-19 1.0)
+              )
+            (let ((f24-0 (vector-dot s4-4 s5-2)))
+              (cond
+                ((< 0.0 (fmax f26-0 f30-0))
+                 (let* ((s5-3 (target-camera-test-los sv-48 sv-56 sv-60 2048.0))
+                        (s4-5 (target-camera-test-los sv-52 sv-56 sv-60 2048.0))
+                        (a0-22 (new 'stack-no-clear 'collide-query))
+                        (s3-3 (find-nav-mesh a0-22 sv-48 81920.0 163840.0 8192.0 *collide-cache*))
+                        (a0-23 (new 'stack-no-clear 'collide-query))
+                        (s2-1 (find-nav-mesh a0-23 sv-52 81920.0 163840.0 8192.0 *collide-cache*))
+                        (gp-1
+                          (lambda ((arg0 vector))
+                            (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+                              (set! (-> gp-0 start-pos quad) (-> (camera-pos) quad))
+                              (vector-! (-> gp-0 move-dist) arg0 (-> gp-0 start-pos))
+                              (let ((v1-3 gp-0))
+                                (set! (-> v1-3 radius) 4096.0)
+                                (set! (-> v1-3 collide-with) (collide-spec backgnd))
+                                (set! (-> v1-3 ignore-process0) #f)
+                                (set! (-> v1-3 ignore-process1) #f)
+                                (set! (-> v1-3 ignore-pat)
+                                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                                      )
+                                (set! (-> v1-3 action-mask) (collide-action solid))
+                                (set! (-> v1-3 nav-mesh) #f)
+                                )
+                              (< (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0)
+                              )
+                            )
+                          )
+                        )
+                   (cond
+                     ((< f24-0 f28-0)
+                      (cond
+                        ((and (< 0.0 f30-0) s4-5 s2-1 (gp-1 sv-52))
+                         -1.0
+                         )
+                        ((and (< 0.0 f26-0) s5-3 s3-3 (gp-1 sv-48))
+                         1.0
+                         )
+                        (else
+                          (format #t "Akira cam: validation fail: los~%")
+                          0.0
+                          )
+                        )
+                      )
+                     ((and (< 0.0 f26-0) s5-3 s3-3 (gp-1 sv-48))
+                      1.0
+                      )
+                     ((and (< 0.0 f30-0) s4-5 s2-1 (gp-1 sv-52))
+                      -1.0
+                      )
+                     (else
+                       (format #t "Akira cam: validation fail: los~%")
+                       0.0
+                       )
+                     )
+                   )
+                 )
+                (else
+                  (format #t "Akira cam: validation fail: fov~%")
+                  0.0
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 9 of type target-camera
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch quaternion vs none.
+(defmethod target-camera-method-9 ((this target-camera) (arg0 camera-slave) (arg1 process-focusable) (arg2 process-focusable))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+      (target-camera-heuristic-cam-point!
+        (-> gp-0 0)
+        arg1
+        arg2
+        (-> this behind-offset)
+        (-> this offset-mode)
+        (-> this up-offset)
+        (if (-> *target-camera-runtime* mirror)
+            (- (-> this perp-offset))
+            (-> this perp-offset)
+            )
+        )
+      (target-camera-heuristic-look-at! (-> gp-0 1) arg1 arg2 (-> gp-0 0) (-> this look-at-along))
+      (let ((f1-0 (target-camera-heuristic-fov this arg1 arg2 (-> gp-0 0))))
+        (+! (-> arg0 fov) (* (- f1-0 (-> arg0 fov)) (fmin 1.0 (/ (* 2.0 (seconds-per-frame)) *target-time-speed*))))
+        )
+      (if (or (< 16384.0 (-> arg0 fov))
+              (let ((a0-4 (new 'stack-no-clear 'collide-query)))
+                (not (find-nav-mesh a0-4 (-> gp-0 0) 81920.0 163840.0 8192.0 *collide-cache*))
+                )
+              )
+          (set! (-> *target-camera-runtime* need-new-cam) #t)
+          )
+      (vector-! (-> gp-0 2) (-> gp-0 1) (-> gp-0 0))
+      (let ((v1-12 (-> gp-0 2)))
+        (let ((f0-9 1.0))
+          (.lvf vf1 (&-> v1-12 quad))
+          (.mul.vf.xyz vf2 vf1 vf1)
+          (let ((a0-9 f0-9))
+            (.mov vf3 a0-9)
+            )
+          )
+        (.mul.x.vf.w acc vf0 vf2)
+        (.add.mul.y.vf.w acc vf0 vf2 acc)
+        (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf.xyz vf1 vf1 Q)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-12 quad) vf1)
+        )
+      (quaternion-look-at! (the-as quaternion (-> gp-0 3)) (-> gp-0 2) *up-vector*)
+      (set! (-> *target-camera-runtime* cur-trans quad) (-> gp-0 0 quad))
+      (quaternion-copy! (-> *target-camera-runtime* cur-quat) (the-as quaternion (-> gp-0 3)))
+      )
+    (none)
+    )
+  )
+
+;; definition for function choose-target-camera
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defun choose-target-camera ((arg0 process-focusable) (arg1 process-focusable))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+      (set! (-> s4-0 0 quad) (-> (get-trans arg0 0) quad))
+      (set! (-> s4-0 1 quad) (-> (get-trans arg1 0) quad))
+      (set! (-> *target-camera-runtime* need-new-cam) #f)
+      (let ((a0-3 (-> arg0 node-list data 0 bone transform fvec))
+            (v1-10 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 1) (-> s4-0 0)))
+            )
+        (let ((a1-4 v1-10))
+          (let ((f0-0 1.0))
+            (.lvf vf1 (&-> a1-4 quad))
+            (.mul.vf.xyz vf2 vf1 vf1)
+            (let ((a2-2 f0-0))
+              (.mov vf3 a2-2)
+              )
+            )
+          (.mul.x.vf.w acc vf0 vf2)
+          (.add.mul.y.vf.w acc vf0 vf2 acc)
+          (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf.xyz vf1 vf1 Q)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> a1-4 quad) vf1)
+          )
+        (when (< (vector-dot a0-3 v1-10) 0.0)
+          (format #t "BEHIND SHOOTER~%")
+          (dotimes (s3-2 (-> *target-camera-array* length))
+            (let ((a0-6 (-> *target-camera-array* s3-2)))
+              (when (logtest? (-> a0-6 flags) (target-camera-flag tcf0))
+                (let ((f0-3 (target-camera-method-10 a0-6 arg0 arg1 (-> s4-0 0) (-> s4-0 1))))
+                  (cond
+                    ((< 0.001 f0-3)
+                     (return (the-as object (- s3-2)))
+                     )
+                    ((< f0-3 -0.001)
+                     (set! (-> *target-camera-runtime* mirror) #t)
+                     (return (the-as object (- s3-2)))
+                     )
+                    (else
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (dotimes (s3-3 (-> *target-camera-array* length))
+        (let ((f0-4 (target-camera-method-10 (-> *target-camera-array* s3-3) arg0 arg1 (-> s4-0 0) (-> s4-0 1))))
+          (cond
+            ((< 0.001 f0-4)
+             (return (the-as object s3-3))
+             )
+            ((< f0-4 -0.001)
+             (set! (-> *target-camera-runtime* mirror) #t)
+             (return (the-as object s3-3))
+             )
+            (else
+              )
+            )
+          )
+        )
+      )
+    (the-as int #f)
+    )
+  )
+
+;; definition for function camera-go-target
+;; WARN: Return type mismatch int vs object.
+(defun camera-go-target ((arg0 handle))
+  (with-pp
+    (set! (-> *target-camera-runtime* shot) arg0)
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs #x42b40000 0.0)
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-vehicle-shot 0 0.0)
+    (set-setting! 'blur-a 'abs 0.5 0)
+    0
+    )
+  )
+
+;; definition for function cam-akira-mode-enter
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior cam-akira-mode-enter camera-slave ()
+  (when (not (-> *target-camera-runtime* active))
+    (set! (-> *target-camera-runtime* active) #t)
+    (set! (-> *target-camera-runtime* num-camera-changes) 0)
+    (when (not (-> self enter-has-run))
+      (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
+      (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
+      0
+      )
+    (when (-> (the-as camera-master (view-get-active-camera)) focus handle)
+      (send-event
+        (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle))
+        'set
+        'force-lod
+        0
+        )
+      (send-event (the-as process-drawable (handle->process (-> *target-camera-runtime* shot))) 'set 'force-lod 0)
+      (let ((v1-30 (as-type (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)) vehicle))
+            )
+        (if v1-30
+            (send-event
+              (handle->process (-> (the-as vehicle v1-30) vehicle-unk-handle1 0))
+              'look-at
+              (the-as process-drawable (handle->process (-> *target-camera-runtime* shot)))
+              3000
+              )
+            )
+        )
+      )
+    (set! (-> *target-camera-runtime* need-new-cam) #t)
+    (set! (-> *target-camera-runtime* prefix) (the-as string #t))
+    (set! (-> *target-camera-runtime* state-time) (-> *display* real-clock frame-counter))
+    (let ((v0-0 #t))
+      (set! *explosion-effect-suppress* v0-0)
+      v0-0
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-vehicle-shot (camera-slave)
+  :enter cam-akira-mode-enter
+  :exit (behavior ()
+    (cam-disconnect *setting-control* (view-get-active-index) self 'interp-time)
+    (set! *explosion-effect-suppress* #f)
+    (let ((v1-5 (as-type (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)) vehicle)))
+      (if v1-5
+          (send-event (handle->process (-> (the-as vehicle v1-5) vehicle-unk-handle1 0)) 'look-at #f 0)
+          )
+      )
+    (send-event
+      (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+      'target-cam-stop
+      (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+      )
+    (set! (-> *target-camera-runtime* active) #f)
+    (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+    (set! (-> *target-camera-runtime* cur-cam-idx) -127)
+    (if (handle->process (-> *target-camera-runtime* vehicle-release-timer))
+        (setting-pers *setting-control* 'letterbox (seconds 0.035) 'letterbox 'abs 0.9 0)
+        (remove-setting! 'letterbox)
+        )
+    (target-time-go-normal)
+    )
+  :trans (behavior ()
+    (when (= (-> *net-mgr* game-type) 4)
+      (when (and (cpad-pressed? (view-get-active-index) x)
+                 (< (+ (-> *target-camera-runtime* state-time) (seconds 1)) (-> *display* real-clock frame-counter))
+                 )
+        (format #t "Akira cam: Abort due to cpad X~%")
+        (send-event
+          (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+          'target-cam-stop
+          (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+          )
+        (set! (-> *target-camera-runtime* active) #f)
+        (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+        )
+      )
+    (format *stdebug* "GO ~d~%" (-> *target-camera-runtime* cur-cam-idx))
+    (let ((gp-1 (as-type (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)) wvehicle))
+          (v1-32 (as-type (the-as process-drawable (handle->process (-> *target-camera-runtime* shot))) wvehicle))
+          )
+      (cond
+        ((not (and gp-1 v1-32))
+         (format #t "Akira cam: Abort due no shooter or target~%")
+         (send-event
+           (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+           'target-cam-stop
+           (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+           )
+         (set! (-> *target-camera-runtime* active) #f)
+         (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+         (go empty-state)
+         )
+        ((logtest? (-> (the-as wvehicle gp-1) v-flags) (vehicle-flag dead))
+         (send-event
+           (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+           'target-cam-stop
+           (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+           )
+         (set! (-> *target-camera-runtime* active) #f)
+         (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+         (go empty-state)
+         )
+        (else
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-1 (make-sound-instance snd-explode-slow-mo (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-1
+          (logior! (-> v1-1 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-1 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (target-time-go-slow 0.5 #t)
+    (let ((s4-0 #f)
+          (gp-0 (choose-victor-prefix-camera))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s5-0 quad)
+            (-> (the-as process-drawable (handle->process (-> *target-camera-runtime* shot))) root trans quad)
+            )
+      90.0
+      (cond
+        (gp-0
+          (if (zero? (-> *viewport-array* mode))
+              (set-setting! 'letterbox 'abs 0.9 0)
+              )
+          (copy-crash-cam! gp-0 (the-as crash-camera s4-0))
+          (suspend-for (seconds 0.6)
+            (target-time-go-slow (lerp-clamp 0.5 0.1 (* 0.013333334 (the float (- (current-time) time)))) #f)
+            (cam-reconnect
+              *setting-control*
+              (view-get-active-index)
+              self
+              'interp-time
+              'abs
+              (* 90.0 *target-time-speed*)
+              0.0
+              )
+            (if (crash-camera-method-15 gp-0)
+                (goto cfg-31)
+                )
+            (crash-camera-method-12 gp-0 self s5-0)
+            )
+          (crash-camera-method-12 gp-0 self s5-0)
+          )
+        (else
+          (send-event
+            (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+            'target-cam-stop
+            (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+            )
+          (set! (-> *target-camera-runtime* active) #f)
+          (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+          (let ((a0-23 *text-display-nice-shot-proc*))
+            (if a0-23
+                (send-event a0-23 'kill-hud-instant)
+                )
+            )
+          (go empty-state)
+          )
+        )
+      )
+    (label cfg-31)
+    (set! (-> *target-camera-runtime* prefix) #f)
+    (set! (-> *target-camera-runtime* interp) 0.01)
+    (set! (-> *target-camera-runtime* interp-from-trans quad) (-> (view-get-active-math-camera) trans quad))
+    (matrix->quaternion
+      (-> *target-camera-runtime* interp-from-quat)
+      (-> (view-get-active-math-camera) inv-camera-rot)
+      )
+    (suspend)
+    (suspend-for (seconds 0.04)
+      (seek! (-> *target-camera-runtime* interp) 1.0 (* 25.0 (seconds-per-frame)))
+      )
+    (suspend-for (seconds 0.5)
+      (target-time-go-slow (lerp-clamp 0.1 1.0 (* 0.006666667 (the float (- (current-time) time)))) #f)
+      )
+    (set! (-> *target-camera-runtime* vehicle-release-timer)
+          (process->handle (ppointer->process (process-spawn
+                                                vehicle-AI-control-timer
+                                                (-> (the-as camera-master (view-get-active-camera)) focus handle)
+                                                (+ (- (- 300 (if *net-world*
+                                                                 (-> *net-world* net-state total-pause-time)
+                                                                 0
+                                                                 )
+                                                         )
+                                                      (if *net-world*
+                                                          (-> *net-world* net-state game-start-time)
+                                                          0
+                                                          )
+                                                      )
+                                                   (if *net-mgr*
+                                                       (-> *net-mgr* game-state time)
+                                                       0
+                                                       )
+                                                   )
+                                                #x43160000
+                                                :name "vehicle-AI-control-timer"
+                                                :to (ppointer->process (-> self parent))
+                                                )
+                                              )
+                           )
+          )
+    (format #t "Akira cam: all done!~%")
+    (send-event
+      (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+      'target-cam-stop
+      (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+      )
+    (set! (-> *target-camera-runtime* active) #f)
+    (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+    )
+  :post (behavior ()
+    (local-vars (s4-2 object))
+    (let ((gp-0 (as-type (handle->process (-> (the-as camera-master (view-get-active-camera)) focus handle)) wvehicle))
+          (s5-1 (as-type (the-as process-drawable (handle->process (-> *target-camera-runtime* shot))) wvehicle))
+          )
+      (when (and gp-0 s5-1 (not (-> *target-camera-runtime* prefix)))
+        (when (or (-> *target-camera-runtime* need-new-cam)
+                  (< (+ (- (current-time) (-> self clock old-frame-counter)) (seconds 0.1))
+                     (- (- (- (if *net-mgr*
+                                  (-> *net-mgr* game-state time)
+                                  0
+                                  )
+                              (if *net-world*
+                                  (-> *net-world* net-state game-start-time)
+                                  0
+                                  )
+                              )
+                           (if *net-world*
+                               (-> *net-world* net-state total-pause-time)
+                               0
+                               )
+                           )
+                        (-> *target-camera-runtime* last-good-los)
+                        )
+                     )
+                  (= (-> *target-camera-runtime* cur-cam-idx) -127)
+                  )
+          (cond
+            ((>= (-> *target-camera-runtime* num-camera-changes) 2)
+             (format #t "Akira cam: aborting due to thrash~%")
+             (send-event
+               (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+               'target-cam-stop
+               (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+               )
+             (set! (-> *target-camera-runtime* active) #f)
+             (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+             (go empty-state)
+             )
+            ((begin
+               (+! (-> *target-camera-runtime* num-camera-changes) 1)
+               (set! s4-2 (choose-target-camera (the-as process-focusable gp-0) (the-as process-focusable s5-1)))
+               (format #t "chosen akira cam: ~d~%" s4-2)
+               (not s4-2)
+               )
+             (format #t "Akira cam: unable to choose angle~%")
+             (send-event
+               (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+               'target-cam-stop
+               (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+               )
+             (set! (-> *target-camera-runtime* active) #f)
+             (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+             (go empty-state)
+             )
+            ((>= (the-as int s4-2) 0)
+             (set! (-> *target-camera-runtime* cur-cam-idx) (the-as int s4-2))
+             )
+            ((< (the-as int s4-2) 0)
+             (set! (-> *target-camera-runtime* cur-cam-idx) (the-as int s4-2))
+             (- (the-as int s4-2))
+             )
+            (else
+              (format #t "Akira cam: can't happen~%")
+              (send-event
+                (vehicle-handle->net-player (-> (the-as camera-master (view-get-active-camera)) focus handle))
+                'target-cam-stop
+                (not (handle->process (-> *target-camera-runtime* vehicle-release-timer)))
+                )
+              (set! (-> *target-camera-runtime* active) #f)
+              (set! (-> *target-camera-runtime* shot) (the-as handle #f))
+              (go empty-state)
+              )
+            )
+          (set! (-> *target-camera-runtime* last-good-los) (- (- (if *net-mgr*
+                                                                     (-> *net-mgr* game-state time)
+                                                                     0
+                                                                     )
+                                                                 (if *net-world*
+                                                                     (-> *net-world* net-state game-start-time)
+                                                                     0
+                                                                     )
+                                                                 )
+                                                              (if *net-world*
+                                                                  (-> *net-world* net-state total-pause-time)
+                                                                  0
+                                                                  )
+                                                              )
+                )
+          )
+        (when (!= (-> *target-camera-runtime* cur-cam-idx) -127)
+          (let ((v1-73 (abs (-> *target-camera-runtime* cur-cam-idx))))
+            (target-camera-method-9
+              (-> *target-camera-array* v1-73)
+              self
+              (the-as process-focusable gp-0)
+              (the-as process-focusable s5-1)
+              )
+            )
+          (target-cam-runtime-push *target-camera-runtime* self)
+          )
+        (if (target-camera-test-los
+              (-> self trans)
+              (the-as process-focusable gp-0)
+              (the-as process-focusable s5-1)
+              2048.0
+              )
+            (set! (-> *target-camera-runtime* last-good-los) (- (- (if *net-mgr*
+                                                                       (-> *net-mgr* game-state time)
+                                                                       0
+                                                                       )
+                                                                   (if *net-world*
+                                                                       (-> *net-world* net-state game-start-time)
+                                                                       0
+                                                                       )
+                                                                   )
+                                                                (if *net-world*
+                                                                    (-> *net-world* net-state total-pause-time)
+                                                                    0
+                                                                    )
+                                                                )
+                  )
+            )
+        )
+      )
+    )
+  )
+
+
+
+

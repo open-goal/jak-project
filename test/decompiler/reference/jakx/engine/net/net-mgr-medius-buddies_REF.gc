@@ -1,0 +1,495 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *medius-player-account-id*, type int
+(define *medius-player-account-id* 0)
+
+;; definition for function buddies-refreshing-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun buddies-refreshing-callback ((arg0 medius-get-buddy-list-extra-info-response))
+  (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+  (cond
+    ((= (-> arg0 status-code) (medius-status-code medius-no-result))
+     (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+     )
+    ((= (-> arg0 status-code) (medius-status-code medius-success))
+     (add! *medius-buddies* (-> arg0 account-id))
+     (if (or (= (-> arg0 online-state connect-status) (medius-player-status medius-player-in-chat-world))
+             (= (-> arg0 online-state connect-status) (medius-player-status medius-player-in-game-world))
+             (= (-> arg0 online-state connect-status) (medius-player-status medius-player-in-other-universe))
+             )
+         (add! *medius-buddies-online* (-> arg0 account-id))
+         )
+     )
+    (else
+      (set! (-> *net-mgr* lobby-state got-error) #t)
+      )
+    )
+  (if (= (-> arg0 end-of-list) 1)
+      (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+      )
+  0
+  )
+
+;; definition for function buddies-refreshing
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior buddies-refreshing net-mgr ()
+  (local-vars (v0-6 symbol))
+  (set! (-> *medius-buddies* ct) 0)
+  (set! (-> *medius-buddies-online* ct) 0)
+  (let ((gp-0 (new 'stack 'medius-get-buddy-list-extra-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-buddy-list-extra-info))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 buddies-refreshing-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-19 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-19))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (format 0 "net-mgr-notify: ~A~%" 'buddy-list-ready)
+  (let ((a0-9 (-> *net-mgr* notify alive-list next0)))
+    (-> *net-mgr* notify)
+    (let ((gp-2 (-> a0-9 next0)))
+      (while (!= a0-9 (-> *net-mgr* notify alive-list-end))
+        (if (logtest? (the-as int (-> (the-as connection a0-9) param1)) 10)
+            (send-event
+              ((method-of-type connection get-process) (the-as connection a0-9))
+              'buddy-list-ready
+              :from *net-mgr*
+              )
+            )
+        (set! a0-9 gp-2)
+        (-> *net-mgr* notify)
+        (set! gp-2 (-> gp-2 next0))
+        )
+      )
+    )
+  (let ((v1-43 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-43))
+    )
+  v0-6
+  )
+
+;; definition for function buddies-adding-player
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior buddies-adding-player net-mgr ((arg0 int))
+  (local-vars (v0-7 symbol))
+  (let ((gp-0 (new 'stack 'medius-add-to-buddy-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! (-> gp-0 account-id) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-add-to-buddy-list))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     (let ((a0-9 *medius-last-response*)
+           (v1-16 #f)
+           )
+       (set! *net-mgr-pending-behavior-result-extra* (-> a0-9 status-code))
+       (return (the-as object v1-16))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-20 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-20))
+    )
+  v0-7
+  )
+
+;; definition for function buddies-removing-player
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior buddies-removing-player net-mgr ((arg0 int))
+  (local-vars (v0-7 symbol))
+  (let ((gp-0 (new 'stack 'medius-remove-from-buddy-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! (-> gp-0 account-id) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-remove-from-buddy-list))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-17 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-17))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-21 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-21))
+    )
+  v0-7
+  )
+
+;; definition for function ignore-refreshing-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun ignore-refreshing-callback ((arg0 medius-get-ignore-list-response))
+  (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+  (cond
+    ((= (-> arg0 status-code) (medius-status-code medius-no-result))
+     (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+     )
+    ((= (-> arg0 status-code) (medius-status-code medius-success))
+     (add! *medius-ignores* (-> arg0 ignore-account-id))
+     )
+    (else
+      (set! (-> *net-mgr* lobby-state got-error) #t)
+      )
+    )
+  (if (= (-> arg0 end-of-list) 1)
+      (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+      )
+  0
+  )
+
+;; definition for function ignore-refreshing
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior ignore-refreshing net-mgr ()
+  (local-vars (v0-6 symbol))
+  (set! (-> *medius-ignores* ct) 0)
+  (let ((gp-0 (new 'stack 'medius-get-ignore-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-ignore-list))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 ignore-refreshing-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-18 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-18))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-22 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-22))
+    )
+  v0-6
+  )
+
+;; definition for function ignore-adding-player
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior ignore-adding-player net-mgr ((arg0 int))
+  (local-vars (v0-7 symbol))
+  (let ((gp-0 (new 'stack 'medius-add-to-ignore-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! (-> gp-0 ignore-account-id) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-add-to-ignore-list))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     (let ((a0-9 *medius-last-response*)
+           (v1-16 #f)
+           )
+       (set! *net-mgr-pending-behavior-result-extra* (-> a0-9 status-code))
+       (return (the-as object v1-16))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-20 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-20))
+    )
+  v0-7
+  )
+
+;; definition for function ignore-removing-player
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior ignore-removing-player net-mgr ((arg0 int))
+  (local-vars (v0-7 symbol))
+  (let ((gp-0 (new 'stack 'medius-remove-from-ignore-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! (-> gp-0 ignore-account-id) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-remove-from-ignore-list))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-17 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-17))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-21 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-21))
+    )
+  v0-7
+  )
+
+;; definition for function finding-player-callback
+;; INFO: Called from C
+(defun finding-player-callback ((arg0 medius-account-get-idresponse) (arg1 pointer))
+  (let ((a2-0 (atoi (-> arg0 message-id))))
+    (cond
+      ((= a2-0 *async-request-ct*)
+       (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+       (set! (-> *net-mgr* lobby-state callback-status) (the-as int (-> arg0 status-code)))
+       (set! (-> *net-mgr* lobby-state callback-userdata) arg1)
+       (if (nonzero? (-> arg0 status-code))
+           (set! (-> *net-mgr* lobby-state got-error) #t)
+           )
+       (let ((v0-1 (the-as object (-> arg0 account-id))))
+         (set! *medius-player-account-id* (the-as int v0-1))
+         v0-1
+         )
+       )
+      (else
+        (format 0 "discarding unexpected message-id ~D~%" a2-0)
+        )
+      )
+    )
+  )
+
+;; definition for function finding-player
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior finding-player net-mgr ((arg0 (pointer uint8)))
+  (local-vars (v0-8 symbol))
+  (let ((gp-0 (new 'stack 'medius-account-get-idrequest)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (copy-charp<-charp (-> gp-0 account-name) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-account-get-id))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 finding-player-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-17 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-17))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-21 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-21))
+    )
+  v0-8
+  )
+
+;; definition for function retrieve-player-lists
+;; WARN: Return type mismatch int vs object.
+(defbehavior retrieve-player-lists net-mgr ()
+  (set! (-> *medius-buddies* ct) 0)
+  (let ((gp-0 (new 'stack 'medius-get-buddy-list-extra-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-buddy-list-extra-info))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 buddies-refreshing-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (lobby-fatal-error 'lobby-connect-failed)
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (set! (-> *medius-ignores* ct) 0)
+  (let ((gp-2 (new 'stack 'medius-get-ignore-list-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-2 message-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-ignore-list))
+    (let ((gp-3 (knet-scert-function-3-args gp-2 ignore-refreshing-callback #f)))
+      (when (nonzero? gp-3)
+        (format 0 "initial function call returned ~D~%" gp-3)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-3)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (lobby-fatal-error 'lobby-connect-failed)
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (dotimes (gp-4 (-> *medius-buddies-online* ct))
+    (send-chat-msg *net-mgr* "@Online" (get-id (-> *medius-buddies-online* data gp-4)) #t)
+    )
+  0
+  )
+
+
+
+

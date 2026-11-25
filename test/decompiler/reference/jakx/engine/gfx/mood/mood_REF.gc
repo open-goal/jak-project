@@ -1297,19 +1297,21 @@
         (set! (-> this lightning-id) (new 'static 'sound-id))
         0
         )
-      (let ((s3-1 (make-sound-instance (-> *sound-info* (-> arg0 info-index)) (new 'static 'sound-id) #f)))
-        (set! (-> this lightning-id) (the-as sound-id (cond
-                                                        (s3-1
-                                                          (quad-copy! (the-as pointer s3-1) (the-as pointer arg0) 4)
-                                                          (set! (-> s3-1 trans quad) (-> arg1 quad))
-                                                          (logior! (-> s3-1 flags) 96)
-                                                          (the-as int (-> s3-1 id))
-                                                          )
-                                                        (else
-                                                          0
-                                                          )
-                                                        )
-                                             )
+      (let ((s3-1 (make-sound-instance (-> *sound-info* (-> arg0 info-index)) (new 'static 'sound-id) (the-as handle #f)))
+            )
+        (set! (-> this lightning-id)
+              (the-as sound-id (cond
+                                 (s3-1
+                                   (quad-copy! (the-as pointer s3-1) (the-as pointer arg0) 4)
+                                   (set! (-> s3-1 trans quad) (-> arg1 quad))
+                                   (logior! (-> s3-1 flags) (sound-spec-flag no-track needs-update))
+                                   (the-as int (-> s3-1 id))
+                                   )
+                                 (else
+                                   0
+                                   )
+                                 )
+                      )
               )
         )
       )
@@ -1739,7 +1741,7 @@
              ((begin (set! v1-200 (find-sound-instance (-> this rain-id) #t)) v1-200)
               (set! (-> v1-200 volume) (the int (* 1024.0 f30-7)))
               (set! (-> v1-200 pitch-mod) (the int (* 1524.0 (-> this sound-pitch))))
-              (logior! (-> v1-200 flags) 64)
+              (logior! (-> v1-200 flags) (sound-spec-flag needs-update))
               (logior! (-> v1-200 mask) 1)
               (-> v1-200 id)
               )

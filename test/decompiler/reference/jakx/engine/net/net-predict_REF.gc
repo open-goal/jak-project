@@ -1,0 +1,342 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type net-predictor-simple
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this net-predictor-simple) (arg0 vector) (arg1 quaternion))
+  (set! (-> this last-net time) (- (- (if *net-mgr*
+                                          (-> *net-mgr* game-state time)
+                                          0
+                                          )
+                                      (if *net-world*
+                                          (-> *net-world* net-state game-start-time)
+                                          0
+                                          )
+                                      )
+                                   (if *net-world*
+                                       (-> *net-world* net-state total-pause-time)
+                                       0
+                                       )
+                                   )
+        )
+  (set! (-> this last-net pos quad) (-> arg0 quad))
+  (set! (-> this last-net vel quad) (-> (new 'static 'vector :w 1.0) quad))
+  (set! (-> this last-net angvel quad) (-> this last-net vel quad))
+  (quaternion-copy! (-> this last-net rot) arg1)
+  (mem-copy! (the-as pointer (-> this active)) (the-as pointer (-> this last-net)) 80)
+  (mem-copy! (the-as pointer (-> this extrapolated)) (the-as pointer (-> this last-net)) 80)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type net-predictor-simple
+;; WARN: Return type mismatch int vs none.
+(defmethod snap-to-last-net! ((this net-predictor-simple))
+  (mem-copy! (the-as pointer (-> this active)) (the-as pointer (-> this last-net)) 80)
+  (mem-copy! (the-as pointer (-> this extrapolated)) (the-as pointer (-> this last-net)) 80)
+  0
+  (none)
+  )
+
+;; definition for method 12 of type net-predictor-simple
+(defmethod needs-send? ((this net-predictor-simple))
+  (let ((gp-0 #f))
+    (let ((v1-5 (- (- (- (if *net-mgr*
+                             (-> *net-mgr* game-state time)
+                             0
+                             )
+                         (if *net-world*
+                             (-> *net-world* net-state game-start-time)
+                             0
+                             )
+                         )
+                      (if *net-world*
+                          (-> *net-world* net-state total-pause-time)
+                          0
+                          )
+                      )
+                   (-> this last-net time)
+                   )
+                )
+          )
+      (-> this pos-err-thresh)
+      (-> this rot-err-thresh)
+      (cond
+        ((< v1-5 (-> this min-delay))
+         )
+        ((< (-> this max-delay) v1-5)
+         (set! gp-0 #t)
+         )
+        (else
+          (extrapolate-from-last-net! this)
+          (let ((f0-2 (vector-vector-distance-squared (-> this extrapolated pos) (-> this active pos))))
+            (if (< (-> this pos-err-thresh) f0-2)
+                (set! gp-0 #t)
+                )
+            )
+          (when (not gp-0)
+            (let ((s4-0 (new 'stack-no-clear 'inline-array 'vector4 2)))
+              (vector4-sub! (-> s4-0 0) (the-as vector4 (-> this extrapolated rot)) (the-as vector4 (-> this active rot)))
+              (vector4-add! (-> s4-0 1) (the-as vector4 (-> this extrapolated rot)) (the-as vector4 (-> this active rot)))
+              (vector4-mul! (-> s4-0 0) (-> s4-0 0) (-> s4-0 0))
+              (vector4-mul! (-> s4-0 1) (-> s4-0 1) (-> s4-0 1))
+              (let ((f0-7 (fmin
+                            (+ (-> s4-0 0 x) (-> s4-0 0 y) (-> s4-0 0 z) (-> s4-0 0 w))
+                            (+ (-> s4-0 1 x) (-> s4-0 1 y) (-> s4-0 1 z) (-> s4-0 1 w))
+                            )
+                          )
+                    )
+                (if (< (-> this rot-err-thresh) f0-7)
+                    (set! gp-0 #t)
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 10 of type net-predictor-simple
+;; WARN: Return type mismatch int vs none.
+(defmethod write-state ((this net-predictor-simple) (arg0 mem-buffer))
+  (let ((s5-0 (-> this active)))
+    (set! (-> s5-0 time) (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+          )
+    (write-pos *level-bounding-box* (-> s5-0 pos) arg0)
+    (write-vector-scaled arg0 (-> s5-0 vel) (-> this vel-scale))
+    (write-quaternion arg0 (-> s5-0 rot))
+    (write-vector-scaled arg0 (-> s5-0 angvel) (-> this angvel-scale))
+    (mem-copy! (the-as pointer (-> this last-net)) (the-as pointer s5-0) 80)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type net-predictor-simple
+;; WARN: Return type mismatch int vs none.
+(defmethod read-state ((this net-predictor-simple) (arg0 mem-buffer) (arg1 int))
+  (let ((s5-0 (-> this last-net)))
+    (when (>= (- arg1 (-> s5-0 time)) 0)
+      (set! (-> s5-0 time) arg1)
+      (read-pos *level-bounding-box* (-> s5-0 pos) arg0)
+      (read-vector-scaled arg0 (-> s5-0 vel) (-> this vel-scale))
+      (read-quaternion arg0 (-> s5-0 rot))
+      (read-vector-scaled arg0 (-> s5-0 angvel) (-> this angvel-scale))
+      )
+    )
+  (mem-copy! (the-as pointer (-> this extrapolated)) (the-as pointer (-> this last-net)) 80)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type net-predictor-simple
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod extrapolate-from-last-net! ((this net-predictor-simple))
+  (let ((s5-0 (- (- (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    (if *net-world*
+                        (-> *net-world* net-state game-start-time)
+                        0
+                        )
+                    )
+                 (if *net-world*
+                     (-> *net-world* net-state total-pause-time)
+                     0
+                     )
+                 )
+              )
+        )
+    (let ((f0-1 (* 0.0033333334 (the float (- s5-0 (-> this last-net time))))))
+      (vector+float*! (-> this extrapolated pos) (-> this last-net pos) (-> this last-net vel) f0-1)
+      (set! (-> this extrapolated vel quad) (-> this last-net vel quad))
+      (let ((s4-0 (new 'stack-no-clear 'inline-array 'quaternion 2)))
+        (let* ((f1-3 (vector-length (-> this last-net angvel)))
+               (f0-2 (* 10430.379 f1-3 f0-1))
+               )
+          (vector-float*! (-> s4-0 0 vec) (-> this last-net angvel) (/ 1.0 f1-3))
+          (quaternion-axis-angle! (-> s4-0 1) (-> s4-0 0 x) (-> s4-0 0 y) (-> s4-0 0 z) f0-2)
+          )
+        (quaternion*! (-> this extrapolated rot) (-> s4-0 1) (-> this last-net rot))
+        )
+      )
+    (set! (-> this extrapolated time) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type net-predictor-simple
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod track-extrapolated! ((this net-predictor-simple))
+  (let ((s5-0 (new 'stack-no-clear 'net-predict-stack1)))
+    (set! (-> s5-0 dt) (seconds-per-frame))
+    (set! (-> s5-0 dt) (fmin 0.0333 (-> s5-0 dt)))
+    (vector-! (-> s5-0 pos-err) (-> this extrapolated pos) (-> this active pos))
+    (set! (-> s5-0 pos-err-len) (vector-length (-> s5-0 pos-err)))
+    (vector+*! (-> s5-0 target-vel) (-> this extrapolated vel) (-> s5-0 pos-err) (-> this pos-track-factor))
+    (vector-! (-> s5-0 accel) (-> s5-0 target-vel) (-> this active vel))
+    (vector-float*! (-> s5-0 accel) (-> s5-0 accel) (-> this vel-track-factor))
+    (vector+*! (-> this active vel) (-> this active vel) (-> s5-0 accel) (-> s5-0 dt))
+    (vector+*! (-> this active pos) (-> this active pos) (-> this active vel) (-> s5-0 dt))
+    (quaternion-smooth-seek! (-> this active rot) (-> this active rot) (-> this extrapolated rot) 0.15)
+    (logclear! (-> this flags) (net-predictor-flag snapped))
+    (when (< (-> this error-snap) (-> s5-0 pos-err-len))
+      (logior! (-> this flags) (net-predictor-flag snapped))
+      (set! (-> this active pos quad) (-> this extrapolated pos quad))
+      (set! (-> this active vel quad) (-> this extrapolated vel quad))
+      (if (logtest? (-> this flags) (net-predictor-flag stale))
+          (set! (-> this active vel quad) (the-as uint128 0))
+          )
+      )
+    )
+  (let ((s5-1 (new 'stack-no-clear 'net-predict-stack0)))
+    (quaternion->matrix (-> s5-1 mat) (-> this active rot))
+    (set! (-> s5-1 up quad) (-> s5-1 mat uvec quad))
+    (vector+float*! (-> s5-1 cquery start-pos) (-> this active pos) (-> s5-1 up) 8192.0)
+    (vector-float*! (-> s5-1 cquery move-dist) (-> s5-1 up) -20480.0)
+    (let ((v1-27 (-> s5-1 cquery)))
+      (set! (-> v1-27 radius) 2048.0)
+      (set! (-> v1-27 collide-with) (collide-spec backgnd obstacle pusher))
+      (set! (-> v1-27 ignore-process0) #f)
+      (set! (-> v1-27 ignore-process1) #f)
+      (set! (-> v1-27 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-27 action-mask) (collide-action solid))
+      (set! (-> v1-27 nav-mesh) #f)
+      )
+    (let ((f0-12 (collide-cache-method-16 *collide-cache* (-> s5-1 cquery))))
+      (when (< 0.0 f0-12)
+        (vector+float*! (-> s5-1 pos) (-> s5-1 cquery start-pos) (-> s5-1 cquery move-dist) f0-12)
+        (vector+float*! (-> s5-1 pos) (-> s5-1 pos) (-> s5-1 up) (- 7782.4 (-> s5-1 cquery radius)))
+        (set! (-> this active pos quad) (-> s5-1 pos quad))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type net-predictor-simple
+;; WARN: Return type mismatch int vs none.
+(defmethod update! ((this net-predictor-simple))
+  (extrapolate-with-collision! this)
+  (track-extrapolated! this)
+  0
+  (none)
+  )
+
+;; definition for method 15 of type net-predictor-simple
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod extrapolate-with-collision! ((this net-predictor-simple))
+  (let ((s5-0 (- (- (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    (if *net-world*
+                        (-> *net-world* net-state game-start-time)
+                        0
+                        )
+                    )
+                 (if *net-world*
+                     (-> *net-world* net-state total-pause-time)
+                     0
+                     )
+                 )
+              )
+        )
+    (let* ((v1-5 (+ (-> this last-net time) (-> this max-extrapolation)))
+           (a0-9 (min s5-0 v1-5))
+           (f30-0 (fmax 0.0 (* 0.0033333334 (the float (- a0-9 (-> this extrapolated time))))))
+           (s4-0 3)
+           )
+      (if (>= (- s5-0 v1-5) 0)
+          (logior! (-> this flags) (net-predictor-flag stale))
+          (logclear! (-> this flags) (net-predictor-flag stale))
+          )
+      (let ((s3-0 (new 'stack-no-clear 'inline-array 'quaternion 2)))
+        (let* ((f1-2 (vector-length (-> this extrapolated angvel)))
+               (f0-3 (* 10430.379 f1-2 f30-0))
+               )
+          (vector-float*! (-> s3-0 0 vec) (-> this extrapolated angvel) (/ 1.0 f1-2))
+          (quaternion-axis-angle! (-> s3-0 1) (-> s3-0 0 x) (-> s3-0 0 y) (-> s3-0 0 z) f0-3)
+          )
+        (quaternion*! (-> this extrapolated rot) (-> s3-0 1) (-> this extrapolated rot))
+        )
+      (let ((s3-1 (new 'stack-no-clear 'inline-array 'collide-query 1)))
+        (while (and (< 0.001 f30-0) (> s4-0 0))
+          (set! (-> s3-1 0 start-pos quad) (-> this extrapolated pos quad))
+          (vector-float*! (-> s3-1 0 move-dist) (-> this extrapolated vel) f30-0)
+          (let ((v1-20 (-> s3-1 0)))
+            (set! (-> v1-20 radius) 4096.0)
+            (set! (-> v1-20 collide-with) (collide-spec backgnd obstacle pusher))
+            (set! (-> v1-20 ignore-process0) #f)
+            (set! (-> v1-20 ignore-process1) #f)
+            (set! (-> v1-20 ignore-pat)
+                  (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                  )
+            (set! (-> v1-20 action-mask) (collide-action solid))
+            (set! (-> v1-20 nav-mesh) #f)
+            )
+          (let ((f0-6 (collide-cache-method-16 *collide-cache* (-> s3-1 0))))
+            (cond
+              ((< f0-6 0.0)
+               (vector+float*!
+                 (-> this extrapolated pos)
+                 (-> this extrapolated pos)
+                 (-> this extrapolated vel)
+                 (* 0.99 f30-0)
+                 )
+               (set! s4-0 -1)
+               )
+              (else
+                (vector+float*!
+                  (-> this extrapolated pos)
+                  (-> this extrapolated pos)
+                  (-> this extrapolated vel)
+                  (* (+ -0.01 f0-6) f30-0)
+                  )
+                (let* ((v1-28 (-> s3-1 0 best-other-tri normal))
+                       (f1-12 (vector-dot (-> this extrapolated vel) v1-28))
+                       )
+                  (vector+float*! (-> this extrapolated vel) (-> this extrapolated vel) v1-28 (- f1-12))
+                  )
+                (set! f30-0 (* f30-0 (- 1.0 f0-6)))
+                (+! s4-0 -1)
+                )
+              )
+            )
+          )
+        )
+      )
+    (set! (-> this extrapolated time) s5-0)
+    )
+  0
+  (none)
+  )
+
+
+
+

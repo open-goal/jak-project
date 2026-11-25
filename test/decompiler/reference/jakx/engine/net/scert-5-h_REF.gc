@@ -256,7 +256,7 @@
   ((message-id               uint8  21)
    (originator-account-id    int32)
    (originator-account-name  uint8  32)
-   (add-type                 int32)
+   (add-type                 medius-add-type)
    )
   )
 
@@ -277,13 +277,13 @@
         (v1-2 (-> this add-type))
         )
     (t9-4 a0-5 a1-4 a2-4 (cond
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-add-type add-single))
                             "add-single"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-add-type add-symmetric))
                             "add-symmetric"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-add-type extra-medius-add-type))
                             "extra-medius-add-type"
                             )
                            (else
@@ -530,7 +530,7 @@
    (status-code            medius-status-code)
    (session-key            uint8  17)
    (originator-account-id  int32)
-   (add-type               int32)
+   (add-type               medius-add-type)
    )
   )
 
@@ -756,13 +756,13 @@
         (v1-3 (-> this add-type))
         )
     (t9-5 a0-6 a1-5 a2-5 (cond
-                           ((zero? v1-3)
+                           ((= v1-3 (medius-add-type add-single))
                             "add-single"
                             )
-                           ((= v1-3 1)
+                           ((= v1-3 (medius-add-type add-symmetric))
                             "add-symmetric"
                             )
-                           ((= v1-3 #xffffff)
+                           ((= v1-3 (medius-add-type extra-medius-add-type))
                             "extra-medius-add-type"
                             )
                            (else
@@ -1298,7 +1298,7 @@
    (ban-account-id   int32)
    (ban-minutes      int32)
    (medius-world-id  int32)
-   (app-type         int32)
+   (app-type         medius-application-type)
    )
   )
 
@@ -1321,13 +1321,13 @@
         (v1-2 (-> this app-type))
         )
     (t9-6 a0-7 a1-6 a2-6 (cond
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-application-type game))
                             "game"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-application-type extra-medius-application-type))
                             "extra-medius-application-type"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-application-type lobby-chat-channel))
                             "lobby-chat-channel"
                             )
                            (else
@@ -1845,7 +1845,7 @@
    (medius-world-id  int32)
    (player-count     uint16)
    (max-players      uint16)
-   (security-level   int32)
+   (security-level   medius-world-security-level-type)
    (generic-field1   uint32)
    (lobby-name       uint8  64)
    (end-of-list      int8)
@@ -2075,19 +2075,19 @@
         (v1-3 (-> this security-level))
         )
     (t9-6 a0-7 a1-6 a2-6 (cond
-                           ((zero? v1-3)
+                           ((= v1-3 (medius-world-security-level-type world-security-none))
                             "world-security-none"
                             )
-                           ((= v1-3 2)
+                           ((= v1-3 (medius-world-security-level-type world-security-closed))
                             "world-security-closed"
                             )
-                           ((= v1-3 #xffffff)
+                           ((= v1-3 (medius-world-security-level-type world-security-extra))
                             "world-security-extra"
                             )
-                           ((= v1-3 1)
+                           ((= v1-3 (medius-world-security-level-type world-security-player-password))
                             "world-security-player-password"
                             )
-                           ((= v1-3 4)
+                           ((= v1-3 (medius-world-security-level-type world-security-spectator-password))
                             "world-security-spectator-password"
                             )
                            (else
@@ -2110,12 +2110,12 @@
    (medius-world-id      int32)
    (player-count         uint16)
    (max-players          uint16)
-   (security-level       int32)
+   (security-level       medius-world-security-level-type)
    (generic-field1       uint32)
    (generic-field2       uint32)
    (generic-field3       uint32)
    (generic-field4       uint32)
-   (generic-field-level  int32)
+   (generic-field-level  medius-world-generic-field-level-type)
    (lobby-name           uint8  64)
    (end-of-list          int8)
    )
@@ -2344,19 +2344,19 @@
         (v1-3 (-> this security-level))
         )
     (t9-6 a0-7 a1-6 a2-6 (cond
-                           ((zero? v1-3)
+                           ((= v1-3 (medius-world-security-level-type world-security-none))
                             "world-security-none"
                             )
-                           ((= v1-3 2)
+                           ((= v1-3 (medius-world-security-level-type world-security-closed))
                             "world-security-closed"
                             )
-                           ((= v1-3 #xffffff)
+                           ((= v1-3 (medius-world-security-level-type world-security-extra))
                             "world-security-extra"
                             )
-                           ((= v1-3 1)
+                           ((= v1-3 (medius-world-security-level-type world-security-player-password))
                             "world-security-player-password"
                             )
-                           ((= v1-3 4)
+                           ((= v1-3 (medius-world-security-level-type world-security-spectator-password))
                             "world-security-spectator-password"
                             )
                            (else
@@ -2375,48 +2375,52 @@
         (a2-11 (-> this generic-field-level))
         (v1-4 (-> this generic-field-level))
         )
-    (t9-11 a0-12 a1-11 a2-11 (cond
-                               ((= v1-4 512)
-                                "medius-world-generic-field-level34"
-                                )
-                               ((= v1-4 128)
-                                "medius-world-generic-field-level23"
-                                )
-                               ((= v1-4 2)
-                                "medius-world-generic-field-level2"
-                                )
-                               ((= v1-4 16)
-                                "medius-world-generic-field-level12"
-                                )
-                               ((= v1-4 256)
-                                "medius-world-generic-field-level234"
-                                )
-                               ((= v1-4 64)
-                                "medius-world-generic-field-level1234"
-                                )
-                               ((= v1-4 1)
-                                "medius-world-generic-field-level1"
-                                )
-                               ((= v1-4 4)
-                                "medius-world-generic-field-level3"
-                                )
-                               ((zero? v1-4)
-                                "medius-world-generic-field-level0"
-                                )
-                               ((= v1-4 32)
-                                "medius-world-generic-field-level123"
-                                )
-                               ((= v1-4 8)
-                                "medius-world-generic-field-level4"
-                                )
-                               ((= v1-4 #xffffff)
-                                "extra-medius-world-generic-field-level-type"
-                                )
-                               (else
-                                 "*unknown*"
-                                 )
-                               )
-           )
+    (t9-11
+      a0-12
+      a1-11
+      a2-11
+      (cond
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level34))
+         "medius-world-generic-field-level34"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level23))
+         "medius-world-generic-field-level23"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level2))
+         "medius-world-generic-field-level2"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level12))
+         "medius-world-generic-field-level12"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level234))
+         "medius-world-generic-field-level234"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level1234))
+         "medius-world-generic-field-level1234"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level1))
+         "medius-world-generic-field-level1"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level3))
+         "medius-world-generic-field-level3"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level0))
+         "medius-world-generic-field-level0"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level123))
+         "medius-world-generic-field-level123"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level4))
+         "medius-world-generic-field-level4"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type extra-medius-world-generic-field-level-type))
+         "extra-medius-world-generic-field-level-type"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      )
     )
   (format #t "~1Tlobby-name[64] @ #x~X~%" (-> this lobby-name))
   (format #t "~1Tend-of-list: ~D~%" (-> this end-of-list))
@@ -2432,12 +2436,12 @@
    (player-count         uint16)
    (max-players          uint16)
    (game-world-count     uint16)
-   (security-level       int32)
+   (security-level       medius-world-security-level-type)
    (generic-field1       uint32)
    (generic-field2       uint32)
    (generic-field3       uint32)
    (generic-field4       uint32)
-   (generic-field-level  int32)
+   (generic-field-level  medius-world-generic-field-level-type)
    (lobby-name           uint8  64)
    (end-of-list          int8)
    )
@@ -2667,19 +2671,19 @@
         (v1-3 (-> this security-level))
         )
     (t9-7 a0-8 a1-7 a2-7 (cond
-                           ((zero? v1-3)
+                           ((= v1-3 (medius-world-security-level-type world-security-none))
                             "world-security-none"
                             )
-                           ((= v1-3 2)
+                           ((= v1-3 (medius-world-security-level-type world-security-closed))
                             "world-security-closed"
                             )
-                           ((= v1-3 #xffffff)
+                           ((= v1-3 (medius-world-security-level-type world-security-extra))
                             "world-security-extra"
                             )
-                           ((= v1-3 1)
+                           ((= v1-3 (medius-world-security-level-type world-security-player-password))
                             "world-security-player-password"
                             )
-                           ((= v1-3 4)
+                           ((= v1-3 (medius-world-security-level-type world-security-spectator-password))
                             "world-security-spectator-password"
                             )
                            (else
@@ -2698,48 +2702,52 @@
         (a2-12 (-> this generic-field-level))
         (v1-4 (-> this generic-field-level))
         )
-    (t9-12 a0-13 a1-12 a2-12 (cond
-                               ((= v1-4 512)
-                                "medius-world-generic-field-level34"
-                                )
-                               ((= v1-4 128)
-                                "medius-world-generic-field-level23"
-                                )
-                               ((= v1-4 2)
-                                "medius-world-generic-field-level2"
-                                )
-                               ((= v1-4 16)
-                                "medius-world-generic-field-level12"
-                                )
-                               ((= v1-4 256)
-                                "medius-world-generic-field-level234"
-                                )
-                               ((= v1-4 64)
-                                "medius-world-generic-field-level1234"
-                                )
-                               ((= v1-4 1)
-                                "medius-world-generic-field-level1"
-                                )
-                               ((= v1-4 4)
-                                "medius-world-generic-field-level3"
-                                )
-                               ((zero? v1-4)
-                                "medius-world-generic-field-level0"
-                                )
-                               ((= v1-4 32)
-                                "medius-world-generic-field-level123"
-                                )
-                               ((= v1-4 8)
-                                "medius-world-generic-field-level4"
-                                )
-                               ((= v1-4 #xffffff)
-                                "extra-medius-world-generic-field-level-type"
-                                )
-                               (else
-                                 "*unknown*"
-                                 )
-                               )
-           )
+    (t9-12
+      a0-13
+      a1-12
+      a2-12
+      (cond
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level34))
+         "medius-world-generic-field-level34"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level23))
+         "medius-world-generic-field-level23"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level2))
+         "medius-world-generic-field-level2"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level12))
+         "medius-world-generic-field-level12"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level234))
+         "medius-world-generic-field-level234"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level1234))
+         "medius-world-generic-field-level1234"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level1))
+         "medius-world-generic-field-level1"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level3))
+         "medius-world-generic-field-level3"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level0))
+         "medius-world-generic-field-level0"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level123))
+         "medius-world-generic-field-level123"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type medius-world-generic-field-level4))
+         "medius-world-generic-field-level4"
+         )
+        ((= v1-4 (medius-world-generic-field-level-type extra-medius-world-generic-field-level-type))
+         "extra-medius-world-generic-field-level-type"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      )
     )
   (format #t "~1Tlobby-name[64] @ #x~X~%" (-> this lobby-name))
   (format #t "~1Tend-of-list: ~D~%" (-> this end-of-list))
@@ -3005,11 +3013,13 @@
 
 ;; definition of type medius-chat-fwd-message
 (deftype medius-chat-fwd-message (structure)
-  ((message-id               uint8  21)
-   (originator-account-id    int32)
-   (originator-account-name  uint8  32)
-   (message-type             int32)
-   (message                  uint8  64)
+  ((message-id                  uint8  21)
+   (originator-account-id       int32)
+   (originator-account-name     uint8  32)
+   (originator-account-name-s8  int8   32 :overlay-at (-> originator-account-name 0))
+   (message-type                medius-chat-message-type)
+   (message                     uint8  64)
+   (message-s8                  int8   64 :overlay-at (-> message 0))
    )
   )
 
@@ -3030,16 +3040,16 @@
         (v1-2 (-> this message-type))
         )
     (t9-4 a0-5 a1-4 a2-4 (cond
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-chat-message-type whisper))
                             "whisper"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-chat-message-type broadcast-across-entire-universe))
                             "broadcast-across-entire-universe"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-chat-message-type extra-medius-chat-message-type))
                             "extra-medius-chat-message-type"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-chat-message-type broadcast))
                             "broadcast"
                             )
                            (else
@@ -3057,9 +3067,10 @@
 (deftype medius-chat-message (structure)
   ((message-id         uint8  21)
    (session-key        uint8  17)
-   (message-type       int32)
+   (message-type       medius-chat-message-type)
    (target-account-id  int32)
    (message            uint8  64)
+   (message-s8         int8   64 :overlay-at (-> message 0))
    )
   )
 
@@ -3079,16 +3090,16 @@
         (v1-2 (-> this message-type))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-chat-message-type whisper))
                             "whisper"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-chat-message-type broadcast-across-entire-universe))
                             "broadcast-across-entire-universe"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-chat-message-type extra-medius-chat-message-type))
                             "extra-medius-chat-message-type"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-chat-message-type broadcast))
                             "broadcast"
                             )
                            (else
@@ -3107,7 +3118,7 @@
 (deftype medius-binary-fwd-message (structure)
   ((message-id             uint8  21)
    (originator-account-id  int32)
-   (message-type           int32)
+   (message-type           medius-binary-message-type)
    (message                uint8  400)
    )
   )
@@ -3128,16 +3139,16 @@
         (v1-2 (-> this message-type))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-binary-message-type target-binary-msg))
                             "target-binary-msg"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-binary-message-type broadcast-binary-msg))
                             "broadcast-binary-msg"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-binary-message-type extra-medius-binary-message-type))
                             "extra-medius-binary-message-type"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-binary-message-type broadcast-binary-msg-across-entire-universe))
                             "broadcast-binary-msg-across-entire-universe"
                             )
                            (else
@@ -3155,7 +3166,7 @@
 (deftype medius-binary-message (structure)
   ((message-id         uint8  21)
    (session-key        uint8  17)
-   (message-type       int32)
+   (message-type       medius-binary-message-type)
    (target-account-id  int32)
    (message            uint8  400)
    )
@@ -3177,16 +3188,16 @@
         (v1-2 (-> this message-type))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-binary-message-type target-binary-msg))
                             "target-binary-msg"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-binary-message-type broadcast-binary-msg))
                             "broadcast-binary-msg"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-binary-message-type extra-medius-binary-message-type))
                             "extra-medius-binary-message-type"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-binary-message-type broadcast-binary-msg-across-entire-universe))
                             "broadcast-binary-msg-across-entire-universe"
                             )
                            (else
@@ -3205,7 +3216,7 @@
 (deftype medius-chat-toggle-request (structure)
   ((message-id   uint8  21)
    (session-key  uint8  17)
-   (chat-toggle  int32)
+   (chat-toggle  medius-chat-toggle)
    )
   )
 
@@ -3225,13 +3236,13 @@
         (v1-2 (-> this chat-toggle))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-chat-toggle medius-chat-enable))
                             "medius-chat-enable"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-chat-toggle medius-chat-disable))
                             "medius-chat-disable"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-chat-toggle extra-medius-chat-toggle))
                             "extra-medius-chat-toggle"
                             )
                            (else
@@ -3498,7 +3509,7 @@
    (status-code          medius-status-code)
    (clan-invitation-id   int32)
    (clan-id              int32)
-   (response-status      int32)
+   (response-status      medius-clan-invitations-response-status)
    (message              uint8  200)
    (leader-account-id    int32)
    (leader-account-name  uint8  32)
@@ -3727,27 +3738,31 @@
         (a2-5 (-> this response-status))
         (v1-3 (-> this response-status))
         )
-    (t9-5 a0-6 a1-5 a2-5 (cond
-                           ((= v1-3 #xffffff)
-                            "extra-medius-clan-invitations-response-status"
-                            )
-                           ((= v1-3 3)
-                            "clan-invitation-revoked"
-                            )
-                           ((= v1-3 2)
-                            "clan-invitation-decline"
-                            )
-                           ((zero? v1-3)
-                            "clan-invitation-undecided"
-                            )
-                           ((= v1-3 1)
-                            "clan-invitation-accept"
-                            )
-                           (else
-                             "*unknown*"
-                             )
-                           )
+    (t9-5
+      a0-6
+      a1-5
+      a2-5
+      (cond
+        ((= v1-3 (medius-clan-invitations-response-status extra-medius-clan-invitations-response-status))
+         "extra-medius-clan-invitations-response-status"
+         )
+        ((= v1-3 (medius-clan-invitations-response-status clan-invitation-revoked))
+         "clan-invitation-revoked"
+         )
+        ((= v1-3 (medius-clan-invitations-response-status clan-invitation-decline))
+         "clan-invitation-decline"
+         )
+        ((= v1-3 (medius-clan-invitations-response-status clan-invitation-undecided))
+         "clan-invitation-undecided"
+         )
+        ((= v1-3 (medius-clan-invitations-response-status clan-invitation-accept))
+         "clan-invitation-accept"
+         )
+        (else
+          "*unknown*"
           )
+        )
+      )
     )
   (format #t "~1Tmessage[200] @ #x~X~%" (-> this message))
   (format #t "~1Tleader-account-id: ~D~%" (-> this leader-account-id))
@@ -3761,7 +3776,7 @@
 (deftype medius-clan-ladder-list-request (structure)
   ((message-id              uint8  21)
    (clan-ladder-stat-index  int32)
-   (sort-order              int32)
+   (sort-order              medius-sort-order)
    (start-position          uint32)
    (page-size               uint32)
    )
@@ -3783,13 +3798,13 @@
         (v1-2 (-> this sort-order))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-sort-order extra-medius-sort-order))
                             "extra-medius-sort-order"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-sort-order medius-descending))
                             "medius-descending"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-sort-order medius-ascending))
                             "medius-ascending"
                             )
                            (else
@@ -4041,7 +4056,7 @@
   ((message-id              uint8  21)
    (clan-id                 int32)
    (clan-ladder-stat-index  int32)
-   (sort-order              int32)
+   (sort-order              medius-sort-order)
    )
   )
 
@@ -4062,13 +4077,13 @@
         (v1-2 (-> this sort-order))
         )
     (t9-4 a0-5 a1-4 a2-4 (cond
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-sort-order extra-medius-sort-order))
                             "extra-medius-sort-order"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-sort-order medius-descending))
                             "medius-descending"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-sort-order medius-ascending))
                             "medius-ascending"
                             )
                            (else
@@ -4313,7 +4328,7 @@
 (deftype medius-clear-game-list-filter-request (structure)
   ((message-id    uint8  21)
    (session-key   uint8  17)
-   (filter-field  int32)
+   (filter-field  medius-game-list-filter-field)
    )
   )
 
@@ -4333,37 +4348,37 @@
         (v1-2 (-> this filter-field))
         )
     (t9-3 a0-4 a1-3 a2-3 (cond
-                           ((= v1-2 7)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-generic-field-1))
                             "medius-filter-generic-field-1"
                             )
-                           ((= v1-2 4)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-game-level))
                             "medius-filter-game-level"
                             )
-                           ((= v1-2 3)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-max-players))
                             "medius-filter-max-players"
                             )
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-player-count))
                             "medius-filter-player-count"
                             )
-                           ((= v1-2 9)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-generic-field-3))
                             "medius-filter-generic-field-3"
                             )
-                           ((= v1-2 10)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-lobby-worldid))
                             "medius-filter-lobby-worldid"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-min-players))
                             "medius-filter-min-players"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-game-list-filter-field extra-medius-game-list-filter-field))
                             "extra-medius-game-list-filter-field"
                             )
-                           ((= v1-2 6)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-rules-set))
                             "medius-filter-rules-set"
                             )
-                           ((= v1-2 5)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-player-skill-level))
                             "medius-filter-player-skill-level"
                             )
-                           ((= v1-2 8)
+                           ((= v1-2 (medius-game-list-filter-field medius-filter-generic-field-2))
                             "medius-filter-generic-field-2"
                             )
                            (else
@@ -4602,7 +4617,7 @@
 
 ;; definition of type medius-clear-stored-account-info-request
 (deftype medius-clear-stored-account-info-request (structure)
-  ((device      int32)
+  ((device      medius-device-type)
    (card-port   int32)
    (card-slot   int32)
    (account-id  int32)
@@ -4623,16 +4638,16 @@
         (v1-2 (-> this device))
         )
     (t9-1 a0-2 a1-1 a2-1 (cond
-                           ((= v1-2 1)
+                           ((= v1-2 (medius-device-type medius-hdd))
                             "medius-hdd"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-device-type extra-medius-device-type))
                             "extra-medius-device-type"
                             )
-                           ((= v1-2 2)
+                           ((= v1-2 (medius-device-type medius-host0))
                             "medius-host0"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-device-type medius-memcard))
                             "medius-memcard"
                             )
                            (else
@@ -4650,7 +4665,7 @@
 
 ;; definition of type medius-clear-stored-account-info-response
 (deftype medius-clear-stored-account-info-response (structure)
-  ((confirmation  int32)
+  ((confirmation  medius-stored-confirmation-type)
    )
   )
 
@@ -4668,22 +4683,22 @@
         (v1-2 (-> this confirmation))
         )
     (t9-1 a0-2 a1-1 a2-1 (cond
-                           ((= v1-2 -1)
+                           ((= v1-2 (medius-stored-confirmation-type medius-stored-file-not-found))
                             "medius-stored-file-not-found"
                             )
-                           ((zero? v1-2)
+                           ((= v1-2 (medius-stored-confirmation-type medius-stored-success))
                             "medius-stored-success"
                             )
-                           ((= v1-2 -3)
+                           ((= v1-2 (medius-stored-confirmation-type medius-stored-directory-not-found))
                             "medius-stored-directory-not-found"
                             )
-                           ((= v1-2 #xffffff)
+                           ((= v1-2 (medius-stored-confirmation-type extra-medius-stored-confirmation-type))
                             "extra-medius-stored-confirmation-type"
                             )
-                           ((= v1-2 -2)
+                           ((= v1-2 (medius-stored-confirmation-type medius-stored-device-not-found))
                             "medius-stored-device-not-found"
                             )
-                           ((= v1-2 -4)
+                           ((= v1-2 (medius-stored-confirmation-type medius-stored-item-already-exists))
                             "medius-stored-item-already-exists"
                             )
                            (else
@@ -5012,7 +5027,7 @@
    (generic-field2       uint32)
    (generic-field3       uint32)
    (generic-field4       uint32)
-   (generic-field-level  int32)
+   (generic-field-level  medius-world-generic-field-level-type)
    )
   )
 
@@ -5039,48 +5054,52 @@
         (a2-11 (-> this generic-field-level))
         (v1-2 (-> this generic-field-level))
         )
-    (t9-11 a0-12 a1-11 a2-11 (cond
-                               ((= v1-2 512)
-                                "medius-world-generic-field-level34"
-                                )
-                               ((= v1-2 128)
-                                "medius-world-generic-field-level23"
-                                )
-                               ((= v1-2 2)
-                                "medius-world-generic-field-level2"
-                                )
-                               ((= v1-2 16)
-                                "medius-world-generic-field-level12"
-                                )
-                               ((= v1-2 256)
-                                "medius-world-generic-field-level234"
-                                )
-                               ((= v1-2 64)
-                                "medius-world-generic-field-level1234"
-                                )
-                               ((= v1-2 1)
-                                "medius-world-generic-field-level1"
-                                )
-                               ((= v1-2 4)
-                                "medius-world-generic-field-level3"
-                                )
-                               ((zero? v1-2)
-                                "medius-world-generic-field-level0"
-                                )
-                               ((= v1-2 32)
-                                "medius-world-generic-field-level123"
-                                )
-                               ((= v1-2 8)
-                                "medius-world-generic-field-level4"
-                                )
-                               ((= v1-2 #xffffff)
-                                "extra-medius-world-generic-field-level-type"
-                                )
-                               (else
-                                 "*unknown*"
-                                 )
-                               )
-           )
+    (t9-11
+      a0-12
+      a1-11
+      a2-11
+      (cond
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level34))
+         "medius-world-generic-field-level34"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level23))
+         "medius-world-generic-field-level23"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level2))
+         "medius-world-generic-field-level2"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level12))
+         "medius-world-generic-field-level12"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level234))
+         "medius-world-generic-field-level234"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level1234))
+         "medius-world-generic-field-level1234"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level1))
+         "medius-world-generic-field-level1"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level3))
+         "medius-world-generic-field-level3"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level0))
+         "medius-world-generic-field-level0"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level123))
+         "medius-world-generic-field-level123"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type medius-world-generic-field-level4))
+         "medius-world-generic-field-level4"
+         )
+        ((= v1-2 (medius-world-generic-field-level-type extra-medius-world-generic-field-level-type))
+         "extra-medius-world-generic-field-level-type"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      )
     )
   (label cfg-29)
   this
@@ -5330,7 +5349,7 @@
    (generic-field2         int32)
    (generic-field3         int32)
    (port                   int32)
-   (game-host-type         int32)
+   (game-host-type         medius-game-host-type)
    (address-list           net-address-list  :inline)
    )
   )
@@ -5365,22 +5384,22 @@
         (v1-2 (-> this game-host-type))
         )
     (t9-17 a0-18 a1-17 a2-17 (cond
-                               ((= v1-2 4)
+                               ((= v1-2 (medius-game-host-type medius-game-host-client-server-aux-udp))
                                 "medius-game-host-client-server-aux-udp"
                                 )
-                               ((= v1-2 #xffffff)
+                               ((= v1-2 (medius-game-host-type extra-medius-game-host))
                                 "extra-medius-game-host"
                                 )
-                               ((zero? v1-2)
+                               ((= v1-2 (medius-game-host-type medius-game-host-client-server))
                                 "medius-game-host-client-server"
                                 )
-                               ((= v1-2 2)
+                               ((= v1-2 (medius-game-host-type medius-game-host-peer-to-peer))
                                 "medius-game-host-peer-to-peer"
                                 )
-                               ((= v1-2 3)
+                               ((= v1-2 (medius-game-host-type medius-game-host-lanplay))
                                 "medius-game-host-lanplay"
                                 )
-                               ((= v1-2 1)
+                               ((= v1-2 (medius-game-host-type medius-game-host-integrated-server))
                                 "medius-game-host-integrated-server"
                                 )
                                (else
@@ -5872,7 +5891,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

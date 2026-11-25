@@ -1,0 +1,3801 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+'event-fire
+
+;; failed to figure out what this is:
+'event-explosion
+
+;; definition for symbol *last-menu-action*, type object
+(define *last-menu-action* (the-as object #f))
+
+;; failed to figure out what this is:
+(defskelgroup skel-map-screen map-screen map-screen-lod0-jg map-screen-idle-ja
+              ((map-screen-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4000)
+              :global-effects 4
+              )
+
+;; definition for function default-base-menu-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior default-base-menu-post base-menu ()
+  (let ((f30-0 (/ (-> self info-ptr scale-x) 10))
+        (f28-0 (/ (-> self info-ptr scale-y) 10))
+        (f26-0 0.1)
+        )
+    (cond
+      ((logtest? (-> self info-ptr flags) (base-menu-info-flag hidden))
+       (if (nonzero? (-> self draw))
+           (logior! (-> self draw status) (draw-control-status no-draw))
+           )
+       )
+      (else
+        (if (nonzero? (-> self draw))
+            (logclear! (-> self draw status) (draw-control-status no-draw))
+            )
+        (when (-> self info-ptr 3d-menu-type)
+          (matrix->transformq (-> self j-mod transform) (math-camera-matrix))
+          (cond
+            ((-> self info-ptr joints)
+             (let ((gp-1 (new 'stack-no-clear 'vector))
+                   (s5-1 (new 'stack-no-clear 'vector))
+                   (s4-0 (new 'stack-no-clear 'vector))
+                   )
+               (set! (-> s4-0 quad) (-> self node-list data (-> self info-ptr joints 0) bone transform trans quad))
+               (transform-point-vector! gp-1 s4-0)
+               (+! (-> gp-1 x) -1792.0)
+               (+! (-> gp-1 y) -1840.0)
+               (when (-> self info-ptr trans-info)
+                 (let ((f0-7 (* (-> self info-ptr trans-info 3d-offset x) f30-0))
+                       (f1-5 (* (-> self info-ptr trans-info 3d-offset y) f28-0))
+                       (f2-1 (* (-> self info-ptr trans-info 3d-offset z) f26-0))
+                       (s3-0 (new 'stack-no-clear 'vector))
+                       )
+                   (let ((f2-2 (+ f2-1 (* -4096.0 f30-0))))
+                     (set-vector! s3-0 f0-7 f1-5 f2-2 1.0)
+                     )
+                   (when (as-type self dropdown-item)
+                     (let ((s1-0 (-> (the-as dropdown-item-info (-> (the-as dropdown-item self) info-ptr)) trans-info))
+                           (s2-1 (the-as dropdown-item self))
+                           )
+                       (cond
+                         ((and (-> s1-0 selected-offset) (-> s2-1 selected))
+                          (set! (-> s2-1 selected-offset x)
+                                (seek-ease (-> s2-1 selected-offset x) (* (-> s1-0 selected-offset x) f30-0) 60.0 -1024.0 40.0)
+                                )
+                          (set! (-> s2-1 selected-offset y)
+                                (seek-ease (-> s2-1 selected-offset y) (* (-> s1-0 selected-offset y) f28-0) 60.0 -1024.0 40.0)
+                                )
+                          (set! (-> s2-1 selected-offset z)
+                                (seek-ease (-> s2-1 selected-offset z) (* (-> s1-0 selected-offset z) f26-0) 60.0 -1024.0 40.0)
+                                )
+                          )
+                         (else
+                           (set! (-> s2-1 selected-offset x) (seek-ease (-> s2-1 selected-offset x) 0.0 60.0 1024.0 40.0))
+                           (set! (-> s2-1 selected-offset y) (seek-ease (-> s2-1 selected-offset y) 0.0 60.0 1024.0 40.0))
+                           (set! (-> s2-1 selected-offset z) (seek-ease (-> s2-1 selected-offset z) 0.0 60.0 1024.0 40.0))
+                           )
+                         )
+                       (vector+! s3-0 s3-0 (-> s2-1 selected-offset))
+                       )
+                     (set! (-> s3-0 w) 1.0)
+                     )
+                   (vector-matrix*! s3-0 s3-0 (math-camera-matrix))
+                   (set! (-> self j-mod transform trans quad) (-> s3-0 quad))
+                   )
+                 )
+               (set! (-> self j-mod transform scale x) f30-0)
+               (set! (-> self j-mod transform scale y) f28-0)
+               (set! (-> self j-mod transform scale z) f26-0)
+               (ja-post)
+               (send-event self 'force-position gp-1)
+               (let ((s3-1 0)
+                     (s2-3 0)
+                     )
+                 (while (< s3-1 (length (-> self info-ptr joints)))
+                   (set! (-> s4-0 quad) (-> self node-list data (-> self info-ptr joints s3-1) bone transform trans quad))
+                   (transform-point-vector! gp-1 s4-0)
+                   (+! (-> gp-1 x) -1792.0)
+                   (+! (-> gp-1 y) -1840.0)
+                   (set! (-> s4-0 quad) (-> self node-list data (-> self info-ptr joints (+ s3-1 1)) bone transform trans quad))
+                   (transform-point-vector! s5-1 s4-0)
+                   (+! (-> s5-1 x) -1792.0)
+                   (+! (-> s5-1 y) -1840.0)
+                   (send-event self 'box-2d s2-3 gp-1 s5-1)
+                   (send-event self 'box s2-3 (-> self node-list data (-> self info-ptr joints s3-1) bone transform))
+                   (+! s2-3 1)
+                   (+! s3-1 2)
+                   )
+                 )
+               )
+             )
+            (else
+              (set! (-> self j-mod transform scale x) f30-0)
+              (set! (-> self j-mod transform scale y) f28-0)
+              (set! (-> self j-mod transform scale z) f26-0)
+              (ja-post)
+              )
+            )
+          )
+        (if (and *hide-menus* (nonzero? (-> self draw)))
+            (logior! (-> self draw status) (draw-control-status no-draw))
+            )
+        (draw-menu self)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 62 of type base-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod handle-input ((this base-menu) (arg0 int))
+  0
+  )
+
+;; definition for function base-menu-event-handler
+;; INFO: Used lq/sq
+(defbehavior base-menu-event-handler base-menu ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('die)
+     (go-virtual exit)
+     )
+    (('force-die)
+     (when (-> self child-handles)
+       (dotimes (s3-1 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s3-1))
+           (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-2 from) (process->ppointer arg0))
+             (set! (-> a1-2 num-params) arg1)
+             (set! (-> a1-2 message) 'to-all-children)
+             (set! (-> a1-2 param 0) (-> arg3 param 0))
+             (set! (-> a1-2 param 1) (-> arg3 param 1))
+             (set! (-> a1-2 param 2) (-> arg3 param 2))
+             (set! (-> a1-2 param 3) (-> arg3 param 3))
+             (set! (-> a1-2 param 4) (-> arg3 param 4))
+             (set! (-> a1-2 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s3-1)) a1-2)
+             )
+           )
+         )
+       )
+     (go empty-state)
+     )
+    (('menu-selection-event)
+     (when (not (and (-> self next-state) (let ((v1-33 (-> self next-state name)))
+                                            (or (= v1-33 'exit) (= v1-33 'enter))
+                                            )
+                     )
+                )
+       (set! *last-menu-action* (-> arg3 param 0))
+       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-4 from) (process->ppointer arg0))
+         (set! (-> a1-4 num-params) arg1)
+         (set! (-> a1-4 message) arg2)
+         (set! (-> a1-4 param 0) (-> arg3 param 0))
+         (set! (-> a1-4 param 1) (-> arg3 param 1))
+         (set! (-> a1-4 param 2) (-> arg3 param 2))
+         (set! (-> a1-4 param 3) (-> arg3 param 3))
+         (set! (-> a1-4 param 4) (-> arg3 param 4))
+         (set! (-> a1-4 param 5) (-> arg3 param 5))
+         (send-event-function (ppointer->process (-> self parent)) a1-4)
+         )
+       )
+     )
+    (('to-all-children)
+     (when (-> self child-handles)
+       (dotimes (s2-0 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-0))
+           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-6 from) (process->ppointer arg0))
+             (set! (-> a1-6 num-params) arg1)
+             (set! (-> a1-6 message) 'to-all-children)
+             (set! (-> a1-6 param 0) (-> arg3 param 0))
+             (set! (-> a1-6 param 1) (-> arg3 param 1))
+             (set! (-> a1-6 param 2) (-> arg3 param 2))
+             (set! (-> a1-6 param 3) (-> arg3 param 3))
+             (set! (-> a1-6 param 4) (-> arg3 param 4))
+             (set! (-> a1-6 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-0)) a1-6)
+             )
+           )
+         )
+       )
+     (default-event-handler self arg0 arg1 arg2 arg3)
+     )
+    (('draw)
+     (when (-> self child-handles)
+       (dotimes (s3-2 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s3-2))
+           (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-9 from) (process->ppointer arg0))
+             (set! (-> a1-9 num-params) arg1)
+             (set! (-> a1-9 message) 'draw)
+             (set! (-> a1-9 param 0) (-> arg3 param 0))
+             (set! (-> a1-9 param 1) (-> arg3 param 1))
+             (set! (-> a1-9 param 2) (-> arg3 param 2))
+             (set! (-> a1-9 param 3) (-> arg3 param 3))
+             (set! (-> a1-9 param 4) (-> arg3 param 4))
+             (set! (-> a1-9 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s3-2)) a1-9)
+             )
+           )
+         )
+       )
+     (draw-menu self)
+     )
+    (('lose-focus)
+     (when (-> self child-handles)
+       (dotimes (s2-1 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-1))
+           (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-11 from) (process->ppointer arg0))
+             (set! (-> a1-11 num-params) arg1)
+             (set! (-> a1-11 message) arg2)
+             (set! (-> a1-11 param 0) (-> arg3 param 0))
+             (set! (-> a1-11 param 1) (-> arg3 param 1))
+             (set! (-> a1-11 param 2) (-> arg3 param 2))
+             (set! (-> a1-11 param 3) (-> arg3 param 3))
+             (set! (-> a1-11 param 4) (-> arg3 param 4))
+             (set! (-> a1-11 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-1)) a1-11)
+             )
+           )
+         )
+       )
+     (set! (-> self focused?) #f)
+     #f
+     )
+    (('in-focus)
+     (when (-> self child-handles)
+       (dotimes (s2-2 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-2))
+           (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-13 from) (process->ppointer arg0))
+             (set! (-> a1-13 num-params) arg1)
+             (set! (-> a1-13 message) arg2)
+             (set! (-> a1-13 param 0) (-> arg3 param 0))
+             (set! (-> a1-13 param 1) (-> arg3 param 1))
+             (set! (-> a1-13 param 2) (-> arg3 param 2))
+             (set! (-> a1-13 param 3) (-> arg3 param 3))
+             (set! (-> a1-13 param 4) (-> arg3 param 4))
+             (set! (-> a1-13 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-2)) a1-13)
+             )
+           )
+         )
+       )
+     (let ((v0-0 (the-as object #t)))
+       (set! (-> self focused?) (the-as symbol v0-0))
+       v0-0
+       )
+     )
+    (('force-position)
+     (when (= (-> self info-ptr box-index) -1)
+       (let ((v1-150 (the-as vector (-> arg3 param 0))))
+         (set! (-> self pos-x) (-> v1-150 x))
+         (set! (-> self pos-y) (-> v1-150 y))
+         (set! (-> self pos-z) (-> v1-150 z))
+         )
+       )
+     (when (-> self child-handles)
+       (dotimes (s2-3 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-3))
+           (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-15 from) (process->ppointer arg0))
+             (set! (-> a1-15 num-params) arg1)
+             (set! (-> a1-15 message) arg2)
+             (set! (-> a1-15 param 0) (-> arg3 param 0))
+             (set! (-> a1-15 param 1) (-> arg3 param 1))
+             (set! (-> a1-15 param 2) (-> arg3 param 2))
+             (set! (-> a1-15 param 3) (-> arg3 param 3))
+             (set! (-> a1-15 param 4) (-> arg3 param 4))
+             (set! (-> a1-15 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-3)) a1-15)
+             )
+           )
+         )
+       #f
+       )
+     )
+    (('box)
+     (when (= (-> arg3 param 0) (-> self info-ptr box-index))
+       (let* ((a2-8 (-> self joint-mat))
+              (a3-2 (the-as matrix (-> arg3 param 1)))
+              (v1-178 (the-as object (-> a3-2 rvec quad)))
+              (a0-84 (-> a3-2 uvec quad))
+              (a1-16 (-> a3-2 fvec quad))
+              (a3-3 (-> a3-2 trans quad))
+              )
+         (set! (-> a2-8 rvec quad) (the-as uint128 v1-178))
+         (set! (-> a2-8 uvec quad) a0-84)
+         (set! (-> a2-8 fvec quad) a1-16)
+         (set! (-> a2-8 trans quad) a3-3)
+         )
+       (when (!= arg0 self)
+         (let ((a1-17 (new 'stack-no-clear 'vector)))
+           (let ((a0-85 (-> self info-ptr trans-info)))
+             (if a0-85
+                 (set! (-> a1-17 quad) (-> a0-85 3d-offset quad))
+                 (set! (-> a1-17 quad) (the-as uint128 0))
+                 )
+             )
+           (vector+! a1-17 a1-17 (-> self extra-offset))
+           (vector-matrix*! (-> self joint-mat trans) a1-17 (-> self joint-mat))
+           )
+         )
+       )
+     (when (-> self child-handles)
+       (dotimes (s2-4 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-4))
+           (let ((a1-19 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-19 from) (process->ppointer arg0))
+             (set! (-> a1-19 num-params) arg1)
+             (set! (-> a1-19 message) arg2)
+             (set! (-> a1-19 param 0) (-> arg3 param 0))
+             (set! (-> a1-19 param 1) (-> arg3 param 1))
+             (set! (-> a1-19 param 2) (-> arg3 param 2))
+             (set! (-> a1-19 param 3) (-> arg3 param 3))
+             (set! (-> a1-19 param 4) (-> arg3 param 4))
+             (set! (-> a1-19 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-4)) a1-19)
+             )
+           )
+         )
+       #f
+       )
+     )
+    (('width-height)
+     (when (not (and (-> self info-ptr 3d-menu-type) (!= arg0 self)))
+       (when (= (-> arg3 param 0) (-> self info-ptr box-index))
+         (if (= (-> self info-ptr width) -1)
+             (set! (-> self width) (the-as int (-> arg3 param 1)))
+             )
+         (if (= (-> self info-ptr height) -1)
+             (set! (-> self height) (the-as int (-> arg3 param 2)))
+             )
+         )
+       (when (-> self child-handles)
+         (dotimes (s2-5 (-> self child-handles length))
+           (when (handle->process (-> self child-handles s2-5))
+             (let ((a1-21 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-21 from) (process->ppointer arg0))
+               (set! (-> a1-21 num-params) arg1)
+               (set! (-> a1-21 message) arg2)
+               (set! (-> a1-21 param 0) (-> arg3 param 0))
+               (set! (-> a1-21 param 1) (-> arg3 param 1))
+               (set! (-> a1-21 param 2) (-> arg3 param 2))
+               (set! (-> a1-21 param 3) (-> arg3 param 3))
+               (set! (-> a1-21 param 4) (-> arg3 param 4))
+               (set! (-> a1-21 param 5) (-> arg3 param 5))
+               (send-event-function (handle->process (-> self child-handles s2-5)) a1-21)
+               )
+             )
+           )
+         #f
+         )
+       )
+     )
+    (('hide)
+     (when (-> self child-handles)
+       (dotimes (s2-6 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-6))
+           (let ((a1-23 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-23 from) (process->ppointer arg0))
+             (set! (-> a1-23 num-params) arg1)
+             (set! (-> a1-23 message) arg2)
+             (set! (-> a1-23 param 0) (-> arg3 param 0))
+             (set! (-> a1-23 param 1) (-> arg3 param 1))
+             (set! (-> a1-23 param 2) (-> arg3 param 2))
+             (set! (-> a1-23 param 3) (-> arg3 param 3))
+             (set! (-> a1-23 param 4) (-> arg3 param 4))
+             (set! (-> a1-23 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-6)) a1-23)
+             )
+           )
+         )
+       )
+     (set! (-> self hidden?) #t)
+     (if (not (and (-> self next-state) (= (-> self next-state name) 'hide)))
+         (go-virtual hide)
+         )
+     )
+    (('unhide)
+     (when (-> self child-handles)
+       (dotimes (s2-7 (-> self child-handles length))
+         (when (handle->process (-> self child-handles s2-7))
+           (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-25 from) (process->ppointer arg0))
+             (set! (-> a1-25 num-params) arg1)
+             (set! (-> a1-25 message) arg2)
+             (set! (-> a1-25 param 0) (-> arg3 param 0))
+             (set! (-> a1-25 param 1) (-> arg3 param 1))
+             (set! (-> a1-25 param 2) (-> arg3 param 2))
+             (set! (-> a1-25 param 3) (-> arg3 param 3))
+             (set! (-> a1-25 param 4) (-> arg3 param 4))
+             (set! (-> a1-25 param 5) (-> arg3 param 5))
+             (send-event-function (handle->process (-> self child-handles s2-7)) a1-25)
+             )
+           )
+         )
+       )
+     (set! (-> self hidden?) #f)
+     #f
+     )
+    (('force-box-update)
+     (default-base-menu-post)
+     )
+    (else
+      (default-event-handler self arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (base-menu)
+  :virtual #t
+  :event base-menu-event-handler
+  :code (behavior ()
+    (until #f
+      (when (-> self info-ptr trans-info)
+        (let ((gp-0 (-> self info-ptr trans-info running-anim)))
+          (-> self info-ptr trans-info anim-speed)
+          (let ((s5-0 0))
+            (when (!= gp-0 -1)
+              (until (< s5-0 0)
+                (ja :group! (-> self draw art-group data gp-0) :num! (identity (the float s5-0)))
+                (cond
+                  ((and (!= (-> self info-ptr trans-info running-anim) -1) (not (ja-max? 0)))
+                   (+! s5-0 1)
+                   )
+                  (else
+                    (if (ja-max? 0)
+                        (send-event (ppointer->process (-> self parent)) 'menu-selection-event 'running-anim-finished gp-0)
+                        )
+                    (+! s5-0 -1)
+                    )
+                  )
+                (suspend)
+                )
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post default-base-menu-post
+  )
+
+;; failed to figure out what this is:
+(defstate enter (base-menu)
+  :virtual #t
+  :event base-menu-event-handler
+  :code (behavior ()
+    (cond
+      ((-> self info-ptr trans-info)
+       (let ((v1-4 (-> self info-ptr trans-info enter-anim))
+             (f30-0 (-> self info-ptr trans-info anim-speed))
+             )
+         (cond
+           ((= v1-4 -1)
+            (if (-> self info-ptr 3d-menu-type)
+                (go-virtual running)
+                )
+            )
+           (else
+             (ja-no-eval :group! (-> self draw art-group data v1-4) :num! (seek! max f30-0) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek! max f30-0))
+               )
+             (go-virtual running)
+             )
+           )
+         )
+       )
+      (else
+        (go-virtual running)
+        )
+      )
+    (sleep-code)
+    )
+  :post default-base-menu-post
+  )
+
+;; failed to figure out what this is:
+(defstate hide (base-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (send-event self 'force-die)
+       )
+      (('unhide)
+       (when (-> self child-handles)
+         (dotimes (s2-0 (-> self child-handles length))
+           (when (handle->process (-> self child-handles s2-0))
+             (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-3 from) (process->ppointer proc))
+               (set! (-> a1-3 num-params) argc)
+               (set! (-> a1-3 message) message)
+               (set! (-> a1-3 param 0) (-> block param 0))
+               (set! (-> a1-3 param 1) (-> block param 1))
+               (set! (-> a1-3 param 2) (-> block param 2))
+               (set! (-> a1-3 param 3) (-> block param 3))
+               (set! (-> a1-3 param 4) (-> block param 4))
+               (set! (-> a1-3 param 5) (-> block param 5))
+               (send-event-function (handle->process (-> self child-handles s2-0)) a1-3)
+               )
+             )
+           )
+         )
+       (set! (-> self hidden?) #f)
+       #f
+       )
+      (else
+        (base-menu-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self hidden?) #t)
+    )
+  :code (behavior ()
+    (when (-> self info-ptr trans-info)
+      (let ((gp-0 (-> self info-ptr trans-info exit-anim)))
+        (-> self info-ptr trans-info anim-speed)
+        (let ((s5-0 0))
+          (when (!= gp-0 -1)
+            (until (< s5-0 0)
+              (ja :group! (-> self draw art-group data gp-0) :num! (identity (the float s5-0)))
+              (let ((v1-15 (and (-> self hidden?) (>= 60 s5-0))))
+                (if v1-15
+                    (+! s5-0 1)
+                    (+! s5-0 -1)
+                    )
+                )
+              (suspend)
+              )
+            (go-virtual running)
+            )
+          )
+        )
+      )
+    (go-virtual running)
+    )
+  :post default-base-menu-post
+  )
+
+;; failed to figure out what this is:
+(defstate wait-enter (base-menu)
+  :virtual #t
+  :event base-menu-event-handler
+  :enter (behavior ()
+    (set! (-> self menu-time) (the-as uint (current-time)))
+    (let ((v1-4 (-> self info-ptr trans-info enter-anim)))
+      (if (!= v1-4 -1)
+          (ja :group! (-> self draw art-group data v1-4) :num! min)
+          )
+      )
+    )
+  :code (behavior ()
+    (until (>= (the-as uint (- (current-time) (the-as int (-> self menu-time))))
+               (-> self info-ptr trans-info enter-delay)
+               )
+      (suspend)
+      )
+    (go-virtual enter)
+    )
+  :post default-base-menu-post
+  )
+
+;; failed to figure out what this is:
+(defstate exit (base-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('dying?)
+       #t
+       )
+      (('die)
+       #f
+       )
+      (else
+        (base-menu-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (-> self child-handles)
+      (dotimes (gp-0 (-> self child-handles length))
+        (send-event (handle->process (-> self child-handles gp-0)) 'die)
+        )
+      )
+    )
+  :code (behavior ()
+    (when (-> self info-ptr trans-info)
+      (when (!= (-> self info-ptr trans-info exit-anim) -1)
+        (let ((v1-7 (-> self info-ptr trans-info exit-anim))
+              (f30-0 (-> self info-ptr trans-info anim-speed))
+              )
+          (cond
+            ((= v1-7 -1)
+             (if (-> self info-ptr 3d-menu-type)
+                 (go-virtual die)
+                 (sleep-code)
+                 )
+             )
+            (else
+              (ja-no-eval :group! (-> self draw art-group data v1-7) :num! (seek! max f30-0) :frame-num 0.0)
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek! max f30-0))
+                )
+              (go-virtual die)
+              )
+            )
+          )
+        )
+      )
+    (while (let ((v1-28 'exit)
+                 (a0-11 (-> self parent))
+                 )
+             (= (-> (the-as process (if a0-11
+                                        (the-as process (-> a0-11 0 self))
+                                        )
+                            )
+                    state
+                    name
+                    )
+                v1-28
+                )
+             )
+      (suspend)
+      )
+    (go-virtual die)
+    )
+  :post default-base-menu-post
+  )
+
+;; failed to figure out what this is:
+(defstate dummy (base-menu)
+  :virtual #t
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate die (base-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('dying?)
+       #t
+       )
+      (('die)
+       #f
+       )
+      (else
+        (base-menu-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (-> self child-handles)
+      (dotimes (gp-0 (-> self child-handles length))
+        (send-event (handle->process (-> self child-handles gp-0)) 'die)
+        )
+      )
+    )
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    )
+  :post default-base-menu-post
+  )
+
+;; definition for method 7 of type base-menu
+(defmethod relocate ((this base-menu) (offset int))
+  (when (-> this child-handles)
+    (if (nonzero? (-> this child-handles))
+        (&+! (-> this child-handles) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 58 of type base-menu
+;; INFO: Used lq/sq
+(defmethod spawn-children ((this base-menu))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 x) (-> this pos-x))
+    (set! (-> s5-0 y) (-> this pos-y))
+    (set! (-> s5-0 z) (-> this pos-z))
+    (dotimes (s4-0 (-> this info-ptr children length))
+      (when (not (handle->process (-> this child-handles s4-0)))
+        (let* ((s2-0 (-> this info-ptr children s4-0 menu-type value))
+               (s3-0 (get-process *default-dead-pool* (the-as type s2-0) #x4000 1))
+               (a0-9 (when s3-0
+                       (let ((s1-0 (method-of-type process activate)))
+                         (s1-0 s3-0 this (symbol->string (-> (the-as type s2-0) symbol)) (the-as pointer #x70004000))
+                         )
+                       (run-now-in-process s3-0 base-menu-init-by-other (-> this info-ptr children s4-0) s5-0 (-> this pad))
+                       (-> s3-0 ppointer)
+                       )
+                     )
+               )
+          (if a0-9
+              (set! (-> this child-handles s4-0) (process->handle (-> a0-9 0)))
+              )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 60 of type base-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod draw-menu ((this base-menu))
+  0
+  )
+
+;; definition for method 59 of type base-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this base-menu))
+  0
+  (none)
+  )
+
+;; definition for method 61 of type base-menu
+;; WARN: Return type mismatch symbol vs object.
+(defmethod default-event-handler ((this base-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  #f
+  )
+
+;; definition for function base-menu-init-by-other
+;; INFO: Used lq/sq
+(defbehavior base-menu-init-by-other base-menu ((arg0 base-menu-info) (arg1 vector) (arg2 int))
+  (set! (-> self mask) (process-mask pause menu))
+  (set! (-> self child-handles) #f)
+  (set! (-> self info-ptr) #f)
+  (set! (-> self focused?) #t)
+  (+! (-> self clock ref-count) -1)
+  (+! (-> *display* real-clock ref-count) 1)
+  (set! (-> self clock) (-> *display* real-clock))
+  (set! (-> self pad) arg2)
+  (set! (-> self extra-offset quad) (the-as uint128 0))
+  (set! (-> self pos-x) (-> arg1 x))
+  (set! (-> self pos-y) (-> arg1 y))
+  (set! (-> self pos-z) (-> arg1 z))
+  (matrix-identity! (-> self offset-matrix))
+  (if (and arg0 (nonzero? arg0))
+      (set! (-> self info-ptr) arg0)
+      )
+  (set! (-> self width) (-> self info-ptr width))
+  (set! (-> self height) (-> self info-ptr height))
+  (set! (-> self width-array) #f)
+  (set! (-> self height-array) #f)
+  (when (-> self info-ptr 3d-menu-type)
+    (let ((s5-0 (art-group-get-by-name *level* (-> self info-ptr 3d-menu-type) (the-as (pointer level) #f))))
+      (art-group-get-by-name *level* (the-as string (-> s5-0 data 0)) (&-> self level))
+      (set! (-> self root) (new 'process 'trsqv))
+      (process-drawable-method-42 self s5-0 0)
+      )
+    (logior! (-> self skel status) (joint-control-status sync-math))
+    (logior! (-> self draw status) (draw-control-status force-vu1))
+    (init (-> self j-mod) self (the-as uint 3) (joint-mod-base-flags attached))
+    (matrix->transformq (-> self j-mod transform) (math-camera-matrix))
+    (when (-> self info-ptr trans-info)
+      (vector+! (-> self root trans) (-> self root trans) (-> self info-ptr trans-info 3d-offset))
+      (let ((v1-45 (-> self info-ptr trans-info enter-anim)))
+        (when (!= v1-45 -1)
+          (ja :group! (-> self draw art-group data v1-45) :num! min)
+          (ja-post)
+          )
+        )
+      )
+    (when (-> self info-ptr joints)
+      (let ((s5-3 (/ (length (-> self info-ptr joints)) 2)))
+        (when (> s5-3 0)
+          (set! (-> self width-array) (new 'process 'boxed-array int32 s5-3))
+          (set! (-> self height-array) (new 'process 'boxed-array int32 s5-3))
+          (let ((s5-4 0)
+                (s4-1 0)
+                )
+            0
+            0
+            (while (< (+ s5-4 1) (length (-> self info-ptr joints)))
+              (let* ((v1-61
+                       (vector-!
+                         (new 'stack-no-clear 'vector)
+                         (-> self node-list data (-> self info-ptr joints s5-4) bone transform trans)
+                         (-> self node-list data (-> self info-ptr joints (+ s5-4 1)) bone transform trans)
+                         )
+                       )
+                     (f0-5 (vector-dot v1-61 (-> self node-list data (-> self info-ptr joints s5-4) bone transform uvec)))
+                     )
+                (set! (-> self width-array s4-1)
+                      (the int (vector-dot v1-61 (-> self node-list data (-> self info-ptr joints s5-4) bone transform rvec)))
+                      )
+                (set! (-> self height-array s4-1) (the int f0-5))
+                )
+              (+! s4-1 1)
+              (+! s5-4 2)
+              )
+            )
+          )
+        )
+      )
+    )
+  (when (-> self info-ptr 3d-menu-type)
+    (when (-> self info-ptr joints)
+      (let ((s5-5 (new 'stack-no-clear 'vector)))
+        (new 'stack-no-clear 'vector)
+        (let ((a1-33 (new 'stack-no-clear 'vector)))
+          (set! (-> a1-33 quad) (-> self node-list data (-> self info-ptr joints 0) bone transform trans quad))
+          (transform-point-vector! s5-5 a1-33)
+          )
+        (+! (-> s5-5 x) -1792.0)
+        (+! (-> s5-5 y) -1840.0)
+        (set! (-> self pos-x) (-> s5-5 x))
+        (set! (-> self pos-y) (-> s5-5 y))
+        (set! (-> self pos-z) (-> s5-5 z))
+        )
+      )
+    )
+  (when (-> arg0 children)
+    (set! (-> self child-handles) (new 'process 'boxed-array handle (-> arg0 children length)))
+    (dotimes (v1-87 (-> arg0 children length))
+      (set! (-> self child-handles v1-87) (the-as handle #f))
+      )
+    (spawn-children self)
+    )
+  (init-menu! self)
+  (set! (-> self event-hook) base-menu-event-handler)
+  (when (-> self width-array)
+    (dotimes (gp-1 (-> self width-array length))
+      (send-event self 'width-height gp-1 (-> self width-array gp-1) (-> self height-array gp-1))
+      )
+    )
+  (cond
+    ((-> self info-ptr trans-info)
+     (if (> (-> self info-ptr trans-info enter-delay) 0)
+         (go-virtual wait-enter)
+         (go-virtual enter)
+         )
+     )
+    (else
+      (go-virtual enter)
+      )
+    )
+  )
+
+;; definition for method 63 of type base-menu
+(defmethod find-menu-by-name ((this base-menu) (arg0 symbol))
+  (if (and (-> this info-ptr) (= (-> this info-ptr name-symbol) arg0))
+      (return this)
+      )
+  (when (-> this child-handles)
+    (dotimes (s4-0 (-> this child-handles length))
+      (let ((s3-0 (handle->process (-> this child-handles s4-0))))
+        (when s3-0
+          (let ((a0-6 (as-type s3-0 base-menu)))
+            (when a0-6
+              (let ((a0-7 (find-menu-by-name (the-as base-menu a0-6) arg0)))
+                (if a0-7
+                    (return a0-7)
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as base-menu #f)
+  )
+
+;; definition for method 64 of type base-menu
+(defmethod all-running? ((this base-menu))
+  (if (not (and (-> this next-state) (= (-> this next-state name) 'running)))
+      (return #f)
+      )
+  (when (-> this child-handles)
+    (dotimes (s5-0 (-> this child-handles length))
+      (when (handle->process (-> this child-handles s5-0))
+        (if (not (all-running? (the-as base-menu (handle->process (-> this child-handles s5-0)))))
+            (return #f)
+            )
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for method 65 of type map-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod update-masks ((this map-menu))
+  (if (logtest? (-> *net-world* net-state flags) 8)
+      (setup-masks (-> this draw) 4 2)
+      (setup-masks (-> this draw) 2 4)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 59 of type map-menu
+(defmethod init-menu! ((this map-menu))
+  (let ((t9-0 (method-of-type base-menu init-menu!)))
+    (t9-0 this)
+    )
+  (update-masks this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate running (map-menu)
+  :virtual #t
+  :post (behavior ()
+    (update-masks self)
+    (default-base-menu-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate enter (map-menu)
+  :virtual #t
+  :post (behavior ()
+    (update-masks self)
+    (default-base-menu-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate exit (map-menu)
+  :virtual #t
+  :post (behavior ()
+    (update-masks self)
+    (default-base-menu-post)
+    )
+  )
+
+;; definition for method 7 of type sprite-menu
+(defmethod relocate ((this sprite-menu) (offset int))
+  (when (-> this sprites)
+    (if (nonzero? (-> this sprites))
+        (&+! (-> this sprites) offset)
+        )
+    )
+  (when (-> this width-array)
+    (if (nonzero? (-> this width-array))
+        (&+! (-> this width-array) offset)
+        )
+    (if (nonzero? (-> this height-array))
+        (&+! (-> this height-array) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 65 of type sprite-menu
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-sprites ((this sprite-menu))
+  (dotimes (s5-0 (-> this sprites length))
+    (let ((v1-3 (-> this info-ptr sprites-info s5-0 offset-from-index))
+          (a3-0 (-> this info-ptr sprites-info s5-0))
+          )
+      (cond
+        ((< v1-3 0)
+         (set-hud-piece-position!
+           (-> this sprites data s5-0)
+           (the int (+ (-> a3-0 offset x) (-> this pos-x)))
+           (the int (+ (-> a3-0 offset y) (-> this pos-y)))
+           )
+         )
+        ((< (-> this sprites length) v1-3)
+         (format *stdebug* "Warning: offset-index is greater than number of sprites for menu!")
+         )
+        ((= (-> a3-0 offset-dir) 2)
+         (set-as-offset-from!
+           (-> this sprites data s5-0)
+           (-> this sprites data v1-3 pos)
+           (the int (-> a3-0 offset x))
+           (the int (-> a3-0 offset y))
+           )
+         )
+        ((zero? (-> a3-0 offset-dir))
+         (let ((a2-3 (* (-> this sprites data v1-3 tex w) (the int (-> this sprites data v1-3 scale-x)))))
+           (set-as-offset-from! (-> this sprites data s5-0) (-> this sprites data v1-3 pos) a2-3 0)
+           )
+         )
+        ((= (-> a3-0 offset-dir) 1)
+         (let ((a3-3 (* (-> this sprites data v1-3 tex h) (the int (-> this sprites data v1-3 scale-y)))))
+           (set-as-offset-from! (-> this sprites data s5-0) (-> this sprites data v1-3 pos) 0 a3-3)
+           )
+         )
+        )
+      )
+    (set! (-> this sprites data s5-0 color w) (the int (* 128.0 (-> this alpha))))
+    (if (!= (-> this pos-z) 0.0)
+        (set! (-> this sprites data s5-0 pos z) #x99999)
+        )
+    )
+  (none)
+  )
+
+;; definition for method 59 of type sprite-menu
+(defmethod init-menu! ((this sprite-menu))
+  (set! (-> this sprites) #f)
+  (set! (-> this alpha) 1.0)
+  (when (-> this info-ptr trans-info)
+    (set! (-> this pos-x) (-> this info-ptr trans-info enter-pos-x))
+    (set! (-> this pos-y) (-> this info-ptr trans-info enter-pos-y))
+    )
+  (when (-> this info-ptr sprites-info)
+    (set! (-> this sprites) (new 'process 'hud-sprite-array (-> this info-ptr sprites-info length)))
+    (dotimes (s5-0 (-> this sprites length))
+      (set! (-> this sprites data s5-0 color x) 128)
+      (set! (-> this sprites data s5-0 color y) 128)
+      (set! (-> this sprites data s5-0 color z) 128)
+      (set! (-> this sprites data s5-0 color w) 128)
+      (set! (-> this sprites data s5-0 tex) (lookup-texture-by-name
+                                              (-> this info-ptr sprites-info s5-0 tex-name)
+                                              (the-as string #f)
+                                              (the-as (pointer texture-page) #f)
+                                              )
+            )
+      (set! (-> this sprites data s5-0 pos z) 0)
+      (set! (-> this sprites data s5-0 pos w) 0)
+      (set! (-> this sprites data s5-0 scale-x) (-> this info-ptr sprites-info s5-0 scale-x))
+      (set! (-> this sprites data s5-0 scale-y) (-> this info-ptr sprites-info s5-0 scale-y))
+      (set! (-> this sprites data s5-0 flags) (-> this info-ptr sprites-info s5-0 flags))
+      )
+    )
+  ((method-of-type base-menu init-menu!) this)
+  (none)
+  )
+
+;; definition for method 60 of type sprite-menu
+;; WARN: Return type mismatch pointer vs object.
+(defmethod draw-menu ((this sprite-menu))
+  (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id bucket792)
+                               )
+    (when (-> this sprites)
+      (dotimes (s3-0 (-> this sprites length))
+        (when (and (-> this sprites data s3-0 tex) (!= (-> this sprites data s3-0 scale-x) 0.0))
+          (update-sprites this)
+          (draw (-> this sprites data s3-0) s4-0 (-> this level))
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate enter (sprite-menu)
+  :virtual #t
+  :event base-menu-event-handler
+  :enter (behavior ()
+    (set! (-> self menu-time) (the-as uint (current-time)))
+    )
+  :trans (behavior ()
+    (let ((a0-0 (-> self info-ptr trans-info)))
+      (cond
+        (a0-0
+          (cond
+            ((= (-> a0-0 enter-anim) -1)
+             (let* ((v1-3 (-> self info-ptr trans-info))
+                    (f0-2
+                      (/ (* 0.0033333334 (the float (- (current-time) (the-as int (-> self menu-time))))) (-> v1-3 move-rate))
+                      )
+                    )
+               (let ((f1-6 (+ (* 3.0 f0-2 f0-2) (* -2.0 f0-2 f0-2 f0-2))))
+                 (let ((f2-6 (* (- (-> v1-3 running-pos-x) (-> v1-3 enter-pos-x)) (fmin 1.0 f1-6)))
+                       (f3-5 (* (- (-> v1-3 running-pos-y) (-> v1-3 enter-pos-y)) (fmin 1.0 f1-6)))
+                       )
+                   (set! (-> self pos-x) (+ (-> v1-3 enter-pos-x) f2-6))
+                   (set! (-> self pos-y) (+ (-> v1-3 enter-pos-y) f3-5))
+                   )
+                 (set! (-> self alpha)
+                       (+ (-> v1-3 enter-alpha) (* (fmin 1.0 f1-6) (fabs (- (-> v1-3 running-alpha) (-> v1-3 enter-alpha)))))
+                       )
+                 )
+               (if (or (>= f0-2 1.0)
+                       (and (= (-> v1-3 enter-pos-x) (-> v1-3 running-pos-x)) (= (-> v1-3 enter-pos-y) (-> v1-3 running-pos-y)))
+                       )
+                   (go-virtual running)
+                   )
+               )
+             )
+            (else
+              (when (-> self info-ptr 3d-menu-type)
+                (when (-> self info-ptr joints)
+                  (let ((gp-0 (new 'stack-no-clear 'vector)))
+                    (transform-point-vector! gp-0 (-> self node-list data (-> self info-ptr joints 0) bone transform trans))
+                    (+! (-> gp-0 x) -1792.0)
+                    (+! (-> gp-0 y) -1840.0)
+                    (set! (-> self pos-x) (-> gp-0 x))
+                    (set! (-> self pos-y) (-> gp-0 y))
+                    (set! (-> self pos-z) (-> gp-0 z))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (else
+          (go-virtual running)
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (sprite-menu)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self menu-time) (the-as uint (current-time)))
+    )
+  :trans (behavior ()
+    (cond
+      ((-> self info-ptr trans-info)
+       (when (not (-> self info-ptr 3d-menu-type))
+         (when (!= (-> self info-ptr trans-info scroll-rate) 0.0)
+           (let* ((v1-7 (-> self info-ptr trans-info))
+                  (f0-3
+                    (/ (* 0.0033333334 (the float (- (current-time) (the-as int (-> self menu-time))))) (-> v1-7 move-rate))
+                    )
+                  )
+             (let* ((f1-7 (+ (* 3.0 f0-3 f0-3) (* -2.0 f0-3 f0-3 f0-3)))
+                    (f2-6 (* (- (-> v1-7 running-pos-x) (-> v1-7 enter-pos-x)) (fmin 1.0 f1-7)))
+                    (f1-9 (* (- (-> v1-7 running-pos-y) (-> v1-7 enter-pos-y)) (fmin 1.0 f1-7)))
+                    )
+               (set! (-> self pos-x) (+ (-> v1-7 enter-pos-x) f2-6))
+               (set! (-> self pos-y) (+ (-> v1-7 enter-pos-y) f1-9))
+               )
+             (if (>= f0-3 1.0)
+                 (go-virtual running)
+                 )
+             )
+           )
+         )
+       )
+      (else
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate exit (sprite-menu)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self menu-time) (the-as uint (current-time)))
+    (call-parent-state-handler enter)
+    )
+  :trans (behavior ()
+    (let ((v1-1 (-> self info-ptr trans-info)))
+      (cond
+        (v1-1
+          (cond
+            ((= (-> v1-1 enter-anim) -1)
+             (let ((f0-2
+                     (/ (* 0.0033333334 (the float (- (current-time) (the-as int (-> self menu-time))))) (-> v1-1 move-rate))
+                     )
+                   )
+               (+ (* 3.0 f0-2 f0-2) (* -2.0 f0-2 f0-2 f0-2))
+               (let* ((f1-9
+                        (/ (* 0.0033333334 (the float (- (current-time) (the-as int (-> self menu-time))))) (-> v1-1 move-rate))
+                        )
+                      (f2-9 (* (- (-> v1-1 exit-pos-x) (-> v1-1 running-pos-x)) (fmin 1.0 f1-9)))
+                      (f1-11 (* (- (-> v1-1 exit-pos-y) (-> v1-1 running-pos-y)) (fmin 1.0 f1-9)))
+                      )
+                 (set! (-> self pos-x) (+ (-> v1-1 running-pos-x) f2-9))
+                 (set! (-> self pos-y) (+ (-> v1-1 running-pos-y) f1-11))
+                 )
+               (set! (-> self alpha)
+                     (- (-> v1-1 running-alpha) (* (fmin 1.0 f0-2) (fabs (- (-> v1-1 running-alpha) (-> v1-1 exit-alpha)))))
+                     )
+               (if (>= f0-2 1.0)
+                   (go-virtual die)
+                   )
+               )
+             )
+            (else
+              (when (-> self info-ptr 3d-menu-type)
+                (when (-> self info-ptr joints)
+                  (let ((gp-0 (new 'stack-no-clear 'vector)))
+                    (transform-point-vector! gp-0 (-> self node-list data (-> self info-ptr joints 0) bone transform trans))
+                    (+! (-> gp-0 x) -1792.0)
+                    (+! (-> gp-0 y) -1840.0)
+                    (set! (-> self pos-x) (-> gp-0 x))
+                    (set! (-> self pos-y) (-> gp-0 y))
+                    (set! (-> self pos-z) (-> gp-0 z))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (else
+          (let ((v1-14 'exit)
+                (a0-15 (-> self parent))
+                )
+            (if (!= (-> (the-as process (if a0-15
+                                            (the-as process (-> a0-15 0 self))
+                                            )
+                                )
+                        state
+                        name
+                        )
+                    v1-14
+                    )
+                (go-virtual die)
+                )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function menu-clear-strip
+;; WARN: Return type mismatch int vs object.
+(defun menu-clear-strip ((arg0 prim-strip))
+  (set! (-> arg0 num-verts) (the-as uint 0))
+  (set! (-> arg0 flags) (prim-flags alpha-blend-enable texture-enable))
+  (set! (-> arg0 adnops 0 cmds) (gs-reg64 test-1))
+  (set! (-> arg0 data0) (new 'static 'gs-test
+                          :ate #x1
+                          :atst (gs-atest greater-equal)
+                          :aref #x26
+                          :afail #x1
+                          :zte #x1
+                          :ztst (gs-ztest greater-equal)
+                          )
+        )
+  0
+  )
+
+;; definition for method 59 of type prim-strip-menu
+(defmethod init-menu! ((this prim-strip-menu))
+  (set! (-> this p-client-array) #f)
+  (when (-> this info-ptr sprites-info)
+    (set! (-> this p-client-array)
+          (new 'process 'boxed-array menu-prim-strip-client (-> this info-ptr sprites-info length))
+          )
+    (set! (-> this colors) (new 'process 'boxed-array rgba (-> this info-ptr sprites-info length)))
+    (dotimes (s5-0 (-> this p-client-array length))
+      (cond
+        ((zero? (-> this info-ptr color))
+         (set! (-> this colors s5-0) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+         )
+        (else
+          (format #t "tag~%")
+          (set! (-> this colors s5-0) (-> this info-ptr color))
+          )
+        )
+      (set! (-> this p-client-array s5-0) (new 'process 'menu-prim-strip-client))
+      (set! (-> this p-client-array s5-0 strip)
+            (new 'process 'prim-strip 4 (-> this info-ptr sprites-info s5-0 tex-id) (the-as string #f))
+            )
+      (set! (-> this p-client-array s5-0 strip level) (level-get *level* 'menu2))
+      (set! (-> this p-client-array s5-0 strip texture-index) (-> this info-ptr sprites-info s5-0 texture-index))
+      )
+    )
+  ((method-of-type base-menu init-menu!) this)
+  (none)
+  )
+
+;; definition for method 60 of type prim-strip-menu
+;; WARN: Return type mismatch none vs object.
+(defmethod draw-menu ((this prim-strip-menu))
+  (when (and (-> this p-client-array) (not *hide-menus*))
+    (dotimes (s5-0 (-> this p-client-array length))
+      (menu-clear-strip (-> this p-client-array s5-0 strip))
+      )
+    (update-strips this)
+    )
+  )
+
+;; definition for method 66 of type prim-strip-menu
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-strips ((this prim-strip-menu))
+  (new 'stack-no-clear 'matrix)
+  0.0
+  0.0
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (dotimes (s4-0 (-> this p-client-array length))
+      (let ((v1-5 (lookup-texture-by-id (-> this p-client-array s4-0 strip tex-id)))
+            (s3-0 (-> this colors s4-0))
+            )
+        (when v1-5
+          (set! (-> s5-0 quad) (-> this info-ptr sprites-info s4-0 offset quad))
+          (let* ((f1-0 (the float (-> v1-5 w)))
+                 (f0-4 (the float (-> v1-5 h)))
+                 (f1-2 (- (* 102.4 f1-0)))
+                 (f0-6 (- (* 102.4 f0-4)))
+                 (f30-0 (* f1-2 (-> this info-ptr sprites-info s4-0 scale-x)))
+                 (f28-0 (* f0-6 (-> this info-ptr sprites-info s4-0 scale-y)))
+                 )
+            (let ((f0-8 (/ f30-0 2))
+                  (f1-5 (/ f28-0 2))
+                  )
+              (cond
+                ((logtest? (-> this info-ptr sprites-info s4-0 flags) (hud-sprite-flags center-x))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) f0-8))
+                 )
+                ((logtest? (-> this info-ptr sprites-info s4-0 flags) (hud-sprite-flags center-y))
+                 (set! (-> s5-0 y) (- (-> s5-0 y) f1-5))
+                 )
+                ((logtest? (-> this info-ptr sprites-info s4-0 flags) (hud-sprite-flags center))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) f0-8))
+                 (set! (-> s5-0 y) (- (-> s5-0 y) f1-5))
+                 )
+                )
+              )
+            (let ((s2-0 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-0 quad) (-> s5-0 quad))
+              (vector-matrix*! s2-0 s2-0 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-0 s3-0 0.0 0.0)
+              )
+            (let ((s2-1 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-1 quad) (-> s5-0 quad))
+              (+! (-> s2-1 x) f30-0)
+              (vector-matrix*! s2-1 s2-1 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-1 s3-0 1.0 0.0)
+              )
+            (let ((s2-2 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-2 quad) (-> s5-0 quad))
+              (+! (-> s2-2 y) f28-0)
+              (vector-matrix*! s2-2 s2-2 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-2 s3-0 0.0 1.0)
+              )
+            (let ((s2-3 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-3 quad) (-> s5-0 quad))
+              (+! (-> s2-3 x) f30-0)
+              (+! (-> s2-3 y) f28-0)
+              (vector-matrix*! s2-3 s2-3 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-3 s3-0 1.0 1.0)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type menu-prim-strip-client
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-strip-vert! ((this menu-prim-strip-client) (arg0 prim-strip) (arg1 vector) (arg2 rgba) (arg3 float) (arg4 float))
+  (let ((v1-3 (-> arg0 data (-> arg0 num-verts))))
+    (set! (-> v1-3 pos quad) (-> arg1 quad))
+    (set! (-> v1-3 col) arg2)
+    (set! (-> v1-3 stq x) arg3)
+    (set! (-> v1-3 stq y) arg4)
+    )
+  (+! (-> arg0 num-verts) 1)
+  0
+  (none)
+  )
+
+;; definition for method 9 of type menu-prim-strip-client
+;; WARN: Return type mismatch int vs none.
+(defmethod prim-client-method-9 ((this menu-prim-strip-client))
+  (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+  (none)
+  )
+
+;; definition for method 7 of type prim-strip-menu
+(defmethod relocate ((this prim-strip-menu) (offset int))
+  (when (-> this p-client-array)
+    (dotimes (v1-2 (-> this p-client-array length))
+      (if (nonzero? (-> this p-client-array v1-2 strip))
+          (&+! (-> this p-client-array v1-2 strip) offset)
+          )
+      (if (nonzero? (-> this p-client-array v1-2))
+          (&+! (-> this p-client-array v1-2) offset)
+          )
+      )
+    (if (nonzero? (-> this p-client-array))
+        (&+! (-> this p-client-array) offset)
+        )
+    )
+  (when (nonzero? (-> this colors))
+    (if (nonzero? (-> this colors))
+        (&+! (-> this colors) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 60 of type sprite-ptr-menu
+(defmethod draw-menu ((this sprite-ptr-menu))
+  (dotimes (s5-0 (-> this p-client-array length))
+    (set! (-> this p-client-array s5-0 strip tex-id)
+          (lookup-texture-id-by-name
+            (the-as string (-> this info-ptr sprites-info s5-0 sprite-ptr value))
+            (the-as string #f)
+            )
+          )
+    )
+  (call-parent-method this)
+  )
+
+;; failed to figure out what this is:
+(defstate running (index-sprite-list-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('get-item-position)
+       (let ((v1-1 (-> block param 0))
+             (a1-1 (the-as vector (-> block param 1)))
+             )
+         (set! (-> a1-1 quad) (-> self info-ptr sprites-info 0 offset quad))
+         (if (= (-> self info-ptr horiz-list?) #f)
+             (+! (-> a1-1 y) (the float (* (-> self info-ptr item-offset) (the-as int v1-1))))
+             (+! (-> a1-1 x) (the float (* (-> self info-ptr item-offset) (the-as int v1-1))))
+             )
+         (vector-matrix*! a1-1 a1-1 (-> self joint-mat))
+         )
+       )
+      (else
+        (base-menu-event-handler proc argc message block)
+        )
+      )
+    )
+  )
+
+;; definition for method 65 of type index-sprite-list-menu
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-sprites ((this index-sprite-list-menu))
+  (when (-> this index-list)
+    (let ((s5-0 (-> this info-ptr sprites-info)))
+      (dotimes (s4-0 (-> this index-list length))
+        (if (and (< s4-0 (-> this index-list length)) (!= (-> this index-list s4-0) -1))
+            (set! (-> this p-client-array s4-0 strip tex-id) (-> s5-0 (-> this index-list s4-0) tex-id))
+            (set! (-> this p-client-array s4-0 strip tex-id)
+                  (lookup-texture-id-by-name "common-white" (the-as string #f))
+                  )
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 66 of type index-sprite-list-menu
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-strips ((this index-sprite-list-menu))
+  (new 'stack-no-clear 'matrix)
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 quad) (-> this info-ptr sprites-info 0 offset quad))
+    (dotimes (s4-0 (-> this index-list length))
+      (let ((v1-6 (lookup-texture-by-id (-> this p-client-array s4-0 strip tex-id)))
+            (s3-0 *color-gray*)
+            )
+        (when v1-6
+          (if (-> this info-ptr color-array)
+              (set! s3-0 (-> (the-as (array rgba) (-> this info-ptr color-array value)) s4-0))
+              )
+          (let* ((f0-1 (the float (-> v1-6 w)))
+                 (f1-1 (the float (-> v1-6 h)))
+                 (f0-3 (- (* 102.4 f0-1)))
+                 (f1-3 (- (* 102.4 f1-1)))
+                 (f30-0 (* f0-3 (-> this info-ptr sprites-info 0 scale-x)))
+                 (f28-0 (* f1-3 (-> this info-ptr sprites-info 0 scale-y)))
+                 )
+            (let ((s2-0 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-0 quad) (-> s5-0 quad))
+              (vector-matrix*! s2-0 s2-0 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-0 s3-0 0.0 0.0)
+              )
+            (let ((s2-1 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-1 quad) (-> s5-0 quad))
+              (+! (-> s2-1 x) f30-0)
+              (vector-matrix*! s2-1 s2-1 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-1 s3-0 1.0 0.0)
+              )
+            (let ((s2-2 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-2 quad) (-> s5-0 quad))
+              (+! (-> s2-2 y) f28-0)
+              (vector-matrix*! s2-2 s2-2 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-2 s3-0 0.0 1.0)
+              )
+            (let ((s2-3 (new 'stack-no-clear 'vector)))
+              (set! (-> s2-3 quad) (-> s5-0 quad))
+              (+! (-> s2-3 x) f30-0)
+              (+! (-> s2-3 y) f28-0)
+              (vector-matrix*! s2-3 s2-3 (-> this joint-mat))
+              (init-strip-vert! (-> this p-client-array s4-0) (-> this p-client-array s4-0 strip) s2-3 s3-0 1.0 1.0)
+              )
+            )
+          )
+        )
+      (if (= (-> this info-ptr horiz-list?) #f)
+          (+! (-> s5-0 y) (the float (-> this info-ptr item-offset)))
+          (+! (-> s5-0 x) (the float (-> this info-ptr item-offset)))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 60 of type index-sprite-list-menu
+(defmethod draw-menu ((this index-sprite-list-menu))
+  (update-sprites this)
+  (call-parent-method this)
+  )
+
+;; definition for method 59 of type index-sprite-list-menu
+(defmethod init-menu! ((this index-sprite-list-menu))
+  (set! (-> this sprites) #f)
+  (set! (-> this index-list) #f)
+  (when (-> this info-ptr trans-info)
+    (set! (-> this pos-x) (-> this info-ptr trans-info enter-pos-x))
+    (set! (-> this pos-y) (-> this info-ptr trans-info enter-pos-y))
+    (set! (-> this pos-z) (the float (-> this info-ptr sprites-info 0 pos-z)))
+    )
+  (let ((v1-13 (-> this info-ptr index-list)))
+    (when v1-13
+      (if (nonzero? (-> v1-13 value))
+          (set! (-> this index-list) (the-as (array int8) (-> v1-13 value)))
+          )
+      )
+    )
+  (set! (-> this p-client-array) #f)
+  (when (-> this index-list)
+    (when (-> this info-ptr sprites-info)
+      (set! (-> this p-client-array)
+            (new 'process 'boxed-array menu-prim-strip-client (-> this index-list allocated-length))
+            )
+      (dotimes (s5-0 (-> this p-client-array length))
+        (set! (-> this p-client-array s5-0) (new 'process 'menu-prim-strip-client))
+        (set! (-> this p-client-array s5-0 strip)
+              (new 'process 'prim-strip 4 (-> this info-ptr sprites-info 0 tex-id) (the-as string #f))
+              )
+        (set! (-> this p-client-array s5-0 strip level) (level-get *level* 'menu2))
+        (set! (-> this p-client-array s5-0 strip texture-index) (-> this info-ptr sprites-info 0 texture-index))
+        )
+      )
+    )
+  ((method-of-type base-menu init-menu!) this)
+  (none)
+  )
+
+;; definition for method 7 of type string-menu
+(defmethod relocate ((this string-menu) (offset int))
+  (when (-> this strings)
+    (dotimes (v1-2 (-> this strings length))
+      (if (nonzero? (-> this strings data v1-2 text))
+          (&+! (-> this strings data v1-2 text) offset)
+          )
+      )
+    (if (nonzero? (-> this strings))
+        (&+! (-> this strings) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 68 of type string-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod update-text-ids ((this string-menu))
+  (when (-> this text-ids)
+    (dotimes (s5-0 (-> this text-ids length))
+      (when (< s5-0 (-> this strings length))
+        (clear (-> this strings data s5-0 text))
+        (when (> (the-as uint (-> this text-ids s5-0)) 0)
+          (let ((s4-0 (-> this info-ptr strings-info s5-0)))
+            (if (-> s4-0 extra-arg)
+                (format
+                  (clear (-> this strings data s5-0 text))
+                  (lookup-text! *common-text* (the-as text-id (-> this text-ids s5-0)) #f)
+                  (-> (the-as symbol (-> s4-0 extra-arg)) value)
+                  )
+                (copy-string<-string
+                  (-> this strings data s5-0 text)
+                  (lookup-text! *common-text* (the-as text-id (-> this text-ids s5-0)) #f)
+                  )
+                )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 67 of type string-menu
+(defmethod update-strings ((this string-menu))
+  (dotimes (s5-0 (-> this strings length))
+    (let ((s3-0 (-> this info-ptr strings-info s5-0 offset-from-index))
+          (s4-0 (-> this info-ptr strings-info s5-0))
+          )
+      (cond
+        ((-> s4-0 string-ptr)
+         (if (-> s4-0 string-ptr-needs-format)
+             (expand-text-to-charp!
+               *common-text*
+               (-> this strings data s5-0 text data)
+               (the-as (pointer uint8) (-> s4-0 string-ptr value))
+               )
+             (copy-charp<-charp (-> this strings data s5-0 text data) (the-as (pointer uint8) (-> s4-0 string-ptr value)))
+             )
+         )
+        (else
+          (when (> (the-as uint (-> s4-0 id)) 0)
+            (if (-> s4-0 extra-arg)
+                (format
+                  (clear (-> this strings data s5-0 text))
+                  (lookup-text! *common-text* (-> s4-0 id) #f)
+                  (-> (the-as symbol (-> s4-0 extra-arg)) value)
+                  )
+                (copy-string<-string (-> this strings data s5-0 text) (lookup-text! *common-text* (-> s4-0 id) #f))
+                )
+            )
+          )
+        )
+      (cond
+        ((< s3-0 0)
+         (set-hud-piece-position!
+           (the-as hud-sprite (-> this strings data s5-0 pos))
+           (the int (+ (-> s4-0 offset x) (-> this pos-x)))
+           (the int (+ (-> s4-0 offset y) (-> this pos-y)))
+           )
+         )
+        ((< (-> this strings length) s3-0)
+         (format *stdebug* "Warning: offset-index is greater than number of strings for menu!")
+         )
+        ((= (-> s4-0 offset-dir) 2)
+         (if (= (-> s4-0 offset-type-from) 1)
+             (set-as-offset-from!
+               (the-as hud-sprite (-> this strings data s5-0 pos))
+               (-> this sprites data s3-0 pos)
+               (the int (-> s4-0 offset x))
+               (the int (-> s4-0 offset y))
+               )
+             (set-as-offset-from!
+               (the-as hud-sprite (-> this strings data s5-0 pos))
+               (-> this strings data s3-0 pos)
+               (the int (-> s4-0 offset x))
+               (the int (-> s4-0 offset y))
+               )
+             )
+         )
+        ((zero? (-> s4-0 offset-dir))
+         )
+        ((= (-> s4-0 offset-dir) 1)
+         )
+        )
+      )
+    )
+  (update-text-ids this)
+  (none)
+  )
+
+;; definition for method 59 of type string-menu
+(defmethod init-menu! ((this string-menu))
+  (set! (-> this strings) #f)
+  (set! (-> this text-ids) #f)
+  (when (-> this info-ptr strings-info)
+    (set! (-> this strings) (new 'process 'menu-string-array (-> this info-ptr strings-info length)))
+    (dotimes (s5-0 (-> this strings length))
+      (set! (-> this strings data s5-0 text) (new 'process 'string 512 (the-as string #f)))
+      (set! (-> this strings data s5-0 scale) (-> this info-ptr strings-info s5-0 font-scale))
+      (set! (-> this strings data s5-0 flags) (-> this info-ptr strings-info s5-0 font-flags))
+      (set! (-> this strings data s5-0 color) (-> this info-ptr strings-info s5-0 font-color))
+      (set! (-> this strings data s5-0 alpha) 1.0)
+      (set! (-> this strings data s5-0 pos z) (-> this info-ptr strings-info s5-0 pos-z))
+      )
+    )
+  (let ((v1-34 (-> this info-ptr text-ids)))
+    (when v1-34
+      (if (nonzero? (-> v1-34 value))
+          (set! (-> this text-ids) (the-as (array strings-extra-struct) (-> v1-34 value)))
+          )
+      )
+    )
+  ((method-of-type prim-strip-menu init-menu!) this)
+  (none)
+  )
+
+;; definition for symbol METERS_PER_TEXEL, type float
+(define METERS_PER_TEXEL 200.0)
+
+;; definition for method 60 of type string-menu
+;; INFO: Used lq/sq
+(defmethod draw-menu ((this string-menu))
+  (cond
+    ((= (-> this info-ptr box-index) -1)
+     (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                  (bucket-id bucket792)
+                                  )
+       (when (-> this strings)
+         (update-strings this)
+         (dotimes (s3-0 (-> this strings length))
+           (let ((a2-1 (new
+                         'stack
+                         'font-context
+                         *font-default-matrix*
+                         0
+                         0
+                         8396850.0
+                         (font-color default)
+                         (font-flags shadow kerning)
+                         )
+                       )
+                 )
+             (when (-> this strings data s3-0 text)
+               (set-origin! a2-1 (-> this strings data s3-0 pos x) (-> this strings data s3-0 pos y))
+               (cond
+                 ((= (-> this pos-z) 0.0)
+                  (let ((v1-16 a2-1))
+                    (set! (-> v1-16 origin z) (the float (-> this strings data s3-0 pos z)))
+                    )
+                  )
+                 (else
+                   (let ((v1-17 a2-1))
+                     (set! (-> v1-17 origin z) (the float (* (+ (the int (-> this pos-z)) 5000) 16)))
+                     )
+                   )
+                 )
+               (set-width! a2-1 (-> this width))
+               (set-height! a2-1 (-> this height))
+               (set! (-> a2-1 scale) (-> this strings data s3-0 scale))
+               (set! (-> a2-1 flags) (the-as font-flags (-> this strings data s3-0 flags)))
+               (set! (-> a2-1 color) (-> this strings data s3-0 color))
+               (set! (-> a2-1 alpha) (-> this strings data s3-0 alpha))
+               (logior! (-> a2-1 flags) (font-flags ff8))
+               (draw-string (-> this strings data s3-0 text) s4-0 a2-1)
+               )
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let* ((s5-1 (new 'stack-no-clear 'matrix))
+             (s4-1 (new 'stack 'font-context s5-1 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+             )
+        (when (-> this strings)
+          (update-strings this)
+          (set! (-> (new 'stack-no-clear 'vector) quad) (-> this offset-matrix trans quad))
+          (dotimes (s3-1 (-> this strings length))
+            (when (-> this strings data s3-1 text)
+              (let ((v1-60 (-> this info-ptr strings-info s3-1))
+                    (s2-0 (new 'stack-no-clear 'vector))
+                    )
+                (vector-reset! s2-0)
+                (vector+! s2-0 s2-0 (-> v1-60 offset))
+                (matrix*! s5-1 (-> this joint-mat) (-> this offset-matrix))
+                (vector-matrix*! s2-0 s2-0 s5-1)
+                (set! (-> s5-1 trans quad) (-> s2-0 quad))
+                )
+              (let ((v1-63 s4-1))
+                (set! (-> v1-63 width) (/ (the float (-> this width)) METERS_PER_TEXEL))
+                )
+              (let ((v1-64 s4-1))
+                (set! (-> v1-64 height) (/ (the float (-> this height)) METERS_PER_TEXEL))
+                )
+              (set-scale! s4-1 (-> this strings data s3-1 scale))
+              (set! (-> s4-1 flags) (the-as font-flags (-> this strings data s3-1 flags)))
+              (set! (-> s4-1 color) (-> this strings data s3-1 color))
+              (set! (-> s4-1 alpha) (-> this strings data s3-1 alpha))
+              (when *draw-debug-boxes*
+                (let ((s2-1 (new 'stack-no-clear 'vector))
+                      (s0-0 (new 'stack-no-clear 'vector))
+                      (s1-0 (new 'stack-no-clear 'vector))
+                      )
+                  (vector-float*! s2-1 (-> s5-1 rvec) (- (the float (-> this width))))
+                  (vector+! s1-0 (-> s5-1 trans) s2-1)
+                  (add-debug-line #t (bucket-id debug-no-zbuf1) (-> s5-1 trans) s1-0 *color-red* #f (the-as rgba -1))
+                  (vector-float*! s0-0 (-> s5-1 uvec) (- (the float (-> this height))))
+                  (vector+! s1-0 (-> s5-1 trans) s0-0)
+                  (add-debug-line #t (bucket-id debug-no-zbuf1) (-> s5-1 trans) s1-0 *color-red* #f (the-as rgba -1))
+                  (vector+! s1-0 (-> s5-1 trans) s0-0)
+                  (add-debug-line
+                    #t
+                    (bucket-id debug-no-zbuf1)
+                    s1-0
+                    (vector+! (new 'stack-no-clear 'vector) s1-0 s2-1)
+                    *color-red*
+                    #f
+                    (the-as rgba -1)
+                    )
+                  (vector+! s1-0 s1-0 s2-1)
+                  (add-debug-line
+                    #t
+                    (bucket-id debug-no-zbuf1)
+                    s1-0
+                    (vector-! (new 'stack-no-clear 'vector) s1-0 s0-0)
+                    *color-red*
+                    #f
+                    (the-as rgba -1)
+                    )
+                  )
+                )
+              (let ((f28-0 (print-game-text
+                             (-> this strings data s3-1 text)
+                             s4-1
+                             #t
+                             44
+                             (bucket-id bucket791)
+                             (the-as string #f)
+                             (the-as dma-buffer #f)
+                             )
+                           )
+                    )
+                (-> s4-1 height)
+                (let ((f30-0 (-> this strings data s3-1 scale)))
+                  (when (-> this info-ptr strings-info s3-1 is-player-string)
+                    (let ((a0-81 (get-player-amplitude (-> this strings data s3-1 text data))))
+                      (when (< 5 (the-as int a0-81))
+                        (let ((v1-101 (max 20 (min 50 (the-as int a0-81)))))
+                          (set! f30-0 (* f30-0 (- 1.0 (* 0.001 (the float v1-101)))))
+                          )
+                        (set! (-> s4-1 color) (font-color white))
+                        )
+                      )
+                    )
+                  (while (and (< 0.1 f30-0) (>= f28-0 (-> s4-1 height)))
+                    (set! f30-0 (+ -0.01 f30-0))
+                    (set-scale! s4-1 f30-0)
+                    (set! f28-0 (print-game-text
+                                  (-> this strings data s3-1 text)
+                                  s4-1
+                                  #t
+                                  44
+                                  (bucket-id bucket791)
+                                  (the-as string #f)
+                                  (the-as dma-buffer #f)
+                                  )
+                          )
+                    )
+                  )
+                )
+              (if (not *hide-menus*)
+                  (print-game-text
+                    (-> this strings data s3-1 text)
+                    s4-1
+                    #f
+                    44
+                    (bucket-id bucket791)
+                    (the-as string #f)
+                    (the-as dma-buffer #f)
+                    )
+                  )
+              )
+            )
+          (matrix-identity! (-> this offset-matrix))
+          )
+        )
+      )
+    )
+  ((method-of-type prim-strip-menu draw-menu) this)
+  )
+
+;; definition for method 61 of type string-menu
+(defmethod default-event-handler ((this string-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('to-all-children)
+     (case (-> arg3 param 0)
+       (('set-strings-disabled)
+        (when (-> this strings)
+          (dotimes (v1-3 (-> this strings length))
+            (set! (-> this strings data v1-3 alpha) 0.2)
+            )
+          )
+        )
+       (('set-strings-enabled)
+        (when (-> this strings)
+          (dotimes (v1-6 (-> this strings length))
+            (set! (-> this strings data v1-6 alpha) 1.0)
+            )
+          )
+        )
+       (('selected)
+        (let ((v1-8 (-> this strings)))
+          (when v1-8
+            (dotimes (t1-23 (-> v1-8 length))
+              (set! (-> v1-8 data t1-23 color) (-> this info-ptr strings-info t1-23 font-color-2))
+              )
+            )
+          )
+        )
+       (('deselected)
+        (let ((v1-10 (-> this strings)))
+          (when v1-10
+            (dotimes (t1-28 (-> v1-10 length))
+              (set! (-> v1-10 data t1-28 color) (-> this info-ptr strings-info t1-28 font-color))
+              )
+            )
+          )
+        )
+       )
+     )
+    )
+  ((method-of-type prim-strip-menu default-event-handler) this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 59 of type options-bar-indicator
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this options-bar-indicator))
+  (call-parent-method this)
+  (set! (-> this colors 0) (new 'static 'rgba :g #x50 :b #x80 :a #x40))
+  (none)
+  )
+
+;; definition for method 61 of type options-bar-indicator
+(defmethod default-event-handler ((this options-bar-indicator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('update)
+     (let ((v1-5 (lookup-texture-by-id (-> this p-client-array 0 strip tex-id))))
+       0.0
+       (set! (-> this info-ptr sprites-info 0 scale-x) (* 82.0 (the-as float (-> arg3 param 0))))
+       (let ((f0-5 (* 102.4 (-> this info-ptr sprites-info 0 scale-x) (the float (-> v1-5 w)))))
+         (set! (-> this info-ptr sprites-info 1 offset x) (- -5734.4 f0-5))
+         )
+       )
+     )
+    )
+  (call-parent-method this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 67 of type dropdown-item
+;; WARN: Return type mismatch int vs none.
+(defmethod update-strings ((this dropdown-item))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (if (-> this selected)
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color-2))
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 69 of type dropdown-item
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-highlight ((this dropdown-item))
+  (new 'stack-no-clear 'matrix)
+  (let ((s4-0 (-> this width))
+        (s5-0 (-> this height))
+        (s3-0 (new 'stack-no-clear 'vector))
+        (s2-0 (-> this info-ptr selection-box-color))
+        )
+    (if (!= (-> this info-ptr selection-box-width) -1)
+        (set! s4-0 (-> this info-ptr selection-box-width))
+        )
+    (if (!= (-> this info-ptr selection-box-height) -1)
+        (set! s5-0 (-> this info-ptr selection-box-height))
+        )
+    (if (and (-> this strings) (-> this strings data))
+        (set! s2-0
+              (copy-and-set-field
+                (copy-and-set-field
+                  (copy-and-set-field
+                    (copy-and-set-field
+                      s2-0
+                      a
+                      (the int (* (-> this strings data 0 alpha) (the float (-> this info-ptr selection-box-color a))))
+                      )
+                    r
+                    (the int (* (-> this strings data 0 alpha) (the float (-> this info-ptr selection-box-color r))))
+                    )
+                  g
+                  (the int (* (-> this strings data 0 alpha) (the float (-> this info-ptr selection-box-color g))))
+                  )
+                b
+                (the int (* (-> this strings data 0 alpha) (the float (-> this info-ptr selection-box-color b))))
+                )
+              )
+        )
+    (let* ((f0-13 (* 0.0033333334 (the float (current-time))))
+           (f0-14 (- f0-13 (* (the float (the int (/ f0-13 1.0))) 1.0)))
+           (f0-15 (* 360.0 f0-14))
+           (f0-19 (* 0.5 (+ 1.0 (sin (* 182.04445 f0-15)))))
+           (f3-0 (the float (-> s2-0 r)))
+           (f2-1 (the float (-> s2-0 g)))
+           (f1-20 (the float (-> s2-0 b)))
+           (f3-1 (+ f3-0 (* (- 48.0 f3-0) (fmin 1.0 f0-19))))
+           (f2-2 (+ f2-1 (* (- 16.0 f2-1) (fmin 1.0 f0-19))))
+           (f0-22 (+ f1-20 (* (- 96.0 f1-20) (fmin 1.0 f0-19))))
+           (s2-1 (copy-and-set-field
+                   (copy-and-set-field (copy-and-set-field s2-0 r (the int f3-1)) g (the int f2-2))
+                   b
+                   (the int f0-22)
+                   )
+                 )
+           )
+      (set! (-> s3-0 quad) (-> this info-ptr selection-box-offset quad))
+      (let ((s1-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s1-0 quad) (-> s3-0 quad))
+        (vector-matrix*! s1-0 s1-0 (-> this joint-mat))
+        (init-strip-vert! (-> this p-client-selection) (-> this p-client-selection strip) s1-0 s2-1 0.0 0.0)
+        )
+      (let ((s1-1 (new 'stack-no-clear 'vector)))
+        (set! (-> s1-1 quad) (-> s3-0 quad))
+        (set! (-> s1-1 x) (- (-> s1-1 x) (the float s4-0)))
+        (vector-matrix*! s1-1 s1-1 (-> this joint-mat))
+        (init-strip-vert! (-> this p-client-selection) (-> this p-client-selection strip) s1-1 s2-1 1.0 0.0)
+        )
+      (let ((s1-2 (new 'stack-no-clear 'vector)))
+        (set! (-> s1-2 quad) (-> s3-0 quad))
+        (set! (-> s1-2 y) (- (-> s1-2 y) (the float s5-0)))
+        (vector-matrix*! s1-2 s1-2 (-> this joint-mat))
+        (init-strip-vert! (-> this p-client-selection) (-> this p-client-selection strip) s1-2 s2-1 0.0 1.0)
+        )
+      (let ((s1-3 (new 'stack-no-clear 'vector)))
+        (set! (-> s1-3 quad) (-> s3-0 quad))
+        (set! (-> s1-3 x) (- (-> s1-3 x) (the float s4-0)))
+        (set! (-> s1-3 y) (- (-> s1-3 y) (the float s5-0)))
+        (vector-matrix*! s1-3 s1-3 (-> this joint-mat))
+        (init-strip-vert! (-> this p-client-selection) (-> this p-client-selection strip) s1-3 s2-1 1.0 1.0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type dropdown-item
+(defmethod relocate ((this dropdown-item) (offset int))
+  (when (and (nonzero? (-> this p-client-selection)) (-> this p-client-selection))
+    (if (nonzero? (-> this p-client-selection strip))
+        (&+! (-> this p-client-selection strip) offset)
+        )
+    (if (nonzero? (-> this p-client-selection))
+        (&+! (-> this p-client-selection) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 62 of type dropdown-item
+;; WARN: Return type mismatch int vs object.
+(defmethod handle-input ((this dropdown-item) (arg0 int))
+  (cond
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr down-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons down))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons down))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons down))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr up-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons up))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons up))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons up))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons left))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr left-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons left))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons left))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons left))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons right))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr right-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons right))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons right))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons right))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (when (send-event
+             (ppointer->process (-> this parent))
+             'menu-selection-event
+             'accept
+             (-> this info-ptr selection-type)
+             (-> this info-ptr selection-extra)
+             arg0
+             )
+       (let ((v1-70 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-70
+             (logior! (-> v1-70 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-70 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons x))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons x))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons x))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+     (when (send-event
+             (ppointer->process (-> this parent))
+             'menu-selection-event
+             'cancel
+             (-> this info-ptr selection-type)
+             (-> this info-ptr selection-extra)
+             arg0
+             )
+       (let ((v1-91 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-91
+             (logior! (-> v1-91 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-91 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons triangle))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons triangle))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons triangle))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+     (send-event
+       (ppointer->process (-> this parent))
+       'menu-selection-event
+       'square
+       (-> this info-ptr selection-type)
+       (-> this info-ptr selection-extra)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons square))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons square))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons square))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons circle))
+     (send-event
+       (ppointer->process (-> this parent))
+       'menu-selection-event
+       'circle
+       (-> this info-ptr selection-type)
+       (-> this info-ptr selection-extra)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons circle))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons circle))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons circle))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons l1))
+     (send-event
+       (ppointer->process (-> this parent))
+       'menu-selection-event
+       'l1
+       (-> this info-ptr selection-type)
+       (-> this info-ptr selection-extra)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons circle))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons circle))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons circle))
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (dropdown-item)
+  :virtual #t
+  :exit (behavior ()
+    (menu-clear-strip (-> self p-client-selection strip))
+    )
+  :trans (behavior ()
+    (when (and (-> self focused?) (-> self selected))
+      (cond
+        ((or (zero? (-> self pad)) (= (-> self pad) 1))
+         (handle-input self (-> self pad))
+         )
+        ((= (-> self pad) 2)
+         (handle-input self 0)
+         (handle-input self 1)
+         )
+        )
+      )
+    (call-parent-state-handler trans)
+    )
+  :post (behavior ()
+    (menu-clear-strip (-> self p-client-selection strip))
+    (if (logtest? (-> self info-ptr flags) (base-menu-info-flag disabled))
+        (set! (-> self enabled) #f)
+        )
+    (default-base-menu-post)
+    (if (and (-> self enabled) (and (-> self focused?) (-> self selected) (not *hide-menus*)))
+        (draw-highlight self)
+        )
+    )
+  )
+
+;; definition for method 61 of type dropdown-item
+(defmethod default-event-handler ((this dropdown-item) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('selected)
+     (cond
+       ((-> this enabled)
+        (send-event
+          (ppointer->process (-> this parent))
+          'menu-selection-event
+          'changed
+          (-> this info-ptr selection-type)
+          )
+        (set! (-> this selected) #t)
+        (set! (-> this prev-selection) (the-as int (-> arg3 param 0)))
+        (if (= (-> *lobby-menu-manager* state name) *last-lobby-state*)
+            (insert-selection-cache (-> *lobby-menu-manager* state name) (-> this info-ptr selection-type))
+            )
+        (let ((v0-2 (the-as object (-> *lobby-menu-manager* state name))))
+          (set! *last-lobby-state* (the-as symbol v0-2))
+          v0-2
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    (('deselected)
+     (set! (-> this selected) #f)
+     #f
+     )
+    (('enabled)
+     (set! (-> this enabled) #t)
+     (send-event this 'to-all-children 'set-strings-enabled)
+     )
+    (('disabled)
+     (set! (-> this enabled) #f)
+     (if (-> this selected)
+         (send-event (ppointer->process (-> this parent)) 'next 0)
+         )
+     (send-event this 'to-all-children 'set-strings-disabled)
+     )
+    (('sym?)
+     (= (-> arg3 param 0) (-> this info-ptr selection-type))
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 59 of type dropdown-item
+(defmethod init-menu! ((this dropdown-item))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> this prev-selection) -1)
+    (set! (-> this p-client-selection) (new 'process 'menu-prim-strip-client))
+    (set! (-> this p-client-selection strip)
+          (new 'process 'prim-strip 4 (lookup-texture-id-by-name "common-white" (the-as string #f)) (the-as string #f))
+          )
+    (set! (-> this p-client-selection strip level) (level-get *level* 'menu2))
+    (set! (-> this p-client-selection strip texture-index) (-> this info-ptr selection-box-texture-index))
+    (let ((v1-8 (-> this selected-offset)))
+      (let ((f0-0 1.0))
+        (.lvf vf1 (&-> v1-8 quad))
+        (.mul.vf.xyz vf2 vf1 vf1)
+        (let ((a0-10 f0-0))
+          (.mov vf3 a0-10)
+          )
+        )
+      (.mul.x.vf.w acc vf0 vf2)
+      (.add.mul.y.vf.w acc vf0 vf2 acc)
+      (.add.mul.z.vf.w vf2 vf0 vf2 acc)
+      (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+      (.wait.vf)
+      (.mul.vf.xyz vf1 vf1 Q)
+      (.nop.vf)
+      (.nop.vf)
+      (.nop.vf)
+      (.svf (&-> v1-8 quad) vf1)
+      )
+    (menu-clear-strip (-> this p-client-selection strip))
+    (set! (-> this selected) #f)
+    (set! (-> this enabled) #t)
+    ((method-of-type string-menu init-menu!) this)
+    (none)
+    )
+  )
+
+;; definition for method 59 of type basic-list-selection
+(defmethod init-menu! ((this basic-list-selection))
+  (set! (-> this menu-options-info-ptr) #f)
+  (set! (-> this selection-index) 0)
+  (let ((v1-1 (-> this info-ptr menu-options-info-sym)))
+    (when v1-1
+      (if (nonzero? (-> v1-1 value))
+          (set! (-> this menu-options-info-ptr) (the-as (array menu-option-info) (-> v1-1 value)))
+          )
+      )
+    )
+  ((method-of-type string-menu init-menu!) this)
+  (none)
+  )
+
+;; definition for method 67 of type basic-list-selection
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this basic-list-selection))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (let ((s5-0 (-> this menu-options-info-ptr)))
+    (when s5-0
+      (dotimes (s4-0 (-> this strings length))
+        (clear (-> this strings data s4-0 text))
+        )
+      (dotimes (s4-1 (-> s5-0 length))
+        (when (< s4-1 (-> this strings length))
+          (format (-> this strings data s4-1 text) (lookup-text! *common-text* (-> s5-0 s4-1 display-name-id) #f))
+          (set! (-> this strings data s4-1 scale) (-> this info-ptr strings-info s4-1 font-scale))
+          (cond
+            ((= (-> this selection-index) s4-1)
+             (set! (-> this strings data s4-1 color) (-> this info-ptr strings-info s4-1 font-color-2))
+             (set! (-> this strings data s4-1 scale) (* 1.15 (-> this strings data s4-1 scale)))
+             )
+            (else
+              (set! (-> this strings data s4-1 color) (-> this info-ptr strings-info s4-1 font-color))
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 62 of type basic-list-selection
+(defmethod handle-input ((this basic-list-selection) (arg0 int))
+  (cond
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+     (let ((v1-5 (min
+                   (if (-> this menu-options-info-ptr)
+                       (-> this menu-options-info-ptr length)
+                       0
+                       )
+                   (-> this strings length)
+                   )
+                 )
+           )
+       (when (nonzero? v1-5)
+         (set! (-> this selection-index) (mod (+ (-> this selection-index) 1) v1-5))
+         (send-event
+           (ppointer->process (-> this parent))
+           'menu-selection-event
+           'event
+           (-> this menu-options-info-ptr (-> this selection-index) sym)
+           )
+         (let ((v1-20 (make-sound-instance snd-cycle-vert1 (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-20
+               (logior! (-> v1-20 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-20 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+     (let ((v1-26 (min
+                    (if (-> this menu-options-info-ptr)
+                        (-> this menu-options-info-ptr length)
+                        0
+                        )
+                    (-> this strings length)
+                    )
+                  )
+           )
+       (when (nonzero? v1-26)
+         (+! (-> this selection-index) -1)
+         (if (< (-> this selection-index) 0)
+             (set! (-> this selection-index) (+ v1-26 -1))
+             )
+         (send-event
+           (ppointer->process (-> this parent))
+           'menu-selection-event
+           'event
+           (-> this menu-options-info-ptr (-> this selection-index) sym)
+           )
+         (let ((v1-41 (make-sound-instance snd-cycle-vert1 (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-41
+               (logior! (-> v1-41 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-41 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (if (-> this menu-options-info-ptr)
+         (send-event
+           (ppointer->process (-> this parent))
+           'menu-selection-event
+           (-> this menu-options-info-ptr (-> this selection-index) sym)
+           (-> this menu-options-info-ptr (-> this selection-index) extra-int)
+           (-> this selection-index)
+           )
+         )
+     (let ((v1-63 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-63
+           (logior! (-> v1-63 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-63 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'cancel)
+     (let ((v1-73 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-73
+           (logior! (-> v1-73 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-73 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'square)
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (basic-list-selection)
+  :virtual #t
+  :trans (behavior ()
+    (when (-> self focused?)
+      (cond
+        ((or (zero? (-> self pad)) (= (-> self pad) 1))
+         (handle-input self (-> self pad))
+         )
+        ((= (-> self pad) 2)
+         (handle-input self 0)
+         (handle-input self 1)
+         )
+        )
+      )
+    (call-parent-state-handler trans)
+    )
+  )
+
+;; definition for method 59 of type item-list-selection
+(defmethod init-menu! ((this item-list-selection))
+  (set! (-> this selection-type) (-> this info-ptr selection-type))
+  (set! (-> this selected) #f)
+  (set! (-> this menu-options-info-ptr) #f)
+  (set! (-> this selection-index) 0)
+  (let ((v1-3 (-> this info-ptr menu-options-info-sym)))
+    (when v1-3
+      (if (nonzero? (-> v1-3 value))
+          (set! (-> this menu-options-info-ptr) (the-as menu-selection-struct (-> v1-3 value)))
+          )
+      )
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 67 of type item-list-selection
+;; WARN: Return type mismatch font-color vs none.
+(defmethod update-strings ((this item-list-selection))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (let ((v1-1 (-> this menu-options-info-ptr)))
+    (if v1-1
+        (copy-string<-string
+          (-> this strings data 0 text)
+          (lookup-text! *common-text* (-> v1-1 array-ptr (-> v1-1 selection-index) display-name-id) #f)
+          )
+        )
+    )
+  (if (-> this selected)
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color-2))
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color))
+      )
+  (none)
+  )
+
+;; definition for method 62 of type item-list-selection
+(defmethod handle-input ((this item-list-selection) (arg0 int))
+  (cond
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons right))
+     (cond
+       ((send-event
+          (ppointer->process (-> this parent))
+          'menu-selection-event
+          (-> this selection-type)
+          'next
+          (-> this info-ptr selection-extra)
+          arg0
+          )
+        (let ((v1-11 (make-sound-instance snd-cycle-horz1 (new 'static 'sound-id) (the-as handle #f))))
+          (cond
+            (v1-11
+              (logior! (-> v1-11 flags) (sound-spec-flag needs-update non-positional))
+              (-> v1-11 id)
+              )
+            (else
+              0
+              )
+            )
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons left))
+     (cond
+       ((send-event
+          (ppointer->process (-> this parent))
+          'menu-selection-event
+          (-> this selection-type)
+          'previous
+          (-> this info-ptr selection-extra)
+          arg0
+          )
+        (let ((v1-23 (make-sound-instance snd-cycle-horz1 (new 'static 'sound-id) (the-as handle #f))))
+          (cond
+            (v1-23
+              (logior! (-> v1-23 flags) (sound-spec-flag needs-update non-positional))
+              (-> v1-23 id)
+              )
+            (else
+              0
+              )
+            )
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr down-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons down))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons down))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons down))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+     (send-event
+       (ppointer->process (-> this parent))
+       'change-index
+       (-> this info-ptr up-index-modifier)
+       (-> this prev-selection)
+       arg0
+       )
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons up))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons up))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons up))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (when (send-event
+             (ppointer->process (-> this parent))
+             'menu-selection-event
+             'accept
+             (-> this selection-type)
+             (-> this info-ptr selection-extra)
+             arg0
+             )
+       (let ((v1-61 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-61
+             (logior! (-> v1-61 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-61 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+     (send-event
+       (ppointer->process (-> this parent))
+       'menu-selection-event
+       'cancel
+       (-> this selection-type)
+       (-> this info-ptr selection-extra)
+       arg0
+       )
+     (let ((v1-73 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-73
+           (logior! (-> v1-73 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-73 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+     (send-event
+       (ppointer->process (-> this parent))
+       'menu-selection-event
+       'square
+       (-> this selection-type)
+       (-> this info-ptr selection-extra)
+       arg0
+       )
+     )
+    (else
+      (call-parent-method this arg0)
+      )
+    )
+  )
+
+;; definition for method 62 of type item-list-driver-selection
+(defmethod handle-input ((this item-list-driver-selection) (arg0 int))
+  (local-vars (v1-5 sound-instance))
+  (cond
+    ((or (cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+         (cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+         (cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+         )
+     (cond
+       ((send-event *lobby-menu-manager* 'driver-selected?)
+        (call-parent-method this arg0)
+        )
+       ((begin (set! v1-5 (make-sound-instance snd-illegal1 (new 'static 'sound-id) (the-as handle #f))) v1-5)
+        (logior! (-> v1-5 flags) (sound-spec-flag needs-update non-positional))
+        (-> v1-5 id)
+        )
+       (else
+         0
+         )
+       )
+     )
+    (else
+      (call-parent-method this arg0)
+      )
+    )
+  )
+
+;; definition for method 59 of type item-num-selection
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod init-menu! ((this item-num-selection))
+  (let ((t9-0 (method-of-type item-list-selection init-menu!)))
+    (t9-0 this)
+    )
+  (let ((v1-1 (-> this num-info-ptr)))
+    (if v1-1
+        (set! (-> this num-selection) (-> v1-1 min))
+        )
+    )
+  (set! (-> this num-selection) 0)
+  (set! (-> this sound-id) (new-sound-id))
+  (none)
+  )
+
+;; definition for method 67 of type item-num-selection
+;; WARN: Return type mismatch font-color vs none.
+(defmethod update-strings ((this item-num-selection))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (let ((s5-0 (-> this num-info-ptr)))
+    (when s5-0
+      (format (clear (-> this strings data 0 text)) "~d" (-> s5-0 current-num))
+      (format (-> this strings data 0 text) (lookup-text! *common-text* (-> this info-ptr add-string) #f))
+      )
+    )
+  (if (-> this selected)
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color-2))
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color))
+      )
+  (none)
+  )
+
+;; definition for method 62 of type item-num-selection
+(defmethod handle-input ((this item-num-selection) (arg0 int))
+  (cond
+    ((or (cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons right))
+         (and (zero? (-> this info-ptr reset-pad)) (cpad-hold? arg0 right))
+         )
+     (cond
+       ((send-event (ppointer->process (-> this parent)) 'menu-selection-event (-> this selection-type) 'next)
+        (cond
+          ((zero? (-> this info-ptr reset-pad))
+           (let ((v1-15 (make-sound-instance snd-tone-bar (-> this sound-id) (the-as handle #f))))
+             (cond
+               (v1-15
+                 (logior! (-> v1-15 flags) (sound-spec-flag needs-update non-positional))
+                 (-> v1-15 id)
+                 )
+               (else
+                 0
+                 )
+               )
+             )
+           )
+          (else
+            (format #t "tag1~%")
+            (let ((v1-17 (make-sound-instance snd-cycle-horz1 (new 'static 'sound-id) (the-as handle #f))))
+              (cond
+                (v1-17
+                  (logior! (-> v1-17 flags) (sound-spec-flag needs-update non-positional))
+                  (-> v1-17 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            )
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    ((or (cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons left))
+         (and (zero? (-> this info-ptr reset-pad)) (cpad-hold? arg0 left))
+         )
+     (cond
+       ((send-event (ppointer->process (-> this parent)) 'menu-selection-event (-> this selection-type) 'previous)
+        (cond
+          ((zero? (-> this info-ptr reset-pad))
+           (let ((v1-33 (make-sound-instance snd-tone-bar (-> this sound-id) (the-as handle #f))))
+             (cond
+               (v1-33
+                 (logior! (-> v1-33 flags) (sound-spec-flag needs-update non-positional))
+                 (-> v1-33 id)
+                 )
+               (else
+                 0
+                 )
+               )
+             )
+           )
+          (else
+            (format #t "tag1~%")
+            (let ((v1-35 (make-sound-instance snd-cycle-horz1 (new 'static 'sound-id) (the-as handle #f))))
+              (cond
+                (v1-35
+                  (logior! (-> v1-35 flags) (sound-spec-flag needs-update non-positional))
+                  (-> v1-35 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            )
+          )
+        )
+       (else
+         #f
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+     (sound-stop (-> this sound-id) #t)
+     (send-event (ppointer->process (-> this parent)) 'next arg0)
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons down))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons down))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons down))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+     (sound-stop (-> this sound-id) #t)
+     (send-event (ppointer->process (-> this parent)) 'previous arg0)
+     (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons up))
+     (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons up))
+     (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons up))
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (sound-stop (-> this sound-id) #t)
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'accept)
+     (let ((v1-64 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-64
+           (logior! (-> v1-64 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-64 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+     (sound-stop (-> this sound-id) #t)
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'cancel)
+     (let ((v1-73 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-73
+           (logior! (-> v1-73 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-73 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'square)
+     )
+    (else
+      (sound-stop (-> this sound-id) #t)
+      (call-parent-method this arg0)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate exit (item-num-selection)
+  :virtual #t
+  :enter (behavior ()
+    (call-parent-state-handler enter)
+    (sound-stop (-> self sound-id) #t)
+    )
+  )
+
+;; definition for method 67 of type item-num-max-selection
+;; WARN: Return type mismatch font-color vs none.
+(defmethod update-strings ((this item-num-max-selection))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (let ((s5-0 (-> this num-info-ptr)))
+    (when s5-0
+      (if (= (-> s5-0 current-num) -1)
+          (copy-string<-string
+            (-> this strings data 0 text)
+            (lookup-text! *common-text* (-> this info-ptr strings-info 0 id) #f)
+            )
+          (format (clear (-> this strings data 0 text)) "~d" (-> s5-0 current-num))
+          )
+      )
+    )
+  (if (-> this selected)
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color-2))
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color))
+      )
+  (none)
+  )
+
+;; definition for method 59 of type games-list-selection
+(defmethod init-menu! ((this games-list-selection))
+  (set! (-> this selection-index) 0)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 67 of type games-list-selection
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this games-list-selection))
+  (call-parent-method this)
+  (let ((s5-0 *net-available-games*))
+    0
+    (when s5-0
+      (dotimes (s4-0 *net-available-game-ct*)
+        (when (< s4-0 (-> this strings length))
+          (format (clear (-> this strings data s4-0 text)) "~G" (-> s5-0 s4-0 format-game-name))
+          (if (= (-> this selection-index) s4-0)
+              (set! (-> this strings data s4-0 color) (font-color red))
+              (set! (-> this strings data s4-0 color) (font-color yellow))
+              )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate running (games-list-selection)
+  :virtual #t
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (when (-> self focused?)
+      (cond
+        ((or (zero? (-> self pad)) (= (-> self pad) 1))
+         (handle-input self (-> self pad))
+         )
+        ((= (-> self pad) 2)
+         (handle-input self 0)
+         (handle-input self 1)
+         )
+        )
+      )
+    (call-parent-state-handler trans)
+    )
+  :post (behavior ()
+    (default-base-menu-post)
+    )
+  )
+
+;; definition for method 62 of type games-list-selection
+(defmethod handle-input ((this games-list-selection) (arg0 int))
+  (local-vars (v0-1 object))
+  (cond
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+     (set! v0-1 (mod (+ (-> this selection-index) 1) (min *net-available-game-ct* (-> this strings length))))
+     (set! (-> this selection-index) (the-as int v0-1))
+     v0-1
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+     (+! (-> this selection-index) -1)
+     (when (< (-> this selection-index) 0)
+       (set! v0-1 (+ (min *net-available-game-ct* (-> this strings length)) -1))
+       (set! (-> this selection-index) (the-as int v0-1))
+       v0-1
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'cancel)
+     (let ((v1-19 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-19
+           (logior! (-> v1-19 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-19 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'join-game (-> this selection-index))
+     (let ((v1-30 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+       (cond
+         (v1-30
+           (logior! (-> v1-30 flags) (sound-spec-flag needs-update non-positional))
+           (-> v1-30 id)
+           )
+         (else
+           0
+           )
+         )
+       )
+     )
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+     (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'square)
+     )
+    )
+  )
+
+;; definition for method 67 of type player-ct-string-menu
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this player-ct-string-menu))
+  (call-parent-method this)
+  (let ((s5-0 *net-available-games*))
+    (dotimes (s4-0 *net-available-game-ct*)
+      (if (< s4-0 (-> this strings length))
+          (format (clear (-> this strings data s4-0 text)) "~d" (-> s5-0 s4-0 info player-count))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 59 of type string-list-selection
+(defmethod init-menu! ((this string-list-selection))
+  (set! (-> this selection-index) 0)
+  ((method-of-type dropdown-item init-menu!) this)
+  (none)
+  )
+
+;; definition for method 62 of type string-list-selection
+;; WARN: Return type mismatch symbol vs object.
+(defmethod handle-input ((this string-list-selection) (arg0 int))
+  (dotimes (s5-0 2)
+    (cond
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons down))
+       (set! (-> this selection-index)
+             (mod (+ (-> this selection-index) 1) (min *net-available-game-ct* (-> this strings length)))
+             )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons up))
+       (+! (-> this selection-index) -1)
+       (if (< (-> this selection-index) 0)
+           (set! (-> this selection-index) (+ (min *net-available-game-ct* (-> this strings length)) -1))
+           )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons x))
+       (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'x s5-0)
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons triangle))
+       (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'cancel s5-0)
+       (let ((v1-30 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-30
+             (logior! (-> v1-30 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-30 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons circle))
+       (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'accept s5-0)
+       (let ((v1-42 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-42
+             (logior! (-> v1-42 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-42 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint s5-0) (pad-buttons square))
+       (send-event (ppointer->process (-> this parent)) 'menu-selection-event 'square s5-0)
+       )
+      )
+    )
+  #f
+  )
+
+;; definition for method 67 of type string-list-selection
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this string-list-selection))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (when (-> this text-ids)
+    (dotimes (s5-0 (-> this text-ids length))
+      (format (clear (-> this strings data s5-0 text)) "~G" (-> this text-ids s5-0 text))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 67 of type dynamic-string-menu
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this dynamic-string-menu))
+  (call-parent-method this)
+  (when (-> this text-ids)
+    (dotimes (s5-0 (-> this text-ids length))
+      (format (clear (-> this strings data s5-0 text)) "~G" (-> this text-ids s5-0 text))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 59 of type selection-menu-manager
+;; WARN: Return type mismatch symbol vs none.
+(defmethod init-menu! ((this selection-menu-manager))
+  (set! (-> this selection-index) 0)
+  (set! (-> this prev-selection-index) 0)
+  (set! (-> this enabled) #t)
+  (none)
+  )
+
+;; definition for method 66 of type selection-menu-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod play-move-sound ((this selection-menu-manager))
+  (let ((v1-1 (make-sound-instance snd-cycle-vert1 (new 'static 'sound-id) (the-as handle #f))))
+    (cond
+      (v1-1
+        (logior! (-> v1-1 flags) (sound-spec-flag needs-update non-positional))
+        (-> v1-1 id)
+        )
+      (else
+        0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 61 of type selection-menu-manager
+;; WARN: Return type mismatch symbol vs object.
+(defmethod default-event-handler ((this selection-menu-manager) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('enable)
+     (set! (-> this enabled) (the-as symbol (-> arg3 param 0)))
+     (when (-> this child-handles)
+       (dotimes (s3-0 (-> this child-handles length))
+         (send-event (handle->process (-> this child-handles s3-0)) 'deselected)
+         )
+       )
+     (if (-> this enabled)
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'selected)
+         )
+     )
+    )
+  (if (not (-> this enabled))
+      (return (the-as object #f))
+      )
+  (if (get-keyboard-control)
+      (return (the-as object #f))
+      )
+  (cond
+    ((= arg2 'change-index)
+     (when (not (and (= (-> this pad) 2) (= (-> arg3 param 2) 1)))
+       (let ((s5-1 (-> this selection-index)))
+         (let ((s4-1 (the-as int (-> arg3 param 0))))
+           (if (zero? (the-as uint s4-1))
+               (return (the-as object #f))
+               )
+           (send-event (handle->process (-> this child-handles (-> this selection-index))) 'deselected)
+           (cond
+             ((= (the-as uint s4-1) 80)
+              (if (= (-> this prev-selection-index) (-> this selection-index))
+                  (+! (-> this prev-selection-index) 1)
+                  )
+              (set! (-> this selection-index) (+ (-> this prev-selection-index) -1))
+              (set! s4-1 1)
+              )
+             ((>= s4-1 81)
+              (set! (-> this selection-index) (the-as int (+ (the-as uint s4-1) -82)))
+              (set! s4-1 1)
+              )
+             )
+           (dotimes (s3-1 (-> this child-handles length))
+             (set! (-> this selection-index) (mod (+ (-> this selection-index) s4-1) (-> this child-handles length)))
+             (if (< (-> this selection-index) 0)
+                 (+! (-> this selection-index) (-> this child-handles length))
+                 )
+             (let ((v1-74 (as-type (handle->process (-> this child-handles (-> this selection-index))) dropdown-item)))
+               (if (and v1-74 (-> (the-as dropdown-item v1-74) enabled))
+                   (goto cfg-68)
+                   )
+               )
+             )
+           )
+         (label cfg-68)
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'selected s5-1)
+         (if (!= (-> this selection-index) s5-1)
+             (play-move-sound this)
+             )
+         (set! (-> this prev-selection-index) s5-1)
+         )
+       (set! *keyboard-init-state* #f)
+       #f
+       )
+     )
+    ((= arg2 'next)
+     (when (not (and (= (-> this pad) 2) (= (-> arg3 param 0) 1)))
+       (let ((s5-2 (-> this selection-index)))
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'deselected)
+         (dotimes (s4-2 (-> this child-handles length))
+           (set! (-> this selection-index) (mod (+ (-> this selection-index) 1) (-> this child-handles length)))
+           (let ((v1-120 (as-type (handle->process (-> this child-handles (-> this selection-index))) dropdown-item)))
+             (if (and v1-120 (-> (the-as dropdown-item v1-120) enabled))
+                 (goto cfg-108)
+                 )
+             )
+           )
+         (label cfg-108)
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'selected s5-2)
+         (set! (-> this prev-selection-index) s5-2)
+         )
+       (play-move-sound this)
+       (set! *keyboard-init-state* #f)
+       #f
+       )
+     )
+    ((= arg2 'previous)
+     (when (not (and (= (-> this pad) 2) (= (-> arg3 param 0) 1)))
+       (let ((s5-3 (-> this selection-index)))
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'deselected)
+         (dotimes (s4-3 (-> this child-handles length))
+           (if (< (+ (-> this selection-index) -1) 0)
+               (set! (-> this selection-index) (+ (-> this child-handles length) -1))
+               (+! (-> this selection-index) -1)
+               )
+           (let ((v1-168 (as-type (handle->process (-> this child-handles (-> this selection-index))) dropdown-item)))
+             (if (and v1-168 (-> (the-as dropdown-item v1-168) enabled))
+                 (goto cfg-149)
+                 )
+             )
+           )
+         (label cfg-149)
+         (send-event (handle->process (-> this child-handles (-> this selection-index))) 'selected s5-3)
+         (set! (-> this prev-selection-index) s5-3)
+         )
+       (play-move-sound this)
+       (set! *keyboard-init-state* #f)
+       #f
+       )
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition for function find-first-selectable
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior find-first-selectable selection-menu-manager ()
+  (dotimes (gp-0 (-> self child-handles length))
+    (let ((v1-6 (as-type (handle->process (-> self child-handles (-> self selection-index))) dropdown-item)))
+      (when (and v1-6 (-> (the-as dropdown-item v1-6) enabled))
+        (send-event (handle->process (-> self child-handles (-> self selection-index))) 'selected)
+        (return (the-as object #f))
+        )
+      )
+    (set! (-> self selection-index) (mod (+ (-> self selection-index) 1) (-> self child-handles length)))
+    (if (< (-> self selection-index) 0)
+        (+! (-> self selection-index) (-> self child-handles length))
+        )
+    )
+  #f
+  )
+
+;; failed to figure out what this is:
+(defstate running (selection-menu-manager)
+  :virtual #t
+  :code (behavior ()
+    (suspend)
+    (if (and (-> self child-handles) (-> self enabled) (> (-> self child-handles length) 0))
+        (find-first-selectable)
+        )
+    (call-parent-state-handler code)
+    )
+  )
+
+;; definition for method 65 of type selection-menu-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod select-by-sym ((this selection-menu-manager) (arg0 symbol))
+  (let ((s5-0 #f))
+    (when (-> this child-handles)
+      (dotimes (s3-0 (-> this child-handles length))
+        (cond
+          ((send-event (handle->process (-> this child-handles s3-0)) 'sym? arg0)
+           (when (send-event (handle->process (-> this child-handles s3-0)) 'selected)
+             (set! (-> this selection-index) s3-0)
+             (set! s5-0 #t)
+             )
+           )
+          (else
+            (send-event (handle->process (-> this child-handles s3-0)) 'deselected)
+            )
+          )
+        )
+      )
+    (when (not s5-0)
+      (dotimes (s5-1 (-> this child-handles length))
+        (let ((v1-40 (as-type (handle->process (-> this child-handles (-> this selection-index))) dropdown-item)))
+          (when (and v1-40 (-> (the-as dropdown-item v1-40) enabled))
+            (send-event (handle->process (-> this child-handles s5-1)) 'selected)
+            (goto cfg-58)
+            )
+          )
+        (set! (-> this selection-index) (mod (+ (-> this selection-index) 1) (-> this child-handles length)))
+        (if (< (-> this selection-index) 0)
+            (+! (-> this selection-index) (-> this child-handles length))
+            )
+        )
+      )
+    )
+  (label cfg-58)
+  0
+  (none)
+  )
+
+;; definition for method 59 of type big-text-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this big-text-menu))
+  (call-parent-method this)
+  (set! (-> this big-text) #f)
+  (set! (-> this temp-string) #f)
+  (set! (-> this vert-offset) 0.0)
+  (set! (-> this vert-extent) 0.0)
+  0
+  (none)
+  )
+
+;; definition for method 66 of type big-text-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod set-text! ((this big-text-menu) (arg0 string) (arg1 string))
+  (set! (-> this big-text) arg0)
+  (set! (-> this vert-extent) 0.0)
+  (set! (-> this temp-string) arg1)
+  (if (not (-> this big-text))
+      (return (the-as object #f))
+      )
+  (let ((a1-2 (new
+                'stack
+                'font-context
+                *font-default-matrix*
+                0
+                0
+                8396850.0
+                (font-color default)
+                (font-flags shadow kerning)
+                )
+              )
+        )
+    (let ((v1-5 (-> this info-ptr string-info)))
+      (let ((f0-3 (+ (* (-> *video-params* relative-x-scale) (-> this info-ptr off-2d-x)) (-> this pos-x)))
+            (f1-3 (+ (-> this info-ptr off-2d-y) (-> this pos-y)))
+            (f2-2 (the float (-> this info-ptr width)))
+            )
+        (-> this info-ptr height)
+        (let ((f2-3 (* f2-2 (-> *video-params* relative-x-scale))))
+          (let ((a0-10 a1-2)
+                (f1-4 (+ f1-3 (-> this vert-offset)))
+                )
+            (set! (-> a0-10 origin x) f0-3)
+            (set! (-> a0-10 origin y) f1-4)
+            )
+          (let ((a0-11 a1-2))
+            (set! (-> a0-11 origin z) (the float -10))
+            )
+          (set! (-> a1-2 width) f2-3)
+          )
+        )
+      (set-height! a1-2 10000)
+      (set-scale! a1-2 (-> v1-5 font-scale))
+      (set! (-> a1-2 flags) (the-as font-flags (-> v1-5 font-flags)))
+      )
+    (logior! (-> a1-2 flags) (font-flags ff8))
+    (set! (-> this vert-extent) (print-game-text
+                                  (-> this big-text)
+                                  a1-2
+                                  #t
+                                  44
+                                  (bucket-id hud-draw-hud-alpha)
+                                  (-> this temp-string)
+                                  (the-as dma-buffer #f)
+                                  )
+          )
+    )
+  (format 0 "vert-extent: ~F~%" (-> this vert-extent))
+  0
+  )
+
+;; definition for method 60 of type big-text-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod draw-menu ((this big-text-menu))
+  (call-parent-method this)
+  (if (not (-> this big-text))
+      (return (the-as object #f))
+      )
+  (let* ((a1-2 (new
+                 'stack
+                 'font-context
+                 *font-default-matrix*
+                 0
+                 0
+                 8396850.0
+                 (font-color default)
+                 (font-flags shadow kerning)
+                 )
+               )
+         (a0-4 (-> this info-ptr string-info))
+         (f0-2 (+ (* (-> *video-params* relative-x-scale) (-> this info-ptr off-2d-x)) (-> this pos-x)))
+         (f1-3 (+ (-> this info-ptr off-2d-y) (-> this pos-y)))
+         (f2-2 (the float (-> this info-ptr width)))
+         (v1-11 (-> this info-ptr height))
+         (f2-3 (* f2-2 (-> *video-params* relative-x-scale)))
+         )
+    (let ((a2-2 a1-2)
+          (f3-1 f0-2)
+          (f4-1 (+ f1-3 (-> this vert-offset)))
+          )
+      (set! (-> a2-2 origin x) f3-1)
+      (set! (-> a2-2 origin y) f4-1)
+      )
+    (let ((a2-3 a1-2))
+      (set! (-> a2-3 origin z) (the float -10))
+      )
+    (let ((a2-4 a1-2))
+      (set! (-> a2-4 width) f2-3)
+      )
+    (set-height! a1-2 10000)
+    (set-scale! a1-2 (-> a0-4 font-scale))
+    (set! (-> a1-2 flags) (the-as font-flags (-> a0-4 font-flags)))
+    (set! (-> a1-2 color) (-> a0-4 font-color))
+    (set! (-> a1-2 alpha) 1.0)
+    (logior! (-> a1-2 flags) (font-flags ff8))
+    (let* ((f0-4 (fmax 0.0 (fmin 512.0 f0-2)))
+           (f1-5 (fmax 0.0 (fmin 416.0 f1-3)))
+           (f2-6 (+ -1.0 (fmax 0.0 (fmin f2-3 (the float (- 512 (the int f0-4)))))))
+           (v1-14 (+ (max 0 (min v1-11 (- 416 (the int f1-5)))) -1))
+           )
+      (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id bucket791)
+                                   )
+        (dma-buffer-add-gs-set s4-0 (scissor-1 (new 'static 'gs-scissor
+                                                 :scax0 (the int f0-4)
+                                                 :scay0 (the int f1-5)
+                                                 :scax1 (the int (+ f0-4 f2-6))
+                                                 :scay1 (the int (+ f1-5 (the float v1-14)))
+                                                 )
+                                               )
+                               )
+        (print-game-text (-> this big-text) a1-2 #f 44 (bucket-id hud-draw-hud-alpha) (-> this temp-string) s4-0)
+        (dma-buffer-add-gs-set s4-0 (scissor-1 (-> *viewport-array* default scissor)))
+        )
+      )
+    )
+  0
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-jakxlogo jakxlogo jakxlogo-lod0-jg jakxlogo-idle-ja
+              ((jakxlogo-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4000)
+              :global-effects 4
+              )
+
+;; failed to figure out what this is:
+(defstate enter (jakx-logo-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-fire)
+       (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+       (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 53))
+       (vector-reset! (-> *part-tracker-params-default* local-offset))
+       (set! (-> *part-tracker-params-default* duration) (the-as uint 80))
+       (set! (-> *part-tracker-params-default* callback) #f)
+       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+       (set! (-> *part-tracker-params-default* target) self)
+       (set! (-> *part-tracker-params-default* mat-joint) 11)
+       (set! (-> *part-tracker-params-default* local-space-param) 0)
+       (set! (-> *part-tracker-params-default* local-space-callback) #f)
+       (set! (-> *part-tracker-params-default* subsampler-num) 4.0)
+       *part-tracker-params-default*
+       (if (logtest? (-> *part-group-id-table* 53 flags) (sp-group-flag sp13))
+           (process-spawn
+             part-tracker-subsampler
+             :init part-tracker-subsampler-init
+             *part-tracker-params-default*
+             :name "part-tracker-subsampler"
+             :to *entity-pool*
+             :unk 0
+             )
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             *part-tracker-params-default*
+             :name "part-tracker"
+             :to *entity-pool*
+             :unk 0
+             )
+           )
+       (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+       (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 53))
+       (vector-reset! (-> *part-tracker-params-default* local-offset))
+       (set! (-> *part-tracker-params-default* duration) (the-as uint 80))
+       (set! (-> *part-tracker-params-default* callback) #f)
+       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+       (set! (-> *part-tracker-params-default* target) self)
+       (set! (-> *part-tracker-params-default* mat-joint) 12)
+       (set! (-> *part-tracker-params-default* local-space-param) 0)
+       (set! (-> *part-tracker-params-default* local-space-callback) #f)
+       (set! (-> *part-tracker-params-default* subsampler-num) 4.0)
+       *part-tracker-params-default*
+       (if (logtest? (-> *part-group-id-table* 53 flags) (sp-group-flag sp13))
+           (process-spawn
+             part-tracker-subsampler
+             :init part-tracker-subsampler-init
+             *part-tracker-params-default*
+             :name "part-tracker-subsampler"
+             :to *entity-pool*
+             :unk 0
+             )
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             *part-tracker-params-default*
+             :name "part-tracker"
+             :to *entity-pool*
+             :unk 0
+             )
+           )
+       (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+       (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 53))
+       (vector-reset! (-> *part-tracker-params-default* local-offset))
+       (set! (-> *part-tracker-params-default* duration) (the-as uint 80))
+       (set! (-> *part-tracker-params-default* callback) #f)
+       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+       (set! (-> *part-tracker-params-default* target) self)
+       (set! (-> *part-tracker-params-default* mat-joint) 13)
+       (set! (-> *part-tracker-params-default* local-space-param) 0)
+       (set! (-> *part-tracker-params-default* local-space-callback) #f)
+       (set! (-> *part-tracker-params-default* subsampler-num) 4.0)
+       *part-tracker-params-default*
+       (if (logtest? (-> *part-group-id-table* 53 flags) (sp-group-flag sp13))
+           (process-spawn
+             part-tracker-subsampler
+             :init part-tracker-subsampler-init
+             *part-tracker-params-default*
+             :name "part-tracker-subsampler"
+             :to *entity-pool*
+             :unk 0
+             )
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             *part-tracker-params-default*
+             :name "part-tracker"
+             :to *entity-pool*
+             :unk 0
+             )
+           )
+       (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+       (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 54))
+       (vector-reset! (-> *part-tracker-params-default* local-offset))
+       (set! (-> *part-tracker-params-default* duration) (the-as uint 80))
+       (set! (-> *part-tracker-params-default* callback) #f)
+       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+       (set! (-> *part-tracker-params-default* target) self)
+       (set! (-> *part-tracker-params-default* mat-joint) 14)
+       (set! (-> *part-tracker-params-default* local-space-param) 0)
+       (set! (-> *part-tracker-params-default* local-space-callback) #f)
+       (set! (-> *part-tracker-params-default* subsampler-num) 8.0)
+       *part-tracker-params-default*
+       (if (logtest? (-> *part-group-id-table* 54 flags) (sp-group-flag sp13))
+           (process-spawn
+             part-tracker-subsampler
+             :init part-tracker-subsampler-init
+             *part-tracker-params-default*
+             :name "part-tracker-subsampler"
+             :to *entity-pool*
+             :unk 0
+             )
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             *part-tracker-params-default*
+             :name "part-tracker"
+             :to *entity-pool*
+             :unk 0
+             )
+           )
+       )
+      (('event-explosion)
+       (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
+       (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 55))
+       (vector-reset! (-> *part-tracker-params-default* local-offset))
+       (set! (-> *part-tracker-params-default* duration) (the-as uint 0))
+       (set! (-> *part-tracker-params-default* callback) #f)
+       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+       (set! (-> *part-tracker-params-default* target) self)
+       (set! (-> *part-tracker-params-default* mat-joint) 6)
+       (set! (-> *part-tracker-params-default* local-space-param) 0)
+       (set! (-> *part-tracker-params-default* local-space-callback) #f)
+       (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+       *part-tracker-params-default*
+       (if (logtest? (-> *part-group-id-table* 55 flags) (sp-group-flag sp13))
+           (process-spawn
+             part-tracker-subsampler
+             :init part-tracker-subsampler-init
+             *part-tracker-params-default*
+             :name "part-tracker-subsampler"
+             :to *entity-pool*
+             :unk 0
+             )
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             *part-tracker-params-default*
+             :name "part-tracker"
+             :to *entity-pool*
+             :unk 0
+             )
+           )
+       )
+      (else
+        (base-menu-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ()
+    (cond
+      (*jakx-logo-seen?*
+        (when (nonzero? (-> self draw))
+          (let ((v1-4 (-> self info-ptr trans-info)))
+            (if v1-4
+                (ja :group! (-> self draw art-group data (-> v1-4 enter-anim)) :num! (identity (the float (ja-num-frames 0))))
+                )
+            )
+          (logior! (-> self draw status) (draw-control-status force-fade))
+          (suspend-for (seconds 0.5)
+            (set! (-> self draw force-fade) (the-as uint (the int (* 0.85333335 (the float (- (current-time) time))))))
+            )
+          )
+        (go-virtual running)
+        )
+      ((-> self info-ptr trans-info)
+       (let ((v1-28 (-> self info-ptr trans-info enter-anim))
+             (f30-0 (-> self info-ptr trans-info anim-speed))
+             )
+         (cond
+           ((= v1-28 -1)
+            (if (-> self info-ptr 3d-menu-type)
+                (go-virtual running)
+                )
+            )
+           (else
+             (ja-no-eval :group! (-> self draw art-group data v1-28) :num! (seek! max f30-0) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek! max f30-0))
+               )
+             (go-virtual running)
+             )
+           )
+         )
+       )
+      (else
+        (go-virtual running)
+        )
+      )
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (jakx-logo-menu)
+  :virtual #t
+  :enter (behavior ()
+    (logclear! (-> self draw status) (draw-control-status force-fade))
+    (set! *jakx-logo-seen?* #t)
+    (let ((t9-0 (-> (method-of-type base-menu running) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate exit (jakx-logo-menu)
+  :virtual #t
+  :code (behavior ()
+    (when (nonzero? (-> self draw))
+      (logior! (-> self draw status) (draw-control-status force-fade))
+      (suspend-for (seconds 0.5)
+        (set! (-> self draw force-fade)
+              (the-as uint (the int (- 128.0 (* 0.85333335 (the float (- (current-time) time))))))
+              )
+        )
+      )
+    (while (-> self child)
+      (change-parent (-> self child 0) *entity-pool*)
+      )
+    (while (let ((v1-19 'exit)
+                 (a0-3 (-> self parent))
+                 )
+             (= (-> (the-as process (if a0-3
+                                        (the-as process (-> a0-3 0 self))
+                                        )
+                            )
+                    state
+                    name
+                    )
+                v1-19
+                )
+             )
+      (suspend)
+      )
+    (go-virtual die)
+    )
+  )
+
+;; definition of type chat-window-menu
+(deftype chat-window-menu (base-menu)
+  ()
+  )
+
+;; definition for method 3 of type chat-window-menu
+(defmethod inspect ((this chat-window-menu))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-menu inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 60 of type chat-window-menu
+(defmethod draw-menu ((this chat-window-menu))
+  (if (and (-> this next-state) (= (-> this next-state name) 'running))
+      (draw-chat-window *lobby-chat-window*)
+      )
+  (call-parent-method this)
+  )
+
+;; failed to figure out what this is:
+(defstate running (chat-window-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (= message 'box-2d)
+      (when (zero? (-> block param 0))
+        (let ((t0-0 (the-as object (-> block param 1)))
+              (v1-4 (the-as object (-> block param 2)))
+              )
+          (set! (-> *lobby-chat-window* x) (the int (+ 15.0 (-> (the-as vector t0-0) x))))
+          (set! (-> *lobby-chat-window* y) (the int (+ 5.0 (-> (the-as vector t0-0) y))))
+          (set! (-> *lobby-chat-window* sx)
+                (the int (+ (- -10.0 (-> (the-as vector t0-0) x)) (-> (the-as vector v1-4) x)))
+                )
+          (set! (-> *lobby-chat-window* sy)
+                (the int (+ (- -140.0 (-> (the-as vector t0-0) y)) (-> (the-as vector v1-4) x)))
+                )
+          )
+        )
+      )
+    (base-menu-event-handler proc argc message block)
+    )
+  )

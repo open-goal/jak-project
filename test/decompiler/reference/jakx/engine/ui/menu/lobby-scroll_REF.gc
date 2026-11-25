@@ -3,7 +3,8 @@
 
 ;; definition of type scrolling-item
 (deftype scrolling-item (string-menu)
-  ((selected      symbol)
+  ((info-ptr      item-list-selection-info :override)
+   (selected      symbol)
    (scroll-alpha  float)
    )
   )
@@ -91,7 +92,7 @@
   )
 
 ;; definition for method 67 of type scrolling-item
-;; WARN: Return type mismatch symbol vs object.
+;; WARN: Return type mismatch symbol vs none.
 (defmethod update-strings ((this scrolling-item))
   (let ((t9-0 (method-of-type string-menu update-strings)))
     (t9-0 this)
@@ -108,7 +109,7 @@
         )
       )
     )
-  #f
+  (none)
   )
 
 ;; definition of type scrolling-menu-info
@@ -199,8 +200,8 @@
     (scrolling-menu-method-72 (_type_ int) none)
     (scrolling-menu-method-73 (_type_ int symbol) none)
     (scrolling-menu-method-74 (_type_) none)
-    (scrolling-menu-method-75 (_type_) none)
-    (scrolling-menu-method-76 (_type_) none)
+    (scrolling-menu-method-75 (_type_) symbol)
+    (scrolling-menu-method-76 (_type_) symbol)
     )
   )
 
@@ -294,16 +295,18 @@
   )
 
 ;; definition for method 67 of type scrolling-menu
-;; WARN: Return type mismatch int vs object.
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 67 scrolling-menu) has a return type of none, but the expression builder found a return statement.
 (defmethod update-strings ((this scrolling-menu))
   (if (not (-> this info-ptr strings-info))
-      (return (the-as object #f))
+      (return #f)
       )
   (clear (-> this strings data 0 text))
   (if (<= (-> this physical-item-ct) 0)
       (call-parent-method this)
       )
   0
+  (none)
   )
 
 ;; definition for method 74 of type scrolling-menu
@@ -476,14 +479,13 @@
   )
 
 ;; definition for method 62 of type scrolling-menu
-;; WARN: Return type mismatch int vs none.
-;; WARN: Function (method 62 scrolling-menu) has a return type of none, but the expression builder found a return statement.
+;; WARN: Return type mismatch int vs object.
 (defmethod handle-input ((this scrolling-menu) (arg0 int))
   (if (nonzero? (-> this cur-scroll))
-      (return #f)
+      (return (the-as object #f))
       )
   (if (not (and (-> this selected) (-> this enabled)))
-      (return #f)
+      (return (the-as object #f))
       )
   (let ((s5-0 0)
         (s3-0 (-> this cur-idx))
@@ -508,7 +510,7 @@
          (let ((v1-25 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
            (cond
              (v1-25
-               (logior! (-> v1-25 flags) (sound-spec-flag bit6 bit8))
+               (logior! (-> v1-25 flags) (sound-spec-flag needs-update non-positional))
                (-> v1-25 id)
                )
              (else
@@ -532,7 +534,7 @@
          (let ((v1-46 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
            (cond
              (v1-46
-               (logior! (-> v1-46 flags) (sound-spec-flag bit6 bit8))
+               (logior! (-> v1-46 flags) (sound-spec-flag needs-update non-positional))
                (-> v1-46 id)
                )
              (else
@@ -559,7 +561,7 @@
        (let ((v1-70 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
          (cond
            (v1-70
-             (logior! (-> v1-70 flags) (sound-spec-flag bit6 bit8))
+             (logior! (-> v1-70 flags) (sound-spec-flag needs-update non-positional))
              (-> v1-70 id)
              )
            (else
@@ -581,7 +583,7 @@
             (let ((v1-87 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
               (cond
                 (v1-87
-                  (logior! (-> v1-87 flags) (sound-spec-flag bit6 bit8))
+                  (logior! (-> v1-87 flags) (sound-spec-flag needs-update non-positional))
                   (-> v1-87 id)
                   )
                 (else
@@ -611,7 +613,7 @@
              (-> this info-ptr selection-type)
              (-> this cur-idx)
              )
-           (return #f)
+           (return (the-as object #f))
            )
          )
        )
@@ -628,20 +630,20 @@
              (-> this info-ptr selection-type)
              (-> this cur-idx)
              )
-           (return #f)
+           (return (the-as object #f))
            )
          )
        )
       )
     (if (zero? s5-0)
-        (return #f)
+        (return (the-as object #f))
         )
     (set! (-> this cur-idx) (max 0 (min (+ s5-0 (-> this cur-idx)) (+ (-> this physical-item-ct) -1))))
     (when (= (-> this cur-idx) s3-0)
       (let ((v1-136 (make-sound-instance snd-illegal1 (new 'static 'sound-id) (the-as handle #f))))
         (cond
           (v1-136
-            (logior! (-> v1-136 flags) (sound-spec-flag bit6 bit8))
+            (logior! (-> v1-136 flags) (sound-spec-flag needs-update non-positional))
             (-> v1-136 id)
             )
           (else
@@ -667,12 +669,12 @@
            )
          )
         )
-      (return #f)
+      (return (the-as object #f))
       )
     (let ((v1-161 (make-sound-instance snd-cycle-vert1 (new 'static 'sound-id) (the-as handle #f))))
       (cond
         (v1-161
-          (logior! (-> v1-161 flags) (sound-spec-flag bit6 bit8))
+          (logior! (-> v1-161 flags) (sound-spec-flag needs-update non-positional))
           (-> v1-161 id)
           )
         (else
@@ -689,7 +691,7 @@
       (scrolling-menu-method-72 this (-> this cur-idx))
       (scrolling-menu-method-73 this (-> this cur-idx) #t)
       (scrolling-menu-method-74 this)
-      (return #f)
+      (return (the-as object #f))
       )
     (set! (-> this top-idx) (max
                               (min (-> this top-idx) (-> this cur-idx))
@@ -709,7 +711,6 @@
       )
     )
   0
-  (none)
   )
 
 ;; definition for method 61 of type scrolling-menu
@@ -746,17 +747,13 @@
   )
 
 ;; definition for method 75 of type scrolling-menu
-;; WARN: Return type mismatch symbol vs none.
 (defmethod scrolling-menu-method-75 ((this scrolling-menu))
   (> (-> this top-idx) 0)
-  (none)
   )
 
 ;; definition for method 76 of type scrolling-menu
-;; WARN: Return type mismatch symbol vs none.
 (defmethod scrolling-menu-method-76 ((this scrolling-menu))
   (< (+ (-> this top-idx) (-> this info-ptr visible-item-ct)) (-> this physical-item-ct))
-  (none)
   )
 
 ;; definition for method 59 of type game-text-menu
@@ -965,7 +962,7 @@
   )
 
 ;; definition for method 62 of type dropdown-menu
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defmethod handle-input ((this dropdown-menu) (arg0 int))
   (cond
     ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
@@ -975,7 +972,7 @@
           (let ((v1-7 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
             (cond
               (v1-7
-                (logior! (-> v1-7 flags) (sound-spec-flag bit6 bit8))
+                (logior! (-> v1-7 flags) (sound-spec-flag needs-update non-positional))
                 (-> v1-7 id)
                 )
               (else
@@ -993,7 +990,7 @@
            (let ((v1-24 (make-sound-instance snd-illegal1 (new 'static 'sound-id) (the-as handle #f))))
              (cond
                (v1-24
-                 (logior! (-> v1-24 flags) (sound-spec-flag bit6 bit8))
+                 (logior! (-> v1-24 flags) (sound-spec-flag needs-update non-positional))
                  (-> v1-24 id)
                  )
                (else
@@ -1010,7 +1007,6 @@
       )
     )
   0
-  (none)
   )
 
 ;; definition of type indicator
@@ -1059,10 +1055,12 @@
   )
 
 ;; definition for method 67 of type indicator
+;; WARN: Return type mismatch object vs none.
 (defmethod update-strings ((this indicator))
   (call-parent-method this)
   (/ (* 100 (-> this got)) (-> this max))
   (format (clear (-> this strings data 0 text)) (lookup-text! *common-text* (-> this msg) #f))
+  (none)
   )
 
 ;; definition for method 59 of type indicator
@@ -1077,7 +1075,3 @@
 (defmethod draw-menu ((this indicator))
   (call-parent-method this)
   )
-
-
-
-
