@@ -7,3 +7,951 @@
 
 ;; DECOMP BEGINS
 
+(define *current-room-name* (new 'static 'array uint8 128
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              #x0
+                              )
+        )
+
+(define *room-clan-id* -1)
+
+(define *room-clan-id-2* -1)
+
+(deftype medius-room (structure)
+  ((id             int32)
+   (name           uint8  32)
+   (player-ct      int32)
+   (max-players    int32)
+   (game-world-ct  int32)
+   )
+  :pack-me
+  )
+
+
+(deftype medius-room-array (structure)
+  ((total-ct     int32)
+   (base-page    int32)
+   (total-pages  int32)
+   (ct           int32)
+   (data         medius-room  5 :inline)
+   )
+  (:methods
+    (contains? (_type_ int) symbol)
+    (medius-room-array-method-10 (_type_) none)
+    )
+  )
+
+
+(define *medius-rooms* (new 'static 'medius-room-array))
+
+(define *last-normal-room* -1)
+
+(defmethod contains? ((this medius-room-array) (arg0 int))
+  (dotimes (v1-0 (-> this ct))
+    (if (= (-> this data v1-0 id) arg0)
+        (return #t)
+        )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun refresh-rooms-callback ((arg0 medius-channel-list-extra-info-response))
+  (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+  (cond
+    ((= (-> arg0 status-code) (medius-status-code medius-no-result))
+     (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+     )
+    ((= (-> arg0 status-code) (medius-status-code medius-success))
+     (when (and (< (-> *medius-rooms* ct) 5) (not (contains? *medius-rooms* (-> arg0 medius-world-id))))
+       (let ((s5-0 (-> *medius-rooms* data (-> *medius-rooms* ct))))
+         (mem-copy! (-> s5-0 name) (-> arg0 lobby-name) 32)
+         (set! (-> s5-0 id) (-> arg0 medius-world-id))
+         (set! (-> s5-0 player-ct) (the-as int (-> arg0 player-count)))
+         (set! (-> s5-0 max-players) (the-as int (-> arg0 max-players)))
+         (set! (-> s5-0 game-world-ct) (the-as int (-> arg0 game-world-count)))
+         )
+       (+! (-> *medius-rooms* ct) 1)
+       )
+     )
+    )
+  (if (= (-> arg0 end-of-list) 1)
+      (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+      )
+  0
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior refresh-rooms net-mgr ((arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (local-vars (v0-16 symbol))
+  (let ((s1-0 1))
+    (when (logtest? (shl #x8000 16) arg0)
+      (set! arg0 (logand #x7fffffff arg0))
+      (set! s1-0 0)
+      )
+    (let ((s0-0 (new 'stack 'medius-set-lobby-world-filter-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s0-0 message-id))
+      (set! (-> s0-0 filter-mask1) (the-as uint arg1))
+      (set! (-> s0-0 filter-mask2) (the-as uint arg2))
+      (set! (-> s0-0 filter-mask3) (the-as uint arg3))
+      (set! (-> s0-0 filter-mask4) (the-as uint arg4))
+      (set! (-> s0-0 lobby-filter-type) (the-as medius-lobby-filter-type s1-0))
+      (set! (-> s0-0 filter-mask-level) (medius-lobby-filter-mask-level-type medius-lobby-filter-mask-level1))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-set-lobby-world-filter))
+      (let ((s5-1 (knet-scert-function-3-args s0-0 medius-simple-request-callback #f)))
+        (when (nonzero? s5-1)
+          (format 0 "initial function call returned ~D~%" s5-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s5-1)
+          )
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (lobby-fatal-error 'lobby-connect-failed)
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (set! (-> *medius-rooms* total-ct) 0)
+  (set! (-> *medius-rooms* ct) 0)
+  (let ((s5-2 (new 'stack 'medius-get-total-channels-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> s5-2 message-id))
+    (mem-copy! (-> s5-2 session-key) *medius-session-key* 17)
+    (set! *scert-function-id* (scert-function get-application-id))
+    (set! (-> s5-2 application-id) (knet-scert-function-0-args))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-total-channels))
+    (let ((s5-3 (knet-scert-function-3-args s5-2 medius-simple-request-callback #f)))
+      (when (nonzero? s5-3)
+        (format 0 "initial function call returned ~D~%" s5-3)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) s5-3)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     0
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((s5-4 (the-as medius-get-total-channels-response *medius-last-response*)))
+    (inspect s5-4)
+    (when (nonzero? (-> s5-4 status-code))
+      (let ((v1-54 #f))
+        (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+        (return (the-as object v1-54))
+        )
+      )
+    (set! (-> *medius-rooms* total-ct) (the-as int (-> s5-4 total)))
+    )
+  (set! (-> *medius-rooms* total-pages) (/ (+ (-> *medius-rooms* total-ct) 4) 5))
+  (set! (-> *medius-rooms* base-page) (max 0 (min arg0 (+ (-> *medius-rooms* total-pages) -1))))
+  (let ((gp-1 (new 'stack 'medius-channel-list-extra-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-1 message-id))
+    (set! (-> gp-1 page-size) (the-as uint 5))
+    (set! (-> gp-1 page-id) (the-as uint (+ (-> *medius-rooms* base-page) 1)))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-channel-list-extra-info))
+    (let ((gp-2 (knet-scert-function-3-args gp-1 refresh-rooms-callback #f)))
+      (when (nonzero? gp-2)
+        (format 0 "initial function call returned ~D~%" gp-2)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-2)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-84 #f))
+       (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+       (return (the-as object v1-84))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-88 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-88))
+    )
+  v0-16
+  )
+
+(define *tmp-clan-string* (new 'global 'string 16 (the-as string #f)))
+
+;; WARN: Swapped fp-relative label and field offsets for "!CLAN_"
+;; WARN: Swapped fp-relative label and field offsets for "!CHALLENGE_"
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior join-room net-mgr ((arg0 int))
+  (local-vars (v0-7 symbol))
+  (let ((s5-0 #f))
+    (let ((s4-0 (new 'stack 'medius-channel-info-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s4-0 message-id))
+      (mem-copy! (-> s4-0 session-key) *medius-session-key* 17)
+      (set! (-> s4-0 medius-world-id) arg0)
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-channel-info))
+      (let ((s4-1 (knet-scert-function-3-args s4-0 medius-simple-request-callback #f)))
+        (when (nonzero? s4-1)
+          (format 0 "initial function call returned ~D~%" s4-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s4-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 15) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       (let ((v1-17 #f))
+         (set! *net-mgr-pending-behavior-result-extra* '())
+         (return (the-as object v1-17))
+         )
+       )
+      (else
+        (let ((s4-2 *medius-last-response*))
+          (when (or (strncmp (the-as pointer (&+ s4-2 28)) (-> "!CLAN_" data) 6)
+                    (strncmp (the-as pointer (&+ s4-2 28)) (-> "!CHALLENGE_" data) 11)
+                    )
+            (set! s5-0 #t)
+            (when (= (-> *medius-my-clan* medius-id) -1)
+              (let ((v1-25 #f))
+                (set! *net-mgr-pending-behavior-result-extra* '())
+                (return (the-as object v1-25))
+                )
+              )
+            (format (clear *tmp-clan-string*) "_~8X" (-> *medius-my-clan* medius-id))
+            (format 0 "lobby-name: ~G~%" (&+ s4-2 28))
+            (when (not (strstr (the-as pointer (&+ s4-2 28)) (-> *tmp-clan-string* data)))
+              (let ((v1-30 #f))
+                (set! *net-mgr-pending-behavior-result-extra* '())
+                (return (the-as object v1-30))
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((s4-3 (new 'stack 'medius-join-channel-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s4-3 message-id))
+      (mem-copy! (-> s4-3 session-key) *medius-session-key* 17)
+      (set! (-> s4-3 medius-world-id) arg0)
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-join-channel))
+      (let ((s4-4 (knet-scert-function-3-args s4-3 medius-simple-request-callback #f)))
+        (when (nonzero? s4-4)
+          (format 0 "initial function call returned ~D~%" s4-4)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s4-4)
+          )
+        )
+      )
+    (net-async-wait (seconds 15) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       (let ((v1-49 #f))
+         (set! *net-mgr-pending-behavior-result-extra* '())
+         (return (the-as object v1-49))
+         )
+       )
+      (else
+        *medius-last-response*
+        0
+        )
+      )
+    (set! (-> self lobby-state channel-id) arg0)
+    (let ((v1-53 *medius-last-response*))
+      (mem-copy! (the-as pointer *medius-connect-info*) (the-as pointer (&+ v1-53 28)) 154)
+      )
+    (medius-disconnect #f)
+    (mem-clear! (the-as pointer *medius-connect-in-params*) 284)
+    (mem-clear! (the-as pointer *medius-connect-out-params*) 8)
+    (mem-copy!
+      (the-as pointer (-> *medius-connect-in-params* connect-info))
+      (the-as pointer *medius-connect-info*)
+      154
+      )
+    (set! (-> *medius-connect-in-params* max-clients-per-connection) (the-as uint 256))
+    (set! (-> *medius-connect-in-params* my-connect-callback) mas-connect-callback)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-connect))
+    (let ((s4-5 (knet-scert-function-3-args *medius-connect-in-params* *medius-connect-out-params* #f)))
+      (when (nonzero? s4-5)
+        (format 0 "initial function call returned ~D~%" s4-5)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) s4-5)
+        )
+      )
+    (net-async-wait (seconds 3600) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       (lobby-fatal-error 'lobby-unexpected-error)
+       )
+      (else
+        )
+      )
+    (update-client-state (medius-user-action joined-chat-world) arg0 #f)
+    (set! (-> *net-mgr* lobby-state in-special-channel) s5-0)
+    )
+  (if (not (-> *net-mgr* lobby-state in-special-channel))
+      (set! (-> *net-mgr* lobby-state last-normal-channel-id) arg0)
+      )
+  (set! (-> *medius-my-player* stats last-channel-id) (-> *net-mgr* lobby-state channel-id))
+  (medius-start-account-stats-update #t #f)
+  (clear-strings! *lobby-chat-window*)
+  (when (!= (get-current-room-name-and-info) 'success)
+    (let ((v1-83 #f))
+      (set! *net-mgr-pending-behavior-result-extra* '())
+      (return (the-as object v1-83))
+      )
+    )
+  (let ((v1-85 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-85))
+    )
+  v0-7
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun room-players-refreshing-callback ((arg0 medius-get-lobby-player-names-response))
+  (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+  (cond
+    ((= (-> arg0 status-code) (medius-status-code medius-no-result))
+     (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+     )
+    ((= (-> arg0 status-code) (medius-status-code medius-success))
+     (add! *medius-room-players* (-> arg0 account-id))
+     )
+    (else
+      (set! (-> *net-mgr* lobby-state got-error) #t)
+      )
+    )
+  (if (= (-> arg0 end-of-list) 1)
+      (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+      )
+  0
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior get-players-in-room net-mgr ()
+  (local-vars (v0-6 symbol))
+  (set! (-> *medius-room-players* ct) 0)
+  (let ((gp-0 (new 'stack 'medius-get-lobby-player-names-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (set! (-> gp-0 medius-world-id) (-> *net-mgr* lobby-state channel-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-lobby-player-names))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 room-players-refreshing-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-20 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-20))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-24 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-24))
+    )
+  v0-6
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior get-room-name net-mgr ((arg0 int) (arg1 (pointer uint8)))
+  (local-vars (v0-7 symbol))
+  (set! (-> arg1 0) (the-as uint 0))
+  (let ((s5-0 (new 'stack 'medius-channel-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> s5-0 message-id))
+    (mem-copy! (-> s5-0 session-key) *medius-session-key* 17)
+    (set! (-> s5-0 medius-world-id) arg0)
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-channel-info))
+    (let ((s5-1 (knet-scert-function-3-args s5-0 medius-simple-request-callback #f)))
+      (when (nonzero? s5-1)
+        (format 0 "initial function call returned ~D~%" s5-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) s5-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-17 #f))
+       (set! *net-mgr-pending-behavior-result-extra* '())
+       (return (the-as object v1-17))
+       )
+     )
+    (else
+      (let ((v1-19 *medius-last-response*))
+        (copy-charp<-charp arg1 (-> (&+ v1-19 28) message-id))
+        )
+      )
+    )
+  (let ((v1-21 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-21))
+    )
+  v0-7
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for "CLAN_"
+;; WARN: Swapped fp-relative label and field offsets for " "
+;; WARN: Swapped fp-relative label and field offsets for "CHALLENGE_"
+;; WARN: Swapped fp-relative label and field offsets for " vs "
+;; WARN: Return type mismatch symbol vs object.
+;; WARN: Removed dead code after return: (set! v1-7 (the-as int (+ 0 1)))
+(defun get-current-room-name-and-info ()
+  (local-vars (v0-10 symbol))
+  (get-room-name (-> *net-mgr* lobby-state channel-id) *current-room-name*)
+  (set! *room-clan-id* -1)
+  (set! *room-clan-id-2* -1)
+  (when (= (-> (the-as (pointer int8) *current-room-name*) 0) 33)
+    (let ((v1-6 (strstr *current-room-name* (-> "CLAN_" data))))
+      (when v1-6
+        (let ((a0-5 (&+ v1-6 5))
+              (v1-7 0)
+              )
+          (while (< v1-7 180)
+            (let* ((gp-0 (x8toi a0-5))
+                   (v1-9 (the-as medius-cached-info-clan (lookup *medius-clan-cache* gp-0 9000 #t #f)))
+                   )
+              (set! *room-clan-id* gp-0)
+              (when v1-9
+                (copy-charp<-charp *current-room-name* (-> v1-9 name))
+                (copy-charp<-charp (&+ *current-room-name* (strlen *current-room-name*)) (-> " " data))
+                (copy-charp<-charp
+                  (&+ *current-room-name* (strlen *current-room-name*))
+                  (the-as (pointer uint8) (lookup-text! *common-text* (text-id text-id-1982) #f))
+                  )
+                (goto cfg-10)
+                )
+              )
+            (suspend)
+            0
+            (return (the-as object #f))
+            )
+          )
+        )
+      )
+    (label cfg-10)
+    (let ((v1-16 (strstr *current-room-name* (-> "CHALLENGE_" data))))
+      (when v1-16
+        (let ((gp-3 (&+ v1-16 10)))
+          (set! *room-clan-id* (x8toi gp-3))
+          (let ((a0-19 (&+ gp-3 9)))
+            (set! *room-clan-id-2* (x8toi a0-19))
+            )
+          )
+        (dotimes (s5-3 180)
+          (let ((s4-0 (the-as medius-cached-info-clan (lookup *medius-clan-cache* *room-clan-id* 9000 #t #f)))
+                (gp-4 (the-as medius-cached-info-clan (lookup *medius-clan-cache* *room-clan-id-2* 9000 #t #f)))
+                )
+            (when (and s4-0 gp-4)
+              (copy-charp<-charp *current-room-name* (-> s4-0 name))
+              (copy-charp<-charp (&+ *current-room-name* (strlen *current-room-name*)) (-> " vs " data))
+              (copy-charp<-charp (&+ *current-room-name* (strlen *current-room-name*)) (-> gp-4 name))
+              (goto cfg-22)
+              )
+            )
+          (suspend)
+          )
+        (return (the-as object #f))
+        )
+      )
+    )
+  (label cfg-22)
+  (return (the-as object 'success))
+  v0-10
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior create-room net-mgr ((arg0 (pointer uint8)) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (local-vars (v0-9 symbol) (gp-2 int))
+  0
+  (let ((gp-0 (new 'stack 'medius-create-channel-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! *scert-function-id* (scert-function get-application-id))
+    (set! (-> gp-0 application-id) (knet-scert-function-0-args))
+    (set! (-> gp-0 max-players) 256)
+    (copy-charp<-charp (-> gp-0 lobby-name) arg0)
+    (set! (-> gp-0 generic-field1) (the-as uint arg1))
+    (set! (-> gp-0 generic-field2) (the-as uint arg2))
+    (set! (-> gp-0 generic-field3) (the-as uint arg3))
+    (set! (-> gp-0 generic-field4) (the-as uint arg4))
+    (set! (-> gp-0 generic-field-level) (medius-world-generic-field-level-type medius-world-generic-field-level1))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-create-channel))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (set! gp-2 (cond
+               ((or (-> self lobby-state got-error)
+                    (-> self lobby-state timeout)
+                    (nonzero? (-> self lobby-state last-medius-error))
+                    (nonzero? (-> self lobby-state last-mgcl-error))
+                    (nonzero? (-> self lobby-state last-dme-error))
+                    (nonzero? (-> self lobby-state callback-status))
+                    )
+                (let ((a0-10 *medius-last-response*)
+                      (v1-20 #f)
+                      )
+                  (set! *net-mgr-pending-behavior-result-extra* (-> a0-10 status-code))
+                  (return (the-as object v1-20))
+                  )
+                gp-2
+                )
+               (else
+                 (-> (the-as medius-create-channel-response *medius-last-response*) medius-world-id)
+                 )
+               )
+        )
+  (format 0 "--- created world ~D~%" gp-2)
+  (let ((v1-24 'success))
+    (set! *net-mgr-pending-behavior-result-extra* gp-2)
+    (return (the-as object v1-24))
+    )
+  v0-9
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior find-room-by-name net-mgr ((arg0 (pointer uint8)))
+  (local-vars (v0-8 symbol) (gp-2 int))
+  0
+  (let ((gp-0 (new 'stack 'medius-find-world-by-name-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (copy-charp<-charp (-> gp-0 name) arg0)
+    (set! (-> gp-0 world-type) (medius-find-world-type find-lobby-world))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-find-world-by-name))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (set! gp-2 (cond
+               ((or (-> self lobby-state got-error)
+                    (-> self lobby-state timeout)
+                    (nonzero? (-> self lobby-state last-medius-error))
+                    (nonzero? (-> self lobby-state last-mgcl-error))
+                    (nonzero? (-> self lobby-state last-dme-error))
+                    (nonzero? (-> self lobby-state callback-status))
+                    )
+                (let ((a0-10 *medius-last-response*)
+                      (v1-18 #f)
+                      )
+                  (set! *net-mgr-pending-behavior-result-extra* (-> a0-10 status-code))
+                  (return (the-as object v1-18))
+                  )
+                gp-2
+                )
+               (else
+                 (-> (the-as medius-find-world-by-name-response *medius-last-response*) medius-world-id)
+                 )
+               )
+        )
+  (format 0 "--- located world ~D~%" gp-2)
+  (let ((v1-22 'success))
+    (set! *net-mgr-pending-behavior-result-extra* gp-2)
+    (return (the-as object v1-22))
+    )
+  v0-8
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for "StaticLobby"
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior ensure-room-is-good net-mgr ()
+  (if (not (strstr *current-room-name* (-> "StaticLobby" data)))
+      (return (the-as object #f))
+      )
+  (format 0 ">>>>>>>>>>> moving rooms~%")
+  (refresh-rooms (shl #x8000 16) (the-as int (the-as uint #xffffffff3fffffff)) 0 0 0)
+  (dotimes (gp-0 (-> *medius-rooms* ct))
+    (case (join-room (-> *medius-rooms* data gp-0 id))
+      (('success)
+       (goto cfg-10)
+       )
+      )
+    )
+  (lobby-fatal-error 'lobby-connect-failed)
+  (label cfg-10)
+  'success
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior test-rooms net-mgr ()
+  (local-vars (v0-15 symbol))
+  (let ((gp-0 (new 'stack 'medius-set-lobby-world-filter-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-0 message-id))
+    (set! (-> gp-0 filter-mask1) (the-as uint #xffffffff))
+    (set! (-> gp-0 filter-mask2) (the-as uint 0))
+    (set! (-> gp-0 filter-mask3) (the-as uint 0))
+    (set! (-> gp-0 filter-mask4) (the-as uint 0))
+    (set! (-> gp-0 lobby-filter-type) (medius-lobby-filter-type medius-lobby-filter-equals-filter))
+    (set! (-> gp-0 filter-mask-level) (medius-lobby-filter-mask-level-type medius-lobby-filter-mask-level1))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-set-lobby-world-filter))
+    (let ((gp-1 (knet-scert-function-3-args gp-0 medius-simple-request-callback #f)))
+      (when (nonzero? gp-1)
+        (format 0 "initial function call returned ~D~%" gp-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (lobby-fatal-error 'lobby-connect-failed)
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (set! (-> *medius-rooms* total-ct) 0)
+  (set! (-> *medius-rooms* ct) 0)
+  (let ((gp-2 (new 'stack 'medius-get-total-channels-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-2 message-id))
+    (mem-copy! (-> gp-2 session-key) *medius-session-key* 17)
+    (set! *scert-function-id* (scert-function get-application-id))
+    (set! (-> gp-2 application-id) (knet-scert-function-0-args))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-get-total-channels))
+    (let ((gp-3 (knet-scert-function-3-args gp-2 medius-simple-request-callback #f)))
+      (when (nonzero? gp-3)
+        (format 0 "initial function call returned ~D~%" gp-3)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-3)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     0
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-46 (the-as medius-get-total-channels-response *medius-last-response*)))
+    (when (nonzero? (-> v1-46 status-code))
+      (let ((v1-47 #f))
+        (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+        (return (the-as object v1-47))
+        )
+      )
+    (set! (-> *medius-rooms* total-ct) (the-as int (-> v1-46 total)))
+    (set! (-> *medius-rooms* total-pages) (/ (+ (-> *medius-rooms* total-ct) 4) 5))
+    (format 0 "-------------------------------------------------------> TOTAL ROOMS: ~D~%" (-> v1-46 total))
+    )
+  (let ((gp-4 (new 'stack 'medius-channel-list-extra-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> gp-4 message-id))
+    (set! (-> gp-4 page-size) (the-as uint 100))
+    (set! (-> gp-4 page-id) (the-as uint 1))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-channel-list-extra-info))
+    (let ((gp-5 (knet-scert-function-3-args
+                  gp-4
+                  (lambda ((arg0 medius-channel-list-extra-info-response))
+                    (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+                    (format
+                      0
+                      "----------------------------------> room ~G : ~X ~X ~X ~X~%"
+                      (-> arg0 lobby-name)
+                      (-> arg0 generic-field1)
+                      (-> arg0 generic-field2)
+                      (-> arg0 generic-field3)
+                      (-> arg0 generic-field4)
+                      )
+                    (when (= (-> arg0 end-of-list) 1)
+                      (let ((v0-2 #t))
+                        (set! (-> *net-mgr* lobby-state callback-occurred) v0-2)
+                        v0-2
+                        )
+                      )
+                    )
+                  #f
+                  )
+                )
+          )
+      (when (nonzero? gp-5)
+        (format 0 "initial function call returned ~D~%" gp-5)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) gp-5)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-68 #f))
+       (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+       (return (the-as object v1-68))
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (let ((v1-72 'success))
+    (set! *net-mgr-pending-behavior-result-extra* '())
+    (return (the-as object v1-72))
+    )
+  v0-15
+  )

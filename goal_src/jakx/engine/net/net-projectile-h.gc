@@ -6,35 +6,35 @@
 ;; dgos: ENGINE, GAME
 
 (declare-type net-projectile projectile)
-(define-extern net-projectile-init-by-other (function process none :behavior net-projectile))
+(define-extern net-projectile-init-by-other (function projectile-init-by-other-params int object :behavior net-projectile))
 
 ;; DECOMP BEGINS
 
 (deftype net-projectile (projectile)
   ()
   (:methods
-    (net-projectile-method-72 () none)
-    (net-projectile-method-73 () none)
-    (net-projectile-method-74 () none)
+    (net-projectile-method-72 (_type_ vector vector vector vector time-frame time-frame) vector)
+    (net-projectile-method-73 (_type_ mem-buffer) none)
+    (send-force-position (_type_) none)
     )
   )
 
 
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-projectile-init-remote net-projectile ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-projectile) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-projectile) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-projectile :init net-projectile-init-remote arg0 :name "net-projectile")
     )
   )
 
-(defmethod process-nettable-method-37 ((this net-projectile) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-projectile) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'force-position)
   (+! (-> arg0 msg-count) 1)
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'force-retarget)
@@ -55,7 +55,7 @@
 
 (net-process-class-register *net-process-class-info-net-projectile*)
 
-(defmethod process-nettable-method-40 ((this net-projectile))
+(defmethod get-class-info ((this net-projectile))
   *net-process-class-info-net-projectile*
   )
 
@@ -65,10 +65,10 @@
       (let ((t9-1 (method-of-type process activate)))
         (t9-1 s5-0 arg2 "net-projectile" (the-as pointer #x70004000))
         )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 s5-0)
-            (a1-4 net-projectile-init-by-other)
-            )
+      (run-now-in-process
+        s5-0
+        net-projectile-init-by-other
+        arg1
         (- (- (if *net-mgr*
                   (-> *net-mgr* game-state time)
                   0
@@ -83,7 +83,6 @@
                0
                )
            )
-        ((the-as (function object object object none) t9-2) a0-3 a1-4 arg1)
         )
       (-> s5-0 ppointer)
       )

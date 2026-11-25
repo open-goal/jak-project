@@ -46,10 +46,10 @@
     (read-uint32 (_type_) uint)
     (read-uint64 (_type_) uint)
     (read-float (_type_) float)
-    (read-vector (_type_ mem-buffer) none)
+    (read-vector (_type_ vector) none)
     (read-vector-scaled (_type_ vector vector) none)
     (read-quaternion (_type_ quaternion) none)
-    (read-level-pos (_type_ mem-buffer) none)
+    (read-level-pos (_type_ vector) none)
     (read-symbol (_type_) symbol)
     (read-bool (_type_) symbol)
     (read-string (_type_ (pointer uint8)) none)
@@ -285,10 +285,10 @@
   (none)
   )
 
-(defmethod read-vector ((this mem-buffer) (arg0 mem-buffer))
-  (set! (-> arg0 base) (the-as pointer (read-uint32 this)))
-  (set! (-> arg0 ptr) (the-as pointer (read-uint32 this)))
-  (set! (-> arg0 limit) (the-as uint (read-uint32 this)))
+(defmethod read-vector ((this mem-buffer) (arg0 vector))
+  (set! (-> arg0 x) (the-as float (read-uint32 this)))
+  (set! (-> arg0 y) (the-as float (read-uint32 this)))
+  (set! (-> arg0 z) (the-as float (read-uint32 this)))
   0
   (none)
   )
@@ -409,7 +409,7 @@
   (:methods
     (update! (_type_) none)
     (write-pos (_type_ vector mem-buffer) none)
-    (read-pos (_type_ mem-buffer mem-buffer) none)
+    (read-pos (_type_ vector mem-buffer) none)
     )
   )
 
@@ -420,7 +420,7 @@
   (none)
   )
 
-(defmethod read-pos ((this level-bounding-box) (arg0 mem-buffer) (arg1 mem-buffer))
+(defmethod read-pos ((this level-bounding-box) (arg0 vector) (arg1 mem-buffer))
   (read-vector arg1 arg0)
   0
   (none)
@@ -434,7 +434,7 @@
   (none)
   )
 
-(defmethod read-level-pos ((this mem-buffer) (arg0 mem-buffer))
+(defmethod read-level-pos ((this mem-buffer) (arg0 vector))
   (read-pos *level-bounding-box* arg0 this)
   0
   (none)

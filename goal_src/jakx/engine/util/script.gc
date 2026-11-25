@@ -1579,7 +1579,7 @@
             (when (-> arg0 side-effect?)
               (let ((v1-1 (sound-info-by-name (the-as string (string->sound-name (the-as string (-> arg0 param 1)))))))
                 (when v1-1
-                  (let ((s5-1 (make-sound-instance (-> *sound-info* (-> v1-1 index)) (new 'static 'sound-id) #f)))
+                  (let ((s5-1 (make-sound-instance (-> *sound-info* (-> v1-1 index)) (new 'static 'sound-id) (the-as handle #f))))
                     (cond
                       (s5-1
                         (set! (-> s5-1 volume) (the int (* 1024.0 (command-get-float (-> arg0 param 2) 0.0))))
@@ -1600,7 +1600,7 @@
                                 )
                           (set! (-> v1-11 quad) (-> (the-as vector a0-8) quad))
                           )
-                        (logior! (-> s5-1 flags) 96)
+                        (logior! (-> s5-1 flags) (sound-spec-flag no-track needs-update))
                         (logior! (-> s5-1 mask) 3)
                         (the-as int (-> s5-1 id))
                         )
@@ -1640,7 +1640,13 @@
                     )
                 (let ((v1-5 (sound-info-by-name (the-as string (string->sound-name (the-as string (-> arg0 param 1)))))))
                   (when v1-5
-                    (let ((s5-1 (make-sound-instance (-> *sound-info* (-> v1-5 index)) (the-as sound-id (-> s5-0 param-int64 0)) #f)))
+                    (let ((s5-1 (make-sound-instance
+                                  (-> *sound-info* (-> v1-5 index))
+                                  (the-as sound-id (-> s5-0 param-int64 0))
+                                  (the-as handle #f)
+                                  )
+                                )
+                          )
                       (cond
                         (s5-1
                           (set! (-> s5-1 volume) (the int (* 1024.0 (command-get-float (-> arg0 param 2) 0.0))))
@@ -1660,7 +1666,7 @@
                                   )
                             (set! (-> v1-13 quad) (-> (the-as vector a0-8) quad))
                             )
-                          (logior! (-> s5-1 flags) 96)
+                          (logior! (-> s5-1 flags) (sound-spec-flag no-track needs-update))
                           (logior! (-> s5-1 mask) 1)
                           (the-as int (-> s5-1 id))
                           )
@@ -1704,11 +1710,7 @@
                   (let ((s4-1 (sound-info-by-name (the-as string (string->sound-name (the-as string (-> arg0 param 1))))))
                         (a0-7 (as-type (-> arg0 process) net-player))
                         )
-                    (when (and s4-1 a0-7 (let ((t9-5 local-human-player-above-height?))
-                                           (-> arg0 trans y)
-                                           (t9-5)
-                                           )
-                               )
+                    (when (and s4-1 a0-7 (local-human-player-above-height? (the-as net-player a0-7) (-> arg0 trans y)))
                       (let ((f30-0 (vector-length (camera-vel))))
                         (when *debug-whoosh*
                           (format *stdebug* "vel: ~M dist: ~M~%" f30-0 (vector-vector-distance (-> arg0 trans) (camera-pos)))
@@ -1727,11 +1729,17 @@
                                             )
                                           )
                                    )
-                             (let ((v0-12 (make-sound-instance (-> *sound-info* (-> s4-1 index)) (the-as sound-id (-> s5-0 param-int64 0)) #f)))
+                             (let ((v0-12 (make-sound-instance
+                                            (-> *sound-info* (-> s4-1 index))
+                                            (the-as sound-id (-> s5-0 param-int64 0))
+                                            (the-as handle #f)
+                                            )
+                                          )
+                                   )
                                (cond
                                  (v0-12
                                    (set! (-> v0-12 trans quad) (-> (the-as vector s3-2) quad))
-                                   (logior! (-> v0-12 flags) 96)
+                                   (logior! (-> v0-12 flags) (sound-spec-flag no-track needs-update))
                                    (the-as int (-> v0-12 id))
                                    )
                                  (else
@@ -2165,13 +2173,13 @@
   (set! (-> v1-127 func)
         (lambda ((arg0 script-context))
           " call a (lambda (process vector cspace)) on the specified location.
-
+   
       e.g `(joint-eval ,(lambda ((proc process) (trans vector) (cs cspace)) (format #t \"~A ~`vector`P ~`cspace`P~%\" proc trans cs)) :entity *target* :joint \"neckB\")
-
+   
       proc - the process or #f
       trans - the position specified (will always be true)
       cs - the cspace, or #f
-
+   
      "
           (when (-> arg0 side-effect?)
             (if (not (-> arg0 param 2))

@@ -5,6 +5,43 @@
 ;; name in dgo: scert-8-h
 ;; dgos: ENGINE, GAME
 
+;; +++medius-join-type
+(defenum medius-join-type
+  :type int32
+  (medius-join-as-player 0)
+  (medius-join-as-spectator 1)
+  (medius-join-as-mass-spectator 2)
+  (extra-medius-join-type #xffffff)
+  )
+;; ---medius-join-type
+
+;; +++medius-lobby-filter-type
+(defenum medius-lobby-filter-type
+  :type int32
+  (medius-lobby-filter-equals-lobby 0)
+  (medius-lobby-filter-equals-filter 1)
+  (extra-medius-lobby-filter #xffffff)
+  )
+;; ---medius-lobby-filter-type
+
+;; +++medius-lobby-filter-mask-level-type
+(defenum medius-lobby-filter-mask-level-type
+  :type int32
+  (medius-lobby-filter-mask-level0 0)
+  (medius-lobby-filter-mask-level1 1)
+  (medius-lobby-filter-mask-level2 2)
+  (medius-lobby-filter-mask-level3 4)
+  (medius-lobby-filter-mask-level4 8)
+  (medius-lobby-filter-mask-level12 16)
+  (medius-lobby-filter-mask-level123 32)
+  (medius-lobby-filter-mask-level1234 64)
+  (medius-lobby-filter-mask-level23 128)
+  (medius-lobby-filter-mask-level234 256)
+  (medius-lobby-filter-mask-level34 512)
+  (extra-medius-lobby-filter-mask-level-type #xffffff)
+  )
+;; ---medius-lobby-filter-mask-level-type
+
 ;; DECOMP BEGINS
 
 (deftype medius-join-game-request0 (structure)
@@ -12,7 +49,7 @@
    (session-key      uint8             17)
    (medius-world-id  int32)
    (game-password    uint8             32)
-   (game-host-type   int32)
+   (game-host-type   medius-game-host-type)
    (address-list     net-address-list  :inline)
    )
   )
@@ -22,9 +59,9 @@
   ((message-id       uint8             21)
    (session-key      uint8             17)
    (medius-world-id  int32)
-   (join-type        int32)
+   (join-type        medius-join-type)
    (game-password    uint8             32)
-   (game-host-type   int32)
+   (game-host-type   medius-game-host-type)
    (pub-key          rsa-key           :inline)
    (address-list     net-address-list  :inline)
    )
@@ -34,7 +71,7 @@
 (deftype medius-join-game-response (structure)
   ((message-id      uint8                21)
    (status-code     medius-status-code)
-   (game-host-type  int32)
+   (game-host-type  medius-game-host-type)
    (connect-info    net-connection-info  :inline)
    )
   )
@@ -43,7 +80,7 @@
 (deftype medius-ladder-list-extra-info-request (structure)
   ((message-id         uint8  21)
    (ladder-stat-index  int32)
-   (sort-order         int32)
+   (sort-order         medius-sort-order)
    (start-position     uint32)
    (page-size          uint32)
    )
@@ -82,7 +119,7 @@
    (session-key     uint8  17)
    (start-byte      uint32)
    (end-byte        uint32)
-   (sort-order      int32)
+   (sort-order      medius-sort-order)
    (start-position  uint32)
    (page-size       uint32)
    )
@@ -104,7 +141,7 @@
   ((message-id         uint8  21)
    (account-id         int32)
    (ladder-stat-index  int32)
-   (sort-order         int32)
+   (sort-order         medius-sort-order)
    )
   )
 
@@ -124,7 +161,7 @@
    (account-id   int32)
    (start-byte   uint32)
    (end-byte     uint32)
-   (sort-order   int32)
+   (sort-order   medius-sort-order)
    )
   )
 
@@ -165,11 +202,11 @@
 (deftype medius-lobby-world-player-list-response (structure)
   ((message-id        uint8  21)
    (status-code       medius-status-code)
-   (player-status     int32)
+   (player-status     medius-player-status)
    (account-id        int32)
    (account-name      uint8  32)
    (stats             uint8  256)
-   (connection-class  int32)
+   (connection-class  medius-connection-type)
    (end-of-list       int8)
    )
   )
@@ -227,8 +264,8 @@
    (status-code       medius-status-code)
    (account-name      uint8  32)
    (application-id    int32)
-   (player-status     int32)
-   (connection-class  int32)
+   (player-status     medius-player-status)
+   (connection-class  medius-connection-type)
    (stats             uint8  256)
    )
   )
@@ -315,7 +352,7 @@
   ((message-id          uint8  21)
    (session-key         uint8  17)
    (clan-invitation-id  int32)
-   (response            int32)
+   (response            medius-clan-invitations-response-status)
    (message             uint8  200)
    )
   )
@@ -332,7 +369,7 @@
   ((message-id         uint8  21)
    (session-key        uint8  17)
    (clan-challenge-id  int32)
-   (challenge-status   int32)
+   (challenge-status   medius-clan-challenge-status)
    (message            uint8  200)
    )
   )
@@ -392,7 +429,7 @@
 
 (deftype medius-session-begin-request (structure)
   ((message-id        uint8  21)
-   (connection-class  int32)
+   (connection-class  medius-connection-type)
    )
   )
 
@@ -422,8 +459,8 @@
 (deftype medius-set-game-list-filter-request (structure)
   ((message-id           uint8  21)
    (session-key          uint8  17)
-   (filter-field         int32)
-   (comparison-operator  int32)
+   (filter-field         medius-game-list-filter-field)
+   (comparison-operator  medius-comparison-operator)
    (baseline-value       int32)
    )
   )
@@ -442,8 +479,8 @@
    (filter-mask2       uint32)
    (filter-mask3       uint32)
    (filter-mask4       uint32)
-   (lobby-filter-type  int32)
-   (filter-mask-level  int32)
+   (lobby-filter-type  medius-lobby-filter-type)
+   (filter-mask-level  medius-lobby-filter-mask-level-type)
    )
   )
 
@@ -455,7 +492,7 @@
    (filter-mask2       uint32)
    (filter-mask3       uint32)
    (filter-mask4       uint32)
-   (lobby-filter-type  int32)
-   (filter-mask-level  int32)
+   (lobby-filter-type  medius-lobby-filter-type)
+   (filter-mask-level  medius-lobby-filter-mask-level-type)
    )
   )

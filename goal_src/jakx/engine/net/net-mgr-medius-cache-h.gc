@@ -5,18 +5,35 @@
 ;; name in dgo: net-mgr-medius-cache-h
 ;; dgos: ENGINE, GAME
 
+;; +++medius-cached-info-status
+(defenum medius-cached-info-status
+  :type uint64
+  (free 0)
+  (requested 1)
+  (busy 2)
+  (valid 3)
+  (stale 4)
+  (error 5)
+  )
+;; ---medius-cached-info-status
+
+
+(declare-type medius-cache basic)
+
+(define-extern medius-cache-tick (function medius-cache object))
+
 ;; DECOMP BEGINS
 
 (deftype medius-cached-info (basic)
   ((medius-id      int32)
    (accessed-time  int32)
    (fetched-time   int32)
-   (status         uint64)
+   (status         medius-cached-info-status)
    )
   (:methods
-    (medius-cached-info-method-9 () none)
-    (medius-cached-info-method-10 () none)
-    (medius-cached-info-method-11 () none)
+    (get-retrieve-behavior (_type_) (function medius-cached-info object :behavior net-mgr))
+    (evict-before? (_type_ medius-cached-info) symbol)
+    (has-data? (_type_) symbol)
     )
   )
 
@@ -25,12 +42,12 @@
   ((objects  (array medius-cached-info))
    )
   (:methods
-    (medius-cache-method-9 () none)
-    (medius-cache-method-10 () none)
-    (medius-cache-method-11 () none)
+    (remove! (_type_ int) none)
+    (mark-stale! (_type_ int) none)
+    (lookup (_type_ int int symbol symbol) object)
     (clear-objects! (_type_) none)
-    (medius-cache-method-13 () none)
-    (medius-cache-method-14 () none)
+    (busy? (_type_) symbol)
+    (medius-cache-method-14 (_type_) none)
     )
   )
 
@@ -38,8 +55,9 @@
 (deftype medius-cache-index (structure)
   ((id  int32)
    )
+  :pack-me
   (:methods
-    (medius-cache-index-method-9 () none)
+    (medius-cache-index-method-9 (_type_) none)
     (get-id (_type_) int)
     )
   )
@@ -48,13 +66,13 @@
 (deftype medius-cache-index-array (structure)
   ((ct      int32)
    (max-ct  int32)
-   (data    medius-cache  :dynamic)
+   (data    medius-cache-index  :inline :dynamic)
    )
   (:methods
-    (medius-cache-index-array-method-9 (_type_ int) symbol)
-    (medius-cache-index-array-method-10 (_type_) none)
-    (medius-cache-index-array-method-11 (_type_) none)
-    (medius-cache-index-array-method-12 (_type_) none)
+    (contains? (_type_ int) symbol)
+    (add! (_type_ int) none)
+    (remove! (_type_ int) none)
+    (move-to-front! (_type_ medius-cache) int)
     )
   )
 
@@ -62,7 +80,7 @@
 (defmethod clear-objects! ((this medius-cache))
   (dotimes (v1-0 (-> this objects length))
     (set! (-> this objects v1-0 medius-id) -1)
-    (set! (-> this objects v1-0 status) (the-as uint 0))
+    (set! (-> this objects v1-0 status) (medius-cached-info-status free))
     )
   0
   (none)

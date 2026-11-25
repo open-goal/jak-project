@@ -65,11 +65,161 @@
 ;; ---net-error
 
 
+;; +++net-disconnect-reason
+(defenum net-disconnect-reason
+  :type int32
+  (extra-net-disconnect-reason -1)
+  (net-disconnect-none 0)
+  (net-disconnect-normal 1)
+  (net-disconnect-connect-fail 2)
+  (net-disconnect-stream-media-fail 3)
+  (net-disconnect-update-fail 4)
+  (net-disconnect-inactivity 5)
+  (net-disconnect-shutdown 6)
+  (net-disconnect-message-length-mismatch 7)
+  (net-disconnect-app-defined-start 128)
+  (max-disconnect-reason 255)
+  )
+;; ---net-disconnect-reason
+
+;; +++net-character-encoding-type
+(defenum net-character-encoding-type
+  :type int32
+  (net-character-encoding-none 0)
+  (net-character-encoding-iso8859-1 1)
+  (net-character-encoding-utf-8 2)
+  (extra-net-character-encoding-type #xffffff)
+  )
+;; ---net-character-encoding-type
+
+;; +++net-language-type
+(defenum net-language-type
+  :type int32
+  (net-language-none 0)
+  (net-language-usenglish 1)
+  (net-language-ukenglish 2)
+  (net-language-japanese 3)
+  (net-language-korean 4)
+  (net-language-italian 5)
+  (net-language-spanish 6)
+  (net-language-german 7)
+  (net-language-french 8)
+  (net-language-dutch 9)
+  (net-language-portuguese 10)
+  (net-language-chinese 11)
+  (net-language-taiwanese 12)
+  (net-language-finnish 13)
+  (net-language-norwegian 14)
+  (extra-net-language-type #xffffff)
+  )
+;; ---net-language-type
+
+;; +++net-connect-status
+(defenum net-connect-status
+  :type int32
+  (connect-status-closed 0)
+  (connect-status-disconnected 0)
+  (connect-status-open 1)
+  (connect-status-pending 2)
+  (connect-status-failed 3)
+  (connect-status-need-disconnect 4)
+  (connect-status-disconnecting 5)
+  (extra-connect-staus #xffffff)
+  )
+;; ---net-connect-status
+
+;; +++net-connect-failure-reason
+(defenum net-connect-failure-reason
+  :type int32
+  (connect-failure-reason-none 0)
+  (connect-failure-reason-error 1)
+  (connect-failure-reason-client-ver 2)
+  (connect-failure-reason-server-ver 3)
+  (connect-failure-reason-full 4)
+  (connect-failure-reason-world-id 5)
+  (connect-failure-reason-auth 6)
+  (connect-failure-reason-encryption 7)
+  (connect-failure-reason-access-key 8)
+  (connect-failure-reason-aux-udpfailure 9)
+  (extra-connect-failure-reason #xffffff)
+  )
+;; ---net-connect-failure-reason
+
+;; +++net-client-status
+(defenum net-client-status
+  :type int32
+  (client-status-none 0)
+  (client-status-not-connected 1)
+  (client-status-connected 2)
+  (client-status-joining 3)
+  (client-status-joined 4)
+  (client-status-joined-session-master 5)
+  (extra-net-client-status #xffffff)
+  )
+;; ---net-client-status
+
+;; +++net-system-status
+(defenum net-system-status
+  :type int32
+  (extra-net-system-status -1)
+  (net-system-token-ready 1)
+  )
+;; ---net-system-status
+
+;; +++net-stream-media-audio-type
+(defenum net-stream-media-audio-type
+  :type int32
+  (net-stream-media-audio-type-raw 0)
+  (net-stream-media-audio-type-custom 1)
+  (net-stream-media-audio-type-gsm 2)
+  (net-stream-media-audio-type-lpc 3)
+  (net-stream-media-audio-type-lpc10 4)
+  (extra-net-stream-media-audio-type #xffffff)
+  )
+;; ---net-stream-media-audio-type
+
+;; +++net-stream-media-grid-type
+(defenum net-stream-media-grid-type
+  :type int32
+  (net-stream-media-grid-type-relay 0)
+  (net-stream-media-grid-type-direct 1)
+  (extra-net-stream-media-grid-type #xffffff)
+  )
+;; ---net-stream-media-grid-type
+
+;; +++net-address-type
+(defenum net-address-type
+  :type int32
+  (extra-net-address-type -1)
+  (net-address-none 0)
+  (net-address-type-external 1)
+  (net-address-type-internal 2)
+  (net-address-type-natservice 3)
+  (net-address-type-binary-external 4)
+  (net-address-type-binary-internal 5)
+  (net-address-type-binary-external-vport 6)
+  (net-address-type-binary-internal-vport 7)
+  (net-address-type-binary-natservices 8)
+  )
+;; ---net-address-type
+
+;; +++net-connection-type
+(defenum net-connection-type
+  :type int32
+  (net-connection-none 0)
+  (net-connection-type-client-server-tcp 1)
+  (net-connection-type-peer-to-peer-udp 2)
+  (net-connection-type-client-server-tcpaux-udp 3)
+  (net-connection-type-client-listener-tcp 4)
+  (extra-net-connection-type #xffffff)
+  )
+;; ---net-connection-type
+
 ;; DECOMP BEGINS
 
 (deftype net-localization-params (structure)
-  ((character-encoding-type  int32)
-   (language-type            int32)
+  ((character-encoding-type  net-character-encoding-type)
+   (language-type            net-language-type)
    )
   :pack-me
   )
@@ -92,21 +242,21 @@
 
 
 (deftype net-type-system-message-data (structure)
-  ((connection-handle  basic)
+  ((connection-handle  pointer)
    (severity           uint8)
-   (e-encoding-type    int32)
-   (e-language-type    int32)
+   (e-encoding-type    net-character-encoding-type)
+   (e-language-type    net-language-type)
    (b-end-of-message   uint8)
    (n-message-length   uint16)
    (p-message          uint32)
-   (p-user-data        basic)
+   (p-user-data        pointer)
    )
   )
 
 
 (deftype net-update-error (structure)
-  ((connection-handle  basic)
-   (net-error          int32)
+  ((connection-handle  pointer)
+   (net-error          net-error)
    )
   :pack-me
   )
@@ -122,7 +272,7 @@
 
 (deftype net-data (structure)
   ((n-size  int32)
-   (p-data  basic)
+   (p-data  pointer)
    )
   :pack-me
   )
@@ -130,7 +280,7 @@
 
 (deftype net-initialize-out-params (structure)
   ((b-is-set    int32)
-   (error-code  int32)
+   (error-code  net-error)
    (sz-version  int8  16)
    )
   )
@@ -138,7 +288,7 @@
 
 (deftype net-connect-out-params (structure)
   ((b-is-set           int32)
-   (error-code         int32)
+   (error-code         net-error)
    (connection-handle  pointer)
    )
   :pack-me
@@ -147,22 +297,22 @@
 
 (deftype net-host-peer-to-peer-out-params (structure)
   ((b-is-set           int32)
-   (error-code         int32)
-   (connection-handle  basic)
+   (error-code         net-error)
+   (connection-handle  pointer)
    )
   )
 
 
 (deftype net-resolve-addr-out-params (structure)
   ((b-is-set    int32)
-   (error-code  int32)
+   (error-code  net-error)
    )
   )
 
 
 (deftype net-incoming-client-out-params (structure)
   ((b-is-set    int32)
-   (error-code  int32)
+   (error-code  net-error)
    )
   )
 
@@ -185,7 +335,7 @@
 
 
 (deftype net-connection-status (structure)
-  ((my-connect-status         int32)
+  ((my-connect-status         net-connect-status)
    (n-valid-client-count      int32)
    (n-connected-client-count  int32)
    )
@@ -201,7 +351,7 @@
 (deftype net-type-lookup-response (structure)
   ((asz-ipaddresses  sz-ipaddress  16 :inline)
    (n-ipaddresses    uint32)
-   (error-code       int32)
+   (error-code       net-error)
    )
   )
 
@@ -230,29 +380,29 @@
 
 (deftype net-type-connect-callback-data (structure)
   ((connection-handle  basic)
-   (connect-status     int32)
-   (failure-reason     int32)
-   (error-code         int32)
+   (connect-status     net-connect-status)
+   (failure-reason     net-connect-failure-reason)
+   (error-code         net-error)
    (p-user-data        basic)
    )
   )
 
 
 (deftype net-type-client-connect-callback-data (structure)
-  ((connection-handle  basic)
+  ((connection-handle  pointer)
    (client-index       int32)
    (client-ip-string   uint32)
-   (client-status      int32)
+   (client-status      net-client-status)
    (user-specified     int32)
-   (p-user-data        basic)
+   (p-user-data        pointer)
    )
   )
 
 
 (deftype net-peer-to-peer-host-change-data (structure)
-  ((connection-handle  basic)
+  ((connection-handle  pointer)
    (host-client-index  int32)
-   (p-user-data        basic)
+   (p-user-data        pointer)
    )
   )
 
@@ -261,7 +411,7 @@
   ((connection-handle   basic)
    (token-id            int32)
    (owner-client-index  int32)
-   (error-code          int32)
+   (error-code          net-error)
    (p-user-data         basic)
    )
   )
@@ -278,15 +428,15 @@
 
 (deftype net-system-status-data (structure)
   ((connection-handle  basic)
-   (status             int32)
-   (error-code         int32)
+   (status             net-system-status)
+   (error-code         net-error)
    (p-user-data        basic)
    )
   )
 
 
 (deftype net-stream-media-audio-record-data (structure)
-  ((audio-type       int32)
+  ((audio-type       net-stream-media-audio-type)
    (p-buffer         uint32)
    (buf-size         uint32)
    (bytes-stored     uint32)
@@ -297,7 +447,7 @@
 
 
 (deftype net-stream-media-audio-play-data (structure)
-  ((audio-type    int32)
+  ((audio-type    net-stream-media-audio-type)
    (client-index  int32)
    (p-buffer      uint32)
    (buf-size      uint32)
@@ -394,7 +544,7 @@
    (record-no-data-timeout               uint32)
    (send-buffer-size                     uint32)
    (recv-buffer-size                     uint32)
-   (grid-type                            int32)
+   (grid-type                            net-stream-media-grid-type)
    (audio-data-characteristics           net-audio-data-characteristics  :inline)
    (pf-audio-record-callback             basic)
    (p-audio-record-callback-data         basic)
@@ -415,7 +565,7 @@
 
 
 (deftype net-address (structure)
-  ((address-type  int32)
+  ((address-type  net-address-type)
    (address       int8  16)
    (port          uint32)
    )
@@ -431,7 +581,7 @@
 
 
 (deftype net-connection-info (structure)
-  ((e-type         int32)
+  ((e-type         net-connection-type)
    (address-list   net-address-list  :inline)
    (world-id       int32)
    (server-key     rsa-key           :inline)
@@ -468,14 +618,6 @@
    )
   )
 
-;; og:preserve-this added
-(deftype net-connect-params (structure)
-  "(code joining aux-voice-mgr)"
-  ((in  net-connect-in-params  :inline)
-   (out net-connect-out-params :inline)
-   )
-  )
-
 
 (deftype net-bit-mask (structure)
   ((bitmask  uint32  8)
@@ -506,7 +648,7 @@
 
 
 (deftype net-send-message-out-params (structure)
-  ((error-code     int32)
+  ((error-code     net-error)
    (queued-client  net-client-list  :inline)
    )
   )
@@ -514,7 +656,7 @@
 
 (deftype net-disconnect-params (structure)
   ((connection-handle             pointer)
-   (reason                        int32)
+   (reason                        net-disconnect-reason)
    (pf-local-disconnect-callback  basic)
    (p-user-data                   pointer)
    )
@@ -534,7 +676,7 @@
   ((connection-handle     basic)
    (target-client-index   int32)
    (latency-metrics-info  net-latency-metrics-info  :inline)
-   (error-code            int32)
+   (error-code            net-error)
    (p-user-data           basic)
    )
   )

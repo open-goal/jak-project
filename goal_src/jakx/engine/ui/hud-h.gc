@@ -9,16 +9,16 @@
 (defenum hud-sprite-flags
   :type uint16
   :bitfield #t
-  (hsf0 0)
-  (hsf1 1)
-  (hsf2 2)
-  (hsf3 3)
-  (hsf4 4)
-  (hsf5 5)
-  (hsf6 6)
-  (hsf7 7)
-  (hsf8 8)
-  (hsf9 9)
+  (flip-x 0)
+  (flip-y 1)
+  (right 2)
+  (center 3)
+  (additive 4)
+  (subtractive 5)
+  (alpha-test 6)
+  (center-x 7)
+  (center-y 8)
+  (fullscreen 9)
   (hsf10 10)
   (hsf11 11)
   (hsf12 12)
@@ -38,6 +38,28 @@
   )
 ;; ---hud-flags
 
+;; +++hud-string-flag
+(defenum hud-string-flag
+  :type uint16
+  :bitfield #t
+  :copy-entries font-flags
+  )
+;; ---hud-string-flag
+
+
+(define-extern dma-add-process-drawable-hud (function process-drawable draw-control float dma-buffer none))
+(define-extern char-effect-compute-colors (function font-char-effect int font-color font-context none))
+(define-extern draw-string-init-justify (function string dma-buffer font-context draw-string-result))
+(define-extern draw-string-asm-packed (function string dma-buffer font-context draw-string-result))
+(define-extern draw-effect-string (function string dma-buffer font-context draw-string-result))
+(define-extern draw-string3d-asm (function string dma-buffer font-context draw-string-result))
+(define-extern current-finish-mode (function symbol))
+(define-extern grand-prix-totals-on? (function symbol))
+(define-extern end-game-menu-on? (function symbol))
+(define-extern in-game-menu-on? (function symbol))
+(define-extern high-scores-on? (function symbol))
+(define-extern cash-stats-on? (function symbol))
+
 ;; DECOMP BEGINS
 
 (deftype hud-string (structure)
@@ -46,7 +68,7 @@
    (width         float)
    (height        float)
    (color         font-color)
-   (flags         uint16)
+   (flags         hud-string-flag)
    (pos           vector4w  :inline)
    (alpha         float)
    (time          float)
@@ -55,16 +77,16 @@
    (text-length   int32)
    )
   (:methods
-    (hud-string-method-9 () none)
+    (setup-font-context! (_type_ font-context) none)
     )
   )
 
 
 (deftype hud-corners (structure)
-  ((data  uint64  4)
+  ((data  int32  8)
    )
   (:methods
-    (hud-corners-method-9 () none)
+    (calc-corners! (_type_ vector4w float hud-sprite-flags float float) none)
     )
   )
 
@@ -115,8 +137,8 @@
 
 
 (deftype hud (process)
-  ((trigger-time    uint64)
-   (last-hide-time  uint64)
+  ((trigger-time    time-frame)
+   (last-hide-time  time-frame)
    (offset          float)
    (flags           hud-flags)
    (strings         hud-string  45 :inline)
@@ -131,19 +153,19 @@
     hud-in
     )
   (:methods
-    (hud-method-17 (_type_) symbol)
-    (hud-method-18 (_type_) symbol)
-    (hud-method-19 (_type_) symbol)
-    (hud-method-20 (_type_) symbol)
-    (hud-method-21 (_type_) symbol)
-    (hud-method-22 (_type_) symbol)
-    (hud-method-23 (_type_) symbol)
-    (hud-method-24 (_type_) none)
-    (hud-method-25 (_type_) symbol)
-    (hud-method-26 (_type_) none)
-    (hud-method-27 (_type_) symbol)
+    (hide-during-letterbox? (_type_) symbol)
+    (hide-during-end-game-menu? (_type_) symbol)
+    (hide-during-in-game-menu? (_type_) symbol)
+    (hide-during-cash-stats? (_type_) symbol)
+    (hide-during-high-scores? (_type_) symbol)
+    (hide-during-finish-mode? (_type_) symbol)
+    (hide-during-grand-prix-totals? (_type_) symbol)
+    (draw (_type_) none)
+    (should-show? (_type_) symbol)
+    (init-callback (_type_) none)
+    (hud-event-handler (_type_ process int symbol event-message-block) object)
     (hud-method-28 (_type_) none)
-    (hud-method-29 (_type_ int int) none)
+    (alloc-string-if-needed (_type_ int int) none)
     )
   )
 

@@ -5,5 +5,3055 @@
 ;; name in dgo: net-util
 ;; dgos: ENGINE, GAME
 
+(declare-type in-game-hud hud)
+(declare-type hud-slowmo in-game-hud)
+(declare-type oil-slick process-drawable)
+(declare-type slip-object process-drawable)
+(declare-type smoke-system process-nettable)
+(declare-type lightning-sphere process-drawable)
+(declare-type oil-trail prim-client)
+
+(define-extern process-is-in-tree (function process-tree symbol))
+
 ;; DECOMP BEGINS
 
+(define *closest-player-dist-sq* 0.0)
+
+(defun get-closest-human-player ((arg0 vector))
+  (let ((f30-0 (the-as float #x7f800000)))
+    0.0
+    (let ((s5-0 -1))
+      (dotimes (s4-0 *active-net-player-count*)
+        (let ((s3-0 (-> *active-net-players* s4-0)))
+          (when (and (>= (-> s3-0 player-id) 0) (< (-> s3-0 player-id) 16))
+            (when (-> s3-0 last-known-pos-valid)
+              (let ((f0-1 (vector-vector-distance-squared arg0 (-> s3-0 last-known-pos))))
+                (when (or (< f0-1 f30-0) (= s5-0 -1))
+                  (set! f30-0 f0-1)
+                  (set! s5-0 (-> s3-0 player-id))
+                  )
+                )
+              )
+            )
+          )
+        )
+      (set! *closest-player-dist-sq* f30-0)
+      s5-0
+      )
+    )
+  )
+
+(defun get-closest-human-or-ai-player ((arg0 vector))
+  (let ((f30-0 (the-as float #x7f800000)))
+    0.0
+    (let ((s4-0 -1))
+      (dotimes (s5-0 *active-net-player-count*)
+        (when (-> *active-net-players* s5-0 last-known-pos-valid)
+          (let ((f0-1 (vector-vector-distance-squared arg0 (-> *active-net-players* s5-0 last-known-pos))))
+            (when (or (< f0-1 f30-0) (= s4-0 -1))
+              (set! f30-0 f0-1)
+              (set! s4-0 (-> *active-net-players* s5-0 player-id))
+              )
+            )
+          )
+        )
+      (set! *closest-player-dist-sq* f30-0)
+      s4-0
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun search-for-code ()
+  (let ((gp-0 #x100000))
+    (while (< gp-0 #x1f00000)
+      (let ((v1-0 (the-as (pointer uint32) gp-0)))
+        (if (and (= (-> v1-0 4) (shl #x8de6 16))
+                 (= (-> v1-0 3) #x25f4fffc)
+                 (= (-> v1-0 2) #x40202d)
+                 (= (-> v1-0 1) #x40982d)
+                 (= (-> v1-0 0) (the-as uint #x8e2f0060))
+                 )
+            (format 0 "found it at #x~x~%" gp-0)
+            )
+        )
+      (+! gp-0 4)
+      )
+    )
+  0
+  )
+
+(define *poop* (the-as patch-group #f))
+
+(define *pooplen* 0)
+
+(defun test-patch ()
+  (knet-get-static-patches (&-> '*poop* value) (&-> '*pooplen* value))
+  (let ((gp-0 (the-as object *poop*)))
+    (inspect (the-as patch-group gp-0))
+    (dotimes (s5-0 (the-as int (-> (the-as patch-group gp-0) patch-ct)))
+      (let ((v1-6 (&+ (the-as pointer gp-0) (-> (the-as patch-group gp-0) data s5-0 offset))))
+        (format 0 "~D  ~8X~%" s5-0 (-> (the-as (pointer uint32) v1-6)))
+        )
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun long-game2 ()
+  (set! (-> *net-world* net-state options advanced-options param1) (the-as uint 127))
+  (let ((v0-0 127))
+    (set! (-> *net-world* net-state options advanced-options param2) (the-as uint v0-0))
+    v0-0
+    )
+  )
+
+(define *channel-id-ct* 0)
+
+(define *channel-ids* (new 'static 'array int32 128
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        0
+                        )
+        )
+
+(define *user-ct* 0)
+
+(defbehavior broadcast-message net-mgr ((arg0 object))
+  (local-vars (v0-13 symbol))
+  (let ((s5-0 (new 'stack 'medius-set-lobby-world-filter-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> s5-0 message-id))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-set-lobby-world-filter))
+    (let ((s5-1 (knet-scert-function-3-args s5-0 medius-simple-request-callback #f)))
+      (when (nonzero? s5-1)
+        (format 0 "initial function call returned ~D~%" s5-1)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) s5-1)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (lobby-fatal-error 'lobby-connect-failed)
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (set! *channel-id-ct* 0)
+  (let ((s5-2 (new 'stack 'medius-channel-list-extra-info-request)))
+    (set! *async-request-ct* (+ *async-request-ct* 1))
+    (itoa *async-request-ct* (-> s5-2 message-id))
+    (set! (-> s5-2 page-size) (the-as uint 1000))
+    (set! (-> s5-2 page-id) (the-as uint 1))
+    (reset-lobby-state! self)
+    (set! *scert-function-id* (scert-function medius-channel-list-extra-info))
+    (let ((s5-3 (knet-scert-function-3-args
+                  s5-2
+                  (lambda ((arg0 medius-channel-list-extra-info-response))
+                    (set! (-> *channel-ids* *channel-id-ct*) (-> arg0 medius-world-id))
+                    (set! *channel-id-ct* (+ *channel-id-ct* 1))
+                    (if (nonzero? (-> arg0 end-of-list))
+                        (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+                        )
+                    0
+                    (none)
+                    )
+                  #f
+                  )
+                )
+          )
+      (when (nonzero? s5-3)
+        (format 0 "initial function call returned ~D~%" s5-3)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state last-medius-error) s5-3)
+        )
+      )
+    )
+  (net-async-wait (seconds 15) #t)
+  (cond
+    ((or (-> self lobby-state got-error)
+         (-> self lobby-state timeout)
+         (nonzero? (-> self lobby-state last-medius-error))
+         (nonzero? (-> self lobby-state last-mgcl-error))
+         (nonzero? (-> self lobby-state last-dme-error))
+         (nonzero? (-> self lobby-state callback-status))
+         )
+     *medius-last-response*
+     (let ((v1-39 #f))
+       (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+       (return v1-39)
+       )
+     )
+    (else
+      *medius-last-response*
+      0
+      )
+    )
+  (set! *user-ct* 0)
+  (dotimes (s5-4 *channel-id-ct*)
+    (let ((s4-0 (new 'stack 'medius-get-lobby-player-names-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s4-0 message-id))
+      (set! (-> s4-0 medius-world-id) (-> *channel-ids* s5-4))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-get-lobby-player-names))
+      (let ((s4-1 (knet-scert-function-3-args
+                    s4-0
+                    (lambda ((arg0 medius-get-lobby-player-names-response) (arg1 int))
+                      (when (= (-> arg0 status-code) (medius-status-code medius-success))
+                        (format #t "~G~%" (-> arg0 account-name))
+                        (set! *user-ct* (+ *user-ct* 1))
+                        (if arg1
+                            (send-chat-msg *net-mgr* (the-as string arg1) (-> arg0 account-id) #f)
+                            )
+                        )
+                      (if (nonzero? (-> arg0 end-of-list))
+                          (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+                          )
+                      (none)
+                      )
+                    arg0
+                    )
+                  )
+            )
+        (when (nonzero? s4-1)
+          (format 0 "initial function call returned ~D~%" s4-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s4-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 15) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       (let ((v1-63 #f))
+         (set! *net-mgr-pending-behavior-result-extra* '())
+         (return v1-63)
+         )
+       )
+      (else
+        *medius-last-response*
+        0
+        )
+      )
+    )
+  (format 0 "user-ct: ~D~%" *user-ct*)
+  (let ((v1-70 #f))
+    (set! *net-mgr-pending-behavior-result-extra* (the-as object #f))
+    (return v1-70)
+    )
+  v0-13
+  )
+
+(deftype auto-test-levels (process)
+  ((cur-task  int32)
+   )
+  (:state-methods
+    running
+    )
+  )
+
+
+(define *auto-test-break* #f)
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: disable def twice: 44. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defun check-entities ()
+  (dotimes (gp-0 (-> *level* length))
+    (let ((s5-0 (-> *level* level gp-0)))
+      (when (= (-> s5-0 status) 'active)
+        (when (not (or (= s5-0 (get-shared-level)) (= s5-0 (get-event-level))))
+          (let* ((s4-0 (-> s5-0 entity))
+                 (s3-0 (-> s4-0 length))
+                 )
+            (dotimes (s2-0 s3-0)
+              (let ((s1-0 (as-type (-> s4-0 data s2-0 entity) entity-actor)))
+                (when s1-0
+                  (let* ((v1-11 (as-type s1-0 entity-actor))
+                         (v1-12 (cond
+                                  (v1-11
+                                    (let ((s0-2 (-> (the-as entity-actor v1-11) etype)))
+                                      (and (nonzero? s0-2)
+                                           (= (-> s0-2 type symbol) 'type)
+                                           (type-type? s0-2 process-nettable)
+                                           (nonzero? (-> s0-2 method-table 40))
+                                           )
+                                      )
+                                    )
+                                  (else
+                                    #f
+                                    )
+                                  )
+                                )
+                         )
+                    (if (or v1-12 (and (-> (the-as entity-actor s1-0) etype) (type-type? (-> (the-as entity-actor s1-0) etype) eco)))
+                        (format 0 "!!!!!!!!!!!!!!!! net-entity [~S] is in level ~A~%" (-> s1-0 name) (-> s5-0 name))
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior auto-test-node auto-test-levels ((arg0 object))
+  (local-vars (v1-28 symbol))
+  (set-task-node *net-world* (the-as game-task-node arg0))
+  (suspend-for (seconds 0.5)
+    )
+  (suspend-for (seconds 0.5)
+    )
+  (set! (-> *net-world* net-state options advanced-options param1) (the-as uint 1))
+  (lock-game *net-world*)
+  (until *net-game-mgr*
+    (suspend)
+    )
+  (suspend)
+  (check-entities)
+  (suspend)
+  (until (> (-> *net-game-mgr* intro-end-time) 0)
+    (suspend)
+    )
+  (suspend-for (seconds 1)
+    )
+  (until v1-28
+    (suspend)
+    (set! v1-28
+          (and (!= (-> *net-game-mgr* intro-end-time) -1) (>= (- (- (- (if *net-mgr*
+                                                                           (-> *net-mgr* game-state time)
+                                                                           0
+                                                                           )
+                                                                       (if *net-world*
+                                                                           (-> *net-world* net-state game-start-time)
+                                                                           0
+                                                                           )
+                                                                       )
+                                                                    (if *net-world*
+                                                                        (-> *net-world* net-state total-pause-time)
+                                                                        0
+                                                                        )
+                                                                    )
+                                                                 (-> *net-game-mgr* intro-end-time)
+                                                                 )
+                                                              0
+                                                              )
+               )
+          )
+    )
+  (until (or (!= -1 (-> *net-game-mgr* scheduled-finish-time))
+             *auto-test-break*
+             (>= (+ (- (- -300 (if *net-world*
+                                   (-> *net-world* net-state total-pause-time)
+                                   0
+                                   )
+                          )
+                       (if *net-world*
+                           (-> *net-world* net-state game-start-time)
+                           0
+                           )
+                       )
+                    (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    )
+                 0
+                 )
+             )
+    (suspend-for (seconds 0.5)
+      )
+    (if (and (-> *net-players* 0) (get-vehicle (-> *net-players* 0)))
+        (net-player-method-90 (-> *net-players* 0))
+        )
+    (when (= (-> *setting-control* cam-settings 0 current mode-name) 'cam-vehicle-crash)
+      (set! *target-time-speed* 1.0)
+      (kill-by-type hud-slowmo *active-pool*)
+      )
+    )
+  (set! *auto-test-break* #f)
+  (suspend-for (seconds 45)
+    (suspend)
+    )
+  (format 0 "ending game...~%")
+  (send-event *net-game-mgr* 'set-finish-time 0)
+  0
+  )
+
+(defstate running (auto-test-levels)
+  :virtual #t
+  :code (behavior ()
+    (local-vars (v1-10 object))
+    (when (not (and *lobby-menu-manager*
+                    (-> *lobby-menu-manager* next-state)
+                    (= (-> *lobby-menu-manager* next-state name) 'choose-event-menu)
+                    )
+               )
+      (format 0 "wrong inintial state!~%")
+      (return #f)
+      )
+    (let ((gp-0 0))
+      (until #f
+        (format 0 "... considering ~D~%" gp-0)
+        (until v1-10
+          (suspend)
+          (set! v1-10
+                (and *lobby-menu-manager*
+                     *net-world*
+                     (or (and (-> *lobby-menu-manager* next-state) (= (-> *lobby-menu-manager* next-state name) 'choose-event-menu))
+                         (and (-> *lobby-menu-manager* next-state) (= (-> *lobby-menu-manager* next-state name) 'choose-event-menu))
+                         )
+                     )
+                )
+          )
+        (let* ((s5-0 (-> *game-info* sub-task-list gp-0))
+               (s4-0 (-> *game-info* play-list (-> s5-0 task)))
+               (v1-29 *lobby-local-players*)
+               (a1-2 (if (= v1-29 1)
+                         (-> s4-0 play-continue)
+                         (-> s4-0 split-continue)
+                         )
+                     )
+               )
+          (when (and a1-2 (and (nonzero? a1-2)
+                               (get-continue-by-name *game-info* (the-as string a1-2))
+                               (!= (-> s5-0 net-play-mode) 15)
+                               (!= (-> s5-0 net-play-mode) 16)
+                               (!= (-> s5-0 net-play-mode) 18)
+                               (!= (-> s5-0 net-play-mode) 3)
+                               (!= (-> s5-0 net-play-mode) 20)
+                               (!= (-> s5-0 net-play-mode) 12)
+                               (!= (-> s5-0 net-play-mode) 19)
+                               )
+                     )
+            (when #t
+              (suspend-for (seconds 1)
+                )
+              (auto-test-node gp-0)
+              )
+            )
+          )
+        (set! gp-0 (mod (+ gp-0 1) (length (-> *game-info* sub-task-list))))
+        )
+      )
+    #f
+    )
+  )
+
+(defbehavior auto-test-levels-init-by-other auto-test-levels ((arg0 int))
+  (set! (-> self cur-task) arg0)
+  (go-virtual running)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun auto-test-levels-start ((arg0 int))
+  (process-spawn-function auto-test-levels auto-test-levels-init-by-other arg0)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun check-levels ()
+  (dotimes (gp-0 (length (-> *game-info* play-list)))
+    (when (= (-> *game-info* sub-task-list (-> *game-info* play-list gp-0 play-node) net-play-mode)
+             (net-play-mode race)
+             )
+      (let ((a1-0 (-> *game-info* play-list gp-0 play-continue)))
+        (when a1-0
+          (let ((s5-0 (get-continue-by-name *game-info* (the-as string a1-0)))
+                (s4-0 #f)
+                )
+            (when s5-0
+              (dotimes (s3-0 (-> s5-0 want-count))
+                (let ((v1-16 (-> s5-0 want s3-0)))
+                  (when (-> v1-16 name)
+                    (cond
+                      ((= (-> v1-16 display?) #f)
+                       (set! s4-0 #t)
+                       )
+                      (else
+                        (when s4-0
+                          (format 0 "----> ~S~%" (-> s5-0 name))
+                          (dotimes (s2-0 (-> s5-0 want-count))
+                            (format 0 "   (~A ~A)" (-> s5-0 want s2-0 name) (-> s5-0 want s2-0 display?))
+                            )
+                          (format 0 "~%~%")
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              (if (not s4-0)
+                  (format 0 " -  no display=#f level in ~S~%" (-> s5-0 name))
+                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+(define *sound-clone* (new 'global 'boxed-array sound-info (length *sound-info*)))
+
+(dotimes (gp-2 (length *sound-info*))
+  (set! (-> *sound-clone* gp-2) (new 'global 'sound-info))
+  (mem-copy! (the-as pointer (-> *sound-clone* gp-2)) (the-as pointer (-> *sound-info* gp-2)) 64)
+  )
+
+'flags
+
+'volume
+
+'fo-min
+
+'fo-max
+
+'fo-power
+
+'sound-name
+
+'pan
+
+'priority
+
+'duck-amount
+
+'duck-music?
+
+'duck-only-for-player?
+
+'group
+
+(define *sound-info-fields* (new 'static 'boxed-array :type symbol
+                              'flags
+                              'volume
+                              'fo-min
+                              'fo-max
+                              'fo-power
+                              'flags
+                              'sound-name
+                              'pan
+                              'priority
+                              'duck-amount
+                              'duck-music?
+                              'duck-only-for-player?
+                              'group
+                              )
+        )
+
+(define *tmp-line* (new 'static 'array uint8 1024
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     #x0
+                     )
+        )
+
+(define *tmp-buf* (new 'static 'array uint8 1024
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    #x0
+                    )
+        )
+
+(define *tmp-buf-len* 0)
+
+;; WARN: Return type mismatch symbol vs object.
+(defun read-sound-line ((arg0 file-stream))
+  (when (< *tmp-buf-len* 128)
+    (let ((gp-0 (- 1024 *tmp-buf-len*)))
+      (when (> gp-0 0)
+        (let ((v1-5 (file-stream-read arg0 (&+ *tmp-buf* *tmp-buf-len*) gp-0)))
+          (if (and (zero? v1-5) (= gp-0 1024))
+              (return (the-as object #f))
+              )
+          (set! *tmp-buf-len* (+ *tmp-buf-len* v1-5))
+          )
+        )
+      )
+    )
+  (let ((v1-7 0)
+        (gp-1 0)
+        )
+    (dotimes (a0-4 *tmp-buf-len*)
+      (case (-> (the-as (pointer int8) (&+ *tmp-buf* a0-4)))
+        ((10)
+         (set! gp-1 (+ a0-4 1))
+         (set! (-> *tmp-line* v1-7) (the-as uint 0))
+         (goto cfg-19)
+         )
+        ((13)
+         )
+        (else
+          (set! (-> *tmp-line* v1-7) (the-as uint (-> (the-as (pointer int8) (&+ *tmp-buf* a0-4)))))
+          (+! v1-7 1)
+          )
+        )
+      )
+    (label cfg-19)
+    (mem-copy! *tmp-buf* (&+ *tmp-buf* gp-1) (- 1024 gp-1))
+    (set! *tmp-buf-len* (- *tmp-buf-len* gp-1))
+    )
+  #t
+  )
+
+(defun crappy-atof ((arg0 (pointer int8)))
+  (let ((f28-0 0.0)
+        (f26-0 1.0)
+        (f30-0 1.0)
+        )
+    (when (= (-> arg0 0) 45)
+      (set! f30-0 -1.0)
+      (set! arg0 (&-> arg0 1))
+      )
+    (dotimes (s5-0 (strlen arg0))
+      (let ((v1-7 (-> arg0 s5-0)))
+        (cond
+          ((= v1-7 46)
+           (set! f26-0 0.1)
+           )
+          ((= f26-0 1.0)
+           (set! f28-0 (+ (* 10.0 f28-0) (the float (+ v1-7 -48))))
+           )
+          (else
+            (+! f28-0 (* f26-0 (the float (+ v1-7 -48))))
+            (set! f26-0 (/ f26-0 10))
+            )
+          )
+        )
+      )
+    (* f28-0 f30-0)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun tweak-sound ((arg0 sound-info) (arg1 symbol) (arg2 (pointer int8)))
+  (let ((f0-0 (crappy-atof arg2)))
+    (when (!= arg1 'flags)
+      )
+    (cond
+      ((= arg1 'volume)
+       (set! (-> arg0 volume) f0-0)
+       )
+      ((= arg1 'fo-min)
+       (set! (-> arg0 fo-min) (* 4096.0 f0-0))
+       )
+      ((= arg1 'fo-max)
+       (set! (-> arg0 fo-max) (* 4096.0 f0-0))
+       )
+      ((= arg1 'fo-power)
+       (set! (-> arg0 fo-power) f0-0)
+       )
+      ((= arg1 'pan)
+       (set! (-> arg0 pan) (* 182.04445 f0-0))
+       )
+      ((= arg1 'priority)
+       (set! (-> arg0 priority) (the int f0-0))
+       )
+      ((= arg1 'duck-amount)
+       (set! (-> arg0 duck-amount) f0-0)
+       )
+      ((= arg1 'duck-music?)
+       (logior! (-> arg0 flags) (sound-info-flag duck-music))
+       )
+      ((= arg1 'duck-only-for-player?)
+       (logior! (-> arg0 flags) (sound-info-flag duck-only-for-player))
+       )
+      )
+    )
+  0
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for "sfx-volume="
+;; WARN: Swapped fp-relative label and field offsets for "="
+;; WARN: Swapped fp-relative label and field offsets for "music-volume="
+;; WARN: Swapped fp-relative label and field offsets for "dialog-volume="
+;; WARN: Swapped fp-relative label and field offsets for "music-volume-during-speech="
+;; WARN: Swapped fp-relative label and field offsets for "sfx-volume-during-speech="
+;; WARN: Swapped fp-relative label and field offsets for "music-volume-ducked-by-sound="
+;; WARN: Swapped fp-relative label and field offsets for "music-seek-speed="
+;; WARN: Swapped fp-relative label and field offsets for ";"
+;; WARN: Swapped fp-relative label and field offsets for "(defsounds"
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defun read-sound-info-tweaks ()
+  (local-vars (v0-7 float) (v0-10 float) (v0-13 float) (v0-16 float) (v0-19 float) (v0-22 float) (v0-25 float))
+  (set! *tmp-buf-len* 0)
+  (format 0 "reading sound info ... ~%")
+  (format #t "reading sound info ... ~%")
+  (let ((gp-0 0))
+    (let ((s4-0 #f)
+          (s3-0 (the-as sound-info #f))
+          (s5-0 (new 'global 'file-stream "game/sound-info.gc" 'read))
+          )
+      (when (logtest? (-> s5-0 flags) 1)
+        (format 0 "CAN'T OPEN sound-info~%")
+        (return (the-as object #f))
+        )
+      (until #f
+        (if (not (read-sound-line s5-0))
+            (goto cfg-54)
+            )
+        (+! gp-0 1)
+        (let ((a0-6 (strstr *tmp-line* (-> "sfx-volume=" data))))
+          (set! v0-7 (when a0-6
+                       (let ((a0-7 (&+ (strstr a0-6 (-> "=" data)) 1)))
+                         (set! v0-7 (crappy-atof (the-as (pointer int8) a0-7)))
+                         )
+                       (set! *settings-sfx-volume* v0-7)
+                       v0-7
+                       )
+                )
+          )
+        (let ((a0-9 (strstr *tmp-line* (-> "music-volume=" data))))
+          (set! v0-10 (when a0-9
+                        (let ((a0-10 (&+ (strstr a0-9 (-> "=" data)) 1)))
+                          (set! v0-10 (crappy-atof (the-as (pointer int8) a0-10)))
+                          )
+                        (set! *settings-music-volume* v0-10)
+                        v0-10
+                        )
+                )
+          )
+        (let ((a0-12 (strstr *tmp-line* (-> "dialog-volume=" data))))
+          (set! v0-13 (when a0-12
+                        (let ((a0-13 (&+ (strstr a0-12 (-> "=" data)) 1)))
+                          (set! v0-13 (crappy-atof (the-as (pointer int8) a0-13)))
+                          )
+                        (set! *settings-dialog-volume* v0-13)
+                        v0-13
+                        )
+                )
+          )
+        (let ((a0-15 (strstr *tmp-line* (-> "music-volume-during-speech=" data))))
+          (set! v0-16 (when a0-15
+                        (let ((a0-16 (&+ (strstr a0-15 (-> "=" data)) 1)))
+                          (set! v0-16 (crappy-atof (the-as (pointer int8) a0-16)))
+                          )
+                        (set! *music-volume-during-speech* v0-16)
+                        v0-16
+                        )
+                )
+          )
+        (let ((a0-18 (strstr *tmp-line* (-> "sfx-volume-during-speech=" data))))
+          (set! v0-19 (when a0-18
+                        (let ((a0-19 (&+ (strstr a0-18 (-> "=" data)) 1)))
+                          (set! v0-19 (crappy-atof (the-as (pointer int8) a0-19)))
+                          )
+                        (set! *sfx-volume-during-speech* v0-19)
+                        v0-19
+                        )
+                )
+          )
+        (let ((a0-21 (strstr *tmp-line* (-> "music-volume-ducked-by-sound=" data))))
+          (set! v0-22 (when a0-21
+                        (let ((a0-22 (&+ (strstr a0-21 (-> "=" data)) 1)))
+                          (set! v0-22 (crappy-atof (the-as (pointer int8) a0-22)))
+                          )
+                        (set! *music-volume-ducked-by-sound* v0-22)
+                        v0-22
+                        )
+                )
+          )
+        (let ((a0-24 (strstr *tmp-line* (-> "music-seek-speed=" data))))
+          (set! v0-25 (when a0-24
+                        (let ((a0-25 (&+ (strstr a0-24 (-> "=" data)) 1)))
+                          (set! v0-25 (crappy-atof (the-as (pointer int8) a0-25)))
+                          )
+                        (set! *settings-music-seek-speed* v0-25)
+                        v0-25
+                        )
+                )
+          )
+        (let ((v0-27 (strstr *tmp-line* (-> ";" data))))
+          (when v0-27
+            (set! (-> (the-as (pointer int8) v0-27)) 0)
+            0
+            )
+          )
+        (split-chat-msg (the-as (pointer int8) *tmp-line*))
+        (when (> *chat-msg-string-ct* 0)
+          (cond
+            ((strncmp (the-as pointer (-> *chat-msg-strings* 0)) (-> "(defsounds" data) -1)
+             (set! s4-0 #t)
+             )
+            ((not s4-0)
+             )
+            (else
+              (let ((s2-0 (-> *chat-msg-strings* 0)))
+                (case (-> (the-as (pointer int8) s2-0) 0)
+                  ((40)
+                   (set! s3-0 (the-as sound-info #f))
+                   (dotimes (s1-0 (length *sound-info*))
+                     (let ((s0-0 (-> *sound-info* s1-0)))
+                       (if (strncmp (&-> s0-0 name) (&-> (the-as (pointer int8) s2-0) 1) -1)
+                           (set! s3-0 s0-0)
+                           )
+                       )
+                     )
+                   )
+                  ((58)
+                   (let ((s1-1 #f))
+                     (dotimes (s0-1 (length *sound-info-fields*))
+                       (if (strncmp (-> (symbol->string (-> *sound-info-fields* s0-1)) data) (&-> (the-as (pointer int8) s2-0) 1) -1)
+                           (set! s1-1 (-> *sound-info-fields* s0-1))
+                           )
+                       )
+                     (when (not s1-1)
+                       (format 0 "unrecognised field : ~G~%" s2-0)
+                       (goto cfg-54)
+                       )
+                     (cond
+                       ((= s1-1 'sound-name)
+                        (set! s3-0 (the-as sound-info #f))
+                        (dotimes (s2-1 (length *sound-info*))
+                          (let ((s1-2 (-> *sound-info* s2-1)))
+                            (if (strncmp (&-> s1-2 name) (the-as pointer (-> *chat-msg-strings* 1)) -1)
+                                (set! s3-0 s1-2)
+                                )
+                            )
+                          )
+                        #f
+                        )
+                       (s3-0
+                         (tweak-sound s3-0 s1-1 (the-as (pointer int8) (-> *chat-msg-strings* 1)))
+                         )
+                       )
+                     )
+                   )
+                  )
+                )
+              )
+            )
+          )
+        )
+      #f
+      (label cfg-54)
+      (file-stream-close s5-0)
+      )
+    )
+  0
+  )
+
+(defun process-is-in-tree ((arg0 process-tree))
+  (if (= arg0 *active-pool*)
+      (return #t)
+      )
+  (let ((v1-4 (-> arg0 parent)))
+    (when v1-4
+      (let ((v1-5 (-> v1-4 0)))
+        (let ((a1-1 (-> v1-5 child)))
+          (while a1-1
+            (if (= (-> a1-1 0) arg0)
+                (goto cfg-12)
+                )
+            (set! a1-1 (-> a1-1 0 brother))
+            )
+          )
+        (format 0 "process ~S is not in tree!~%" (-> arg0 name))
+        (return #f)
+        (label cfg-12)
+        (return (process-is-in-tree v1-5))
+        )
+      )
+    )
+  #f
+  )
+
+(when *debug-segment*
+(read-sound-info-tweaks)
+
+)

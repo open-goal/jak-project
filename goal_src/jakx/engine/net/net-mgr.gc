@@ -5,5 +5,556 @@
 ;; name in dgo: net-mgr
 ;; dgos: ENGINE, GAME
 
+(define-extern cleanup-at-game-end (function net-world object))
+(define-extern net-log-start (function int int object))
+(define-extern net-log-stop (function object))
+(define-extern net-process-mgr-start (function none))
+(define-extern net-process-mgr-stop (function none))
+(define-extern net-send-msg (function int mem-buffer int object))
+(define-extern net-get-local-ip (function uint))
+
+(define-extern *fake-msg-count* int)
+(define-extern *medius-account-name* string)
+
 ;; DECOMP BEGINS
 
+(when (zero? *net-keypair-valid*)
+  (set! *net-keypair-valid* #f)
+  (set! *net-local-rsa-keypair* (new 'static 'rsa-keypair))
+  (set! *net-app-rsa-keypair* (new 'static 'rsa-keypair))
+  )
+
+(define *net-app-msg-id* 0)
+
+(define *aux-voice-msg-id* 0)
+
+(define *net-log-write* #f)
+
+(define *net-memory-callbacks* (new 'static 'net-memory-callback-params))
+
+(define *net-mgr-notify-engine* (new 'global 'engine 'net-mgr-notify-engine 16 connection))
+
+;; WARN: Return type mismatch process vs net-mgr.
+(defmethod relocate ((this net-mgr) (offset int))
+  (set! *net-mgr* this)
+  (if *net-mgr*
+      (set! *net-mgr* (&+ *net-mgr* offset))
+      )
+  (the-as net-mgr ((method-of-type process relocate) this offset))
+  )
+
+(defmethod deactivate ((this net-mgr))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *net-mgr* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+(defbehavior net-mgr-init-by-other net-mgr ((arg0 symbol))
+  (stack-size-set! (-> self main-thread) 1600)
+  (logclear! (-> self mask) (process-mask pause menu))
+  (startup self arg0)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun net-mgr-start ((arg0 symbol))
+  (set! *net-mgr-startup-status* 'unknown)
+  (when *net-mgr*
+    (format 0 "net-mgr already running!!!~%")
+    (break!)
+    0
+    )
+  (process-spawn net-mgr arg0 :name "net-mgr")
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun net-mgr-stop ()
+  (send-event *net-mgr* 'go-shutdown)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod startup ((this net-mgr) (arg0 symbol))
+  (set! *net-mgr-startup-status* 'busy)
+  (set! (-> this view) #f)
+  (mem-clear! (the-as pointer (-> this game-state)) 40)
+  (set! (-> this game-state sm-eligible) #f)
+  (set! (-> this game-state locked) #f)
+  (mem-clear! (the-as pointer (-> this lobby-state)) 92)
+  (set! (-> *net-memory-callbacks* pf-malloc-callback) mem-alloc-scert)
+  (set! (-> *net-memory-callbacks* pf-realloc-callback) mem-realloc-scert)
+  (set! (-> *net-memory-callbacks* pf-free-callback) mem-free-scert)
+  (set! *scert-function-id* (scert-function net-set-memory-callbacks))
+  (knet-scert-function-1-args *net-memory-callbacks*)
+  (set! (-> this notify) *net-mgr-notify-engine*)
+  (if (kiosk?)
+      (set! (-> this skip-policy) #t)
+      (set! (-> this skip-policy) #f)
+      )
+  (set! (-> this scert-initted) #f)
+  (when arg0
+    (set! *scert-function-id* (scert-function scert-init-0))
+    (knet-scert-function-0-args)
+    (set! *scert-function-id* (scert-function scert-init-1))
+    (knet-scert-function-0-args)
+    (set! *scert-function-id* (scert-function scert-init-2))
+    (knet-scert-function-0-args)
+    (set! *scert-function-id* (scert-function scert-init-3))
+    (knet-scert-function-0-args)
+    (set! *scert-function-id* (scert-function scert-init-4))
+    (knet-scert-function-0-args)
+    (set! (-> this scert-initted) #t)
+    (when (not (init-dme this))
+      (format 0 "init-dme failed~%")
+      (go (method-of-object this die))
+      (return (the-as object #f))
+      )
+    (when (not (init-medius this))
+      (format 0 "init-medius failed~%")
+      (go (method-of-object this die))
+      (return (the-as object #f))
+      )
+    (when (not (init-mgcl this))
+      (format 0 "init-mgcl failed~%")
+      (go (method-of-object this die))
+      (return (the-as object #f))
+      )
+    )
+  (set! *net-mgr* this)
+  (set! *net-mgr-startup-status* 'ok)
+  (go (method-of-object this idle))
+  0
+  )
+
+(defbehavior net-mgr-default-handler net-mgr ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('go-die)
+     (go-virtual die)
+     )
+    )
+  )
+
+(defstate idle (net-mgr)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('refresh-lan-games)
+       (go-virtual refreshing-lan-games)
+       )
+      (('connect-lan-game)
+       (let ((gp-0 (-> block param 0)))
+         (set! (-> self game-type) (the-as uint 2))
+         (mem-copy!
+           (the-as pointer *net-active-game*)
+           (the-as pointer (-> *net-available-games* (the-as int gp-0)))
+           328
+           )
+         (go-virtual verifying-lan-game (-> *net-available-games* (the-as int gp-0) connect-info))
+         )
+       )
+      (('host-lan-game)
+       (set! (-> self game-type) (the-as uint 2))
+       (mem-clear! (the-as pointer *net-active-game*) 328)
+       (go-virtual hosting-game)
+       )
+      (('get-universe-information)
+       (go-virtual getting-universe-information)
+       )
+      (('connect-to-lobby)
+       (set! (-> self auto-register) (the-as symbol (-> block param 0)))
+       (go-virtual getting-universe-information)
+       )
+      (('start-sp-game)
+       (set! (-> self game-type) (the-as uint 4))
+       (go-virtual starting-sp-game)
+       )
+      (('playback)
+       (set! (-> self game-type) (the-as uint 5))
+       (go-virtual starting-playback-game)
+       )
+      (('host-lookup)
+       (go-virtual dns-lookup (the-as string (-> block param 0)))
+       )
+      (else
+        (net-mgr-default-handler proc argc message block)
+        )
+      )
+    )
+  :trans (behavior ()
+    (when (-> self scert-initted)
+      (set! *scert-function-id* (scert-function net-update))
+      (knet-scert-function-0-args)
+      (set! *scert-function-id* (scert-function medius-update))
+      (knet-scert-function-0-args)
+      )
+    )
+  :code (behavior ()
+    (dme-disconnect)
+    (mgcl-disconnect #t)
+    (set! (-> self game-type) (the-as uint 0))
+    (loop
+      (suspend)
+      )
+    )
+  )
+
+(defstate die (net-mgr)
+  :virtual #t
+  :code (behavior ()
+    (when (-> self scert-initted)
+      (format 0 "disconnecting...~%")
+      (do-disconnect #t #t #t)
+      (format 0 "closing SCE-RT~%")
+      (when *medius-initted*
+        (format 0 "   scert-medius-close-bare~%")
+        (set! *scert-function-id* (scert-function medius-close-bare))
+        (knet-scert-function-0-args)
+        (set! *medius-initted* #f)
+        )
+      (when *mgcl-initted*
+        (format 0 "   scert-mgclclose~%")
+        (set! *scert-function-id* (scert-function mgcl-close))
+        (knet-scert-function-0-args)
+        (set! *mgcl-initted* #f)
+        )
+      (when *dme-initted*
+        (format 0 "   scert-net-close~%")
+        (set! *scert-function-id* (scert-function net-close))
+        (knet-scert-function-0-args)
+        (set! *dme-initted* #f)
+        )
+      (set! (-> self scert-initted) #f)
+      )
+    (set! *net-mgr-startup-status* 'dead)
+    )
+  )
+
+(defstate starting-sp-game (net-mgr)
+  :virtual #t
+  :code (behavior ()
+    (go-virtual playing-sp-game)
+    )
+  )
+
+(defstate playing-sp-game (net-mgr)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('async-error)
+       (if *net-world*
+           (cleanup-at-game-end *net-world*)
+           )
+       (if *net-log-write*
+           (net-log-stop)
+           )
+       (net-process-mgr-stop)
+       (format 0 "net-mgr-notify: ~A~%" 'game-disconnected)
+       (let ((a0-3 (-> *net-mgr* notify alive-list next0)))
+         (-> *net-mgr* notify)
+         (let ((s5-0 (-> a0-3 next0)))
+           (while (!= a0-3 (-> *net-mgr* notify alive-list-end))
+             (if (logtest? (the-as int (-> (the-as connection a0-3) param1)) 4)
+                 (send-event
+                   ((method-of-type connection get-process) (the-as connection a0-3))
+                   'game-disconnected
+                   :from *net-mgr*
+                   )
+                 )
+             (set! a0-3 s5-0)
+             (-> *net-mgr* notify)
+             (set! s5-0 (-> s5-0 next0))
+             )
+           )
+         )
+       (stop 'play 0)
+       (reset-actors-by-game-type 'game)
+       (set! *lobby-reset-mode* (the-as symbol (-> block param 0)))
+       (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+       (go-virtual idle)
+       )
+      (('leave-game)
+       (if *net-log-write*
+           (net-log-stop)
+           )
+       (net-process-mgr-stop)
+       (format 0 "net-mgr-notify: ~A~%" 'game-disconnected)
+       (let ((a0-10 (-> *net-mgr* notify alive-list next0)))
+         (-> *net-mgr* notify)
+         (let ((gp-2 (-> a0-10 next0)))
+           (while (!= a0-10 (-> *net-mgr* notify alive-list-end))
+             (if (logtest? (the-as int (-> (the-as connection a0-10) param1)) 4)
+                 (send-event
+                   ((method-of-type connection get-process) (the-as connection a0-10))
+                   'game-disconnected
+                   :from *net-mgr*
+                   )
+                 )
+             (set! a0-10 gp-2)
+             (-> *net-mgr* notify)
+             (set! gp-2 (-> gp-2 next0))
+             )
+           )
+         )
+       (go-virtual idle)
+       )
+      (('watch-intro)
+       (if *net-log-write*
+           (net-log-stop)
+           )
+       (net-process-mgr-stop)
+       (format 0 "net-mgr-notify: ~A~%" 'game-disconnected)
+       (let ((a0-13 (-> *net-mgr* notify alive-list next0)))
+         (-> *net-mgr* notify)
+         (let ((gp-3 (-> a0-13 next0)))
+           (while (!= a0-13 (-> *net-mgr* notify alive-list-end))
+             (if (logtest? (the-as int (-> (the-as connection a0-13) param1)) 4)
+                 (send-event
+                   ((method-of-type connection get-process) (the-as connection a0-13))
+                   'game-disconnected
+                   :from *net-mgr*
+                   )
+                 )
+             (set! a0-13 gp-3)
+             (-> *net-mgr* notify)
+             (set! gp-3 (-> gp-3 next0))
+             )
+           )
+         )
+       (start 'debug (get-continue-by-name *game-info* "fmv-intro") 0)
+       (go-virtual die)
+       )
+      (else
+        (net-mgr-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self last-game-type) (-> self game-type))
+    (set! (-> self game-state time) (the-as int (-> *display* entity-clock frame-counter)))
+    (set! (-> self game-state connect-handle) (the-as pointer 0))
+    (set! (-> self game-state local-machine-idx) 0)
+    (set! (-> self game-state session-master-idx) 0)
+    (set! (-> self game-state connected-bitfield) (ash 1 (-> self game-state local-machine-idx)))
+    (set! *fake-msg-count* 0)
+    (format 0 "net-mgr-notify: ~A~%" 'game-connect-complete)
+    (let ((a0-3 (-> *net-mgr* notify alive-list next0)))
+      (-> *net-mgr* notify)
+      (let ((gp-0 (-> a0-3 next0)))
+        (while (!= a0-3 (-> *net-mgr* notify alive-list-end))
+          (if (logtest? (the-as int (-> (the-as connection a0-3) param1)) 4)
+              (send-event
+                ((method-of-type connection get-process) (the-as connection a0-3))
+                'game-connect-complete
+                :from *net-mgr*
+                )
+              )
+          (set! a0-3 gp-0)
+          (-> *net-mgr* notify)
+          (set! gp-0 (-> gp-0 next0))
+          )
+        )
+      )
+    (net-process-mgr-start)
+    (if *net-log-write*
+        (net-log-start (-> self game-state local-machine-idx) (-> self game-state session-master-idx))
+        )
+    )
+  :code (behavior ()
+    (loop
+      (update self)
+      (suspend)
+      )
+    )
+  )
+
+(define *pause-time* 0)
+
+(define *prev-total-pause-time* 0)
+
+(define *last-pause-state* (the-as object #f))
+
+;; WARN: Return type mismatch int vs object.
+(defun handle-pause ((arg0 int))
+  (if (not (paused?))
+      (set-master-mode 'pause)
+      )
+  (set! *last-pause-state* #t)
+  (set! *pause-time* arg0)
+  (set! *prev-total-pause-time* (if *net-world*
+                                    (-> *net-world* net-state total-pause-time)
+                                    0
+                                    )
+        )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun handle-unpause ((arg0 int))
+  (if (paused?)
+      (set-master-mode 'game)
+      )
+  (set! *last-pause-state* (the-as object #f))
+  (if *net-world*
+      (set! (-> *net-world* net-state total-pause-time) arg0)
+      )
+  0
+  )
+
+(defun pause-check ()
+  (local-vars (s5-0 int))
+  (when (!= *last-pause-state* (paused?))
+    (set! *last-pause-state* (paused?))
+    0
+    (cond
+      (*last-pause-state*
+        (set! s5-0 (-> *net-mgr* game-state time))
+        (handle-pause s5-0)
+        )
+      (else
+        (set! s5-0 (if *net-world*
+                       (-> *net-world* net-state total-pause-time)
+                       0
+                       )
+              )
+        (handle-unpause s5-0)
+        )
+      )
+    (let ((gp-0 (alloc-msg-buffer)))
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 6)
+      (write-bool gp-0 (the-as symbol *last-pause-state*))
+      (write-int32 gp-0 s5-0)
+      (set! (-> (the-as (pointer int8) (-> gp-0 base)) 1) (+ (bytes-used gp-0) -1))
+      (net-send-msg 192 gp-0 -2)
+      (free-msg-buffer gp-0)
+      )
+    )
+  (when (and *debug-segment* *last-pause-state*)
+    (if *net-world*
+        (set! (-> *net-world* net-state total-pause-time)
+              (+ *prev-total-pause-time* (- (-> *net-mgr* game-state time) *pause-time*))
+              )
+        )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun handle-pause-request ((arg0 mem-buffer) (arg1 int))
+  (read-int8 arg0)
+  (read-int8 arg0)
+  (let ((s4-0 (read-bool arg0))
+        (s5-1 (read-int32 arg0))
+        )
+    (cond
+      (s4-0
+        (format 0 "PAUSED BY ~D~%" arg1)
+        (handle-pause s5-1)
+        )
+      (else
+        (format 0 "UNPAUSED BY ~D~%" arg1)
+        (handle-unpause s5-1)
+        )
+      )
+    )
+  0
+  )
+
+(set! (-> *net-aux-msg-handlers* 6 handler-func) handle-pause-request)
+
+(define *tmp-mac*
+  (new 'static 'array uint8 16 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)
+  )
+
+(defun find-ip-map ()
+  (let ((v1-0 (net-get-local-ip))
+        (gp-0 0)
+        )
+    (when (> v1-0 0)
+      (knet-eenet-get-mac *tmp-mac*)
+      (dotimes (v1-2 6)
+        (set! gp-0 (logior (* gp-0 256) (-> *tmp-mac* v1-2)))
+        )
+      )
+    (dotimes (v1-5 (-> *ip-to-name-map* length))
+      (let ((a0-4 (-> *ip-to-name-map* v1-5)))
+        (if (= (-> a0-4 mac) gp-0)
+            (return a0-4)
+            )
+        )
+      )
+    )
+  (the-as ip-to-name-map #f)
+  )
+
+(define *tmpstring* "0123456789012345678901234567890")
+
+(define *already-formatted-prefix*
+  (new 'static 'array uint8 16 #xde #xad #xbe #xef #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)
+  )
+
+(defun get-player-name ((arg0 int))
+  (cond
+    ((= *game-mode* 'adventure)
+     (copy-charp<-charp (-> *tmpstring* data) *already-formatted-prefix*)
+     (copy-charp<-charp
+       (&-> *tmpstring* data (strlen (-> *tmpstring* data)))
+       (-> (lookup-text! *common-text* (-> *net-drivers* arg0 id) #f) data)
+       )
+     )
+    ((= (-> *net-mgr* game-type) 4)
+     (copy-charp<-charp (-> *tmpstring* data) *already-formatted-prefix*)
+     (copy-charp<-charp
+       (&-> *tmpstring* data (strlen (-> *tmpstring* data)))
+       (-> (lookup-text! *common-text* (text-id text-id-4276) #f) data)
+       )
+     (copy-charp<-charp (&-> *tmpstring* data (strlen (-> *tmpstring* data))) (-> (the-as string (if (zero? arg0)
+                                                                                                     "-1"
+                                                                                                     "-2"
+                                                                                                     )
+                                                                                          )
+                                                                                  data
+                                                                                  )
+                        )
+     )
+    (else
+      (cond
+        (*net-mgr*
+          (case (-> *net-mgr* game-type)
+            ((1 3 2)
+             (copy-string<-string *tmpstring* *medius-account-name*)
+             )
+            (else
+              (copy-string<-string *tmpstring* (-> *game-info* save-name))
+              )
+            )
+          )
+        (else
+          (copy-string<-string *tmpstring* (-> *game-info* save-name))
+          )
+        )
+      (if (nonzero? arg0)
+          (cat-string<-string *tmpstring* "-P2")
+          )
+      )
+    )
+  *tmpstring*
+  )
+
+(defmethod format-game-name! ((this net-available-game))
+  (expand-text-to-charp! *common-text* (-> this format-game-name) (-> this info game-name))
+  0
+  (none)
+  )
+
+(defmethod valid-game? ((this net-available-game))
+  (if (not (-> this info in-staging))
+      (return #f)
+      )
+  (if (!= (-> this info burn-version) 15)
+      (return #f)
+      )
+  #t
+  )

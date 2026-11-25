@@ -8,5 +8,1101 @@
 (define-extern *chat-msg-string* string)
 (define-extern *chat-msg-string2* string)
 
+(define-extern add-recent-opponent (function int object))
+
 ;; DECOMP BEGINS
 
+(define *chat-msg-buffer* (new 'static 'array uint8 256
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            )
+        )
+
+(define *chat-msg-string-ct* 0)
+
+(define *chat-msg-strings* (new 'static 'boxed-array :type object :length 0 :allocated-length 16))
+
+(defun is-whitespace ((arg0 int))
+  (or (= arg0 32) (= arg0 13) (= arg0 10) (= arg0 9))
+  )
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+(defun split-chat-msg ((arg0 (pointer int8)))
+  (set! *chat-msg-string-ct* 0)
+  (let ((gp-0 arg0))
+    (until #f
+      (until #f
+        (if (not (is-whitespace (-> gp-0 0)))
+            (goto cfg-5)
+            )
+        (set! gp-0 (&-> gp-0 1))
+        )
+      #f
+      (label cfg-5)
+      (if (zero? (-> gp-0 0))
+          (return (the-as object #f))
+          )
+      (let ((s5-0 gp-0))
+        (until #f
+          (if (or (is-whitespace (-> gp-0 0)) (zero? (-> gp-0 0)))
+              (goto cfg-16)
+              )
+          (set! gp-0 (&-> gp-0 1))
+          )
+        #f
+        (label cfg-16)
+        (set! (-> *chat-msg-strings* *chat-msg-string-ct*) s5-0)
+        )
+      (set! *chat-msg-string-ct* (+ *chat-msg-string-ct* 1))
+      (if (zero? (-> gp-0 0))
+          (return (the-as object #f))
+          )
+      (set! (-> gp-0 0) 0)
+      (if (= *chat-msg-string-ct* 16)
+          (return (the-as object #f))
+          )
+      (set! gp-0 (&-> gp-0 1))
+      )
+    )
+  #f
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun do-split-chat-msg ((arg0 (pointer uint8)))
+  (split-chat-msg (the-as (pointer int8) arg0))
+  (dotimes (gp-0 *chat-msg-string-ct*)
+    (format #t "[~G]~%" (-> *chat-msg-strings* gp-0))
+    )
+  0
+  )
+
+(deftype received-chat-msg (structure)
+  ((text       uint8  600)
+   (disp-time  int32)
+   (id         int32)
+   (resp-type  symbol)
+   )
+  )
+
+
+(define *received-chat-msg-ct* 0)
+
+(define *received-chat-msgs* (new 'static 'inline-array received-chat-msg 8
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               (new 'static 'received-chat-msg)
+                               )
+        )
+
+(define *chat-msg-string* (new 'global 'string 600 (the-as string #f)))
+
+(define *chat-msg-string2* (new 'global 'string 600 (the-as string #f)))
+
+(define *chat-msg-player* (new 'global 'string 600 (the-as string #f)))
+
+(deftype lobby-chat-string (structure)
+  ((text  uint8  100)
+   )
+  )
+
+
+(deftype lobby-chat-window (structure)
+  ((strings  lobby-chat-string  16 :inline)
+   (x        int32)
+   (y        int32)
+   (sx       int32)
+   (sy       int32)
+   )
+  (:methods
+    (init! (_type_ int int int int) none)
+    (draw-chat-window (_type_) none)
+    (lobby-chat-window-method-11 (_type_ int int) none)
+    (clear-strings! (_type_) none)
+    )
+  )
+
+
+(define *lobby-chat-window* (new 'static 'lobby-chat-window))
+
+;; WARN: Return type mismatch int vs object.
+(defun purge-top-chat-msg ()
+  (if (<= *received-chat-msg-ct* 0)
+      (return (the-as object #f))
+      )
+  (set! *received-chat-msg-ct* (+ *received-chat-msg-ct* -1))
+  (mem-copy! (the-as pointer *received-chat-msgs*) (the-as pointer (-> *received-chat-msgs* 1)) 4284)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun purge-all-chat-msgs ()
+  (set! *received-chat-msg-ct* 0)
+  0
+  )
+
+(defun get-top-chat-msg ()
+  (if (> *received-chat-msg-ct* 0)
+      (-> *received-chat-msgs* 0)
+      (the-as received-chat-msg #f)
+      )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun add-raw-popup-msg ((arg0 (pointer uint8)) (arg1 int) (arg2 symbol))
+  (if (>= *received-chat-msg-ct* 8)
+      (return (the-as object #f))
+      )
+  (let ((s3-0 (-> *received-chat-msgs* *received-chat-msg-ct*)))
+    (mem-clear! (the-as pointer s3-0) 612)
+    (let ((s2-1 (min 600 (strlen arg0))))
+      (mem-copy! (-> s3-0 text) arg0 s2-1)
+      (set! (-> s3-0 text s2-1) (the-as uint 0))
+      )
+    0
+    (set! (-> s3-0 id) arg1)
+    (set! (-> s3-0 resp-type) arg2)
+    )
+  (set! *received-chat-msg-ct* (+ *received-chat-msg-ct* 1))
+  0
+  )
+
+(deftype magic-chat (structure)
+  ((prefix            string)
+   (popup-text-id     text-id)
+   (send-lobby-event  symbol)
+   (has-player-name   symbol)
+   (add-clan-id       symbol)
+   (buddies-only      symbol)
+   (resp-type         symbol)
+   (stale-player      symbol)
+   )
+  )
+
+
+(define *magic-chat* (new 'static 'boxed-array :type magic-chat
+                       (new 'static 'magic-chat
+                         :prefix "@Online"
+                         :popup-text-id (text-id text-id-2382)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #t
+                         :resp-type #f
+                         :stale-player #t
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@Offline"
+                         :popup-text-id (text-id text-id-3651)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #t
+                         :resp-type #f
+                         :stale-player #t
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@GameInvite"
+                         :popup-text-id (text-id text-id-3361)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type 'game
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@Invite"
+                         :popup-text-id (text-id text-id-2498)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #t
+                         :buddies-only #f
+                         :resp-type 'clan
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@InvAccept"
+                         :popup-text-id (text-id text-id-2495)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@InvDecline"
+                         :popup-text-id (text-id text-id-2499)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@Leave"
+                         :popup-text-id (text-id text-id-2496)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanKick"
+                         :popup-text-id (text-id text-id-2500)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanTransfer"
+                         :popup-text-id (text-id text-id-2933)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanChallengeIssue"
+                         :popup-text-id (text-id text-id-2529)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #t
+                         :buddies-only #f
+                         :resp-type 'clan
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanChallengeAccept"
+                         :popup-text-id (text-id text-id-2530)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #t
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanChallengeDecline"
+                         :popup-text-id (text-id text-id-2531)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #t
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanChallengeCancel"
+                         :popup-text-id (text-id text-id-2532)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #t
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanDisband"
+                         :popup-text-id (text-id text-id-3016)
+                         :send-lobby-event 'async-clan-update
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@WaitingToPlay"
+                         :popup-text-id (text-id text-id-3277)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@AddedBuddy"
+                         :popup-text-id (text-id text-id-3278)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type #f
+                         :stale-player #f
+                         )
+                       (new 'static 'magic-chat
+                         :prefix "@ClanGameCreated"
+                         :popup-text-id (text-id text-id-3553)
+                         :send-lobby-event #f
+                         :has-player-name #t
+                         :add-clan-id #f
+                         :buddies-only #f
+                         :resp-type 'game
+                         :stale-player #f
+                         )
+                       )
+        )
+
+;; WARN: Swapped fp-relative label and field offsets for "@Game"
+;; WARN: Swapped fp-relative label and field offsets for ""
+;; WARN: Return type mismatch int vs object.
+(defun handle-chat-msg ((arg0 medius-chat-fwd-message) (arg1 symbol))
+  (with-pp
+    (inspect arg0)
+    (when (!= (-> arg0 message-type) (medius-chat-message-type whisper))
+      (cond
+        ((= (-> arg0 message-s8 0) 64)
+         (when (strncmp (-> arg0 message) (-> "@Game" data) 5)
+           (let ((gp-1 pp))
+             (set! pp *lobby-menu-manager*)
+             (send-event *lobby-menu-manager* 'chat-refresh-games :from *lobby-menu-manager*)
+             (set! pp gp-1)
+             )
+           )
+         )
+        (else
+          (lobby-chat-window-method-11
+            *lobby-chat-window*
+            (the-as int (-> arg0 originator-account-name))
+            (the-as int (-> arg0 message))
+            )
+          (let ((s5-0 pp))
+            (set! pp *lobby-menu-manager*)
+            (send-event
+              *lobby-menu-manager*
+              'chat-msg
+              :from *lobby-menu-manager*
+              (-> arg0 originator-account-name)
+              (-> arg0 message)
+              )
+            (set! pp s5-0)
+            )
+          )
+        )
+      (return (the-as object #f))
+      )
+    (if (> (-> arg0 originator-account-id) 0)
+        (add-recent-opponent (-> arg0 originator-account-id))
+        )
+    (when (= (-> arg0 message-s8 0) 64)
+      (set! (-> *chat-msg-strings* 0) (-> "" data))
+      (set! (-> *chat-msg-strings* 1) (-> "" data))
+      (set! (-> *chat-msg-strings* 2) (-> "" data))
+      (mem-copy! *chat-msg-buffer* (-> arg0 message) 64)
+      (do-split-chat-msg *chat-msg-buffer*)
+      (when (> *chat-msg-string-ct* 0)
+        (let* ((s5-1 (-> *magic-chat* length))
+               (s4-0 0)
+               (s3-0 (-> *magic-chat* s4-0))
+               )
+          (while (< s4-0 s5-1)
+            (when (strncmp (-> s3-0 prefix data) (the-as pointer (-> *chat-msg-strings* 0)) -1)
+              (when (-> s3-0 buddies-only)
+                (if (not (contains? *medius-buddies* (-> arg0 originator-account-id)))
+                    (return (the-as object #f))
+                    )
+                )
+              (cond
+                ((-> s3-0 has-player-name)
+                 (expand-text-to-charp! *common-text* (-> *chat-msg-player* data) (-> arg0 originator-account-name))
+                 (format
+                   (clear *chat-msg-string*)
+                   (lookup-text! *common-text* (-> s3-0 popup-text-id) #f)
+                   *chat-msg-player*
+                   (-> *chat-msg-strings* 1)
+                   )
+                 )
+                (else
+                  (format
+                    (clear *chat-msg-string*)
+                    (lookup-text! *common-text* (-> s3-0 popup-text-id) #f)
+                    (-> *chat-msg-strings* 1)
+                    (-> *chat-msg-strings* 2)
+                    )
+                  )
+                )
+              (when (-> s3-0 add-clan-id)
+                (let ((a1-13 (x8toi (the-as pointer (-> *chat-msg-strings* 1)))))
+                  (if (!= a1-13 (-> *medius-my-clan* medius-id))
+                      (move-to-front! *medius-recent-clans* (the-as medius-cache a1-13))
+                      )
+                  )
+                )
+              (let ((a1-14 -1))
+                (if (-> s3-0 resp-type)
+                    (set! a1-14 (x8toi (the-as pointer (-> *chat-msg-strings* 1))))
+                    )
+                (add-raw-popup-msg (-> *chat-msg-string* data) a1-14 (-> s3-0 resp-type))
+                )
+              (when (-> s3-0 send-lobby-event)
+                (let ((s2-2 pp))
+                  (set! pp *net-mgr*)
+                  (send-event *lobby-menu-manager* (-> s3-0 send-lobby-event) :from *lobby-menu-manager*)
+                  (set! pp s2-2)
+                  )
+                )
+              (when (-> s3-0 stale-player)
+                (format 0 "stale player... ~D~%" (-> arg0 originator-account-id))
+                (process-spawn-function
+                  process
+                  (lambda :behavior process
+                    ((arg0 int))
+                    (suspend-for (seconds 1)
+                      )
+                    (mark-stale! *medius-player-cache* arg0)
+                    )
+                  (-> arg0 originator-account-id)
+                  )
+                )
+              )
+            (+! s4-0 1)
+            (set! s3-0 (-> *magic-chat* s4-0))
+            )
+          )
+        )
+      (return (the-as object #f))
+      )
+    (clear *chat-msg-string*)
+    (when (nonzero? (-> arg0 originator-account-name-s8 0))
+      (expand-text-to-charp! *common-text* (-> *chat-msg-string2* data) (-> arg0 originator-account-name))
+      (format *chat-msg-string* "~S: " *chat-msg-string2*)
+      )
+    (expand-text-to-charp! *common-text* (-> *chat-msg-string2* data) (-> arg0 message))
+    (copy-charp<-charp
+      (&-> *chat-msg-string* data (strlen (-> *chat-msg-string* data)))
+      (-> *chat-msg-string2* data)
+      )
+    (add-raw-popup-msg (-> *chat-msg-string* data) -1 #f)
+    0
+    )
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for "WWWWWWWWWWWWWW"
+;; WARN: Swapped fp-relative label and field offsets for "@GameInvite"
+;; WARN: Swapped fp-relative label and field offsets for " 00000141"
+;; WARN: Return type mismatch int vs object.
+(defun fake-chat-msg ()
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'medius-chat-fwd-message 1)))
+    (mem-clear! (the-as pointer (-> gp-0 0)) 128)
+    (set! (-> gp-0 0 message-type) (medius-chat-message-type whisper))
+    (set! (-> gp-0 0 originator-account-id) 1001)
+    (copy-charp<-charp (-> gp-0 0 originator-account-name) (-> "WWWWWWWWWWWWWW" data))
+    (copy-charp<-charp (-> gp-0 0 message) (-> "@GameInvite" data))
+    (copy-charp<-charp (&-> gp-0 0 message (strlen (-> gp-0 0 message))) (-> " 00000141" data))
+    (handle-chat-msg (-> gp-0 0) #f)
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun send-chat-with-clan-id ((arg0 string) (arg1 int) (arg2 symbol))
+  (when *net-mgr*
+    (format (clear *chat-msg-string*) "~S ~8X" arg0 (-> *medius-my-clan* medius-id))
+    (send-chat-msg *net-mgr* *chat-msg-string* arg1 arg2)
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun send-chat-with-game-id ((arg0 string) (arg1 int) (arg2 symbol))
+  (when *net-mgr*
+    (format (clear *chat-msg-string*) "~S ~8X" arg0 (-> *net-active-game* medius-world-id))
+    (send-chat-msg *net-mgr* *chat-msg-string* arg1 arg2)
+    )
+  0
+  )
+
+(define *chat-msg-box* (new 'static 'hud-box))
+
+(define *chat-popup-sx* 400)
+
+(define *r2-press-time* -1)
+
+;; WARN: Function temp-render-chat-messages has a return type of none, but the expression builder found a return statement.
+(defun temp-render-chat-messages ()
+  (local-vars (a1-13 int) (s1-1 int) (f0-10 float))
+  (with-pp
+    (if (not *net-mgr*)
+        (return #f)
+        )
+    (let ((gp-0 (get-top-chat-msg)))
+      (let ((s2-0 120)
+            (s3-0 32)
+            )
+        (if (not gp-0)
+            (return #f)
+            )
+        (let ((s5-0 (-> gp-0 resp-type)))
+          (if (not (send-event *lobby-menu-manager* 'lobby-safe-state?))
+              (set! s5-0 #f)
+              )
+          (when s5-0
+            (set! s2-0 300)
+            (set! s3-0 64)
+            (when (and (!= *r2-press-time* -1)
+                       (< (- (-> *display* real-clock frame-counter) (the-as time-frame *r2-press-time*)) (seconds 0.8))
+                       )
+              (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-1 from) (process->ppointer pp))
+                (set! (-> a1-1 num-params) 2)
+                (set! (-> a1-1 message) 'lobby-respond-to-msg)
+                (set! (-> a1-1 param 0) (the-as uint (-> gp-0 resp-type)))
+                (set! (-> a1-1 param 1) (the-as uint (-> gp-0 id)))
+                (when (send-event-function *lobby-menu-manager* a1-1)
+                  (set! *r2-press-time* -1)
+                  (set! (-> gp-0 disp-time) (+ s2-0 21 s2-0))
+                  (format 0 "setting disp-time to ~D~%" (-> gp-0 disp-time))
+                  )
+                )
+              )
+            )
+          (copy-charp<-charp (-> *chat-msg-string* data) (-> gp-0 text))
+          (let ((s4-0 (new
+                        'stack
+                        'font-context
+                        *font-default-matrix*
+                        0
+                        0
+                        8396850.0
+                        (font-color default)
+                        (font-flags shadow kerning)
+                        )
+                      )
+                )
+            0
+            0
+            0
+            0.0
+            0
+            (let ((s1-0 (-> gp-0 disp-time)))
+              0
+              (set-width! s4-0 #x1869f)
+              (set-height! s4-0 10)
+              (set! (-> s4-0 scale) 0.4)
+              (set! (-> s4-0 flags) (font-flags kerning large ff12))
+              (set! (-> s4-0 color) (font-color font-color-52))
+              (set! (-> s4-0 effect) (the-as uint 8))
+              (let ((v1-41 s4-0))
+                (set! (-> v1-41 effect-time) 0.0)
+                )
+              (logior! (-> s4-0 flags) (font-flags ff8))
+              (let ((v1-44 (the int (the-as float (get-string-length *chat-msg-string* s4-0)))))
+                (set! *chat-popup-sx* (min 420 (+ v1-44 30)))
+                (let ((a0-15 (max 0 (- v1-44 (+ *chat-popup-sx* -10)))))
+                  (cond
+                    ((< s1-0 (+ s2-0 20))
+                     (set! f0-10 (fmin 1.0 (* 0.05 (the float s1-0))))
+                     (set! s1-1 0)
+                     )
+                    (else
+                      (set! s1-1 (- s1-0 (+ s2-0 20)))
+                      (set! f0-10 1.0)
+                      (cond
+                        ((< s1-1 a0-15)
+                         (empty)
+                         )
+                        ((begin (set! a1-13 (- s1-1 a0-15)) (set! s1-1 a0-15) (< a1-13 s2-0))
+                         )
+                        (else
+                          (let ((a0-21 (- a1-13 s2-0)))
+                            (when (>= a0-21 20)
+                              (purge-top-chat-msg)
+                              (return #f)
+                              )
+                            (set! f0-10 (- 1.0 (* 0.05 (the float a0-21))))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (if (< v1-44 (+ *chat-popup-sx* -10))
+                    (set! s1-1 (/ (- v1-44 (+ *chat-popup-sx* -10)) 2))
+                    )
+                )
+              )
+            (when (= f0-10 1.0)
+              (if (cpad-pressed? 0 r2)
+                  (set! *r2-press-time* (the-as int (-> *display* real-clock frame-counter)))
+                  )
+              )
+            (let ((s2-1 (- 75 (the int (* 75.0 f0-10)))))
+              (set! (-> s4-0 alpha) f0-10)
+              (set! (-> *chat-msg-box* box min x) (the float (/ (- 512 *chat-popup-sx*) 2)))
+              (set! (-> *chat-msg-box* box min y) (the float (+ s2-1 318)))
+              (set! (-> *chat-msg-box* box max x) (the float (+ (/ (- 512 *chat-popup-sx*) 2) *chat-popup-sx*)))
+              (set! (-> *chat-msg-box* box max y) (the float (+ s2-1 318 s3-0)))
+              (let* ((sv-288 (the int (* 100.0 f0-10)))
+                     (sv-304 (-> *display* frames (-> *display* on-screen) global-buf))
+                     (s0-0 (-> sv-304 base))
+                     )
+                (set! (-> *chat-msg-box* color quad) (-> (new 'static 'vector4w :w 48) quad))
+                (set! (-> *chat-msg-box* color w) sv-288)
+                (draw-box-alpha-3 *chat-msg-box* sv-304)
+                (set! (-> *chat-msg-box* color quad) (-> (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80) quad))
+                (set! (-> *chat-msg-box* color w) sv-288)
+                (draw-box-prim-only *chat-msg-box* sv-304)
+                (let ((a3-1 (-> sv-304 base)))
+                  (when (!= s0-0 a3-1)
+                    (let ((v1-91 (the-as object (-> sv-304 base))))
+                      (set! (-> (the-as dma-packet v1-91) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                      (set! (-> (the-as dma-packet v1-91) vif0) (new 'static 'vif-tag))
+                      (set! (-> (the-as dma-packet v1-91) vif1) (new 'static 'vif-tag))
+                      (set! (-> sv-304 base) (&+ (the-as pointer v1-91) 16))
+                      )
+                    (dma-bucket-insert-tag
+                      (-> *display* frames (-> *display* on-screen) bucket-group)
+                      (bucket-id debug-menu)
+                      s0-0
+                      (the-as (pointer dma-tag) a3-1)
+                      )
+                    )
+                  )
+                )
+              (set-vector!
+                (-> s4-0 origin)
+                (the float (+ (- 5 s1-1) (/ (- 512 *chat-popup-sx*) 2)))
+                (the float (+ s2-1 327))
+                65535.0
+                1.0
+                )
+              (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                           (bucket-id debug-menu)
+                                           )
+                (dma-buffer-add-gs-set s0-1 (scissor-1 (new 'static 'gs-scissor
+                                                         :scax0 (+ (/ (- 512 *chat-popup-sx*) 2) 5)
+                                                         :scay0 (+ s2-1 323)
+                                                         :scax1 (+ *chat-popup-sx* -5 (/ (- 512 *chat-popup-sx*) 2))
+                                                         :scay1 (+ s2-1 313 s3-0)
+                                                         )
+                                                       )
+                                       )
+                (print-game-text *chat-msg-string* s4-0 #f 44 (bucket-id hud-draw-hud-alpha) *chat-msg-string2* s0-1)
+                (when s5-0
+                  (+! (-> s4-0 origin y) 32.0)
+                  (set! (-> s4-0 width) (the float (+ *chat-popup-sx* -10)))
+                  (logior! (-> s4-0 flags) (font-flags middle))
+                  (set! (-> s4-0 color) (font-color font-color-51))
+                  (set! (-> s4-0 scale) 0.5)
+                  (print-game-text
+                    (lookup-text! *common-text* (text-id text-id-3360) #f)
+                    s4-0
+                    #f
+                    44
+                    (bucket-id hud-draw-hud-alpha)
+                    *chat-msg-string2*
+                    s0-1
+                    )
+                  )
+                (dma-buffer-add-gs-set s0-1 (scissor-1 (-> *viewport-array* default scissor)))
+                )
+              )
+            )
+          )
+        )
+      (+! (-> gp-0 disp-time) 1)
+      )
+    0
+    (none)
+    )
+  )
+
+;; WARN: Function (method 10 lobby-chat-window) has a return type of none, but the expression builder found a return statement.
+(defmethod draw-chat-window ((this lobby-chat-window))
+  (if (and *lobby-menu-manager* (handle->process (-> *keyboard-proc* handle)))
+      (return #f)
+      )
+  (let ((s5-0 (+ (-> this y) (-> this sy)))
+        (s4-0
+          (new
+            'stack
+            'font-context
+            *font-default-matrix*
+            0
+            0
+            8396850.0
+            (font-color default)
+            (font-flags shadow kerning)
+            )
+          )
+        )
+    (set! (-> *chat-msg-box* box min x) (the float (+ (-> this x) -5)))
+    (set! (-> *chat-msg-box* box min y) (the float (+ (-> this y) -5)))
+    (set! (-> *chat-msg-box* box max x) (the float (+ (-> this sx) 10 (-> this x))))
+    (set! (-> *chat-msg-box* box max y) (the float (+ (-> this sy) 10 (-> this y))))
+    (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id bucket792)
+                                 )
+      (set! (-> *chat-msg-box* color quad) (-> (new 'static 'vector4w :x #x80 :y #x80 :z 64 :w #x80) quad))
+      (set! (-> *chat-msg-box* color w) 0)
+      (draw-box-alpha-1 *chat-msg-box* s2-0)
+      )
+    (with-dma-buffer-add-bucket ((v1-47 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id bucket792)
+                                 )
+      (dma-buffer-add-gs-set v1-47
+                             (scissor-1
+                               (new 'static 'gs-scissor
+                                 :scax0 (-> this x)
+                                 :scay0 (-> this y)
+                                 :scax1 (+ (-> this x) (-> this sx))
+                                 :scay1 (+ (-> this y) (-> this sy))
+                                 )
+                               )
+                             )
+      )
+    (dotimes (s3-1 16)
+      (let ((a2-3 (-> this strings s3-1)))
+        (when (nonzero? (-> a2-3 text 0))
+          (set-width! s4-0 (-> this sx))
+          (set-height! s4-0 100)
+          (set! (-> s4-0 scale) 0.4)
+          (set! (-> s4-0 flags) (font-flags shadow kerning large))
+          (set! (-> s4-0 color) (if (logtest? s3-1 1)
+                                    (font-color yellow)
+                                    (font-color flat-yellow)
+                                    )
+                )
+          (set! (-> s4-0 effect) (the-as uint 0))
+          (let ((v1-64 s4-0))
+            (set! (-> v1-64 effect-time) 0.0)
+            )
+          (let ((a0-28 s4-0))
+            (set! (-> a0-28 effect-color) (font-color white))
+            )
+          (logior! (-> s4-0 flags) (font-flags ff8))
+          (expand-text-to-charp! *common-text* (-> *chat-msg-string* data) (-> a2-3 text))
+          (set! s5-0
+                (- s5-0
+                   (the int
+                        (print-game-text
+                          *chat-msg-string*
+                          s4-0
+                          #t
+                          44
+                          (bucket-id hud-draw-hud-alpha)
+                          (the-as string #f)
+                          (the-as dma-buffer #f)
+                          )
+                        )
+                   )
+                )
+          (set-vector! (-> s4-0 origin) (the float (-> this x)) (the float s5-0) 65535.0 1.0)
+          (print-game-text *chat-msg-string* s4-0 #f 44 (bucket-id bucket792) (the-as string #f) (the-as dma-buffer #f))
+          )
+        )
+      )
+    )
+  (with-dma-buffer-add-bucket ((v1-81 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id bucket792)
+                               )
+    (dma-buffer-add-gs-set v1-81 (scissor-1 (-> *viewport-array* default scissor)))
+    )
+  0
+  (none)
+  )
+
+(defmethod clear-strings! ((this lobby-chat-window))
+  (dotimes (v1-0 16)
+    (set! (-> this strings v1-0 text 0) (the-as uint 0))
+    )
+  0
+  (none)
+  )
+
+(defmethod init! ((this lobby-chat-window) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (set! (-> this x) arg0)
+  (set! (-> this y) arg1)
+  (set! (-> this sx) arg2)
+  (set! (-> this sy) arg3)
+  (clear-strings! this)
+  0
+  (none)
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for ": "
+(defmethod lobby-chat-window-method-11 ((this lobby-chat-window) (arg0 int) (arg1 int))
+  (countdown (s3-0 16)
+    (mem-copy! (the-as pointer (-> this strings s3-0)) (the-as pointer (-> this strings (+ s3-0 -1))) 100)
+    )
+  (let ((s4-1 (&-> (the-as (pointer lobby-chat-string) this) 0)))
+    (copy-charp<-charp (the-as (pointer uint8) s4-1) (the-as (pointer uint8) arg0))
+    (copy-charp<-charp (the-as (pointer uint8) (&+ s4-1 (strlen s4-1))) (-> ": " data))
+    (copy-charp<-charp (the-as (pointer uint8) (&+ s4-1 (strlen s4-1))) (the-as (pointer uint8) arg1))
+    )
+  0
+  (none)
+  )

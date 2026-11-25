@@ -5,6 +5,85 @@
 ;; name in dgo: scert-10-h
 ;; dgos: ENGINE, GAME
 
+;; +++mgcl-trust-level
+(defenum mgcl-trust-level
+  :type int32
+  (mgcl-trusted 0)
+  (mgcl-not-trusted 1)
+  (extra-mgcltrust-level-code #xffffff)
+  )
+;; ---mgcl-trust-level
+
+;; +++mgcl-game-host-type
+(defenum mgcl-game-host-type
+  :type int32
+  (mgclgame-host-client-server 0)
+  (mgclgame-host-integrated-server 1)
+  (mgclgame-host-peer-to-peer 2)
+  (mgclgame-host-lanplay 3)
+  (mgclgame-host-client-server-aux-udp 4)
+  (extra-mgclgame-host #xffffff)
+  )
+;; ---mgcl-game-host-type
+
+;; +++mgcl-alert-level
+(defenum mgcl-alert-level
+  :type int32
+  (mgcl-alert-none 0)
+  (mgcl-alert-low 1)
+  (mgcl-alert-mid 2)
+  (mgcl-alert-high 3)
+  (extra-mgclalert-code #xffffff)
+  )
+;; ---mgcl-alert-level
+
+;; +++mgcl-world-status
+(defenum mgcl-world-status
+  :type int32
+  (mgcl-world-inactive 0)
+  (mgcl-world-staging 1)
+  (mgcl-world-active 2)
+  (mgcl-world-closed 3)
+  (extra-mgclworld-status-code #xffffff)
+  )
+;; ---mgcl-world-status
+
+;; +++mgcl-event-type
+(defenum mgcl-event-type
+  :type int32
+  (mgcl-event-client-disconnect 0)
+  (mgcl-event-client-connect 1)
+  (mgcl-event-extra #xffffff)
+  )
+;; ---mgcl-event-type
+
+;; +++mgcl-status-code
+(defenum mgcl-status-code
+  :type int32
+  (mgcl-num-game-worlds-per-lobby-world-exceeded -19)
+  (mgcl-call-mgcl-close-before-reinitializing -18)
+  (mgcl-dme-error -17)
+  (mgcl-worldid-inuse -16)
+  (mgcl-game-name-exists -15)
+  (mgcl-natresolve-failed -14)
+  (mgcl-invalid-arg -13)
+  (mgcl-unsuccessful -12)
+  (mgcl-sessionend-failed -11)
+  (mgcl-sessionbegin-failed -10)
+  (mgcl-authentication-failed -9)
+  (mgcl-network-error -8)
+  (mgcl-shutdown-error -7)
+  (mgcl-initialization-failed -6)
+  (mgcl-send-failed -5)
+  (mgcl-not-connected -4)
+  (mgcl-disconnect-failed -3)
+  (mgcl-connection-failed -2)
+  (mgcl-connection-error -1)
+  (mgcl-success 0)
+  (extra-mgclstatus-code #xffffff)
+  )
+;; ---mgcl-status-code
+
 ;; DECOMP BEGINS
 
 (deftype medius-file-download-request (structure)
@@ -180,7 +259,7 @@
 
 (deftype medius-server-authentication-request (structure)
   ((message-id    uint8             21)
-   (trust-level   int32)
+   (trust-level   mgcl-trust-level)
    (address-list  net-address-list  :inline)
    )
   )
@@ -223,7 +302,7 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (game-host-type      int32)
+   (game-host-type      mgcl-game-host-type)
    (address-list        net-address-list  :inline)
    (world-id            int32)
    (account-id          int32)
@@ -341,7 +420,7 @@
    (max-players-per-world  int16)
    (active-world-count     int16)
    (total-active-players   int16)
-   (alert-level            int32)
+   (alert-level            mgcl-alert-level)
    )
   )
 
@@ -350,7 +429,7 @@
   ((message-id      uint8  21)
    (location-id     int32)
    (application-id  int32)
-   (server-type     int32)
+   (server-type     mgcl-game-host-type)
    (server-version  uint8  16)
    (port            int32)
    )
@@ -394,7 +473,7 @@
    (generic-field2      int32)
    (generic-field3      int32)
    (medius-world-id     int32)
-   (world-status        int32)
+   (world-status        mgcl-world-status)
    )
   )
 
@@ -436,7 +515,7 @@
 
 
 (deftype medius-server-connect-notification-type (structure)
-  ((connect-event-type  int32)
+  ((connect-event-type  mgcl-event-type)
    (medius-world-uid    uint32)
    (player-session-key  uint8  17)
    )
@@ -451,14 +530,14 @@
 
 
 (deftype mgclconnect-out-params (structure)
-  ((error-code  int32)
+  ((error-code  mgcl-status-code)
    )
   )
 
 
 (deftype mgcldisconnect-params (structure)
   ((connection-handle       basic)
-   (disconnect-reason       int32)
+   (disconnect-reason       net-disconnect-reason)
    (my-disconnect-callback  basic)
    )
   )

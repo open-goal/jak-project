@@ -5,6 +5,13 @@
 ;; name in dgo: net-aux-voice
 ;; dgos: ENGINE, GAME
 
+(deftype net-connect-params (structure)
+  "(code joining aux-voice-mgr)"
+  ((in  net-connect-in-params  :inline)
+   (out net-connect-out-params :inline)
+   )
+  )
+
 (define-extern medius-start-account-stats-update (function symbol symbol object))
 
 ;; DECOMP BEGINS
@@ -157,7 +164,7 @@
         (mem-clear! (&-> gp-0 connection-handle) 16)
         (set! *aux-voice-got-callback* #f)
         (set! (-> gp-0 connection-handle) (-> self connect-handle))
-        (set! (-> gp-0 disconnect-reason) 0)
+        (set! (-> gp-0 disconnect-reason) (net-disconnect-reason net-disconnect-none))
         (set! (-> gp-0 my-disconnect-callback) (the-as pointer aux-voice-local-disconnect-callback))
         (set! *scert-function-id* (scert-function net-disconnect))
         (knet-scert-function-1-args (&-> gp-0 connection-handle))
@@ -245,7 +252,7 @@
       (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
       (format (clear *aux-game-name*) "@CLAN_CHAT_~D" (-> *medius-my-clan* medius-id))
       (copy-charp<-charp (-> gp-0 name) (-> *aux-game-name* data))
-      (set! (-> gp-0 world-type) 0)
+      (set! (-> gp-0 world-type) (medius-find-world-type find-game-world))
       (set! *aux-voice-got-callback* #f)
       (set! *scert-function-id* (scert-function medius-find-world-by-name))
       (if (nonzero? (knet-scert-function-3-args
@@ -292,8 +299,8 @@
       (set! (-> gp-0 max-players) 16)
       (set! (-> gp-0 game-level) 3)
       (set! (-> gp-0 rules-set) 0)
-      (set! (-> gp-0 game-host-type) 4)
-      (set! (-> gp-0 attributes) 0)
+      (set! (-> gp-0 game-host-type) (medius-game-host-type medius-game-host-client-server-aux-udp))
+      (set! (-> gp-0 attributes) (medius-world-attributes-type game-world-none))
       (copy-charp<-charp (-> gp-0 game-name) (-> *aux-game-name* data))
       (set! *aux-voice-got-callback* #f)
       (set! *scert-function-id* (scert-function medius-create-game))
@@ -392,10 +399,10 @@
     (let ((gp-2 (new 'stack-no-clear 'medius-update-user-state)))
       (mem-clear! (-> gp-2 session-key) 24)
       (mem-copy! (-> gp-2 session-key) *medius-session-key* 17)
-      (set! (-> gp-2 user-action) 2)
+      (set! (-> gp-2 user-action) (medius-user-action left-game-world))
       (set! *scert-function-id* (scert-function medius-update-user-state))
       (knet-scert-function-1-args (-> gp-2 session-key))
-      (set! (-> gp-2 user-action) 1)
+      (set! (-> gp-2 user-action) (medius-user-action joined-chat-world))
       (set! *scert-function-id* (scert-function medius-update-user-state))
       (knet-scert-function-1-args (-> gp-2 session-key))
       )
@@ -421,11 +428,11 @@
         (set! *scert-function-id* (scert-function net-get-connection-status))
         (knet-scert-function-2-args (&-> gp-4 my-connect-status) (-> self connect-handle))
         (cond
-          ((= (-> gp-4 my-connect-status) 1)
+          ((= (-> gp-4 my-connect-status) (net-connect-status connect-status-open))
            (suspend)
            (goto cfg-19)
            )
-          ((= (-> gp-4 my-connect-status) 3)
+          ((= (-> gp-4 my-connect-status) (net-connect-status connect-status-failed))
            (suspend)
            (aux-voice-mgr-failed)
            )
@@ -461,7 +468,7 @@
         (copy-charp<-charp (-> gp-1 game-name) (-> *aux-voice-game-info* game-name))
         (set! (-> gp-1 min-players) 1)
         (set! (-> gp-1 max-players) 16)
-        (set! (-> gp-1 world-status) 2)
+        (set! (-> gp-1 world-status) (medius-world-status world-active))
         (dotimes (v1-22 16)
           (if (logtest? (-> self bitfield) (ash 1 v1-22))
               (+! (-> gp-1 player-count) 1)

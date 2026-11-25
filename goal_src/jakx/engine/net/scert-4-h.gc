@@ -150,6 +150,96 @@
 )
 ;; ---medius-status-code
 
+;; +++net-session-type
+(defenum net-session-type
+  :type int32
+  (net-session-type-game 0)
+  (net-session-type-peer 1)
+  (net-session-type-integrated-server 2)
+  (extra-net-session-type #xffffff)
+  )
+;; ---net-session-type
+
+;; +++net-client-event-type
+(defenum net-client-event-type
+  :type int32
+  (net-client-event-join 0)
+  (net-client-event-leave 1)
+  (extra-net-client-event-type #xffffff)
+  )
+;; ---net-client-event-type
+
+;; +++net-update-type
+(defenum net-update-type
+  :type int32
+  (extra-net-update-type -1)
+  (net-full-object-update 0)
+  (net-field-update 1)
+  )
+;; ---net-update-type
+
+;; +++net-object-ownership-type
+(defenum net-object-ownership-type
+  :type int32
+  (extra-net-object-ownership-type -1)
+  (net-object-ownership-none 0)
+  (net-object-ownership-granted 1)
+  (net-object-ownership-denied 2)
+  (net-object-ownership-not-shared 3)
+  (net-object-ownership-shared 4)
+  )
+;; ---net-object-ownership-type
+
+;; +++net-ownership-status
+(defenum net-ownership-status
+  :type int32
+  (ownership-none 0)
+  (ownership-private 1)
+  (ownership-shared 2)
+  (ownership-not-available 3)
+  (extra-net-ownership-status #xffffff)
+  )
+;; ---net-ownership-status
+
+;; +++medius-player-status
+(defenum medius-player-status
+  :type int32
+  (medius-player-disconnected 0)
+  (medius-player-in-auth-world 1)
+  (medius-player-in-chat-world 2)
+  (medius-player-in-game-world 3)
+  (medius-player-in-other-universe 4)
+  (extra-medius-player-status #xffffff)
+  )
+;; ---medius-player-status
+
+;; +++medius-account-status
+(defenum medius-account-status
+  :type int32
+  (account-active 0)
+  (account-deactivated 1)
+  (extra-medius-account-status #xffffff)
+  )
+;; ---medius-account-status
+
+;; +++medius-account-type
+(defenum medius-account-type
+  :type int32
+  (medius-child-account 0)
+  (medius-master-account 1)
+  (extra-medius-account-type #xffffff)
+  )
+;; ---medius-account-type
+
+;; +++medius-add-type
+(defenum medius-add-type
+  :type int32
+  (add-single 0)
+  (add-symmetric 1)
+  (extra-medius-add-type #xffffff)
+  )
+;; ---medius-add-type
+
 ;; DECOMP BEGINS
 
 (deftype net-latency-metrics-params (structure)
@@ -173,7 +263,7 @@
 
 
 (deftype net-remote-client-event-data (structure)
-  ((event-type         int32)
+  ((event-type         net-client-event-type)
    (connection-handle  basic)
    (client-index       int32)
    (p-user-data        basic)
@@ -185,7 +275,7 @@
   ((client-list     net-client-list  :inline)
    (object-index    int32)
    (fields-updated  net-bit-mask     :inline)
-   (update-type     int32)
+   (update-type     net-update-type)
    (p-user-data     basic)
    )
   )
@@ -195,7 +285,7 @@
   ((connection-handle  basic)
    (client-index       int32)
    (object-index       int32)
-   (state              int32)
+   (state              net-object-ownership-type)
    (p-user-data        basic)
    )
   )
@@ -211,7 +301,7 @@
 
 
 (deftype net-completion-data (structure)
-  ((result       int32)
+  ((result       net-error)
    (p-user-data  basic)
    )
   )
@@ -231,7 +321,7 @@
    (sz-client-name                       uint8  12)
    (net-object-count                     int32)
    (data-stream-count                    int32)
-   (session-master-status                int32)
+   (session-master-status                net-ownership-status)
    (pf-local-join-callback               basic)
    (p-join-callback-data                 basic)
    (pf-remote-client-event-callback      basic)
@@ -248,7 +338,7 @@
 
 (deftype net-join-out-params (structure)
   ((b-is-set    int32)
-   (error-code  int32)
+   (error-code  net-error)
    )
   )
 
@@ -370,7 +460,7 @@
 
 (deftype net-register-object-filter-out-params (structure)
   ((object-filter-type  int32)
-   (error-code          int32)
+   (error-code          net-error)
    )
   )
 
@@ -384,7 +474,7 @@
 
 (deftype net-lanfind-in-params (structure)
   ((b-default-set         int32)
-   (session-type          int32)
+   (session-type          net-session-type)
    (filter                uint32)
    (details               net-data  :inline)
    (udpport               uint32)
@@ -427,7 +517,7 @@
 
 
 (deftype medius-player-online-state (structure)
-  ((connect-status         int32)
+  ((connect-status         medius-player-status)
    (medius-lobby-world-id  int32)
    (medius-game-world-id   int32)
    (lobby-name             uint8  64)
@@ -471,7 +561,7 @@
 (deftype medius-account-get-profile-response (structure)
   ((message-id      uint8  21)
    (status-code     medius-status-code)
-   (account-status  int32)
+   (account-status  medius-account-status)
    (account-name    uint8  32)
    (birthday-month  int16)
    (birthday-day    int16)
@@ -505,7 +595,7 @@
   ((message-id       uint8                21)
    (status-code      medius-status-code)
    (account-id       int32)
-   (account-type     int32)
+   (account-type     medius-account-type)
    (medius-world-id  int32)
    (connect-info     net-connection-info  :inline)
    )
@@ -522,7 +612,7 @@
 (deftype medius-account-registration-request (structure)
   ((message-id    uint8  21)
    (session-key   uint8  17)
-   (account-type  int32)
+   (account-type  medius-account-type)
    (account-name  uint8  32)
    (password      uint8  32)
    )
@@ -604,6 +694,6 @@
   ((message-id         uint8  21)
    (session-key        uint8  17)
    (target-account-id  int32)
-   (add-type           int32)
+   (add-type           medius-add-type)
    )
   )
