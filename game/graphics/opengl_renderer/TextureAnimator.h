@@ -288,7 +288,7 @@ class TextureAnimator {
 
  private:
   void copy_private_to_public();
-  void setup_texture_anims_common();
+  void setup_texture_anims_jak2_jak3();
   void setup_texture_anims_jak2();
   void setup_texture_anims_jak3();
 

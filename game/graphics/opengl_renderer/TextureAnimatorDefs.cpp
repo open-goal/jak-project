@@ -1700,7 +1700,7 @@ void TextureAnimator::setup_texture_anims_jak3() {
   }
 }
 
-void TextureAnimator::setup_texture_anims_common() {
+void TextureAnimator::setup_texture_anims_jak2_jak3() {
   // Skull Gem
   {
     FixedAnimDef skull_gem;

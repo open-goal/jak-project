@@ -259,8 +259,10 @@ int output_slot_by_idx(GameVersion version, const std::string& name) {
       v = &jak2_animated_texture_slots();
       break;
     case GameVersion::Jak3:
-    case GameVersion::JakX:
       v = &jak3_animated_texture_slots();
+      break;
+    case GameVersion::JakX:
+      v = &jakx_animated_texture_slots();
       break;
     default:
     case GameVersion::Jak1:
@@ -604,14 +606,16 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
   m_output_debug_flags.resize(animated_texture_slots(m_version).size());
 
   // animation-specific stuff
-  setup_texture_anims_common();
   switch (m_version) {
     case GameVersion::Jak2:
+      setup_texture_anims_jak2_jak3();
       setup_texture_anims_jak2();
       break;
     case GameVersion::Jak3:
-    case GameVersion::JakX:
+      setup_texture_anims_jak2_jak3();
       setup_texture_anims_jak3();
+      break;
+    case GameVersion::JakX:
       break;
     default:
       ASSERT_NOT_REACHED();

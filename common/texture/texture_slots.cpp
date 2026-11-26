@@ -190,6 +190,67 @@ std::vector<std::string> jak3_slots = {
     "wstd-lava-base-dest",
 };
 
+std::vector<std::string> jakx_slots = {
+    "clouds", // texture-anim-tables.gc
+    "ocean-sky-dest", // texture-anim-tables.gc
+    "eco-blue-liquid-01-dest", // texture-anim-tables.gc
+    "environment-cars-01-dest", // texture-anim-tables.gc
+    "grid-tile", // texture-anim-tables.gc
+    "ufobeam-dest", // texture-anim-tables.gc
+    "hud-health-bar-01-dest", // texture-anim-tables.gc
+    "hud-health-bar-small-01-dest", // texture-anim-tables.gc
+    "hud-lighteco-bar-01-dest", // texture-anim-tables.gc
+    "hud-lighteco-bar-small-01-dest", // texture-anim-tables.gc
+    "ctf-blue-small-ball-dest", // texture-anim-tables.gc
+    "ctf-red-small-ball-dest", // texture-anim-tables.gc
+    "ctf-blue-dest", // texture-anim-tables.gc
+    "ctf-red-dest", // texture-anim-tables.gc
+    "fcshield-small-ball-dest", // texture-anim-tables.gc
+    "this-way-arrow-02-dest", // texture-anim-tables.gc
+    "jumppad-arrow-dest", // texture-anim-tables.gc
+    "train-hanger-arrow-dest", // texture-anim-tables.gc
+    "ocean-dest", // texture-anim-tables.gc
+    "atoll-oceanripple-01-dest", // atoll-effects.gc
+    "clif-waterfall-01-dest", // cliffs-effects.gc
+    "havend-alpha-canal-dest", // haven-effects.gc
+    "havend-water-canal-dest", // haven-effects.gc
+    "jungle-water-tunnel-canal-flowing-01-dest", // havjung-effects.gc
+    "jungle-lava-01-dest", // havjung-effects.gc
+    "jungle-lava-spill-scroll-01-dest", // havjung-effects.gc
+    "jungle-water-drivable-flowing-01-dest", // havjung-effects.gc
+    "jungle-waterfall-01-dest", // havjung-effects.gc
+    "sewb-froth-dest", // sewer-effects.gc
+    "sewb-stillwater-dest", // sewer-effects.gc
+    "sewb-fallingwater-dest", // sewer-effects.gc
+    "sewb-fallingwater-02-dest", // sewer-effects.gc
+    "sewc-fallingwater-dest", // sewer-effects.gc
+    "sewd-stillwater-dest", // sewer-effects.gc
+    "sewd-fallingwater-dest", // sewer-effects.gc
+    "sewe-fallingwater-dest", // sewer-effects.gc
+    "sewe-froth-dest", // sewer-effects.gc
+    "sewf-froth-dest", // sewer-effects.gc
+    "sewf-stillwater-dest", // sewer-effects.gc
+    "collectoid-eye-01-dest", // net-collectable-game.gc
+    "kcro-water-dest", // kcross-effects.gc
+    "kcro-water-wave-01-dest", // kcross-effects.gc
+    "drmc-fallingwater-02-dest", // drome-effects.gc
+    "drmc-froth-dest", // drome-effects.gc
+    "kras-sign-02-dest", // kras-effects.gc
+    "kras-sign-03-dest", // kras-effects.gc
+    "kras-sign-04-dest", // kras-effects.gc
+    "can-waterfall-dest", // canyon-effects.gc
+    "can-water-dest", // canyon-effects.gc
+    "desa-stillwater-dest", // desarena-effects.gc
+    "desa-fallingwater-dest", // desarena-effects.gc
+    "desa-wave-dest", // desarena-effects.gc
+    "desa-froth-dest", // desarena-effects.gc
+    "desisle-water-wave-01-dest", // desisle-effects.gc
+    "temple-a-lava-dest", // temple-effects.gc
+    "temple-a-water-dest", // temple-effects.gc
+    "temple-lava-01-dest", // temple-effects.gc
+    "temple-waterfall-01-dest", // temple-effects.gc
+};
+
 }  // namespace
 
 const std::vector<std::string>& jak2_animated_texture_slots() {
@@ -198,4 +259,8 @@ const std::vector<std::string>& jak2_animated_texture_slots() {
 
 const std::vector<std::string>& jak3_animated_texture_slots() {
   return jak3_slots;
+}
+
+const std::vector<std::string>& jakx_animated_texture_slots() {
+  return jakx_slots;
 }
