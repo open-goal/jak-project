@@ -3,11 +3,9 @@
 
 ;; definition for method 9 of type align-control
 ;; INFO: Used lq/sq
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod compute-delta-align! ((this align-control))
   "Compute the change in align since the last time this was called."
-  (local-vars (disable? symbol) (s7-0 none) (ra-0 int))
+  (local-vars (disable? symbol))
   (update-anim-data (-> this process skel))
   (let ((num-chans (-> this process skel active-channels)))
     (dotimes (chan-idx (the-as int num-chans))
@@ -20,9 +18,7 @@
           (else
             (when (!= (-> frame-group type) art-joint-anim)
               (go process-drawable-art-error "align joint-anim")
-              (.lw ra-0 return-from-thread s7-0)
-              (.jr ra-0)
-              (nop!)
+              (abandon-thread)
               0
               )
             )
