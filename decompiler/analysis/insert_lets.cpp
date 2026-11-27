@@ -2969,87 +2969,80 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
 
 FormElement* rewrite_rand_float_gen(LetElement* in, const Env& env, FormPool& pool) {
   // this function checks for the (rand-float-gen) macro
+  const auto matcher_div = Matcher::op_fixed(
+      FixedOperatorKind::DIVISION,
+      {Matcher::cast("int", Matcher::func(Matcher::symbol("rand-uint31-gen"), {Matcher::any(0)})),
+       Matcher::integer(256)});
 
-  bool ret_in_body = in->entries().size() == 2;
+  auto& entries = in->entries();
+  for (size_t idx = 0; idx + 1 < entries.size(); idx++) {
+    auto mr_div = match(matcher_div, entries.at(idx).src);
+    if (!mr_div.matched) {
+      continue;
+    }
 
-  if (ret_in_body && in->body()->size() != 1) {
-    return nullptr;
-  }
+    const auto& reg1 = entries.at(idx).dest.reg();
+    const auto matcher_or = Matcher::op_fixed(FixedOperatorKind::LOGIOR,
+                                              {Matcher::integer(0x3f800000), Matcher::reg(reg1)});
+    auto mr_or = match(Matcher::match_or({Matcher::cast("number", matcher_or),
+                                          Matcher::cast("float", matcher_or)}),
+                       entries.at(idx + 1).src);
+    if (!mr_or.matched) {
+      continue;
+    }
 
-  auto test = in->to_string(env);
+    auto gen = mr_div.maps.forms.at(0);
+    if (gen->to_form(env).is_symbol("*random-generator*")) {
+      gen = nullptr;
+    }
 
-  auto mr_div = match(
-      Matcher::op_fixed(FixedOperatorKind::DIVISION,
-                        {Matcher::cast("int", Matcher::func(Matcher::symbol("rand-uint31-gen"),
-                                                            {Matcher::any(0)})),
-                         Matcher::integer(256)}),
-      in->entries().at(0).src);
-  if (!mr_div.matched) {
-    return nullptr;
-  }
+    const auto& reg2 = entries.at(idx + 1).dest.reg();
+    const auto matcher_res = Matcher::op_fixed(
+        FixedOperatorKind::ADDITION,
+        {Matcher::single(-1.f),
+         Matcher::match_or({Matcher::reg(reg2), Matcher::cast("float", Matcher::reg(reg2))})});
+    auto make_macro = [&](FormElement* /*s_in*/, const MatchResult& /*mr*/, const Env& /*env*/,
+                          FormPool& pool) {
+      auto head = GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
+      return gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
+    };
 
-  const auto& reg1 = in->entries().at(0).dest.reg();
-  auto gen = mr_div.maps.forms.at(0);
-  if (gen->to_form(env).is_symbol("*random-generator*")) {
-    gen = nullptr;
-  }
-
-  auto mr_or =
-      match(Matcher::cast("number",
-                          Matcher::op_fixed(FixedOperatorKind::LOGIOR,
-                                            {Matcher::integer(0x3f800000), Matcher::reg(reg1)})),
-            in->entries().at(1).src);
-  if (!mr_or.matched) {
-    return nullptr;
-  }
-
-  const auto& reg2 = in->entries().at(1).dest.reg();
-
-  auto matcher_res =
-      Matcher::op_fixed(FixedOperatorKind::ADDITION, {Matcher::single(-1.f), Matcher::reg(reg2)});
-
-  if (!ret_in_body) {
-    // simpler case
-
-    auto mr_res = match(matcher_res, in->entries().at(2).src);
-
-    if (!mr_res.matched) {
+    bool ret_in_body = idx + 2 == entries.size();
+    if (ret_in_body && in->body()->size() != 1) {
       return nullptr;
     }
 
-    // delete us.
-    in->entries().erase(in->entries().begin());
-    in->entries().erase(in->entries().begin());
-
-    auto head = GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
-
-    // set the value of the new first entry to the macro
-    in->entries().at(0).src =
-        gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
-
-    // return us but modified?
-    in->clear_let_star();
-    return in;
-  } else {
-    auto mr_res = rewrite_shelled_return_form(
-        matcher_res, in->body()->at(0), env, pool,
-        [&](FormElement* /*s_in*/, const MatchResult& /*mr*/, const Env& /*env*/, FormPool& pool) {
-          auto head =
-              GenericOperator::make_function(pool.form<ConstantTokenElement>("rand-float-gen"));
-          return gen ? pool.form<GenericElement>(head, gen) : pool.form<GenericElement>(head);
-        },
-        nullptr);
-
+    auto user = ret_in_body ? in->body()->at(0) : entries.at(idx + 2).src->try_as_single_element();
+    if (!user) {
+      return nullptr;
+    }
+    auto mr_res = rewrite_shelled_return_form(matcher_res, user, env, pool, make_macro, nullptr);
     if (!std::get<0>(mr_res).matched) {
-      // lg::error("shell match failed, dont know this form: {}",
-      // in->body()->at(0)->to_string(env));
       return nullptr;
     }
+    auto result = std::get<1>(mr_res);
 
-    auto elt = std::get<1>(mr_res)->try_as_single_element();
-    elt->parent_form = in->parent_form;
-    return elt;
+    if (ret_in_body && idx == 0) {
+      // nothing else left in the let, so just return the body.
+      auto elt = result->try_as_single_element();
+      elt->parent_form = in->parent_form;
+      return elt;
+    }
+
+    if (ret_in_body) {
+      in->set_body(result);
+    } else {
+      entries.at(idx + 2).src = result;
+      result->parent_element = in;
+    }
+    entries.erase(entries.begin() + idx, entries.begin() + idx + 2);
+    if (entries.size() == 1) {
+      in->clear_let_star();
+    }
+    return in;
   }
+
+  return nullptr;
 }
 
 FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, FormPool& pool) {
