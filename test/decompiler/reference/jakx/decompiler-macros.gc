@@ -1770,5 +1770,34 @@
   `(* ,x ,x)
   )
 
+(defmacro rand-float-gen (&key (gen *random-generator*))
+  "Generate a float from [0, 1)"
+  `(+ -1.0 (the-as float (logior #x3f800000 (/ (rand-uint31-gen ,gen) 256))))
+  )
+
+(defmacro abandon-thread ()
+  ;; abandon this one too.
+  ;; NOTE - this is different from GOAL.
+  ;; GOAL installs this as the return address for this function and returns normally.
+  ;; but we don't because I don't have an easy way to find where to stick this.
+  ;; I can't see how this makes a difference, as all non-main threads seem
+  ;; temporary, but if this turns out to be false, we will need to change this.
+  ;; keep #cond inside the quasiquote so it remains in the macro expansion
+  `(#cond
+    ((eq? INSTRUCTION_SET 'arm64)
+     ;; branch to return-from-thread through the executable alias
+     (rlet ((temp)
+            (xoff :reg exec-off :type uint :reset-here #t))
+       (.mov temp return-from-thread)
+       (.add temp xoff)
+       (.jr temp)))
+    (#t
+     (rlet ((temp)
+            (off :reg r15 :type uint :reset-here #t))
+       (.mov temp return-from-thread) ;; could probably just call this...
+       (.add temp off)
+       (.push temp)
+       (.ret)))))
+
 (import "goal_src/jakx/engine/data/tpages.gc")
 (import "goal_src/jakx/engine/data/textures.gc")

@@ -358,9 +358,9 @@
    (alpha  int32  :overlay-at (-> data 3))
    )
   (:methods
-    (car-rgb-color-method-9 () none)
-    (car-rgb-color-method-10 (_type_) rgba)
-    (car-rgb-color-method-11 (_type_ rgba) none)
+    (from-hsv! (_type_ car-hsv-color) none)
+    (to-rgba (_type_) rgba)
+    (from-rgba! (_type_ rgba) none)
     )
   )
 
@@ -394,7 +394,7 @@
    (value       float  :overlay-at (-> data 2))
    )
   (:methods
-    (car-hsv-color-method-9 () none)
+    (from-rgb! (_type_ car-rgb-color) float)
     )
   )
 
@@ -421,9 +421,9 @@
 
 ;; definition of type car-part-info
 (deftype car-part-info (structure)
-  ((short-name-id  uint32)
-   (name-id        uint32)
-   (task           uint16)
+  ((short-name-id  text-id)
+   (name-id        text-id)
+   (task           game-task-node)
    (flags          uint8)
    (medal          uint8)
    (part-id        uint8)
@@ -451,7 +451,11 @@
 
 ;; definition of type tuning-info
 (deftype tuning-info (uint32)
-  ()
+  ((engine  uint8 :offset   0 :size   8)
+   (gearbox uint8 :offset   8 :size   8)
+   (armor   uint8 :offset  16 :size   8)
+   (turbo   uint8 :offset  24 :size   8)
+   )
   )
 
 ;; definition of type upgrade-info
@@ -524,7 +528,7 @@
    (stripe-color   car-rgb-color  :inline)
    (car-type       car-type)
    (current-parts  int8           11)
-   (tuning         uint32)
+   (tuning         tuning-info)
    (flags          car-info-flag)
    )
   )
@@ -552,7 +556,7 @@
    (base-color    rgba)
    (stripe-color  rgba)
    (parts         int8  11)
-   (tuning        uint32)
+   (tuning        tuning-info)
    (flags         car-info-flag)
    )
   )
@@ -576,31 +580,32 @@
 
 ;; definition of type car-info-full
 (deftype car-info-full (car-info)
-  ((level               symbol)
+  ((level               level)
    (wheel-blur          float)
-   (tread-texture       basic)
+   (tread-texture       texture)
    (textures            car-textures)
    (first-tbp           uint32)
    (last-tbp            uint32)
    (damage              int8         14)
+   (damage-u8           uint8        14 :overlay-at (-> damage 0))
    (lights              vu-lights    :inline)
    (shield-vu-lights    vu-lights    :inline)
    (shield-light-group  light-group  :inline)
    )
   (:methods
-    (car-info-full-method-9 (_type_) none)
-    (car-info-full-method-10 (_type_) none)
-    (car-info-full-method-11 (_type_) none)
-    (car-info-full-method-12 (_type_) none)
-    (car-info-full-method-13 (_type_) none)
-    (car-info-full-method-14 (_type_) none)
-    (car-info-full-method-15 (_type_) none)
-    (car-info-full-method-16 (_type_ bucket-id) none)
-    (car-info-full-method-17 (_type_) none)
-    (car-info-full-method-18 (_type_ vector) none)
-    (car-info-full-method-19 (_type_ vector vector) none)
-    (car-info-full-method-20 (_type_) none)
-    (car-info-full-method-21 (_type_) none)
+    (set-base-color-hsv! (_type_ car-hsv-color) none)
+    (set-stripe-color-hsv! (_type_ car-hsv-color) none)
+    (get-base-color-hsv (_type_ car-hsv-color) none)
+    (get-stripe-color-hsv (_type_ car-hsv-color) none)
+    (clear-damage! (_type_) none)
+    (set-part-damaged! (_type_ car-texture-part) none)
+    (lookup-textures! (_type_) none)
+    (draw-textures (_type_ bucket-id) none)
+    (update-shield-lights (_type_) none)
+    (set-shield-light-color! (_type_ vector) none)
+    (add-shield-hit-light (_type_ vector vector) none)
+    (draw-body-layer (_type_ dma-buffer texture car-texture-layer int int) none)
+    (draw-wheel-layer (_type_ dma-buffer texture car-texture-layer int int) none)
     )
   )
 
@@ -655,7 +660,7 @@
    (textures  car-textures   6 :inline)
    )
   (:methods
-    (car-level-array-method-9 () none)
+    (init! (_type_) none)
     )
   )
 

@@ -9,6 +9,7 @@
 (define-extern *last-selected-human-ct* int)
 
 (define-extern get-selected-local-player-count (function int))
+(define-extern flash-game-started (function object :behavior process))
 
 ;; +++lobby-vehicle-flag
 (defenum lobby-vehicle-flag
@@ -24,6 +25,16 @@
   )
 ;; ---lobby-vehicle-flag
 
+
+;; +++tuning-type
+(defenum tuning-type
+  :type uint64
+  (engine 0)
+  (gearbox 1)
+  (armor 2)
+  (turbo 3)
+  )
+;; ---tuning-type
 
 ;; DECOMP BEGINS
 
@@ -68,16 +79,16 @@
    (vehicle-selected            uint8)
    (vehicle-flags               lobby-vehicle-flag)
    (vehicle-paint-mode          uint64)
-   (tuning-type-selected        uint64)
+   (tuning-type-selected        tuning-type)
    (all-ready?                  symbol)
-   (map-proc                    uint64)
-   (venue-map                   uint64)
+   (map-proc                    handle)
+   (venue-map                   handle)
    (current-local-player        int8)
    (spawn-another?              symbol)
-   (state-time                  uint64)
+   (state-time                  time-frame)
    (has-driver?                 symbol  2)
    (car-part-type-selected      uint8)
-   (cam-string                  basic)
+   (cam-string                  string)
    (driver-was-taken?           symbol)
    (interpolate-camera?         symbol)
    (last-selected-human-count   int8)
@@ -93,191 +104,529 @@
    (cookie-id-to-kick           int8)
    (override-fov                basic)
    (profile-new-save            basic)
-   (voice-id                    uint32)
-   (split-selection-prev-state  basic)
+   (voice-id                    sound-id)
+   (split-selection-prev-state  symbol)
    (vehicle-part-fade           uint8)
    (vehicle-loaded-time         time-frame)
    )
-  (:methods
-    (lobby-menu-manager-method-15 () none)
-    (lobby-menu-manager-method-16 () none)
-    (lobby-menu-manager-method-17 () none)
-    (lobby-menu-manager-method-18 () none)
-    (lobby-menu-manager-method-19 () none)
-    (lobby-menu-manager-method-20 () none)
-    (lobby-menu-manager-method-21 () none)
-    (lobby-menu-manager-method-22 () none)
-    (lobby-menu-manager-method-23 () none)
-    (lobby-menu-manager-method-24 () none)
-    (lobby-menu-manager-method-25 () none)
-    (lobby-menu-manager-method-26 () none)
-    (lobby-menu-manager-method-27 () none)
-    (lobby-menu-manager-method-28 () none)
-    (lobby-menu-manager-method-29 () none)
-    (lobby-menu-manager-method-30 () none)
-    (lobby-menu-manager-method-31 () none)
-    (lobby-menu-manager-method-32 () none)
-    (lobby-menu-manager-method-33 () none)
-    (lobby-menu-manager-method-34 () none)
-    (lobby-menu-manager-method-35 () none)
-    (lobby-menu-manager-method-36 () none)
-    (lobby-menu-manager-method-37 () none)
-    (lobby-menu-manager-method-38 () none)
-    (lobby-menu-manager-method-39 () none)
-    (lobby-menu-manager-method-40 () none)
-    (lobby-menu-manager-method-41 () none)
-    (lobby-menu-manager-method-42 () none)
-    (lobby-menu-manager-method-43 () none)
-    (lobby-menu-manager-method-44 () none)
-    (lobby-menu-manager-method-45 () none)
-    (lobby-menu-manager-method-46 () none)
-    (lobby-menu-manager-method-47 () none)
-    (lobby-menu-manager-method-48 () none)
-    (lobby-menu-manager-method-49 () none)
-    (lobby-menu-manager-method-50 () none)
-    (lobby-menu-manager-method-51 () none)
-    (lobby-menu-manager-method-52 () none)
-    (lobby-menu-manager-method-53 () none)
-    (lobby-menu-manager-method-54 () none)
-    (lobby-menu-manager-method-55 () none)
-    (lobby-menu-manager-method-56 () none)
-    (lobby-menu-manager-method-57 () none)
-    (lobby-menu-manager-method-58 () none)
-    (lobby-menu-manager-method-59 () none)
-    (lobby-menu-manager-method-60 () none)
-    (lobby-menu-manager-method-61 () none)
-    (lobby-menu-manager-method-62 () none)
-    (lobby-menu-manager-method-63 () none)
-    (lobby-menu-manager-method-64 () none)
-    (lobby-menu-manager-method-65 () none)
-    (lobby-menu-manager-method-66 () none)
-    (lobby-menu-manager-method-67 () none)
-    (lobby-menu-manager-method-68 () none)
-    (lobby-menu-manager-method-69 () none)
-    (lobby-menu-manager-method-70 () none)
-    (lobby-menu-manager-method-71 () none)
-    (lobby-menu-manager-method-72 () none)
-    (lobby-menu-manager-method-73 () none)
-    (lobby-menu-manager-method-74 () none)
-    (lobby-menu-manager-method-75 () none)
-    (lobby-menu-manager-method-76 () none)
-    (lobby-menu-manager-method-77 () none)
-    (lobby-menu-manager-method-78 () none)
-    (lobby-menu-manager-method-79 () none)
-    (lobby-menu-manager-method-80 () none)
-    (lobby-menu-manager-method-81 () none)
-    (lobby-menu-manager-method-82 () none)
-    (lobby-menu-manager-method-83 () none)
-    (lobby-menu-manager-method-84 () none)
-    (lobby-menu-manager-method-85 () none)
-    (lobby-menu-manager-method-86 () none)
-    (lobby-menu-manager-method-87 () none)
-    (lobby-menu-manager-method-88 () none)
-    (lobby-menu-manager-method-89 () none)
-    (lobby-menu-manager-method-90 () none)
-    (lobby-menu-manager-method-91 () none)
-    (lobby-menu-manager-method-92 () none)
-    (lobby-menu-manager-method-93 () none)
-    (lobby-menu-manager-method-94 () none)
-    (lobby-menu-manager-method-95 () none)
-    (lobby-menu-manager-method-96 () none)
-    (lobby-menu-manager-method-97 () none)
-    (lobby-menu-manager-method-98 () none)
-    (lobby-menu-manager-method-99 () none)
-    (lobby-menu-manager-method-100 () none)
-    (lobby-menu-manager-method-101 () none)
-    (lobby-menu-manager-method-102 () none)
-    (lobby-menu-manager-method-103 () none)
-    (lobby-menu-manager-method-104 () none)
-    (lobby-menu-manager-method-105 () none)
-    (lobby-menu-manager-method-106 () none)
-    (lobby-menu-manager-method-107 () none)
-    (lobby-menu-manager-method-108 () none)
-    (lobby-menu-manager-method-109 () none)
-    (lobby-menu-manager-method-110 () none)
-    (lobby-menu-manager-method-111 () none)
-    (lobby-menu-manager-method-112 () none)
-    (lobby-menu-manager-method-113 () none)
-    (lobby-menu-manager-method-114 () none)
-    (lobby-menu-manager-method-115 () none)
-    (lobby-menu-manager-method-116 () none)
-    (lobby-menu-manager-method-117 () none)
-    (lobby-menu-manager-method-118 () none)
-    (lobby-menu-manager-method-119 () none)
-    (lobby-menu-manager-method-120 () none)
-    (lobby-menu-manager-method-121 () none)
-    (lobby-menu-manager-method-122 () none)
-    (lobby-menu-manager-method-123 () none)
-    (lobby-menu-manager-method-124 () none)
-    (lobby-menu-manager-method-125 () none)
-    (lobby-menu-manager-method-126 () none)
-    (lobby-menu-manager-method-127 () none)
-    (lobby-menu-manager-method-128 () none)
-    (lobby-menu-manager-method-129 () none)
-    (lobby-menu-manager-method-130 () none)
-    (lobby-menu-manager-method-131 () none)
-    (lobby-menu-manager-method-132 () none)
-    (lobby-menu-manager-method-133 () none)
-    (lobby-menu-manager-method-134 () none)
-    (lobby-menu-manager-method-135 () none)
-    (lobby-menu-manager-method-136 () none)
-    (lobby-menu-manager-method-137 () none)
-    (lobby-menu-manager-method-138 () none)
-    (lobby-menu-manager-method-139 () none)
-    (lobby-menu-manager-method-140 () none)
-    (lobby-menu-manager-method-141 () none)
-    (lobby-menu-manager-method-142 () none)
-    (lobby-menu-manager-method-143 () none)
-    (lobby-menu-manager-method-144 () none)
-    (lobby-menu-manager-method-145 () none)
-    (lobby-menu-manager-method-146 () none)
-    (lobby-menu-manager-method-147 () none)
-    (lobby-menu-manager-method-148 () none)
-    (lobby-menu-manager-method-149 () none)
-    (lobby-menu-manager-method-150 () none)
-    (lobby-menu-manager-method-151 () none)
-    (lobby-menu-manager-method-152 () none)
-    (lobby-menu-manager-method-153 () none)
-    (lobby-menu-manager-method-154 () none)
-    (lobby-menu-manager-method-155 () none)
-    (lobby-menu-manager-method-156 () none)
-    (lobby-menu-manager-method-157 () none)
-    (lobby-menu-manager-method-158 () none)
-    (lobby-menu-manager-method-159 () none)
-    (lobby-menu-manager-method-160 () none)
-    (lobby-menu-manager-method-161 () none)
-    (lobby-menu-manager-method-162 () none)
-    (lobby-menu-manager-method-163 () none)
-    (lobby-menu-manager-method-164 () none)
-    (lobby-menu-manager-method-165 () none)
-    (lobby-menu-manager-method-166 () none)
-    (lobby-menu-manager-method-167 () none)
-    (lobby-menu-manager-method-168 () none)
-    (lobby-menu-manager-method-169 () none)
-    (lobby-menu-manager-method-170 () none)
-    (lobby-menu-manager-method-171 () none)
-    (lobby-menu-manager-method-172 () none)
-    (lobby-menu-manager-method-173 () none)
-    (lobby-menu-manager-method-174 () none)
-    (lobby-menu-manager-method-175 () none)
-    (lobby-menu-manager-method-176 () none)
-    (lobby-menu-manager-method-177 () none)
-    (lobby-menu-manager-method-178 () none)
-    (lobby-menu-manager-method-179 () none)
-    (lobby-menu-manager-method-180 () none)
-    (lobby-menu-manager-method-181 () none)
-    (lobby-menu-manager-method-182 () none)
-    (lobby-menu-manager-method-183 () none)
-    (lobby-menu-manager-method-184 (_type_) base-menu)
-    (lobby-menu-manager-method-185 (_type_) none)
-    (lobby-menu-manager-method-186 () none)
-    (lobby-menu-manager-method-187 () none)
-    (lobby-menu-manager-method-188 () none)
-    (lobby-menu-manager-method-189 () none)
-    (get-vehicle (_type_) vehicle)
-    (lobby-menu-manager-method-191 () none)
-    (lobby-menu-manager-method-192 () none)
-    (lobby-menu-manager-method-193 () none)
-    (lobby-menu-manager-method-194 () none)
+  (:state-methods
+    init-state
+    local-init
+    adventure-init
+    single-event-menu
+    options-menu
+    video-options-menu
+    (progressive-warning symbol)
+    progressive-accept
+    center-screen-menu
+    sound-options-menu
+    game-options-menu
+    secrets-menu
+    psp-secrets-menu
+    (psp-wait-disconnect symbol)
+    die
+    __empty__30
+    (lobby-generic-error-menu base-menu-info (function object :behavior lobby-menu-manager) (function symbol object :behavior lobby-menu-manager) symbol symbol symbol)
+    waiting-for-cd
+    pre-game-type-menu
+    game-type-menu
+    pre-choose-event-menu
+    choose-event-menu
+    internet-connect
+    lan-connect
+    connecting-to-lobby
+    num-local-players
+    host-join-menu
+    join-game-menu
+    join-wait
+    host-wait
+    __empty__45
+    (wait-for-world symbol)
+    going-to-ready-room
+    ready-room-state
+    (personal-selection-pop-up int)
+    choose-your-adventure
+    waiting-network-config-list
+    choose-network-config
+    waiting-network-hardware
+    (waiting-network-hardware-shutdown symbol)
+    net-connection-error
+    __empty__56
+    choose-account
+    entering-password
+    __empty__59
+    (waiting-mc base-menu-info (function object) (function object object) symbol symbol)
+    edit-account
+    showing-policy
+    (showing-announcements symbol)
+    lobby-main-screen
+    buddy-list-management
+    player-info-screen
+    (player-ladder-stats int)
+    (clan-ladder-stats int)
+    single-clan-stats
+    my-stats-screen
+    change-password
+    (saving-password symbol)
+    saving-password-online
+    (saving-accounts symbol)
+    loading-accounts
+    editing-clan-msg
+    inviting-player-to-clan
+    (inviting-buddies int)
+    chat-room-select
+    chat-room
+    game-info-screen
+    game-search-screen
+    clan-create-screen
+    clan-main-screen
+    clan-incoming-invites
+    clan-info-screen
+    clan-room-creation
+    (challenge-room-creation int)
+    clan-sent-invites
+    clan-challenges
+    __empty__91
+    anti-cheat
+    patch-downloading
+    patch-authorizing
+    patch-installing
+    do-quickplay
+    customize-main-menu
+    customize-select-vehicle
+    customize-tune-performance
+    customize-body-parts
+    customize-body-parts-selection
+    customize-paintjob
+    customize-accessories
+    customize-accessories-selection
+    purchase-popup
+    (purchase-finish car-info uint float)
+    watch-intro
+    watch-introb
+    adventure-cup
+    adventure-map
+    adventure-venue
+    adventure-task
+    adventure-save
+    adventure-training
+    adventure-intro-b
+    adventure-vehicle-select
+    (host-advanced-options int)
+    advanced-options
+    e3-join-game-menu
+    test-screen
+    (go-net-config-util int)
+    __empty__122
+    dnas-running-screen
+    dnas-error-screen
+    new-load-profile
+    load-profile
+    loading-profile
+    __empty__128
+    enter-profile-name
+    save-profile
+    no-card
+    want-format
+    formating-card
+    want-create-file
+    creating-file
+    select-save-profile
+    overwrite-profile
+    saving-profile
+    new-load-save-profile
+    boot-memory-card
+    (kick-player int)
+    __empty__142
+    lobby-results-new-body-parts-screen
+    lobby-results-new-vehicle-animation
+    lobby-results-new-vehicle-screen
+    lobby-results-new-events-screen
+    lobby-results-new-driver-screen
+    lobby-results-new-qualifier-screen
+    lobby-results-movie
+    green-room
+    demo-press-start
+    num-local-players-demo
+    set-game-name
+    adventure-grand-prix
+    playing-grand-prix
+    (ready-room-options int)
+    die-fast
+    lobby-scene-player
+    (lobby-play-fmv int)
+    local-highscore-table
+    lobby-commentary-scene-player
+    autosave-icon
+    lobby-credits
+    (lobby-scrapbook int)
     )
+  (:methods
+    (select-event (_type_ int symbol) symbol)
+    (reset-event-selection (_type_) none)
+    (select-level (_type_) symbol)
+    (next-selection (_type_ menu-selection-struct) none)
+    (prev-selection (_type_ menu-selection-struct) none)
+    (lobby-menu-manager-method-170 (_type_) none)
+    (update-game-info-strings (_type_) none)
+    (update-human-slots (_type_ symbol) none)
+    (update-ai-slots (_type_ symbol) none)
+    (update-buddy-slots (_type_ symbol) none)
+    (update-clan-slots (_type_ symbol) none)
+    (update-ready-room-players (_type_) none)
+    (fill-vehicle-list (_type_) none)
+    (fill-driver-list (_type_) none)
+    (update-vehicle (_type_) none)
+    (set-vehicle-part! (_type_ int int) none)
+    (apply-vehicle-colors (_type_) none)
+    (create-menu (_type_ base-menu-info int) object)
+    (kill-menu (_type_ symbol symbol) object)
+    (get-in-focus-menu (_type_) base-menu)
+    (find-menu (_type_ symbol) base-menu)
+    (no-menus-dying? (_type_) symbol)
+    (fill-vehicle-parts-list (_type_ (array vehicle-configuration)) none)
+    (apply-vehicle-colors-for (_type_ vehicle-type-u8 int) none)
+    (apply-load-parts (_type_ int) none)
+    (get-vehicle (_type_) vehicle)
+    (show-venue-map (_type_ symbol) none)
+    (vehicle-level-ready? (_type_ int) symbol)
+    (send-vehicle-to-net-world (_type_) none)
+    (init-local-selection (_type_ int) none)
+    )
+  )
+
+
+(define *lobby-reset-mode* #f)
+
+(define *net-mgr-finish-mode* #f)
+
+(define *lobby-menu-manager* (the-as lobby-menu-manager #f))
+
+(defun get-selected-local-player-count ()
+  (if (and *lobby-menu-manager* (= (-> *lobby-menu-manager* local-players) 2))
+      2
+      1
+      )
+  )
+
+(defun kiosk-code? ()
+  (if (and (cpad-hold? 0 left) (cpad-hold? 0 l1) (cpad-hold? 0 l2) (cpad-hold? 0 r1) (cpad-hold? 0 r2))
+      #f
+      (kiosk?)
+      )
+  )
+
+(defun min-max-wrap-around ((arg0 int) (arg1 int) (arg2 int))
+  (let ((v1-2 (+ (- 1 arg1) arg2)))
+    (while (< arg0 arg1)
+      (+! arg0 v1-2)
+      )
+    (while (< arg2 arg0)
+      (set! arg0 (- arg0 v1-2))
+      )
+    )
+  arg0
+  )
+
+(define *lobby-last-selected-task-index* 0)
+
+(define *last-selected-human-ct* 0)
+
+(define *last-selected-ai-ct* 0)
+
+(define *last-selected-buddy-ct* 0)
+
+(define *last-selected-clan-ct* 0)
+
+(define *lobby-menu-manager-game-connection-type* 0)
+
+(define *lobby-handling-db-error* #f)
+
+(define *no-net-hw-warning-shown* #f)
+
+(define *ready-room-human-ct* 0)
+
+(define *ready-room-ai-ct* 0)
+
+(define *game-launched-from-room* #f)
+
+(define camera-seek-time 0.5)
+
+(define real-camera-seek-time (/ 1.0 camera-seek-time))
+
+(defun set-lobby-camera-seek-time! ((arg0 float))
+  (if (= arg0 0.0)
+      (set! camera-seek-time 0.0001)
+      (set! camera-seek-time arg0)
+      )
+  (set! real-camera-seek-time (/ 1.0 camera-seek-time))
+  )
+
+(define *class-mode* 1)
+
+;; WARN: Return type mismatch symbol vs object.
+(defun restore-selection-index ()
+  (let ((a0-1 (the-as selection-menu-manager (find-menu *lobby-menu-manager* 'manager))))
+    (when a0-1
+      (dotimes (v1-1 3)
+        (let ((a1-4 (mod (+ (- -1 v1-1) *selection-cache-index*) 3)))
+          (if (< a1-4 0)
+              (+! a1-4 3)
+              )
+          (when (= (-> *selection-cache-array* a1-4 state) (-> *lobby-menu-manager* state name))
+            (select-by-sym a0-1 (-> *selection-cache-array* a1-4 selection-type))
+            (return (the-as object #t))
+            )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+(define *lobby-timetrial-lock-mode* #f)
+
+(define *vehicle-class-data*
+  (new 'static 'boxed-array :type menu-option-info
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3407) :sym 'rookie)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3408) :sym 'pro :extra-int 1)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3409) :sym 'custom :extra-int 2)
+    )
+  )
+
+(define *vehicle-class* (new 'static 'menu-selection-struct
+                          :array-ptr (new 'static 'boxed-array :type menu-option-info
+                            (new 'static 'menu-option-info)
+                            (new 'static 'menu-option-info)
+                            )
+                          :last-sym #f
+                          )
+        )
+
+(set! (-> *vehicle-class* array-ptr) *vehicle-class-data*)
+
+(set! (-> *vehicle-class* selection-index) 0)
+
+(define *time-of-day-data*
+  (new 'static 'boxed-array :type menu-option-info
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3546) :sym #f :extra-int -1)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3538) :sym #f :extra-int 7)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3539) :sym #f :extra-int 10)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3540) :sym #f :extra-int 12)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3541) :sym #f :extra-int 14)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3542) :sym #f :extra-int 18)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3543) :sym #f :extra-int 19)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3544) :sym #f :extra-int 21)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3545) :sym #f :extra-int 4)
+    )
+  )
+
+(define *time-of-day-array* (new 'static 'menu-selection-struct
+                              :array-ptr (new 'static 'boxed-array :type menu-option-info
+                                (new 'static 'menu-option-info)
+                                (new 'static 'menu-option-info)
+                                )
+                              :last-sym #f
+                              )
+        )
+
+(set! (-> *time-of-day-array* array-ptr) *time-of-day-data*)
+
+(set! (-> *time-of-day-array* selection-index) 0)
+
+(define *ready-room-host-id* 0)
+
+(define *keyboard-buf* (new 'static 'array uint8 128
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         )
+        )
+
+(defun kbd-auto-activate ()
+  (if (get-keyboard-control)
+      (return #f)
+      )
+  (let ((v1-2 (keybd-read-ascii)))
+    (when (and (< 31 v1-2) (< v1-2 128))
+      (set! *keybd-ungetc* (the-as uint v1-2))
+      (return #t)
+      )
+    )
+  #f
+  )
+
+(define *return-to-secrets* #f)
+
+(define *this-create-menu-state-name* (the-as string #f))
+
+(define *prev-create-menu-state-name* (the-as string #f))
+
+(define *lobby-fast-connect* #f)
+
+(define *lobby-body-parts-return-state-name* (the-as string #f))
+
+(define *eligible-for-body-part-award* #f)
+
+(define *pending-op* (the-as (function object object object object object object object object object) #f))
+
+(define *pending-op-serial* (the-as uint 0))
+
+(define *pending-op-arg-ct* 0)
+
+(define *pending-op-args* (new 'static 'array int32 8 0 0 0 0 0 0 0 0))
+
+(defun teams-valid-to-start-game? ()
+  (let ((s5-0 0)
+        (gp-0 0)
+        )
+    (cond
+      ((logtest? (-> *net-world* net-state options advanced-options flags)
+                 (game-task-advanced-options-flag team-game)
+                 )
+       (dotimes (s4-0 24)
+         (when (player-idx-vehicle-selected? *net-world* s4-0)
+           (format #t "valid player: ~D~%" s4-0)
+           (if (zero? (-> *net-world* net-state players s4-0 team-id))
+               (+! s5-0 1)
+               (+! gp-0 1)
+               )
+           )
+         )
+       )
+      (else
+        (return #t)
+        )
+      )
+    (if (or (zero? s5-0) (zero? gp-0))
+        (return #f)
+        (return #t)
+        )
+    )
+  (the-as symbol 0)
   )

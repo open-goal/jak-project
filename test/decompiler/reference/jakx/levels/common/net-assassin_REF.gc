@@ -1,0 +1,220 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 72 of type net-game-mgr-assassin
+;; INFO: Used lq/sq
+(defmethod net-game-mgr-method-72 ((this net-game-mgr-assassin) (arg0 vector) (arg1 int))
+  (local-vars (v1-23 int))
+  (let ((v1-0 arg1))
+    (cond
+      ((zero? v1-0)
+       (let ((a0-3 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                       (-> *net-mgr* game-state local-machine-idx)
+                                                                       0
+                                                                       )
+                                                                   2
+                                                                   )
+                                        )
+                       )
+                   )
+             )
+         (when a0-3
+           (let ((a0-4 (get-vehicle a0-3)))
+             (when a0-4
+               (set! (-> arg0 quad) (-> a0-4 root trans quad))
+               (return #t)
+               )
+             )
+           )
+         )
+       )
+      ((= v1-0 1)
+       (let ((a0-7 (mod
+                     (+ (* (if *net-mgr*
+                               (-> *net-mgr* game-state local-machine-idx)
+                               0
+                               )
+                           2
+                           )
+                        1
+                        (view-get-active-index)
+                        )
+                     24
+                     )
+                   )
+             )
+         (dotimes (v1-22 24)
+           (when (-> *net-players* a0-7)
+             (set! v1-23 a0-7)
+             (goto cfg-23)
+             )
+           (set! a0-7 (mod (+ a0-7 1) 24))
+           )
+         )
+       (set! v1-23 (+ (view-get-active-index) (* (if *net-mgr*
+                                                     (-> *net-mgr* game-state local-machine-idx)
+                                                     0
+                                                     )
+                                                 2
+                                                 )
+                      )
+             )
+       (label cfg-23)
+       (let ((a0-10 (-> *net-players* v1-23)))
+         (when a0-10
+           (let ((a0-11 (get-vehicle a0-10)))
+             (when a0-11
+               (set! (-> arg0 quad) (-> a0-11 root trans quad))
+               (return #t)
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  #f
+  )
+
+;; definition for method 74 of type net-game-mgr-assassin
+;; WARN: Return type mismatch object vs none.
+(defmethod show-intro-text ((this net-game-mgr-assassin) (arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (print-intro-text (text-id text-id-3369))
+       )
+      ((= v1-0 1)
+       (print-intro-text (text-id text-id-3370))
+       )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 73 of type net-game-mgr-assassin
+;; WARN: Return type mismatch int vs none.
+(defmethod end-intro ((this net-game-mgr-assassin))
+  0
+  (none)
+  )
+
+;; definition for method 75 of type net-game-mgr-assassin
+(defmethod set-intro-camera ((this net-game-mgr-assassin))
+  (with-pp
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs 0 0.0)
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-event-intro 0 0.0)
+    (none)
+    )
+  )
+
+;; definition for method 55 of type net-game-mgr-assassin
+(defmethod get-intro-duration ((this net-game-mgr-assassin))
+  3600.0
+  )
+
+;; definition for method 52 of type net-game-mgr-assassin
+;; WARN: Return type mismatch (pointer process) vs net-player.
+(defmethod spawn-net-player ((this net-game-mgr-assassin) (arg0 int))
+  (the-as
+    net-player
+    (process-spawn net-player-assassin :init net-player-init-local arg0 :name "net-player-assassin")
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate running (net-player-assassin)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type net-player-deathmatch running) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((a1-1 (net-game-mgr-assassin-method-85 (-> self mgr) (-> self player-id))))
+      (if (not (-> *net-players* a1-1))
+          (score-kill self a1-1)
+          )
+      )
+    )
+  )
+
+;; definition for method 96 of type net-player-assassin
+;; WARN: Return type mismatch object vs none.
+(defmethod score-kill ((this net-player-assassin) (arg0 int))
+  (when (and (or (owner-is-local? this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                             (= (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                                                (-> *net-mgr* game-state session-master-idx)
+                                                )
+                                             )
+                 )
+             (= arg0 (net-game-mgr-assassin-method-85 (-> this mgr) (-> this player-id)))
+             )
+    (let ((t9-2 (method-of-type net-player-deathmatch score-kill)))
+      (t9-2 this arg0)
+      )
+    (send-event (-> this mgr) 'mark-killed (-> this player-id) arg0)
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate running (net-game-mgr-assassin)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('mark-killed)
+       (let* ((v1-1 (-> block param 0))
+              (a0-1 (-> block param 1))
+              (a0-7 (if (-> *net-players* a0-1)
+                        (mod (+ (-> *net-players* a0-1 player-num) 1) *active-net-player-count*)
+                        0
+                        )
+                    )
+              )
+         (if (= v1-1 (-> *active-net-players* a0-7 player-id))
+             (set! a0-7 (mod (+ a0-7 1) *active-net-player-count*))
+             )
+         (let ((v0-0 (the-as object (-> *active-net-players* a0-7 player-id))))
+           (set! (-> self mark v1-1) (the-as int v0-0))
+           v0-0
+           )
+         )
+       )
+      (else
+        (net-game-mgr-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (net-game-mgr-assassin-method-84 self)
+    (call-parent-state-handler enter)
+    )
+  )
+
+;; definition for method 85 of type net-game-mgr-assassin
+(defmethod net-game-mgr-assassin-method-85 ((this net-game-mgr-assassin) (arg0 int))
+  (-> this mark arg0)
+  )
+
+;; definition for method 84 of type net-game-mgr-assassin
+;; WARN: Return type mismatch int vs none.
+(defmethod net-game-mgr-assassin-method-84 ((this net-game-mgr-assassin))
+  (let* ((v1-0 *active-net-player-count*)
+         (a1-2 (mod (-> *net-world* net-state game-start-time) v1-0))
+         )
+    (if (zero? a1-2)
+        (set! a1-2 1)
+        )
+    (dotimes (a2-2 v1-0)
+      (let ((a3-3 (-> *active-net-players* a2-2 player-id)))
+        (set! (-> this mark a3-3) (-> *active-net-players* (mod (+ a2-2 a1-2) v1-0) player-id))
+        )
+      )
+    )
+  0
+  (none)
+  )

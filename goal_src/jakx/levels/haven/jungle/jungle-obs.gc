@@ -95,7 +95,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-clay-jar-a))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 533) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-pot-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -184,7 +184,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-clay-jar-a" (the-as (pointer level) #f))
     0
@@ -283,7 +283,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-clay-jar-b))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 533) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-pot-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -372,7 +372,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-clay-jar-b" (the-as (pointer level) #f))
     0
@@ -403,7 +403,7 @@
   (set! (-> this root) (new 'process 'trsqv))
   (set! (-> this level) (level-group-method-32 *level*))
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-flaming-arrow" (the-as (pointer level) #f))
     0
@@ -533,7 +533,7 @@
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod on-impact ((this jungle-stone-snake-head-proxy) (arg0 rigid-body-impact))
   (when (< 40960.0 (* (-> arg0 impulse) (process-focusable-method-57 this)))
-    (if (not (process-nettable-method-22 (as-type (-> arg0 process) process-nettable)))
+    (if (not (owner-is-local? (as-type (-> arg0 process) process-nettable)))
         (return (the-as symbol #t))
         )
     (logior! (-> this root penetrated-by) (penetrate vehicle))
@@ -550,7 +550,7 @@
 (defmethod jungle-stone-snake-head-proxy-method-61 ((this jungle-stone-snake-head-proxy) (arg0 object) (arg1 attack-info) (arg2 object) (arg3 object))
   (let ((a0-5 (as-type (handle->process (-> arg1 attacker)) process-nettable)))
     (when a0-5
-      (if (not (process-nettable-method-22 a0-5))
+      (if (not (owner-is-local? a0-5))
           (return (the-as symbol #t))
           )
       )
@@ -599,14 +599,14 @@
 
 
 (defbehavior jungle-stone-snake-head-init-remote jungle-stone-snake-head ((arg0 int))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self (the-as mem-buffer arg0))
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self (the-as mem-buffer arg0))
+  (post-init-remote self)
   0
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this jungle-stone-snake-head) (arg0 mem-buffer))
+(defmethod spawn-remote ((this jungle-stone-snake-head) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        jungle-stone-snake-head
                        :init jungle-stone-snake-head-init-remote
@@ -616,7 +616,7 @@
                      )
   )
 
-(defmethod process-nettable-method-37 ((this jungle-stone-snake-head) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this jungle-stone-snake-head) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'explode)
   (+! (-> arg0 msg-count) 1)
   0
@@ -637,12 +637,12 @@
 
 (net-process-class-register *net-process-class-info-jungle-stone-snake-head*)
 
-(defmethod process-nettable-method-40 ((this jungle-stone-snake-head))
+(defmethod get-class-info ((this jungle-stone-snake-head))
   *net-process-class-info-jungle-stone-snake-head*
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod process-nettable-method-17 ((this jungle-stone-snake-head) (arg0 symbol) (arg1 mem-buffer))
+(defmethod handle-net-msg ((this jungle-stone-snake-head) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
   (case arg0
     (('explode)
      (let ((a0-3 (handle->process (-> this drawable))))
@@ -656,7 +656,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-15 ((this jungle-stone-snake-head) (arg0 mem-buffer))
+(defmethod write-create-data ((this jungle-stone-snake-head) (arg0 mem-buffer))
   (write-bool arg0 (-> this exploded))
   (none)
   )
@@ -688,11 +688,11 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-35 ((this jungle-stone-snake-head) (arg0 mem-buffer))
+(defmethod init-remote ((this jungle-stone-snake-head) (arg0 mem-buffer))
   (stack-size-set! (-> this main-thread) 32)
   (logior! (-> this mask) (process-mask actor-pause))
-  (if (not (process-nettable-method-25 this))
-      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+  (if (not (registered? this))
+      (register this 8 #xffff)
       )
   (set! (-> this exploded) (read-bool arg0))
   (set! (-> this drawable) (the-as handle #f))
@@ -703,8 +703,8 @@
 (defmethod init-from-entity! ((this jungle-stone-snake-head) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 32)
   (logior! (-> this mask) (process-mask actor-pause))
-  (if (not (process-nettable-method-25 this))
-      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+  (if (not (registered? this))
+      (register this 8 #xffff)
       )
   (set! (-> this drawable) (the-as handle #f))
   (set! (-> this exploded) #f)
@@ -728,9 +728,9 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('explode)
-       (let ((gp-0 (process-nettable-method-27 self 'explode)))
-         (process-nettable-method-29 self gp-0 -2 64)
-         (process-nettable-method-28 self gp-0)
+       (let ((gp-0 (alloc-msg self 'explode)))
+         (send-msg self gp-0 -2 64)
+         (free-msg self gp-0)
          )
        (let ((v0-0 #t))
          (set! (-> self exploded) v0-0)
@@ -870,7 +870,7 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod on-impact ((this jungle-stone-snake-head-draw) (arg0 rigid-body-impact))
-  (if (not (process-nettable-method-22 (as-type (-> arg0 process) process-nettable)))
+  (if (not (owner-is-local? (as-type (-> arg0 process) process-nettable)))
       (return (the-as symbol #t))
       )
   (logior! (-> this root penetrated-by) (penetrate vehicle))
@@ -882,7 +882,7 @@
   )
 
 (defmethod jungle-stone-snake-head-proxy-method-61 ((this jungle-stone-snake-head-draw) (arg0 object) (arg1 attack-info) (arg2 object) (arg3 object))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 517) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-snake-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -899,7 +899,7 @@
 
 ;; WARN: Return type mismatch (pointer process) vs none.
 (defmethod jungle-stone-snake-head-proxy-method-64 ((this jungle-stone-snake-head-draw))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 518) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-snake-break (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -995,7 +995,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-stone-snake-head" (the-as (pointer level) #f))
     0
@@ -1089,7 +1089,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-tree-root-large-a))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 534) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-tree-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -1178,7 +1178,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-tree-root-large-a" (the-as (pointer level) #f))
     0
@@ -1244,7 +1244,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-tree-root-large-b))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 534) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-tree-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -1333,7 +1333,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-tree-root-large-b" (the-as (pointer level) #f))
     0
@@ -1431,7 +1431,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-statue-small-outdoors))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 596) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-statue-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -1520,7 +1520,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-statue-small-outdoors" (the-as (pointer level) #f))
     0
@@ -1599,7 +1599,7 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this jungle-statue-small-indoors))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 596) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-statue-impact (new 'static 'sound-id) (the-as handle #f))))
     (if v1-1
         (-> v1-1 id)
         0
@@ -1688,7 +1688,7 @@
       )
     (set! (-> this root) s4-0)
     )
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-jungle-statue-small-indoors" (the-as (pointer level) #f))
     0

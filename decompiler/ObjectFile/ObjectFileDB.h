@@ -201,6 +201,8 @@ class ObjectFileDB {
   void dump_raw_objects(const fs::path& output_dir);
   void dump_part_group_table(const fs::path& output_dir,
                              const std::unordered_map<u32, std::string>& part_group_table);
+  void dump_sound_info(const fs::path& output_dir,
+                       const std::vector<std::string>& sound_info_names);
   void write_object_file_words(const fs::path& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const fs::path& output_dir,
                          bool disassemble_data,

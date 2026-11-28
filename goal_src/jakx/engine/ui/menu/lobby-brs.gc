@@ -7,3 +7,1525 @@
 
 ;; DECOMP BEGINS
 
+(deftype scrolling-task-item (scrolling-item)
+  ()
+  )
+
+
+(defmethod default-event-handler ((this scrolling-task-item) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('set-index)
+     (send-event
+       (ppointer->process (-> this parent))
+       'get-text-0
+       (clear (-> this strings data 0 text))
+       (-> arg3 param 0)
+       )
+     (send-event
+       (ppointer->process (-> this parent))
+       'get-text-1
+       (clear (-> this strings data 1 text))
+       (-> arg3 param 0)
+       )
+     (if (-> this info-ptr sprites-info)
+         (send-event (ppointer->process (-> this parent)) 'get-icon (-> arg3 param 0))
+         )
+     )
+    (('set-icon)
+     (let ((v0-4 (the-as object (-> arg3 param 0))))
+       (set! (-> this p-client-array 0 strip tex-id) (the-as texture-id v0-4))
+       v0-4
+       )
+     )
+    (else
+      ((method-of-type scrolling-item default-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod update-strings ((this scrolling-task-item))
+  (cond
+    ((-> this selected)
+     (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color-2))
+     (set! (-> this strings data 0 scale) 0.6)
+     (set! (-> this strings data 1 color) (-> this info-ptr strings-info 1 font-color-2))
+     (set! (-> this strings data 1 scale) 0.5)
+     (when (nonzero? (-> this colors))
+       (dotimes (v1-15 (-> this colors length))
+         (set! (-> this colors v1-15 r) 40)
+         (set! (-> this colors v1-15 g) 130)
+         (set! (-> this colors v1-15 b) 40)
+         )
+       )
+     )
+    (else
+      (set! (-> this strings data 0 color) (-> this info-ptr strings-info 0 font-color))
+      (set! (-> this strings data 0 scale) 0.5)
+      (set! (-> this strings data 1 color) (-> this info-ptr strings-info 1 font-color))
+      (set! (-> this strings data 1 scale) 0.4)
+      (when (nonzero? (-> this colors))
+        (dotimes (v1-32 (-> this colors length))
+          (set! (-> this colors v1-32 r) 128)
+          (set! (-> this colors v1-32 g) 128)
+          (set! (-> this colors v1-32 b) 128)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(deftype scrolling-task-menu (scrolling-menu)
+  ((task-ct   int32)
+   (task-ids  game-task  32)
+   )
+  )
+
+
+(defmethod init-menu! ((this scrolling-task-menu))
+  (set! (-> this task-ct) 0)
+  (set! (-> this task-ids (-> this task-ct)) (game-task jungle-race))
+  (+! (-> this task-ct) 1)
+  (set! (-> this task-ids (-> this task-ct)) (game-task cliffs-deathmatch))
+  (+! (-> this task-ct) 1)
+  (set! (-> this task-ids (-> this task-ct)) (game-task jungle-deathrace))
+  (+! (-> this task-ct) 1)
+  (set! (-> this task-ids (-> this task-ct)) (game-task cliffs-artifact))
+  (+! (-> this task-ct) 1)
+  (let ((t9-0 (method-of-type scrolling-menu init-menu!)))
+    (t9-0 this)
+    )
+  (set! (-> this physical-item-ct) (-> this task-ct))
+  (set! (-> this cur-idx) (max 0 (min *lobby-last-selected-task-index* (+ (-> this task-ct) -1))))
+  (set! (-> this top-idx) (+ (-> this cur-idx) -2))
+  (set! (-> this top-idx)
+        (max 0 (min (-> this top-idx) (- (-> this physical-item-ct) (+ (-> this total-item-ct) -2))))
+        )
+  (scrolling-menu-method-74 this)
+  (send-event
+    (ppointer->process (-> this parent 0 parent))
+    'menu-selection-event
+    'event
+    (-> this task-ids (-> this cur-idx))
+    )
+  0
+  (none)
+  )
+
+(defmethod scrolling-menu-method-73 ((this scrolling-task-menu) (arg0 int) (arg1 symbol))
+  (send-event
+    (ppointer->process (-> this parent))
+    'menu-selection-event
+    'event
+    (-> this task-ids (-> this cur-idx))
+    )
+  (if arg1
+      (set! *lobby-last-selected-task-index* (-> this cur-idx))
+      )
+  0
+  (none)
+  )
+
+(defmethod default-event-handler ((this scrolling-task-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('get-text-0)
+     (let ((gp-1 (-> arg3 param 0))
+           (v1-1 (-> arg3 param 1))
+           )
+       (when (and (>= (the-as int v1-1) 0) (< (the-as int v1-1) (-> this task-ct)))
+         (let ((v1-6 (-> *game-info* play-list (-> this task-ids v1-1))))
+           (when (-> v1-6 kiosk-play-continue)
+             (let ((v1-7 (get-continue-by-name *game-info* (the-as string (-> v1-6 kiosk-play-continue)))))
+               (when v1-7
+                 (let ((v1-8 (lookup-level-info (-> v1-7 level))))
+                   (format gp-1 "~S" (lookup-text! *common-text* (-> *task-level-info* (-> v1-8 task-level) text-id) #f))
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (('get-text-1)
+     (let ((gp-2 (-> arg3 param 0))
+           (v1-13 (-> arg3 param 1))
+           )
+       (when (and (>= (the-as int v1-13) 0) (< (the-as int v1-13) (-> this task-ct)))
+         (let ((a1-13 (-> *game-info* sub-task-list (-> *game-info* play-list (-> this task-ids v1-13) play-node))))
+           (format gp-2 "~S" (lookup-text! *common-text* (-> *net-play-mode-text-ids* (-> a1-13 net-play-mode)) #f))
+           )
+         )
+       )
+     )
+    (('get-icon)
+     (let ((v1-25 (-> arg3 param 1)))
+       (when (and (>= (the-as int v1-25) 0) (< (the-as int v1-25) (-> this task-ct)))
+         (let ((v1-34 (-> *game-info* sub-task-list (-> *game-info* play-list (-> this task-ids v1-25) play-node))))
+           (send-event
+             arg0
+             'set-icon
+             (lookup-texture-id-by-name (-> *net-play-mode-icon-string* (-> v1-34 net-play-mode)) (the-as string #f))
+             )
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type scrolling-menu default-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(deftype scrolling-net-task-menu (scrolling-task-menu)
+  ()
+  )
+
+
+(defmethod init-menu! ((this scrolling-net-task-menu))
+  (set! (-> this task-ct) 0)
+  (dotimes (v1-0 (-> *game-info* play-list length))
+    (when (-> *game-info* play-list v1-0 kiosk-online-play-continue)
+      (if (>= (-> this task-ct) 32)
+          (goto cfg-9)
+          )
+      (set! (-> this task-ids (-> this task-ct)) (the-as game-task v1-0))
+      (+! (-> this task-ct) 1)
+      )
+    )
+  (label cfg-9)
+  (let ((t9-0 (method-of-type scrolling-menu init-menu!)))
+    (t9-0 this)
+    )
+  (set! (-> this physical-item-ct) (-> this task-ct))
+  (set! (-> this cur-idx) (max 0 (min *lobby-last-selected-task-index* (+ (-> this task-ct) -1))))
+  (set! (-> this top-idx) (+ (-> this cur-idx) -2))
+  (set! (-> this top-idx)
+        (max 0 (min (-> this top-idx) (- (-> this physical-item-ct) (+ (-> this total-item-ct) -2))))
+        )
+  (scrolling-menu-method-74 this)
+  (send-event
+    (ppointer->process (-> this parent 0 parent))
+    'menu-selection-event
+    'event
+    (-> this task-ids (-> this cur-idx))
+    )
+  0
+  (none)
+  )
+
+(defmethod scrolling-menu-method-73 ((this scrolling-net-task-menu) (arg0 int) (arg1 symbol))
+  (send-event
+    (ppointer->process (-> this parent))
+    'menu-selection-event
+    'event
+    (-> this task-ids (-> this cur-idx))
+    )
+  (if arg1
+      (set! *lobby-last-selected-task-index* (-> this cur-idx))
+      )
+  0
+  (none)
+  )
+
+(defmethod default-event-handler ((this scrolling-net-task-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('get-text-0)
+     (let ((gp-1 (-> arg3 param 0))
+           (v1-1 (-> arg3 param 1))
+           )
+       (when (and (>= (the-as int v1-1) 0) (< (the-as int v1-1) (-> this task-ct)))
+         (let ((v1-6 (-> *game-info* play-list (-> this task-ids v1-1))))
+           (when (-> v1-6 kiosk-online-play-continue)
+             (let ((v1-7 (get-continue-by-name *game-info* (the-as string (-> v1-6 kiosk-online-play-continue)))))
+               (when v1-7
+                 (let ((v1-8 (lookup-level-info (-> v1-7 level))))
+                   (format gp-1 "~S" (lookup-text! *common-text* (-> *task-level-info* (-> v1-8 task-level) text-id) #f))
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (('get-text-1)
+     (let ((gp-2 (-> arg3 param 0))
+           (v1-13 (-> arg3 param 1))
+           )
+       (when (and (>= (the-as int v1-13) 0) (< (the-as int v1-13) (-> this task-ct)))
+         (let ((a1-9 (-> *game-info* sub-task-list (-> *game-info* play-list (-> this task-ids v1-13) play-node))))
+           (format gp-2 "~S" (lookup-text! *common-text* (-> *net-play-mode-text-ids* (-> a1-9 net-play-mode)) #f))
+           )
+         )
+       )
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(define *choose-your-adventure*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-1405)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children (new 'static 'boxed-array :type base-menu-info)
+        :name-symbol #f
+        :3d-menu-type "skel-map-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 6)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'sprite-ptr-menu-info
+            :menu-type 'sprite-ptr-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info (new 'static 'boxed-array :type sprite-ptr-info
+              (new 'static 'sprite-ptr-info
+                :offset (new 'static 'vector :x -24576.0 :y -10240.0 :w 1.0)
+                :pos-z #xffff00
+                :tex-name #f
+                :scale-x 2.0
+                :scale-y 2.0
+                :flags (hud-sprite-flags center)
+                :offset-from-index -1
+                :offset-dir #x2
+                :texture-index 7
+                :sprite-ptr '*map-texture-string*
+                )
+              )
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-side-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1931)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8 9 12 13 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-1935)
+            :font-scale 0.5
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'scrolling-menu-info
+        :menu-type 'scrolling-task-menu
+        :children #f
+        :name-symbol #f
+        :3d-menu-type "skel-select-screen"
+        :trans-info (new 'static 'dropdown-trans-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          :selected-offset #f
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :x -29491.2 :y -3276.8 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #x41 :page #x659)
+            :scale-x 1.0
+            :scale-y 1.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :x -29491.2 :y -58163.2 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #x41 :page #x659)
+            :scale-x 1.0
+            :scale-y -1.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :strings-info #f
+        :text-ids #f
+        :selection-box-width -1
+        :selection-box-height -1
+        :selection-type #f
+        :selection-box-offset (new 'static 'vector :w 1.0)
+        :selection-box-texture-index 7
+        :reset-pad #x1
+        :item-spacing (new 'static 'vector :y -13107.2 :w 1.0)
+        :offset-to-top-item (new 'static 'vector :y -8192.0 :w 1.0)
+        :scroll-stages 8
+        :visible-item-ct 4
+        :child-info (new 'static 'item-list-selection-info
+          :menu-type 'scrolling-task-item
+          :children #f
+          :name-symbol #f
+          :3d-menu-type #f
+          :trans-info #f
+          :joint-index -1
+          :joint-index-2 -1
+          :joints #f
+          :width -1
+          :height -1
+          :scale-y 1.0
+          :scale-x 1.0
+          :sprites-info (new 'static 'boxed-array :type sprite-info (new 'static 'sprite-info
+                                                        :offset (new 'static 'vector :x -6144.0 :y 2048.0 :w 1.0)
+                                                        :pos-z #xffff00
+                                                        :tex-name #f
+                                                        :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                        :scale-x 1.4
+                                                        :scale-y 1.4
+                                                        :offset-from-index -1
+                                                        :offset-dir #x2
+                                                        :texture-index 7
+                                                        )
+                                                      )
+          :strings-info (new 'static 'boxed-array :type string-info
+            (new 'static 'string-info
+              :offset (new 'static 'vector :x -20480.0 :z -1.0 :w 1.0)
+              :pos-z #xffff010
+              :font-scale 0.4
+              :width -1.0
+              :height -1.0
+              :string-ptr #f
+              :string-ptr-needs-format #t
+              :font-flags (hud-string-flag kerning large draw-3d italic ff12)
+              :font-color (font-color font-color-52)
+              :font-color-2 (font-color font-color-51)
+              :font-color-3 (font-color green)
+              :offset-dir #x2
+              :offset-from-index -1
+              :is-player-string #f
+              :extra-arg #f
+              )
+            (new 'static 'string-info
+              :offset (new 'static 'vector :x 4096.0 :y -4096.0 :z -1.0 :w 1.0)
+              :pos-z #xffff010
+              :font-scale 0.4
+              :width -1.0
+              :height -1.0
+              :string-ptr #f
+              :string-ptr-needs-format #t
+              :font-flags (hud-string-flag kerning right large draw-3d ff12)
+              :font-color (font-color font-color-52)
+              :font-color-2 (font-color font-color-60)
+              :font-color-3 (font-color green)
+              :offset-dir #x2
+              :offset-from-index -1
+              :is-player-string #f
+              :extra-arg #f
+              )
+            )
+          :text-ids #f
+          :selection-box-width -1
+          :selection-box-height -1
+          :selection-type 'fish
+          :selection-box-offset (new 'static 'vector :w 1.0)
+          :selection-box-color (new 'static 'rgba :r #x20 :b #x40 :a #x30)
+          :down-index-modifier 1
+          :up-index-modifier -1
+          :selection-box-texture-index 7
+          :reset-pad #x1
+          :menu-options-info-sym #f
+          :add-string (text-id text-id-1712)
+          )
+        :sel-id-backup-symbol #f
+        :use-third-color #f
+        :selection-box-item-offset-x -1
+        :selection-box-item-offset-y -1
+        :lr-scroll #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(define *choose-your-online-adventure*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-1405)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children (new 'static 'boxed-array :type base-menu-info)
+        :name-symbol #f
+        :3d-menu-type "skel-map-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 6)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'sprite-ptr-menu-info
+            :menu-type 'sprite-ptr-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info (new 'static 'boxed-array :type sprite-ptr-info
+              (new 'static 'sprite-ptr-info
+                :offset (new 'static 'vector :x -24576.0 :y -10240.0 :w 1.0)
+                :pos-z #xffff00
+                :tex-name #f
+                :scale-x 2.0
+                :scale-y 2.0
+                :flags (hud-sprite-flags center)
+                :offset-from-index -1
+                :offset-dir #x2
+                :texture-index 7
+                :sprite-ptr '*map-texture-string*
+                )
+              )
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-side-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1931)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8 9 12 13 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-1935)
+            :font-scale 0.5
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'scrolling-menu-info
+        :menu-type 'scrolling-net-task-menu
+        :children #f
+        :name-symbol #f
+        :3d-menu-type "skel-select-screen"
+        :trans-info (new 'static 'dropdown-trans-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          :selected-offset #f
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :x -29491.2 :y -3276.8 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #x41 :page #x659)
+            :scale-x 1.0
+            :scale-y 1.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :x -29491.2 :y -58163.2 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #x41 :page #x659)
+            :scale-x 1.0
+            :scale-y -1.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :strings-info #f
+        :text-ids #f
+        :selection-box-width -1
+        :selection-box-height -1
+        :selection-type #f
+        :selection-box-offset (new 'static 'vector :w 1.0)
+        :selection-box-color (new 'static 'rgba :r #x20 :b #x40 :a #x30)
+        :selection-box-texture-index 7
+        :reset-pad #x1
+        :item-spacing (new 'static 'vector :y -13107.2 :w 1.0)
+        :offset-to-top-item (new 'static 'vector :y -8192.0 :w 1.0)
+        :scroll-stages 8
+        :visible-item-ct 4
+        :child-info (new 'static 'item-list-selection-info
+          :menu-type 'scrolling-task-item
+          :children #f
+          :name-symbol #f
+          :3d-menu-type #f
+          :trans-info #f
+          :joint-index -1
+          :joint-index-2 -1
+          :joints #f
+          :width -1
+          :height -1
+          :scale-y 1.0
+          :scale-x 1.0
+          :sprites-info (new 'static 'boxed-array :type sprite-info (new 'static 'sprite-info
+                                                        :offset (new 'static 'vector :x -6144.0 :y 2048.0 :w 1.0)
+                                                        :pos-z #xffff00
+                                                        :tex-name #f
+                                                        :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                        :scale-x 1.4
+                                                        :scale-y 1.4
+                                                        :offset-from-index -1
+                                                        :offset-dir #x2
+                                                        :texture-index 7
+                                                        )
+                                                      )
+          :strings-info (new 'static 'boxed-array :type string-info
+            (new 'static 'string-info
+              :offset (new 'static 'vector :x -20480.0 :z -1.0 :w 1.0)
+              :pos-z #xffff010
+              :font-scale 0.4
+              :width -1.0
+              :height -1.0
+              :string-ptr #f
+              :string-ptr-needs-format #t
+              :font-flags (hud-string-flag kerning large draw-3d ff12)
+              :font-color (font-color font-color-52)
+              :font-color-2 (font-color font-color-51)
+              :font-color-3 (font-color green)
+              :offset-dir #x2
+              :offset-from-index -1
+              :is-player-string #f
+              :extra-arg #f
+              )
+            (new 'static 'string-info
+              :offset (new 'static 'vector :x 4096.0 :y -4096.0 :z -1.0 :w 1.0)
+              :pos-z #xffff010
+              :font-scale 0.4
+              :width -1.0
+              :height -1.0
+              :string-ptr #f
+              :string-ptr-needs-format #t
+              :font-flags (hud-string-flag kerning right large draw-3d italic ff12)
+              :font-color (font-color font-color-52)
+              :font-color-2 (font-color font-color-60)
+              :font-color-3 (font-color green)
+              :offset-dir #x2
+              :offset-from-index -1
+              :is-player-string #f
+              :extra-arg #f
+              )
+            )
+          :text-ids #f
+          :selection-box-width -1
+          :selection-box-height -1
+          :selection-type 'fish
+          :selection-box-offset (new 'static 'vector :w 1.0)
+          :selection-box-color (new 'static 'rgba :r #x20 :b #x40 :a #x30)
+          :down-index-modifier 1
+          :up-index-modifier -1
+          :selection-box-texture-index 7
+          :reset-pad #x1
+          :menu-options-info-sym #f
+          :add-string (text-id text-id-1712)
+          )
+        :sel-id-backup-symbol #f
+        :use-third-color #f
+        :selection-box-item-offset-x -1
+        :selection-box-item-offset-y -1
+        :lr-scroll #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate choose-your-adventure (lobby-menu-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('menu-selection-event)
+       (case (-> block param 0)
+         (('event)
+          (let ((gp-0 (-> *game-info* play-list (-> block param 1))))
+            (let ((s5-0 (-> gp-0 text-id-long)))
+              (dotimes (s4-0 8)
+                (send-event (handle->process (-> self menu-handles s4-0)) 'to-all-children 'update-task-text-id s5-0)
+                )
+              )
+            (if (= (-> self local-players) 2)
+                (set! *last-selected-human-ct* 2)
+                (set! *last-selected-human-ct* 1)
+                )
+            (set! *last-selected-ai-ct* (-> *ai-num-players-info* current-num))
+            (set! *last-selected-buddy-ct* 0)
+            (set! *last-selected-clan-ct* 0)
+            (when *net-world*
+              (set-task-node *net-world* (-> gp-0 play-node))
+              (let ((gp-1 (get-open-task-node-info)))
+                (kill-by-type fmv-player *active-pool*)
+                (if (-> gp-1 ipu)
+                    (fmv-player-run-texture (-> gp-1 ipu) *default-pool*)
+                    )
+                (set-action!
+                  *gui-control*
+                  (gui-action stop)
+                  (the-as sound-id 1)
+                  (gui-channel citizen)
+                  (gui-action none)
+                  (the-as string #f)
+                  (the-as (function gui-connection symbol) #f)
+                  (the-as process #f)
+                  )
+                (when (-> gp-1 task-sound-description)
+                  (add-setting! 'music-volume 'rel 0.25 0)
+                  (set! (-> self voice-id)
+                        (add-process
+                          *gui-control*
+                          self
+                          (gui-channel citizen)
+                          (gui-action play)
+                          (-> gp-1 task-sound-description)
+                          -99.0
+                          0
+                          )
+                        )
+                  (sound-params-set!
+                    *gui-control*
+                    (-> self voice-id)
+                    #f
+                    -1.0
+                    -1.0
+                    1.0
+                    (-> *setting-control* user-current dialog-volume)
+                    #t
+                    )
+                  )
+                )
+              )
+            )
+          )
+         (('cancel)
+          (if (kill-menu self #f #f)
+              (go-virtual num-local-players-demo)
+              )
+          )
+         (('accept)
+          (format 0 "------------------------------------------------------------- accept!~%")
+          (lock-game *net-world*)
+          )
+         )
+       )
+      (else
+        (lobby-menu-manager-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (kill-menu self #t #f)
+    (set-player-name
+      *net-world*
+      (* (if *net-mgr*
+             (-> *net-mgr* game-state local-machine-idx)
+             0
+             )
+         2
+         )
+      (-> (lookup-text! *common-text* (-> *net-drivers* 0 id) #f) data)
+      )
+    (set-player-name
+      *net-world*
+      (+ (* (if *net-mgr*
+                (-> *net-mgr* game-state local-machine-idx)
+                0
+                )
+            2
+            )
+         1
+         )
+      (-> (lookup-text! *common-text* (-> *net-drivers* 1 id) #f) data)
+      )
+    (set-player-load-parts
+      *net-world*
+      *default-vehicle-load-parts*
+      (* (if *net-mgr*
+             (-> *net-mgr* game-state local-machine-idx)
+             0
+             )
+         2
+         )
+      )
+    (set-player-colors
+      *net-world*
+      (the-as int (to-rgba (-> *car-default-base-color* 0)))
+      (the-as int (to-rgba (-> *car-default-stripe-color* 0)))
+      (* (if *net-mgr*
+             (-> *net-mgr* game-state local-machine-idx)
+             0
+             )
+         2
+         )
+      )
+    (set-player-vehicle
+      *net-world*
+      0
+      (* (if *net-mgr*
+             (-> *net-mgr* game-state local-machine-idx)
+             0
+             )
+         2
+         )
+      (new 'static 'vehicle-load-parts)
+      (new 'static 'tuning-info)
+      )
+    (set-player-desired-driver *net-world* 0 (* (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                                                2
+                                                )
+                               )
+    (let ((a1-9 (logand (logand (logand (logand 0 -256) -65281) -16711681) (the-as uint #xffffffff00ffffff))))
+      (set-player-tuning *net-world* a1-9 (* (if *net-mgr*
+                                                 (-> *net-mgr* game-state local-machine-idx)
+                                                 0
+                                                 )
+                                             2
+                                             )
+                         )
+      )
+    (cond
+      ((= (-> self local-players) 2)
+       (set-player-load-parts
+         *net-world*
+         *default-vehicle-load-parts*
+         (+ (* (if *net-mgr*
+                   (-> *net-mgr* game-state local-machine-idx)
+                   0
+                   )
+               2
+               )
+            1
+            )
+         )
+       (set-player-colors
+         *net-world*
+         (the-as int (-> *net-drivers* 1 base-color))
+         (the-as int (-> *net-drivers* 1 stripe-color))
+         (+ (* (if *net-mgr*
+                   (-> *net-mgr* game-state local-machine-idx)
+                   0
+                   )
+               2
+               )
+            1
+            )
+         )
+       (set-player-vehicle
+         *net-world*
+         9
+         (+ (* (if *net-mgr*
+                   (-> *net-mgr* game-state local-machine-idx)
+                   0
+                   )
+               2
+               )
+            1
+            )
+         (new 'static 'vehicle-load-parts)
+         (new 'static 'tuning-info)
+         )
+       (set-player-desired-driver *net-world* 1 (+ (* (if *net-mgr*
+                                                          (-> *net-mgr* game-state local-machine-idx)
+                                                          0
+                                                          )
+                                                      2
+                                                      )
+                                                   1
+                                                   )
+                                  )
+       (let ((a1-14 (logand (logand (logand (logand 0 -256) -65281) -16711681) (the-as uint #xffffffff00ffffff))))
+         (set-player-tuning *net-world* a1-14 (+ (* (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    2
+                                                    )
+                                                 1
+                                                 )
+                            )
+         )
+       )
+      (else
+        (set-player-vehicle
+          *net-world*
+          -1
+          (+ (* (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                2
+                )
+             1
+             )
+          (new 'static 'vehicle-load-parts)
+          (new 'static 'tuning-info)
+          )
+        )
+      )
+    (set! (-> *cpad-list* cpads 0 real-change-time) (the-as uint (get-real-current-time)))
+    )
+  :exit (behavior ()
+    (set-action!
+      *gui-control*
+      (gui-action stop)
+      (the-as sound-id 1)
+      (gui-channel citizen)
+      (gui-action none)
+      (the-as string #f)
+      (the-as (function gui-connection symbol) #f)
+      (the-as process #f)
+      )
+    (kill-by-type fmv-player *active-pool*)
+    )
+  :trans (behavior ()
+    (when *net-world*
+      (format (clear *level-texture-string*) (-> *task-level-info* (-> *net-world* task-info task-level) tex-name))
+      (format (clear *map-texture-string*) (-> *task-level-info* (-> *net-world* task-info task-level) tex-name))
+      (format *map-texture-string* "-map")
+      )
+    )
+  :code (behavior ()
+    (suspend)
+    (suspend)
+    (create-menu self *choose-your-adventure* 0)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post lobby-default-post
+  )
+
+(defstate demo-press-start (lobby-menu-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('menu-selection-event)
+       #f
+       )
+      (else
+        (lobby-menu-manager-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (kill-menu self #t #f)
+    (lmm-make-logo-menu self)
+    (if (not (handle->process (-> self vehicle-handle)))
+        (set! (-> self vehicle-selected)
+              (-> *game-info* player-info (-> self current-local-player) last-selected-vehicle)
+              )
+        )
+    (if (demo?)
+        (set! (-> *setting-control* user-default allow-timeout) #t)
+        )
+    )
+  :exit (behavior ()
+    (send-event (the-as base-menu (handle->process (-> self menu-handle-logo-main))) 'die)
+    (send-event (the-as base-menu (handle->process (-> self menu-handle-logo-subtitle))) 'die)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (new
+                  'stack
+                  'font-context
+                  *font-default-matrix*
+                  0
+                  0
+                  8396850.0
+                  (font-color default)
+                  (font-flags shadow kerning)
+                  )
+                )
+          )
+      (set-origin! gp-0 0 320)
+      (set-width! gp-0 512)
+      (set-height! gp-0 30)
+      (set! (-> gp-0 flags) (font-flags kerning middle large ff12))
+      (let ((a0-4 gp-0))
+        (set! (-> a0-4 effect) (the-as uint 8))
+        )
+      (set-scale! gp-0 0.6)
+      (let ((a0-6 gp-0))
+        (set! (-> a0-6 color) (font-color font-color-52))
+        )
+      (if (< (mod (current-time) 300) 150)
+          (print-game-text
+            (lookup-text! *common-text* (text-id text-id-51) #f)
+            gp-0
+            #f
+            44
+            (bucket-id hud-draw-hud-alpha)
+            (the-as string #f)
+            (the-as dma-buffer #f)
+            )
+          )
+      )
+    (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons start))
+      (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start))
+      (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start))
+      (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons start))
+      (go-virtual num-local-players-demo)
+      )
+    )
+  :code sleep-code
+  :post lobby-default-post
+  )
+
+(defstate num-local-players-demo (lobby-menu-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('menu-selection-event)
+       (case (-> block param 0)
+         (('cancel)
+          (if (kill-menu self #f #f)
+              (go-virtual demo-press-start)
+              )
+          )
+         (('accept)
+          (case (-> block param 1)
+            (('1p)
+             (when (kill-menu self #t #f)
+               (set! (-> self local-players) 1)
+               (set! *lobby-local-players* (-> self local-players))
+               (go-virtual choose-your-adventure)
+               )
+             )
+            (('2p)
+             (cond
+               ((zero? (-> *cpad-list* cpads 1 state))
+                (set! (-> *lobby-generic-error-text-ids* 0) (text-id text-id-2610))
+                (set! (-> *lobby-generic-error-bottom-text-ids* 0) (text-id text-id-1712))
+                (set! (-> *lobby-generic-error-bottom-text-ids2* 0) (text-id text-id-1926))
+                (set! (-> *lobby-generic-error-bottom-text-ids3* 0) (text-id text-id-4273))
+                (set! (-> *lobby-generic-error-bottom-text-ids4* 0) (text-id text-id-1712))
+                (set! (-> *lobby-generic-error-bottom-text-ids5* 0) (text-id text-id-1712))
+                (go-virtual
+                  lobby-generic-error-menu
+                  *lobby-generic-confirmation*
+                  (lambda :behavior lobby-menu-manager () (go-virtual num-local-players-demo))
+                  (the-as (function symbol object) (lambda :behavior lobby-menu-manager () (go-virtual num-local-players-demo)))
+                  #f
+                  #f
+                  #f
+                  )
+                )
+               (else
+                 (when (kill-menu self #t #f)
+                   (set! (-> self local-players) 2)
+                   (set! *lobby-local-players* (-> self local-players))
+                   (go-virtual choose-your-adventure)
+                   )
+                 )
+               )
+             (set! (-> *num-players-info* min) 2)
+             (let ((v0-1 (the-as object 2)))
+               (set! (-> *num-players-info* max) (the-as int v0-1))
+               v0-1
+               )
+             )
+            )
+          )
+         )
+       )
+      (else
+        (lobby-menu-manager-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (local-vars (v1-2 symbol))
+    (dotimes (v1-0 (+ (-> self in-focus-index) 1))
+      (when (and (handle->process (-> self menu-handles v1-0))
+                 (= (-> (the-as base-menu (handle->process (-> self menu-handles v1-0))) info-ptr) *num-local-players-menu*)
+                 )
+        (set! v1-2 #t)
+        (goto cfg-20)
+        )
+      )
+    (set! v1-2 #f)
+    (label cfg-20)
+    (if v1-2
+        (goto cfg-24)
+        )
+    (kill-menu self #t #f)
+    (create-menu self *num-local-players-menu* 0)
+    #t
+    (label cfg-24)
+    (fmv-player-run-texture "split" *default-pool*)
+    )
+  :exit (behavior ()
+    (kill-by-type fmv-player *active-pool*)
+    )
+  :trans (behavior ()
+    (cond
+      ((zero? (-> (the-as selection-menu-manager (find-menu self 'split-screen-selection)) selection-index))
+       (set! (-> *menu-split-selection-string* 0) (the-as uint 1635))
+       (set! (-> *split-screen-sprite-list* 0) 0)
+       (set! (-> *split-screen-sprite-list* 1) 1)
+       )
+      (else
+        (set! (-> *menu-split-selection-string* 0) (the-as uint 1636))
+        (set! (-> *split-screen-sprite-list* 0) 2)
+        (set! (-> *split-screen-sprite-list* 1) 3)
+        )
+      )
+    )
+  :code sleep-code
+  :post lobby-default-post
+  )

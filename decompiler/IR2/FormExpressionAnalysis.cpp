@@ -1171,6 +1171,11 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormStack& stack,
                                                       std::vector<FormElement*>* result,
                                                       bool allow_side_effects) {
+  if (!m_expr.get_arg(0).is_var()) {
+    // daddiu x, r0, <const>
+    throw std::runtime_error(fmt::format("Addition with a constant first argument in op {}: {}",
+                                         m_my_idx, m_expr.to_string(env)));
+  }
   auto& arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
   auto arg0_i = is_int_type(arg0_type.typespec());
   auto arg0_u = is_uint_type(arg0_type.typespec());
@@ -1247,14 +1252,30 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         auto arg0_matcher =
             Matcher::op(addition_matcher, {Matcher::any(0), Matcher::integer(input.offset)});
         auto match_result = match(arg0_matcher, args.at(0));
+        Form* idx = nullptr;
         if (match_result.matched) {
+          idx = match_result.maps.forms.at(0);
+        } else {
+          auto as_add = args.at(0)->try_as_element<GenericElement>();
+          if (as_add &&
+              (as_add->op().is_fixed(FixedOperatorKind::ADDITION) ||
+               as_add->op().is_fixed(FixedOperatorKind::ADDITION_PTR)) &&
+              as_add->elts().size() > 2) {
+            auto last = get_goal_integer_constant(as_add->elts().back(), env);
+            if (last && (s64)*last == input.offset) {
+              std::vector<Form*> idx_elts(as_add->elts().begin(), as_add->elts().end() - 1);
+              idx = pool.alloc_single_element_form<GenericElement>(nullptr, as_add->op(), idx_elts);
+            }
+          }
+        }
+        if (idx) {
           bool used_index = false;
           std::vector<DerefToken> tokens;
           for (auto& tok : out.tokens) {
             if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
               ASSERT(!used_index);
               used_index = true;
-              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              tokens.push_back(DerefToken::make_int_expr(idx));
             } else {
               tokens.push_back(to_token(tok));
             }
@@ -3515,7 +3536,8 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
           }
         }
       } break;
-      case GameVersion::Jak3: {
+      case GameVersion::Jak3:
+      case GameVersion::JakX: {
         for (int i = 0; i < 4; i++) {
           auto elt = matrix_entries->at(i + 1).elt;
 
@@ -4353,7 +4375,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         if (match_result.matched) {
           auto& alloc = match_result.maps.strings.at(allocation);
           if (alloc != "global" && alloc != "debug" && alloc != "process" &&
-              alloc != "loading-level" && alloc != "process-level-heap") {
+              alloc != "loading-level" && alloc != "process-level-heap" && alloc != "scratch") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);
@@ -4712,6 +4734,28 @@ ConstantTokenElement* DerefElement::try_as_part_group_const(const Env& env, Form
   return nullptr;
 }
 
+ConstantTokenElement* DerefElement::try_as_sound_info_const(const Env& env, FormPool& pool) {
+  if (env.dts->sound_info_names.empty()) {
+    return nullptr;
+  }
+
+  auto mr = match(
+      Matcher::deref(Matcher::symbol("*sound-info*"), false, {DerefTokenMatcher::any_integer(0)}),
+      this);
+
+  if (mr.matched) {
+    auto sound_name = env.get_sound_info_name(mr.maps.ints.at(0));
+    if (sound_name) {
+      return pool.alloc_element<ConstantTokenElement>(*sound_name);
+    } else {
+      lg::error("function `{}`: did not find sound info name for index {}", env.func->name(),
+                mr.maps.ints.at(0));
+    }
+  }
+
+  return nullptr;
+}
+
 GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
   auto mr =
       match(Matcher::deref(Matcher::s6(), false,
@@ -4812,6 +4856,12 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_part_group = try_as_part_group_const(env, pool);
   if (as_part_group) {
     result->push_back(as_part_group);
+    return;
+  }
+
+  auto as_sound_info = try_as_sound_info_const(env, pool);
+  if (as_sound_info) {
+    result->push_back(as_sound_info);
     return;
   }
 

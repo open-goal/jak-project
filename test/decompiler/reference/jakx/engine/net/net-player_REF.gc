@@ -1,0 +1,2051 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *target-cam-off-time*, type int
+(define *target-cam-off-time* 0)
+
+;; definition for method 9 of type net-player-respawn-info
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod continue-point<-respawn-info! ((this net-player-respawn-info) (arg0 continue-point))
+  (continue-point-copy! arg0 (-> *net-world* cont))
+  (set! (-> arg0 trans quad) (-> this position quad))
+  (set! (-> arg0 quat x) (the int (* 32767.0 (-> this quat x))))
+  (set! (-> arg0 quat y) (the int (* 32767.0 (-> this quat y))))
+  (set! (-> arg0 quat z) (the int (* 32767.0 (-> this quat z))))
+  (set! (-> arg0 quat w) (the int (* 32767.0 (-> this quat w))))
+  (set! (-> arg0 velocity quad) (-> this velocity quad))
+  (when (!= (if *net-world*
+                (the-as int (-> *net-world* task-node-info net-play-mode))
+                18
+                )
+            18
+            )
+    (let ((v1-13 0)
+          (a0-10 6)
+          )
+      (dotimes (a1-2 6)
+        (when (!= (-> *level* level a1-2 name) 'menu)
+          (when (and (< v1-13 a0-10) (-> *load-state* want a1-2 name))
+            (set! (-> arg0 want v1-13 name) (-> *load-state* want a1-2 name))
+            (set! (-> arg0 want v1-13 display?) (-> *load-state* want a1-2 display?))
+            (+! v1-13 1)
+            )
+          )
+        )
+      (set! (-> arg0 want-count) v1-13)
+      (while (< v1-13 6)
+        (if (< v1-13 a0-10)
+            (set! (-> arg0 want v1-13 name) #f)
+            )
+        (+! v1-13 1)
+        )
+      )
+    )
+  (when (> (-> this want-count) 0)
+    (set! (-> arg0 want-count) (-> this want-count))
+    (let ((v1-18 (-> this want-count)))
+      (dotimes (a0-11 v1-18)
+        (set! (-> arg0 want a0-11 name) (-> this want a0-11 name))
+        (set! (-> arg0 want a0-11 display?) (-> this want a0-11 display?))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type net-player-respawn-info
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod continue-copy! ((this net-player-respawn-info) (arg0 continue-point))
+  (continue-point-copy! (-> *net-world* cont) arg0)
+  (set! (-> this position quad) (-> arg0 trans quad))
+  (set! (-> this quat x) (* 0.00003051851 (the float (-> arg0 quat x))))
+  (set! (-> this quat y) (* 0.00003051851 (the float (-> arg0 quat y))))
+  (set! (-> this quat z) (* 0.00003051851 (the float (-> arg0 quat z))))
+  (set! (-> this quat w) (* 0.00003051851 (the float (-> arg0 quat w))))
+  (set! (-> this velocity quad) (-> arg0 velocity quad))
+  (set! (-> this want-count) (-> arg0 want-count))
+  (set! (-> this want) (-> arg0 want))
+  0
+  (none)
+  )
+
+;; definition for function update-active-net-players
+;; WARN: Return type mismatch int vs object.
+(defun update-active-net-players ()
+  (set! *active-net-player-count* 0)
+  (set! *active-net-non-spectator-count* 0)
+  (dotimes (v1-0 24)
+    (set! (-> *active-net-players* v1-0) #f)
+    (set! (-> *active-net-non-spectators* v1-0) #f)
+    (let ((a0-6 (-> *net-players* v1-0)))
+      (when a0-6
+        (set! (-> *active-net-players* *active-net-player-count*) a0-6)
+        (set! *active-net-player-count* (+ *active-net-player-count* 1))
+        (when #t
+          (set! (-> *active-net-non-spectators* *active-net-non-spectator-count*) a0-6)
+          (set! *active-net-non-spectator-count* (+ *active-net-non-spectator-count* 1))
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 7 of type net-player
+(defmethod relocate ((this net-player) (offset int))
+  (set! (-> *net-players* (-> this player-id)) this)
+  (if (-> *net-players* (-> this player-id))
+      (&+! (-> *net-players* (-> this player-id)) offset)
+      )
+  (let ((t9-0 (method-of-type process-nettable relocate)))
+    (t9-0 this offset)
+    )
+  (update-active-net-players)
+  (&+ this offset)
+  )
+
+;; definition for method 10 of type net-player
+;; WARN: Return type mismatch object vs none.
+(defmethod deactivate ((this net-player))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (registered? this)
+      (unregister this #t (the-as mem-buffer #f))
+      )
+  (if (= (-> *game-info* turbo-disabled) (-> this player-id))
+      (set! (-> *game-info* turbo-disabled) -1)
+      )
+  (set! (-> *net-players* (-> this player-id)) #f)
+  ((method-of-type process-nettable deactivate) this)
+  (update-active-net-players)
+  (none)
+  )
+
+;; definition for method 89 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod relocate-mgr ((this net-player) (arg0 int))
+  (if (nonzero? (-> this mgr))
+      (set! (-> this mgr) (the-as net-game-mgr (&+ (the-as pointer (-> this mgr)) arg0)))
+      )
+  0
+  (none)
+  )
+
+;; definition for function net-player-default-handler
+(defbehavior net-player-default-handler net-player ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (handle-events self arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 70 of type net-player
+(defmethod finish-scheduled? ((this net-player))
+  (!= -1 (-> this mgr scheduled-finish-time))
+  )
+
+;; definition for method 65 of type net-player
+(defmethod update-best-hang-time ((this net-player) (arg0 int))
+  (when (and (not (finish-scheduled? this)) (< (-> this best-hang-time) arg0))
+    (set! (-> this best-hang-time) arg0)
+    (write-stats-change this)
+    )
+  (none)
+  )
+
+;; definition for method 66 of type net-player
+(defmethod update-best-power-slide ((this net-player) (arg0 float))
+  (when (and (not (finish-scheduled? this)) (< (-> this best-power-slide) arg0))
+    (set! (-> this best-power-slide) arg0)
+    (write-stats-change this)
+    )
+  (none)
+  )
+
+;; definition for method 67 of type net-player
+(defmethod add-death ((this net-player))
+  (when (not (finish-scheduled? this))
+    (+! (-> this deaths) 1)
+    (write-stats-change this)
+    )
+  (none)
+  )
+
+;; definition for method 68 of type net-player
+(defmethod add-kill ((this net-player))
+  (when (not (finish-scheduled? this))
+    (+! (-> this kills) 1)
+    (write-stats-change this)
+    )
+  (none)
+  )
+
+;; definition for method 64 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod write-stats-change ((this net-player))
+  (let ((s5-0 (alloc-msg this 'stats-changed)))
+    (write-int32 s5-0 (-> this best-hang-time))
+    (write-float s5-0 (-> this best-power-slide))
+    (write-int32 s5-0 (-> this kills))
+    (write-int32 s5-0 (-> this deaths))
+    (send-msg this s5-0 -2 80)
+    (free-msg this s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 63 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod write-score-change ((this net-player))
+  (let ((s5-0 (alloc-msg this 'score-changed)))
+    (write-int32 s5-0 (-> this score))
+    (send-msg this s5-0 -2 80)
+    (free-msg this s5-0)
+    )
+  (set! (-> *net-world* net-state green-room-stats scores (-> this player-num)) (the-as uint (-> this score)))
+  (send-event *net-world* 'green-room-player-stats-update (-> this player-num))
+  0
+  (none)
+  )
+
+;; definition for method 54 of type net-player
+;; INFO: Used lq/sq
+(defmethod get-respawn-info ((this net-player) (arg0 net-player-respawn-info))
+  (format 0 "!!! <DL> net-player::handle-events called with get-respawn-info !!!~%")
+  (let ((v1-1 (-> *net-world* cont)))
+    (set! (-> arg0 position quad) (-> v1-1 trans quad))
+    (set! (-> arg0 quat x) (* 0.00003051851 (the float (-> v1-1 quat x))))
+    (set! (-> arg0 quat y) (* 0.00003051851 (the float (-> v1-1 quat y))))
+    (set! (-> arg0 quat z) (* 0.00003051851 (the float (-> v1-1 quat z))))
+    (set! (-> arg0 quat w) (* 0.00003051851 (the float (-> v1-1 quat w))))
+    )
+  (vector-reset! (-> arg0 velocity))
+  (set! (-> arg0 want-count) 0)
+  0
+  #t
+  )
+
+;; definition for method 45 of type net-player
+;; WARN: Return type mismatch int vs object.
+(defmethod net-player-method-45 ((this net-player) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (if (or (= -1 arg0) (= -1 arg1) (= arg0 arg1))
+      (return (the-as object #f))
+      )
+  (cond
+    ((zero? (-> *viewport-array* mode))
+     (set! (-> this death-indicator-1) (process->handle (spawn-unused-death-indicator-single)))
+     (send-event (handle->process (-> this death-indicator-1)) 'set-players arg0 arg1 arg2 arg3)
+     )
+    (else
+      (let ((v1-17 (view-get-active-index)))
+        (cond
+          ((zero? v1-17)
+           (set! (-> this death-indicator-1) (process->handle (spawn-unused-death-indicator-view-1)))
+           (send-event (handle->process (-> this death-indicator-1)) 'set-players arg0 arg1 arg2 arg3)
+           )
+          ((= v1-17 1)
+           (set! (-> this death-indicator-2) (process->handle (spawn-unused-death-indicator-view-2)))
+           (send-event (handle->process (-> this death-indicator-2)) 'set-players arg0 arg1 arg2 arg3)
+           )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 55 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-55 ((this net-player))
+  (let ((a0-2 (get-vehicle this)))
+    (when a0-2
+      (let ((v1-3 (the-as vehicle-weapon-slot (handle->process (-> a0-2 wpn-left))))
+            (a1-5 (the-as vehicle-weapon-slot (handle->process (-> a0-2 wpn-right))))
+            )
+        (cond
+          ((and v1-3 (not (and (= (-> v1-3 my-type) 14) (-> v1-3 next-state) (= (-> v1-3 next-state name) 'firing))))
+           (set! (-> this wpn-left-type) (-> v1-3 my-type))
+           (set! (-> this wpn-left-ammo) (the-as uint (-> v1-3 ammunition)))
+           )
+          (else
+            (set! (-> this wpn-left-type) (the-as uint 0))
+            (set! (-> this wpn-left-ammo) (the-as uint 0))
+            0
+            )
+          )
+        (cond
+          (a1-5
+            (set! (-> this wpn-right-type) (-> a1-5 my-type))
+            (set! (-> this wpn-right-ammo) (the-as uint (-> a1-5 ammunition)))
+            )
+          (else
+            (set! (-> this wpn-right-type) (the-as uint 0))
+            (set! (-> this wpn-right-ammo) (the-as uint 0))
+            0
+            )
+          )
+        )
+      (set! (-> this turbo-qty) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 turbo-supply)))))))
+      (set! (-> this dark-eco) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 unk-float1)))))))
+      (set! (-> this health) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 health)))))))
+      (set! (-> *game-info* player-info (view-get-active-index) camera-inside-view)
+            (the-as symbol (send-event a0-2 'query 'camera-inside-view))
+            )
+      (if (zero? (-> this health))
+          (set! (-> this health) (the-as uint 255))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function use-target-cam-base-helper
+;; WARN: Return type mismatch object vs symbol.
+(defun use-target-cam-base-helper ((arg0 net-player) (arg1 wvehicle) (arg2 wvehicle) (arg3 symbol))
+  (the-as
+    symbol
+    (and arg1
+         arg2
+         (-> *setting-control* user-default kill-cam)
+         (zero? (-> *viewport-array* mode))
+         (= (-> *net-mgr* game-type) 4)
+         (< (-> *net-game-mgr* scheduled-finish-time) 0)
+         (and (< (vector-vector-distance-squared (get-trans arg1 0) (get-trans arg2 0)) 1048576000000.0)
+              (not (logtest? (-> arg1 v-flags) (vehicle-flag dead)))
+              (cond
+                (arg3
+                  (let* ((v1-15 (rand-uint31-gen *random-generator*))
+                         (v1-17 (logand (logxor v1-15 (sar v1-15 16)) #x7fff))
+                         )
+                    (not (logtest? v1-17 3))
+                    )
+                  )
+                (else
+                  #t
+                  )
+                )
+              )
+         )
+    )
+  )
+
+;; definition for method 91 of type net-player
+;; WARN: Return type mismatch symbol vs object.
+(defmethod use-target-cam? ((this net-player) (arg0 wvehicle))
+  #f
+  )
+
+;; definition for method 96 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod score-kill ((this net-player) (arg0 int))
+  0
+  (none)
+  )
+
+;; definition for method 95 of type net-player
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 95 net-player) has a return type of none, but the expression builder found a return statement.
+(defmethod net-player-method-95 ((this net-player) (arg0 process) (arg1 event-message-block))
+  (if (finish-scheduled? this)
+      (return #f)
+      )
+  (let ((s5-0 (-> arg1 param 0))
+        (s4-0 (-> arg1 param 1))
+        (s3-1 (-> arg1 param 2))
+        )
+    (let ((s2-0 (get-vehicle this)))
+      (score-kill this (the-as int s5-0))
+      (if (and s2-0 (owner-is-local? s2-0) (!= s5-0 (-> this player-id)))
+          (add-kill this)
+          )
+      )
+    (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+               )
+      (net-player-method-45 this (-> this player-id) (the-as int s5-0) (the-as int s4-0) (the-as int s3-1))
+      (let ((v1-22 s5-0))
+        (when (and (and (>= (the-as int v1-22) 0) (< (the-as int v1-22) 24) (-> *net-players* v1-22))
+                   (and (zero? (-> this player-id)) (!= s5-0 (-> this player-id)))
+                   )
+          (let ((s5-1 (get-vehicle (-> this mgr net-players s5-0))))
+            (if (use-target-cam? this s5-1)
+                (send-event this 'target-cam-start s5-1)
+                )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 97 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-97 ((this net-player) (arg0 object))
+  (when (and (if (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                  0
+                                                  )
+                    )
+                 #t
+                 #f
+                 )
+             (= arg0 'finish)
+             )
+    (logior! (-> this flags) (net-player-flag show-results))
+    (net-player-method-55 this)
+    (net-player-method-90 this)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 48 of type net-player
+;; INFO: Used lq/sq
+(defmethod handle-events ((this net-player) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (with-pp
+    (case arg2
+      (('game-finished)
+       (net-player-method-97 this (-> arg3 param 0))
+       )
+      (('get-vehicle)
+       (get-vehicle this)
+       )
+      (('get-respawn-info)
+       (let ((a1-2 (-> arg3 param 0)))
+         (get-respawn-info this (the-as net-player-respawn-info a1-2))
+         )
+       )
+      (('go-die)
+       (go (method-of-object this die))
+       )
+      (('endlessfall)
+       (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  (or (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                      (= (if *net-mgr*
+                             (-> *net-mgr* game-state local-machine-idx)
+                             0
+                             )
+                         (-> *net-mgr* game-state session-master-idx)
+                         )
+                      )
+                  )
+         (if (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+             (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) 'cam-endlessfall)
+             )
+         (logior! (-> this flags) (net-player-flag endlessfall))
+         (set! v0-0 (current-time))
+         (set! (-> this state-time) (the-as time-frame v0-0))
+         v0-0
+         )
+       )
+      (('turbo-pad)
+       (let ((a0-26 (get-vehicle this)))
+         (if (not (or (not a0-26) (focus-test? a0-26 dead)))
+             (send-event (the-as wvehicle (handle->process (-> this vehicle))) 'turbo-pad)
+             )
+         )
+       )
+      (('kill-vehicle)
+       (let ((v1-33 (get-vehicle this)))
+         (if (not (or (not v1-33) (focus-test? v1-33 dead) *debug-player-vehicle-unkillable*))
+             (send-event (the-as wvehicle (handle->process (-> this vehicle))) 'go 'explode)
+             )
+         )
+       )
+      (('want-load)
+       (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  (let ((a0-50 (get-vehicle this)))
+                    (or (not a0-50) (not (logtest? (-> a0-50 focus-status) (focus-status dead))))
+                    )
+                  (not *in-end-of-race-preload*)
+                  )
+         (let ((gp-1 (the-as load-state (-> arg3 param 0)))
+               (s4-2 (-> arg3 param 1))
+               (s5-2 (new 'static 'boxed-array :type symbol :length 0 :allocated-length 6))
+               )
+           (dotimes (s3-0 6)
+             (let ((s2-0 (ref s4-2 s3-0)))
+               (set! (-> s5-2 s3-0) (the-as symbol (if (not (null? s2-0))
+                                                       (script-eval (the-as pair s2-0))
+                                                       )
+                                            )
+                     )
+               )
+             )
+           (format 0 "net-player applying want-load~%")
+           (want-levels gp-1 (-> s5-2 data))
+           )
+         )
+       )
+      (('want-sound)
+       (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  )
+         (let ((gp-2 (the-as load-state (-> arg3 param 0)))
+               (s4-3 (-> arg3 param 1))
+               (s5-3 (new 'static 'boxed-array :type symbol :length 0 :allocated-length 1))
+               )
+           (dotimes (s3-1 1)
+             (let ((s2-1 (ref s4-3 s3-1)))
+               (set! (-> s5-3 s3-1) (the-as symbol (if (not (null? s2-1))
+                                                       (script-eval (the-as pair s2-1))
+                                                       )
+                                            )
+                     )
+               )
+             )
+           (format 0 "net-player applying want-sound~%")
+           (want-sound-banks gp-2 (-> s5-3 data))
+           )
+         )
+       )
+      (('want-display)
+       (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  (not *in-end-of-race-preload*)
+                  )
+         (let ((s4-4 (the-as load-state (-> arg3 param 0)))
+               (gp-3 (-> arg3 param 1))
+               (s5-4 (-> arg3 param 2))
+               )
+           (format 0 "net-player applying want-display~%")
+           (if (zero? (-> *viewport-array* mode))
+               (want-display-level s4-4 (the-as symbol gp-3) (the-as symbol s5-4))
+               (load-state-method-14 s4-4 (the-as symbol gp-3) (the-as symbol s5-4) (view-get-active-index))
+               )
+           )
+         )
+       )
+      (('get-weapon-mask)
+       0
+       )
+      (('vehicle-died)
+       (when (-> this map)
+         (logior! (-> this map flags) (minimap-flag fade-out))
+         (set! (-> this map) #f)
+         )
+       (let ((a0-90 (get-vehicle this)))
+         (when (and a0-90 (owner-is-local? a0-90))
+           (if (not (finish-scheduled? this))
+               (net-player-method-55 this)
+               )
+           (add-death this)
+           )
+         )
+       (when (and (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  )
+         (stats-player-died)
+         (net-player-method-45
+           this
+           (the-as int (-> arg3 param 0))
+           (-> this player-id)
+           (the-as int (-> arg3 param 1))
+           (the-as int (-> arg3 param 2))
+           )
+         )
+       (set! (-> this dead-camera-pos quad) (-> (camera-pos) quad))
+       (set! (-> this dead-camera-pos-valid) #t)
+       (set! v0-0 (+ (current-time) (seconds 0.01)))
+       (set! (-> this next-spawn-time) (the-as time-frame v0-0))
+       v0-0
+       )
+      (('you-killed-vehicle)
+       (net-player-method-95 this arg0 arg3)
+       )
+      (('vehicle-explode)
+       (when (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  )
+         (when (not (finish-scheduled? this))
+           (vehicle-method-202 (get-vehicle this) 0)
+           (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs 0 0.0)
+           (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-vehicle-crash 0 0.0)
+           )
+         )
+       (if (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                 (-> *net-mgr* game-state local-machine-idx)
+                                                 0
+                                                 )
+                   )
+                )
+           (play-crash-speech this)
+           )
+       )
+      (('target-cam-start)
+       (let ((a0-121 (the-as object (-> arg3 param 0))))
+         (camera-go-target (process->handle (the-as handle a0-121)))
+         )
+       (display-nice-shot-to-view (view-get-active-index))
+       (let ((gp-4 (get-vehicle this)))
+         (when gp-4
+           (send-event
+             gp-4
+             'go
+             (if (net-play-mode-race? (if *net-world*
+                                          (the-as net-play-mode (the-as int (-> *net-world* task-node-info net-play-mode)))
+                                          (net-play-mode artist)
+                                          )
+                                      )
+                 'race
+                 'hostile
+                 )
+             )
+           (set! v0-0 (logclear (-> gp-4 ai flags) (wvehicle-ai-state-flag bit1 bit4 bit6)))
+           (set! (-> gp-4 ai flags) (the-as wvehicle-ai-state-flag v0-0))
+           v0-0
+           )
+         )
+       )
+      (('target-cam-stop)
+       (when (target-camera-active?)
+         (cam-disconnect *setting-control* (view-get-active-index) pp 'interp-time)
+         (cam-disconnect *setting-control* (view-get-active-index) pp 'blur-a)
+         (send-event *text-display-nice-shot-proc* 'exit)
+         (send-event *text-display-nice-shot-proc* 'kill-hud 0)
+         (let ((s3-5 (get-vehicle this)))
+           (cond
+             ((or (< arg1 1) (-> arg3 param 0))
+              (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
+              (if (not (finish-scheduled? this))
+                  (send-event s3-5 'go 'player-control)
+                  )
+              )
+             (s3-5
+               (when (not (finish-scheduled? this))
+                 (let ((gp-5 pp))
+                   (set! pp s3-5)
+                   (vehicle-method-125 s3-5)
+                   (set! pp gp-5)
+                   )
+                 )
+               (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
+               )
+             (else
+               (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
+               )
+             )
+           )
+         )
+       (when (< *target-cam-off-time* (current-time))
+         (set! v0-0
+               (+ (-> *setting-control* cam-settings (view-get-active-index) current interp-time) 30 (current-time))
+               )
+         (set! *target-cam-off-time* (the-as int (the-as uint v0-0)))
+         v0-0
+         )
+       )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate waiting (net-player)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('net-player-go-running)
+       (go-virtual running)
+       )
+      (else
+        (net-player-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self last-known-pos-valid) #f)
+    (setup-car-colors self)
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate running (net-player)
+  :virtual #t
+  :event net-player-default-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((gp-0 (get-vehicle self)))
+      (when gp-0
+        (case (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+          ((15 16)
+           (send-event gp-0 'set 'camera-inside-view #f)
+           )
+          (else
+            (send-event
+              gp-0
+              'set
+              'camera-inside-view
+              (-> *game-info* player-info (view-get-active-index) camera-inside-view)
+              )
+            )
+          )
+        )
+      )
+    (when (and (= (/ (-> self player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               (and (>= (-> self player-id) 0) (< (-> self player-id) 16))
+               )
+      (let ((gp-1 (-> self view index)))
+        (set! (-> *level* prev-camera-pos gp-1 quad) (-> (camera-pos) quad))
+        (set! (-> *level* curr-camera-pos gp-1 quad) (-> (camera-pos) quad))
+        )
+      )
+    (set! (-> self dead-camera-pos-valid) #f)
+    )
+  :trans (behavior ()
+    (let ((v1-1 (get-vehicle self)))
+      (when v1-1
+        (when (not (logtest? (-> v1-1 v-flags) (vehicle-flag in-air)))
+          (let ((f0-0 (vector-length (-> v1-1 root transv))))
+            (if (< (-> self top-speed) f0-0)
+                (set! (-> self top-speed) f0-0)
+                )
+            )
+          )
+        )
+      )
+    (when (and (logtest? (-> self flags) (net-player-flag endlessfall))
+               (time-elapsed? (-> self state-time) (seconds 1))
+               )
+      (send-event (the-as wvehicle (handle->process (-> self vehicle))) 'go 'die)
+      (logclear! (-> self flags) (net-player-flag endlessfall))
+      )
+    (if (can-spawn-vehicle? self)
+        (respawn self)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (when (and (= (/ (-> self player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               (and (>= (-> self player-id) 0) (< (-> self player-id) 16))
+               )
+      (let ((gp-0 (-> self view index)))
+        (set! (-> *level* prev-camera-pos gp-0 quad) (-> *level* curr-camera-pos gp-0 quad))
+        (set! (-> *level* curr-camera-pos gp-0 quad) (-> (camera-pos) quad))
+        (if (and *execute-regions* (-> *setting-control* user-current region-mode) (not (paused?)))
+            (region-tree-execute 'camera (-> *level* prev-camera-pos gp-0) (-> *level* curr-camera-pos gp-0))
+            )
+        )
+      )
+    (let ((a1-3 (get-vehicle self)))
+      (if a1-3
+          (vehicle-update self a1-3)
+          )
+      )
+    (when (and (logtest? (-> self flags) (net-player-flag show-results)) (not (target-camera-active?)))
+      (setup
+        (-> *screen-filter-array* (logand (-> self player-id) 1))
+        (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 160.0)
+        (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+        0.01
+        (bucket-id tex-hud-hud-alpha)
+        #xfffffe
+        #x33001
+        (the-as symbol 0)
+        )
+      (let ((v1-38 (make-sound-instance snd-win-flash (new 'static 'sound-id) (the-as handle #f))))
+        (cond
+          (v1-38
+            (logior! (-> v1-38 flags) (sound-spec-flag needs-update non-positional))
+            (-> v1-38 id)
+            )
+          (else
+            0
+            )
+          )
+        )
+      (spawn-hud-results)
+      (cam-disconnect *setting-control* (view-get-active-index) self 'interp-time)
+      (cam-disconnect *setting-control* (view-get-active-index) self 'mode-name)
+      (logclear! (-> self flags) (net-player-flag show-results))
+      (if (and (= (/ (-> self player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               (and (>= (-> self player-id) 0) (< (-> self player-id) 16))
+               )
+          (end-of-race-start-preload)
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (net-player)
+  :virtual #t
+  :code (behavior ()
+    (when (-> self map)
+      (logior! (-> self map flags) (minimap-flag fade-out))
+      (set! (-> self map) #f)
+      )
+    (format
+      #t
+      "player ~d died. veh ~I~%"
+      (-> self player-id)
+      (the-as wvehicle (handle->process (-> self vehicle)))
+      )
+    )
+  )
+
+;; definition for method 46 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-46 ((this net-player) (arg0 mem-buffer))
+  (write-uint8 arg0 (the-as uint (-> this player-id)))
+  (write-uint8 arg0 (the-as uint (-> this flags)))
+  (write-uint8 arg0 (the-as uint (-> this player-num)))
+  (write-int32 arg0 (-> this score))
+  (write-uint8 arg0 (-> this team))
+  0
+  (none)
+  )
+
+;; definition for method 47 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-47 ((this net-player) (arg0 mem-buffer))
+  (set! (-> this player-id) (the-as int (read-uint8 arg0)))
+  (set! (-> this flags) (the-as net-player-flag (read-uint8 arg0)))
+  (set! (-> this player-num) (the-as int (read-uint8 arg0)))
+  (set! (-> this score) (read-int32 arg0))
+  (set! (-> this team) (read-uint8 arg0))
+  0
+  (none)
+  )
+
+;; definition for method 74 of type net-player
+(defmethod generate-random-stats ((this net-player))
+  (when (and (= 0.0 (-> this best-power-slide))
+             (= 0.0 (the float (-> this best-hang-time)))
+             (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+             )
+    (let ((f30-0 (the float (- (- (- (if *net-mgr*
+                                         (-> *net-mgr* game-state time)
+                                         0
+                                         )
+                                     (if *net-world*
+                                         (-> *net-world* net-state game-start-time)
+                                         0
+                                         )
+                                     )
+                                  (if *net-world*
+                                      (-> *net-world* net-state total-pause-time)
+                                      0
+                                      )
+                                  )
+                               (-> *net-game-mgr* intro-end-time)
+                               )
+                      )
+                 )
+          )
+      (let ((f28-0 (lerp-scale 0.0 200.0 f30-0 4500.0 72000.0)))
+        (set! (-> this best-power-slide)
+              (+ f28-0 (* (rand-float-gen)
+                          (- (lerp-scale 0.0 800.0 f30-0 4500.0 72000.0) (lerp-scale 0.0 200.0 f30-0 4500.0 72000.0))
+                          )
+                 )
+              )
+        )
+      (let ((f28-1 (lerp-scale 0.0 450.0 f30-0 4500.0 72000.0)))
+        (set! (-> this best-hang-time)
+              (the int
+                   (+ f28-1 (* (rand-float-gen)
+                               (- (lerp-scale 0.0 1050.0 f30-0 4500.0 72000.0) (lerp-scale 0.0 450.0 f30-0 4500.0 72000.0))
+                               )
+                      )
+                   )
+              )
+        )
+      )
+    (write-stats-change this)
+    )
+  (none)
+  )
+
+;; definition for method 51 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this net-player) (arg0 int))
+  (set! (-> this mgr) *net-game-mgr*)
+  (set! (-> this map) #f)
+  (set! (-> this top-speed) 0.0)
+  (set! (-> this last-known-pos-valid) #f)
+  (set! (-> this flags) (net-player-flag))
+  (set! (-> this death-indicator-1) (the-as handle #f))
+  (set! (-> this death-indicator-2) (the-as handle #f))
+  (set! (-> this player-id) arg0)
+  (set! (-> this vehicle) (the-as handle #f))
+  (set! (-> this rev-mgr) (the-as handle #f))
+  (set! (-> this rank) -1)
+  (set! (-> this score) 0)
+  (set! (-> this wpn-left-type) (the-as uint 0))
+  (set! (-> this wpn-right-type) (the-as uint 0))
+  (set! (-> this wpn-left-ammo) (the-as uint 0))
+  (set! (-> this wpn-right-ammo) (the-as uint 0))
+  (set! (-> this turbo-qty) (the-as uint 0))
+  (set! (-> this multiplier) -1)
+  (set! (-> this player-num) (if (player-idx-vehicle-selected? *net-world* arg0)
+                                 (-> *net-world* net-state players arg0 player-num)
+                                 -1
+                                 )
+        )
+  (set! (-> this vehicle-impact-callback) #f)
+  (set! (-> this last-spawn-time) 0)
+  (set! (-> this last-weapon-provision) -1.0)
+  (set! (-> this dead-camera-pos-valid) #f)
+  (when (zero? (-> this player-id))
+    (set! *target-cam-off-time* 0)
+    0
+    )
+  (let ((v1-13 (net-player-method-71 this)))
+    (set! (-> this speech-id)
+          (the-as uint (cond
+                         ((or (zero? v1-13) (= v1-13 16) (= v1-13 17))
+                          1
+                          )
+                         ((= v1-13 18)
+                          2
+                          )
+                         ((= v1-13 1)
+                          4
+                          )
+                         ((= v1-13 2)
+                          8
+                          )
+                         ((= v1-13 3)
+                          11
+                          )
+                         ((= v1-13 4)
+                          3
+                          )
+                         ((= v1-13 9)
+                          9
+                          )
+                         ((= v1-13 10)
+                          10
+                          )
+                         ((= v1-13 13)
+                          5
+                          )
+                         ((= v1-13 19)
+                          (if (= (if *net-world*
+                                     (the-as int (-> *net-world* task-node-info net-play-mode))
+                                     18
+                                     )
+                                 17
+                                 )
+                              12
+                              6
+                              )
+                          )
+                         ((= v1-13 11)
+                          13
+                          )
+                         ((= v1-13 20)
+                          7
+                          )
+                         ((= v1-13 20)
+                          7
+                          )
+                         ((= v1-13 5)
+                          14
+                          )
+                         ((= v1-13 6)
+                          15
+                          )
+                         ((= v1-13 7)
+                          16
+                          )
+                         ((= v1-13 14)
+                          17
+                          )
+                         ((= v1-13 8)
+                          18
+                          )
+                         ((= v1-13 12)
+                          19
+                          )
+                         ((= v1-13 21)
+                          20
+                          )
+                         ((= v1-13 22)
+                          21
+                          )
+                         (else
+                           0
+                           )
+                         )
+                  )
+          )
+    )
+  (if (and (!= (-> this speech-id) 1) (= (if *net-world*
+                                             (the-as int (-> *net-world* task-node-info net-play-mode))
+                                             18
+                                             )
+                                         17
+                                         )
+           )
+      (set! (-> this speech-id) (the-as uint 12))
+      )
+  (speech-control-method-16 *speech-control* (the-as int (-> this speech-id)) 21)
+  0
+  (none)
+  )
+
+;; definition for method 35 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod init-remote ((this net-player) (arg0 mem-buffer))
+  (init! this (the-as int (+ (-> this net-id) -1000)))
+  (net-player-method-47 this arg0)
+  (format 0 "net-player::decode construction... ~A~%" this)
+  (set! (-> *net-players* (-> this player-id)) this)
+  (update-active-net-players)
+  (go (method-of-object this waiting))
+  0
+  (none)
+  )
+
+;; definition for function net-player-init-local
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-player-init-local net-player ((arg0 int))
+  (init! self arg0)
+  (set! (-> *net-players* (-> self player-id)) self)
+  (set! (-> self team) (-> *net-world* net-state players arg0 team-id))
+  (if (and (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+           (= (calculate-percentage *game-info*) 100.0)
+           )
+      (logior! (-> self flags) (net-player-flag superhero))
+      )
+  (update-active-net-players)
+  (register
+    self
+    (cond
+      ((and (>= arg0 0) (< arg0 16))
+       (if *net-mgr*
+           (-> *net-mgr* game-state local-machine-idx)
+           0
+           )
+       )
+      (else
+        8
+        )
+      )
+    (+ arg0 1000)
+    )
+  (go-virtual waiting)
+  0
+  )
+
+;; definition for function clear-local-players
+;; WARN: Return type mismatch int vs object.
+(defun clear-local-players ()
+  (dotimes (v1-0 24)
+    (set! (-> *net-players* v1-0) #f)
+    )
+  (update-active-net-players)
+  0
+  )
+
+;; definition for method 69 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-69 ((this net-player))
+  (when (the-as wvehicle (handle->process (-> this vehicle)))
+    (let ((gp-0 (the-as wvehicle (handle->process (-> this vehicle)))))
+      (when (logtest? (-> gp-0 info flags) 4)
+        (when (= (-> gp-0 behavior) 4)
+          (kill-vehicle-hud)
+          (set! (-> gp-0 hud-hand) (process->handle (spawn-vehicle-hud)))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 94 of type net-player
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-car-colors ((this net-player))
+  (let ((v1-0 (-> this team)))
+    (set! (-> this color) (the-as rgba (-> (the-as (pointer uint32) (&+ *team-colors* (* v1-0 4))))))
+    (set! (-> this font-color) (the-as uint (-> *team-font-colors* v1-0)))
+    )
+  (let ((gp-0 (-> *net-world* player-to-vehicle-slot-map-s8 (-> this player-id))))
+    (set! (-> *car-level-array* data gp-0 stripe-color quad)
+          (-> *car-default-stripe-color* (-> this player-num) quad)
+          )
+    (cond
+      ((logtest? (-> *net-world* net-state flags) 4)
+       (-> *car-level-array* data gp-0)
+       (let ((v1-18 (-> *car-level-array* data gp-0 stripe-color)))
+         (let ((a1-12 (-> *car-level-array* data gp-0))
+               (a0-4 (-> (the-as (pointer uint32) (&+ *team-colors* (* (-> this team) 4)))))
+               )
+           (set! (-> a1-12 base-color x) (the-as int (shr (shr (shl a0-4 56) 56) 2)))
+           (set! (-> a1-12 base-color y) (the-as int (shr (shr (shl a0-4 48) 56) 2)))
+           (set! (-> a1-12 base-color z) (the-as int (shr (shr (shl a0-4 40) 56) 2)))
+           (set! (-> a1-12 base-color w) (the-as int (shr (shr a0-4 24) 2)))
+           )
+         (set! (-> v1-18 x) 128)
+         (set! (-> v1-18 y) 128)
+         (set! (-> v1-18 z) 128)
+         (set! (-> v1-18 w) 128)
+         )
+       )
+      (#t
+        (let ((s5-0 (-> *net-world* net-state players (-> this player-id))))
+          ((method-of-type car-rgb-color from-rgba!)
+           (-> *car-level-array* data gp-0 base-color)
+           (the-as rgba (-> s5-0 base-color))
+           )
+          (from-rgba! (-> *car-level-array* data gp-0 stripe-color) (the-as rgba (-> s5-0 stripe-color)))
+          )
+        )
+      (else
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 92 of type net-player
+;; WARN: Return type mismatch int vs minimap-class.
+(defmethod get-minimap-class ((this net-player))
+  (let ((v1-0 (the-as minimap-class (-> this team))))
+    (the-as minimap-class (cond
+                            ((= v1-0 (minimap-class none))
+                             1
+                             )
+                            ((= v1-0 (minimap-class racer-0))
+                             2
+                             )
+                            ((= v1-0 (minimap-class racer-1))
+                             3
+                             )
+                            ((= v1-0 (minimap-class racer-2))
+                             4
+                             )
+                            ((= v1-0 (minimap-class racer-3))
+                             5
+                             )
+                            ((= v1-0 (minimap-class racer-4))
+                             6
+                             )
+                            (else
+                              7
+                              )
+                            )
+            )
+    )
+  )
+
+;; definition for method 93 of type net-player
+(defmethod net-player-method-93 ((this net-player))
+  (let ((a0-2 (get-vehicle this)))
+    (when a0-2
+      (if (not (and (-> a0-2 next-state) (= (-> a0-2 next-state name) 'process-drawable-art-error)))
+          (vehicle-method-201 a0-2 this)
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 60 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod on-vehicle-spawn ((this net-player) (arg0 wvehicle))
+  (with-pp
+    (set! (-> this vehicle) (process->handle arg0))
+    (set! (-> this last-spawn-time) (the-as time-frame (- (- (if *net-mgr*
+                                                                 (-> *net-mgr* game-state time)
+                                                                 0
+                                                                 )
+                                                             (if *net-world*
+                                                                 (-> *net-world* net-state game-start-time)
+                                                                 0
+                                                                 )
+                                                             )
+                                                          (if *net-world*
+                                                              (-> *net-world* net-state total-pause-time)
+                                                              0
+                                                              )
+                                                          )
+                                            )
+          )
+    (set! (-> this next-spawn-time) (+ (current-time) (seconds 1)))
+    (logclear! (-> this flags) (net-player-flag endlessfall))
+    (let ((a2-0 (get-minimap-class this)))
+      (if a2-0
+          (set! (-> this map) (minimap-method-9 *minimap* arg0 (the-as int a2-0) #f #t 0))
+          )
+      )
+    (when (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+               (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                  )
+               )
+      (if (and (!= -1 (-> this mgr intro-end-time))
+               (< (-> this mgr intro-end-time) (- (- (if *net-mgr*
+                                                         (-> *net-mgr* game-state time)
+                                                         0
+                                                         )
+                                                     (if *net-world*
+                                                         (-> *net-world* net-state game-start-time)
+                                                         0
+                                                         )
+                                                     )
+                                                  (if *net-world*
+                                                      (-> *net-world* net-state total-pause-time)
+                                                      0
+                                                      )
+                                                  )
+                  )
+               )
+          (send-event
+            arg0
+            'set
+            'camera-inside-view
+            (-> *game-info* player-info (view-get-active-index) camera-inside-view)
+            )
+          (send-event arg0 'set 'camera-inside-view #f)
+          )
+      (cam-disconnect *setting-control* (view-get-active-index) pp 'interp-time)
+      (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
+      (set! (-> *ACTOR-bank* birth-max) 100)
+      (set! (-> *game-info* player-info (logand (-> this player-id) 1) vehicle) (process->handle arg0))
+      )
+    (net-player-method-93 this)
+    (when (-> this dead-camera-pos-valid)
+      (if (and *execute-regions* (-> *setting-control* user-current region-mode))
+          (region-tree-execute 'camera (-> this dead-camera-pos) (camera-pos))
+          )
+      (set! (-> this dead-camera-pos-valid) #f)
+      )
+    (+! (-> this spawn-count) 1)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 49 of type net-player
+(defmethod get-vehicle ((this net-player))
+  (the-as wvehicle (handle->process (-> this vehicle)))
+  )
+
+;; definition for method 50 of type net-player
+;; INFO: Used lq/sq
+(defmethod get-last-known-pos ((this net-player) (arg0 vector))
+  (set! (-> arg0 quad) (-> this last-known-pos quad))
+  (-> this last-known-pos-valid)
+  )
+
+;; definition for method 56 of type net-player
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-update ((this net-player) (arg0 wvehicle))
+  (when (-> arg0 nav)
+    (let ((s5-0 (-> arg0 root trans)))
+      (if (and (-> this last-known-pos-valid)
+               *execute-regions*
+               (-> *setting-control* user-current region-mode)
+               (not (paused?))
+               )
+          (region-tree-execute 'target (-> this last-known-pos) s5-0)
+          )
+      (set! (-> this last-known-pos quad) (-> s5-0 quad))
+      )
+    (set! (-> this last-known-pos-valid) #t)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod write-create-data ((this net-player) (arg0 mem-buffer))
+  (format 0 "net-player::encode construction... ~A~%" this)
+  (format 0 "team = ~d~%" (-> this team))
+  (net-player-method-46 this arg0)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-net-msg ((this net-player) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  (case arg0
+    (('state)
+     (net-player-method-47 this arg1)
+     )
+    (('score-changed)
+     (set! (-> this score) (read-int32 arg1))
+     (set! (-> *net-world* net-state green-room-stats scores (-> this player-num)) (the-as uint (-> this score)))
+     )
+    (('stats-changed)
+     (set! (-> this best-hang-time) (read-int32 arg1))
+     (set! (-> this best-power-slide) (read-float arg1))
+     (set! (-> this kills) (read-int32 arg1))
+     (set! (-> this deaths) (read-int32 arg1))
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for function playback-cam
+;; WARN: Return type mismatch int vs object.
+(defun playback-cam ((arg0 int))
+  (cond
+    ((< arg0 0)
+     (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) #f)
+     )
+    (else
+      (let ((a0-3 (-> *net-players* arg0)))
+        (when a0-3
+          (let ((v1-6 (get-vehicle a0-3)))
+            (when v1-6
+              (send-event (view-get-active-camera) 'change-target v1-6)
+              (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) 'cam-vehicle)
+              (logior!
+                (-> *setting-control* cam-settings (view-get-active-index) default slave-options)
+                (cam-slave-options RAPID_TRACKING)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function all-players-spawned-vehicles?
+(defun all-players-spawned-vehicles? ()
+  (dotimes (gp-0 *active-net-player-count*)
+    (if (not (get-vehicle (-> *active-net-players* gp-0)))
+        (return #f)
+        )
+    )
+  #t
+  )
+
+;; definition for function local-human-player-above-height?
+(defun local-human-player-above-height? ((arg0 net-player) (arg1 float))
+  (and (if (= (/ (-> arg0 player-id) 2) (if *net-mgr*
+                                            (-> *net-mgr* game-state local-machine-idx)
+                                            0
+                                            )
+              )
+           #t
+           #f
+           )
+       (and (-> arg0 last-known-pos-valid) (>= (-> arg0 last-known-pos y) arg1))
+       )
+  )
+
+;; definition for method 77 of type net-player
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vehicle-spawn-params vs none.
+(defmethod net-player-method-77 ((this net-player) (arg0 net-player-respawn-info) (arg1 vehicle-spawn-params))
+  (let ((s4-0 (if *net-world*
+                  (-> *net-world* net-state assigned-drivers-s8 (-> this player-id))
+                  -1
+                  )
+              )
+        )
+    (set! (-> arg1 behavior) (the-as uint 0))
+    (set! (-> arg1 nav-mesh) #f)
+    (set! (-> arg1 proc) #f)
+    (set! (-> arg1 handle) (the-as handle #f))
+    (set! (-> arg1 user-data) (the-as uint 0))
+    (set! (-> arg1 flags) (the-as uint 3))
+    (set! (-> arg1 entity) #f)
+    (set! (-> arg1 player-id) (-> this player-id))
+    (set! (-> arg1 velocity quad) (-> arg0 velocity quad))
+    (set! (-> arg1 position quad) (-> arg0 position quad))
+    (quaternion-copy! (-> arg1 rotation) (-> arg0 quat))
+    (set! (-> arg1 level-slot) 6)
+    (set! (-> arg1 driver-slot) (the-as uint 12))
+    (set! (-> arg1 driver-type) (-> *net-drivers* s4-0 dt))
+    )
+  (set! (-> arg1 impact-callback) #f)
+  (if (-> *game-info* fragile-vehicle)
+      (logior! (-> arg1 flags) 4)
+      )
+  (if (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+      (set! (-> arg1 behavior) (the-as uint 4))
+      (init-spawn-params this arg1)
+      )
+  (if (and (= *lobby-local-players* 2)
+           (not (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                     (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                      (-> *net-mgr* game-state local-machine-idx)
+                                                      0
+                                                      )
+                        )
+                     )
+                )
+           )
+      (logior! (-> arg1 flags) 8)
+      )
+  (set! (-> arg1 impact-callback) (-> this vehicle-impact-callback))
+  (none)
+  )
+
+;; definition for method 52 of type net-player
+(defmethod can-spawn-vehicle? ((this net-player))
+  (and (< (-> this next-spawn-time) (current-time))
+       (not (finish-scheduled? this))
+       (and (or (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                 (-> *net-mgr* game-state local-machine-idx)
+                                                 0
+                                                 )
+                   )
+                (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                     (= (if *net-mgr*
+                            (-> *net-mgr* game-state local-machine-idx)
+                            0
+                            )
+                        (-> *net-mgr* game-state session-master-idx)
+                        )
+                     )
+                )
+            (not (get-vehicle this))
+            (levels-loaded? *net-world*)
+            )
+       )
+  )
+
+;; definition for method 53 of type net-player
+(defmethod respawn ((this net-player))
+  (send-event (get-vehicle this) 'go 'die)
+  (when (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+             (= (/ (-> this player-id) 2) (if *net-mgr*
+                                              (-> *net-mgr* game-state local-machine-idx)
+                                              0
+                                              )
+                )
+             )
+    (if *suppress-vehicle-respawn*
+        (set! (-> *setting-control* cam-settings (view-get-active-index) default mode-name) 'cam-free-floating)
+        (setup
+          (-> *screen-filter-array* (logand (-> this player-id) 1))
+          (new 'static 'vector :w 127.0)
+          (new 'static 'vector :w 126.0)
+          0.0
+          (bucket-id debug-menu)
+          #xfffffe
+          #x50000
+          (the-as symbol 20)
+          )
+        )
+    )
+  (let ((s5-3 (new 'stack-no-clear 'net-player-respawn-info)))
+    (if (and (not *suppress-vehicle-respawn*)
+             (and (get-respawn-info this s5-3)
+                  (cond
+                    ((and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                     (let* ((s3-0 (logand (-> this player-id) 1))
+                            (s4-2 (-> *static-continues* s3-0))
+                            )
+                       (continue-point<-respawn-info! s5-3 s4-2)
+                       (set-continue! *game-info* s4-2 s3-0 #f)
+                       (set! (-> *net-world* cont) (-> *static-continues* s3-0))
+                       (when (and (zero? (-> *viewport-array* mode)) (not *in-end-of-race-preload*))
+                         (update-load-levels *net-world* #t)
+                         (want-levels *load-state* (-> *net-world-load-levels* data))
+                         (dotimes (s3-1 (-> s4-2 want-count))
+                           (want-display-level *load-state* (-> s4-2 want s3-1 name) (-> s4-2 want s3-1 display?))
+                           )
+                         )
+                       )
+                     (when (and (levels-loaded? *net-world*) (net-player-method-78 this s5-3))
+                       (net-player-method-69 this)
+                       #t
+                       )
+                     )
+                    (else
+                      (net-player-method-78 this s5-3)
+                      )
+                    )
+                  )
+             )
+        #t
+        )
+    )
+  )
+
+;; definition for method 78 of type net-player
+;; WARN: Return type mismatch vehicle vs symbol.
+(defmethod net-player-method-78 ((this net-player) (arg0 object))
+  (let ((s5-0 (new 'stack-no-clear 'vehicle-spawn-params))
+        (s4-0 (-> *net-world* net-state players (-> this player-id) vehicle-selection))
+        )
+    (net-player-method-77 this (the-as net-player-respawn-info arg0) s5-0)
+    (let ((s5-1 (vehicle-spawn (the-as vehicle-type (-> *net-vehicles* s4-0 vt)) s5-0)))
+      (the-as symbol (when s5-1
+                       (on-vehicle-spawn this (the-as wvehicle s5-1))
+                       s5-1
+                       )
+              )
+      )
+    )
+  )
+
+;; definition for method 59 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod init-spawn-params ((this net-player) (arg0 vehicle-spawn-params))
+  (set! (-> arg0 behavior) (the-as uint 3))
+  0
+  (none)
+  )
+
+;; definition for function find-ground-info
+;; INFO: Used lq/sq
+(defun find-ground-info ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float))
+  (let ((s5-0 (new 'stack-no-clear 'find-ground-info-stack)))
+    (set! (-> s5-0 radius) 4096.0)
+    (set! (-> s5-0 cquery start-pos quad) (-> arg2 quad))
+    (+! (-> s5-0 cquery start-pos y) (* (- 1.0 arg4) arg3))
+    (set-vector! (-> s5-0 cquery move-dist) 0.0 (- arg3) 0.0 1.0)
+    (let ((v1-4 (-> s5-0 cquery)))
+      (set! (-> v1-4 radius) (-> s5-0 radius))
+      (set! (-> v1-4 collide-with) (collide-spec backgnd))
+      (set! (-> v1-4 ignore-process0) #f)
+      (set! (-> v1-4 ignore-process1) #f)
+      (set! (-> v1-4 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-4 action-mask) (collide-action solid))
+      (set! (-> v1-4 nav-mesh) #f)
+      )
+    (let ((f0-9 (fill-and-probe-using-line-sphere *collide-cache* (-> s5-0 cquery))))
+      (cond
+        ((>= f0-9 0.0)
+         (vector+float*! arg0 (-> s5-0 cquery start-pos) (-> s5-0 cquery move-dist) f0-9)
+         (vector-! arg1 arg0 (-> s5-0 cquery best-other-tri intersect))
+         (vector-normalize! arg1 1.0)
+         (vector-cap-rotation! arg1 *up-vector* arg1 8192.0)
+         (set! (-> arg0 y) (- (-> arg0 y) (-> s5-0 radius)))
+         )
+        (else
+          (the-as float #f)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 57 of type net-player
+;; INFO: Used lq/sq
+(defmethod find-nav-mesh-pos ((this net-player) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let* ((s5-0 (new 'stack-no-clear 'collide-query))
+         (v1-1 (find-nav-mesh s5-0 arg1 81920.0 arg3 arg2 *collide-cache*))
+         )
+    (when v1-1
+      (set! (-> arg0 quad) (-> s5-0 best-other-tri intersect quad))
+      v1-1
+      )
+    )
+  )
+
+;; definition for method 58 of type net-player
+;; INFO: Used lq/sq
+(defmethod adjust-spawn-position ((this net-player) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector))
+  (local-vars (v1-39 symbol))
+  (let ((sv-16 this)
+        (sv-20 arg0)
+        (sv-24 arg1)
+        (sv-28 arg2)
+        (sv-80 (new 'stack-no-clear 'vector))
+        (sv-84 (new 'stack-no-clear 'vector))
+        )
+    (let ((sv-88 (new 'stack-no-clear 'vector)))
+      (let ((a0-2 (find-nav-mesh-pos sv-16 sv-80 arg3 20480.0 491520.0)))
+        (if (not a0-2)
+            (set! a0-2 (find-nav-mesh-pos sv-16 sv-80 arg4 81920.0 491520.0))
+            )
+        (cond
+          (a0-2
+            (when (not (nav-mesh-method-12 a0-2 sv-80 8192.0 sv-80))
+              (format 0 "ERROR: <DL> Failed to find valid nav-mesh position in net-player::adjust-spawn-position~%")
+              (return #f)
+              )
+            0
+            )
+          (else
+            (format 0 "WARNING: <DL> No nav-mesh found on respawn, using last known good position~%")
+            (set! (-> sv-80 quad) (-> arg4 quad))
+            )
+          )
+        )
+      (dotimes (gp-1 *active-net-player-count*)
+        (when (!= sv-16 (-> *active-net-players* gp-1))
+          (let ((a0-11 (get-vehicle (-> *active-net-players* gp-1))))
+            (when a0-11
+              (if (< (vector-vector-xz-distance (get-trans a0-11 0) sv-80) 81920.0)
+                  (return #f)
+                  )
+              )
+            )
+          )
+        )
+      (let ((a1-8 (new 'stack-no-clear 'collide-query)))
+        (new 'stack-no-clear 'vector)
+        (set! (-> a1-8 start-pos quad) (-> sv-80 quad))
+        (+! (-> a1-8 start-pos y) 40960.0)
+        (set-vector! (-> a1-8 move-dist) 0.0 -81920.0 0.0 1.0)
+        (let ((v1-32 a1-8))
+          (set! (-> v1-32 radius) 20480.0)
+          (set! (-> v1-32 collide-with) (collide-spec obstacle vehicle-sphere hit-by-others-list))
+          (set! (-> v1-32 ignore-process0) #f)
+          (set! (-> v1-32 ignore-process1) #f)
+          (set! (-> v1-32 ignore-pat)
+                (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                )
+          (set! (-> v1-32 action-mask) (collide-action solid))
+          (set! (-> v1-32 nav-mesh) #f)
+          )
+        (if (>= (fill-and-probe-using-line-sphere *collide-cache* a1-8) 0.0)
+            (return #f)
+            )
+        )
+      (dotimes (gp-2 4)
+        (when (find-ground-info
+                sv-84
+                sv-88
+                sv-80
+                (lerp-scale 81920.0 327680.0 (the float gp-2) 0.0 3.0)
+                (lerp-scale 0.5 0.75 (the float gp-2) 0.0 3.0)
+                )
+          (set! v1-39 #t)
+          (goto cfg-26)
+          )
+        )
+      (set! v1-39 #f)
+      (label cfg-26)
+      (when (not v1-39)
+        (cond
+          ((and (>= (-> sv-16 player-id) 0) (< (-> sv-16 player-id) 16))
+           (add-debug-sphere #t (bucket-id debug-no-zbuf1) sv-80 (meters 25) *color-yellow*)
+           (return #f)
+           )
+          (else
+            (set! (-> sv-84 quad) (-> sv-80 quad))
+            (set! (-> sv-88 quad) (-> *y-vector* quad))
+            )
+          )
+        )
+      (+! (-> sv-84 y) 8192.0)
+      (forward-up-nopitch->quaternion (the-as quaternion sv-24) sv-28 sv-88)
+      )
+    (quaternion-normalize! (the-as quaternion sv-24))
+    (set! (-> sv-20 quad) (-> sv-84 quad))
+    )
+  #t
+  )
+
+;; definition for method 61 of type net-player
+;; WARN: disable def twice: 6. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod player-score-higher? ((this net-player) (arg0 net-player))
+  (if (= (-> this score) (-> arg0 score))
+      (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+      (< (-> arg0 score) (-> this score))
+      )
+  )
+
+;; definition for method 80 of type net-player
+(defmethod player-score-same? ((this net-player) (arg0 net-player))
+  (= (-> this score) (-> arg0 score))
+  )
+
+;; definition for method 81 of type net-player
+(defmethod total-grand-prix-score-same? ((this net-player) (arg0 net-player))
+  (= (-> *game-info* cumulative-grand-prix-score-s32 (net-player-method-71 this))
+     (-> *game-info* cumulative-grand-prix-score-s32 (net-player-method-71 arg0))
+     )
+  )
+
+;; definition for method 79 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-79 ((this net-player) (arg0 vehicle))
+  0
+  (none)
+  )
+
+;; definition for method 71 of type net-player
+(defmethod net-player-method-71 ((this net-player))
+  (if (and *net-drivers* *net-world*)
+      (the-as int (-> *net-drivers*
+                      (if *net-world*
+                          (-> *net-world* net-state assigned-drivers-s8 (-> this player-id))
+                          -1
+                          )
+                      dt
+                      )
+              )
+      23
+      )
+  )
+
+;; definition for method 76 of type net-player
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 76 net-player) has a return type of none, but the expression builder found a return statement.
+(defmethod play-crash-speech ((this net-player))
+  (case (if *net-world*
+            (the-as int (-> *net-world* task-node-info net-play-mode))
+            18
+            )
+    ((15 16)
+     (return #f)
+     )
+    )
+  (let* ((s5-0 (!= (net-world-method-86 *net-world* 19) -1))
+         (s4-0 (!= (net-world-method-86 *net-world* 20) -1))
+         (v1-14 (net-player-method-71 this))
+         (s3-0 (if (or (= v1-14 1) (= v1-14 4) (= v1-14 8) (= v1-14 13))
+                   #f
+                   #t
+                   )
+               )
+         )
+    (when (not (send-event *net-game-mgr* 'game-finished?))
+      (cond
+        ((and (rand-vu-percent? 0.3) (not s5-0) (not s4-0))
+         (cond
+           ((or s5-0 (and (pecker-can-speak?) (rand-vu-percent? 0.5)))
+            (play-on-channel
+              *speech-control*
+              this
+              (the-as uint 7)
+              (speech-type announce-crash)
+              (the-as string #f)
+              s3-0
+              (seconds 1)
+              )
+            )
+           ((not s5-0)
+            (play-on-channel
+              *speech-control*
+              this
+              (the-as uint 6)
+              (speech-type announce-crash)
+              (the-as string #f)
+              s3-0
+              (seconds 1)
+              )
+            )
+           )
+         )
+        (else
+          (play-on-channel
+            *speech-control*
+            this
+            (-> this speech-id)
+            (speech-type crashing)
+            (the-as string #f)
+            #f
+            (seconds 1)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 82 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-82 ((this net-player))
+  (when (not (send-event *net-game-mgr* 'game-finished?))
+    (when (time-elapsed? (-> this last-speech-time) (seconds 20))
+      (play-on-channel
+        *speech-control*
+        this
+        (-> this speech-id)
+        (speech-type bumping)
+        (the-as string #f)
+        #f
+        (seconds 1)
+        )
+      (set-time! (-> this last-speech-time))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 83 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-83 ((this net-player))
+  0
+  (none)
+  )
+
+;; definition for method 85 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-85 ((this net-player))
+  (when (not (send-event *net-game-mgr* 'game-finished?))
+    (when (time-elapsed? (-> this last-speech-time) (seconds 25))
+      (play-on-channel
+        *speech-control*
+        this
+        (-> this speech-id)
+        (speech-type taking-hits)
+        (the-as string #f)
+        #f
+        (seconds 1)
+        )
+      (set-time! (-> this last-speech-time))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 86 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-86 ((this net-player))
+  (when (not (send-event *net-game-mgr* 'game-finished?))
+    (when (time-elapsed? (-> this last-speech-time) (seconds 25))
+      (let ((a0-5 (get-vehicle this)))
+        (when (and a0-5 (not (logtest? (-> a0-5 focus-status) (focus-status disable dead ignore inactive))))
+          (play-on-channel
+            *speech-control*
+            this
+            (-> this speech-id)
+            (speech-type shooting)
+            (the-as string #f)
+            #f
+            (seconds 1)
+            )
+          (set-time! (-> this last-speech-time))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 87 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-87 ((this net-player))
+  0
+  (none)
+  )
+
+;; definition for method 88 of type net-player
+;; WARN: Return type mismatch int vs none.
+(defmethod net-player-method-88 ((this net-player))
+  (when (not (send-event *net-game-mgr* 'game-finished?))
+    (play-on-channel
+      *speech-control*
+      this
+      (-> this speech-id)
+      (speech-type hangtime)
+      (the-as string #f)
+      #f
+      (seconds 1)
+      )
+    (set-time! (-> this last-speech-time))
+    )
+  0
+  (none)
+  )
+
+;; definition for function get-player-pos
+(defun get-player-pos ((arg0 int))
+  (cond
+    (*net-world*
+      (let ((v1-8 (-> *net-players* (+ arg0 (* (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                                               2
+                                               )
+                                       )
+                      )
+                  )
+            )
+        (if (and v1-8 (and (nonzero? v1-8) (-> v1-8 last-known-pos-valid)))
+            (-> v1-8 last-known-pos)
+            (camera-pos)
+            )
+        )
+      )
+    (else
+      (camera-pos)
+      )
+    )
+  )
+
+;; definition of type vehicle-rev-manager
+(deftype vehicle-rev-manager (process)
+  ((vehicle      handle)
+   (state-time   uint32)
+   (throttle     float)
+   (on-period    uint32)
+   (off-period   uint32)
+   (long-period  uint32)
+   (wait-period  uint32)
+   (pulse-count  int8)
+   (i-pulse      int8)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (vehicle-rev-manager-method-16 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type vehicle-rev-manager
+(defmethod inspect ((this vehicle-rev-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tvehicle: ~D~%" (-> this vehicle))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tthrottle: ~f~%" (-> this throttle))
+  (format #t "~2Ton-period: ~D~%" (-> this on-period))
+  (format #t "~2Toff-period: ~D~%" (-> this off-period))
+  (format #t "~2Tlong-period: ~D~%" (-> this long-period))
+  (format #t "~2Twait-period: ~D~%" (-> this wait-period))
+  (format #t "~2Tpulse-count: ~D~%" (-> this pulse-count))
+  (format #t "~2Ti-pulse: ~D~%" (-> this i-pulse))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 16 of type vehicle-rev-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-rev-manager-method-16 ((this vehicle-rev-manager))
+  (set! (-> this long-period) (the-as uint 90))
+  (set! (-> this on-period) (the-as uint 45))
+  (set! (-> this off-period) (the-as uint 45))
+  (set! (-> this wait-period) (the-as uint 600))
+  (let ((s5-0 (new 'stack-no-clear 'array 'uint32 1)))
+    (set! (-> s5-0 0) (the-as uint (current-time)))
+    (when (>= (-> s5-0 0) (-> this state-time))
+      (cond
+        ((= (-> this throttle) 0.0)
+         (set! (-> this throttle) 1.0)
+         (set! (-> this state-time) (+ (-> s5-0 0) (-> this on-period) (rand-vu-int-count 30)))
+         (if (zero? (-> this i-pulse))
+             (set! (-> this state-time) (+ (-> s5-0 0) (-> this long-period) (rand-vu-int-count 90)))
+             )
+         )
+        (else
+          (set! (-> this throttle) 0.0)
+          (set! (-> this state-time) (+ (-> s5-0 0) (-> this off-period) (rand-vu-int-count 30)))
+          (+! (-> this i-pulse) 1)
+          (when (>= (-> this i-pulse) (-> this pulse-count))
+            (set! (-> this i-pulse) 0)
+            (set! (-> this pulse-count) (rand-vu-int-range 2 4))
+            (set! (-> this state-time) (+ (-> s5-0 0) (the int (* 300.0 (rand-vu-float-range 1.5 3.0)))))
+            )
+          )
+        )
+      (send-event (the-as vehicle (handle->process (-> this vehicle))) 'set 'throttle (-> this throttle))
+      )
+    )
+  0
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (vehicle-rev-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (deactivate self)
+       )
+      )
+    )
+  :enter (behavior ()
+    (send-event (the-as vehicle (handle->process (-> self vehicle))) 'set 'throttle (-> self throttle))
+    )
+  :trans (behavior ()
+    (vehicle-rev-manager-method-16 self)
+    )
+  :code sleep-code
+  )
+
+;; definition for function vehicle-rev-manager-init-by-other
+(defbehavior vehicle-rev-manager-init-by-other vehicle-rev-manager ((arg0 process) (arg1 time-frame))
+  (stack-size-set! (-> self main-thread) 128)
+  (set! (-> self vehicle) (process->handle arg0))
+  (set! (-> self throttle) 0.0)
+  (set! (-> self i-pulse) 0)
+  (set! (-> self pulse-count) 3)
+  (set! (-> self state-time) (the-as uint (+ (current-time) arg1)))
+  (go-virtual idle)
+  )
+
+;; definition for function vehicle-rev-manager-spawn
+;; WARN: Return type mismatch process vs vehicle-rev-manager.
+(defun vehicle-rev-manager-spawn ((arg0 process) (arg1 time-frame))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn vehicle-rev-manager arg0 arg1 :name "vehicle-rev-manager" :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as vehicle-rev-manager gp-0)
+    )
+  )

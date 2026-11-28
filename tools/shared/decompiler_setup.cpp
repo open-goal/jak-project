@@ -43,6 +43,9 @@ std::unique_ptr<ObjectFileDB> load_object_file_db(Config& config, const fs::path
   if (config.process_part_group_table && !config.part_group_table.empty()) {
     db->dts.part_group_table = config.part_group_table;
   }
+  if (!config.sound_info_names.empty()) {
+    db->dts.sound_info_names = config.sound_info_names;
+  }
   if (config.process_tpages && !config.texture_info_dump.empty()) {
     db->dts.textures = config.texture_info_dump;
   }

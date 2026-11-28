@@ -3,7 +3,7 @@
 
 ;; definition of type deathmatch-spawner
 (deftype deathmatch-spawner (structure)
-  ((entity           entity)
+  ((entity           entity-actor)
    (next-spawn-time  time-frame)
    )
   )
@@ -46,17 +46,17 @@
 
 ;; definition of type net-player-deathmatch
 (deftype net-player-deathmatch (net-player)
-  ((target-vehicle      uint64)
-   (last-attack-time    uint64)
-   (last-attacker       uint64)
-   (dropdown-score      uint64)
+  ((target-vehicle      handle)
+   (last-attack-time    time-frame)
+   (last-attacker       handle)
+   (dropdown-score      handle)
    (next-spawn-seed     int32)
    (last-push-time      int32)
-   (free-powerup-timer  uint64)
+   (free-powerup-timer  time-frame)
    )
   (:methods
-    (net-player-deathmatch-method-98 () none)
-    (net-player-deathmatch-method-99 () none)
+    (pick-target (_type_ vector vector) wvehicle)
+    (find-spawn-pos (_type_ vector quaternion) symbol)
     )
   )
 
@@ -81,17 +81,16 @@
   )
 
 ;; definition for function net-player-deathmatch-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-deathmatch-init-remote net-player-deathmatch ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-deathmatch
-(defmethod process-nettable-method-41 ((this net-player-deathmatch) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-deathmatch) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-player-deathmatch
                        :init net-player-deathmatch-init-remote
@@ -103,7 +102,7 @@
 
 ;; definition for method 37 of type net-player-deathmatch
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-deathmatch) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-deathmatch) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -129,7 +128,7 @@
 (net-process-class-register *net-process-class-info-net-player-deathmatch*)
 
 ;; definition for method 40 of type net-player-deathmatch
-(defmethod process-nettable-method-40 ((this net-player-deathmatch))
+(defmethod get-class-info ((this net-player-deathmatch))
   *net-process-class-info-net-player-deathmatch*
   )
 
@@ -138,11 +137,13 @@
   ((spawner-array  deathmatch-spawner-array)
    (spawner-count  int8)
    )
+  (:state-methods
+    waiting-game-start
+    )
   (:methods
-    (net-game-mgr-deathmatch-method-80 () none)
-    (net-game-mgr-deathmatch-method-81 () none)
-    (net-game-mgr-deathmatch-method-82 () none)
-    (net-game-mgr-deathmatch-method-83 () none)
+    (init-spawners (_type_) none)
+    (pick-spawner (_type_ process int int int) int)
+    (get-spawn-transform (_type_ vector quaternion process int) symbol)
     )
   )
 
@@ -162,17 +163,16 @@
   )
 
 ;; definition for function net-game-mgr-deathmatch-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-deathmatch-init-remote net-game-mgr-deathmatch ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-deathmatch
-(defmethod process-nettable-method-41 ((this net-game-mgr-deathmatch) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-deathmatch) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-deathmatch
                        :init net-game-mgr-deathmatch-init-remote
@@ -184,7 +184,7 @@
 
 ;; definition for method 37 of type net-game-mgr-deathmatch
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-deathmatch) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-deathmatch) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawner-time-update)
   (+! (-> arg0 msg-count) 1)
   0
@@ -212,13 +212,14 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-deathmatch*)
 
 ;; definition for method 40 of type net-game-mgr-deathmatch
-(defmethod process-nettable-method-40 ((this net-game-mgr-deathmatch))
+(defmethod get-class-info ((this net-game-mgr-deathmatch))
   *net-process-class-info-net-game-mgr-deathmatch*
   )
 
 ;; definition of type net-player-assassin
 (deftype net-player-assassin (net-player-deathmatch)
-  ()
+  ((mgr  net-game-mgr-assassin :override)
+   )
   )
 
 ;; definition for method 3 of type net-player-assassin
@@ -235,17 +236,16 @@
   )
 
 ;; definition for function net-player-assassin-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-assassin-init-remote net-player-assassin ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-assassin
-(defmethod process-nettable-method-41 ((this net-player-assassin) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-assassin) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-assassin :init net-player-assassin-init-remote arg0 :name "net-player-assassin")
     )
@@ -253,7 +253,7 @@
 
 ;; definition for method 37 of type net-player-assassin
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-assassin) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-assassin) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -277,7 +277,7 @@
 (net-process-class-register *net-process-class-info-net-player-assassin*)
 
 ;; definition for method 40 of type net-player-assassin
-(defmethod process-nettable-method-40 ((this net-player-assassin))
+(defmethod get-class-info ((this net-player-assassin))
   *net-process-class-info-net-player-assassin*
   )
 
@@ -286,8 +286,8 @@
   ((mark  int8  24 :offset 309)
    )
   (:methods
-    (net-game-mgr-assassin-method-84 () none)
-    (net-game-mgr-assassin-method-85 () none)
+    (net-game-mgr-assassin-method-84 (_type_) none)
+    (net-game-mgr-assassin-method-85 (_type_ int) int)
     )
   )
 
@@ -309,17 +309,16 @@
   )
 
 ;; definition for function net-game-mgr-assassin-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-assassin-init-remote net-game-mgr-assassin ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-assassin
-(defmethod process-nettable-method-41 ((this net-game-mgr-assassin) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-assassin) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-assassin
                        :init net-game-mgr-assassin-init-remote
@@ -331,7 +330,7 @@
 
 ;; definition for method 37 of type net-game-mgr-assassin
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-assassin) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-assassin) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -357,7 +356,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-assassin*)
 
 ;; definition for method 40 of type net-game-mgr-assassin
-(defmethod process-nettable-method-40 ((this net-game-mgr-assassin))
+(defmethod get-class-info ((this net-game-mgr-assassin))
   *net-process-class-info-net-game-mgr-assassin*
   )
 
@@ -397,17 +396,16 @@
   )
 
 ;; definition for function net-player-deathrace-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-deathrace-init-remote net-player-deathrace ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-deathrace
-(defmethod process-nettable-method-41 ((this net-player-deathrace) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-deathrace) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-deathrace :init net-player-deathrace-init-remote arg0 :name "net-player-deathrace")
     )
@@ -415,7 +413,7 @@
 
 ;; definition for method 37 of type net-player-deathrace
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-deathrace) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-deathrace) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -439,7 +437,7 @@
 (net-process-class-register *net-process-class-info-net-player-deathrace*)
 
 ;; definition for method 40 of type net-player-deathrace
-(defmethod process-nettable-method-40 ((this net-player-deathrace))
+(defmethod get-class-info ((this net-player-deathrace))
   *net-process-class-info-net-player-deathrace*
   )
 
@@ -464,17 +462,16 @@
   )
 
 ;; definition for function net-game-mgr-deathrace-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-deathrace-init-remote net-game-mgr-deathrace ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-deathrace
-(defmethod process-nettable-method-41 ((this net-game-mgr-deathrace) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-deathrace) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-deathrace
                        :init net-game-mgr-deathrace-init-remote
@@ -486,7 +483,7 @@
 
 ;; definition for method 37 of type net-game-mgr-deathrace
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-deathrace) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-deathrace) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-next-drone-spawn-time)
   (+! (-> arg0 msg-count) 1)
   0
@@ -514,7 +511,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-deathrace*)
 
 ;; definition for method 40 of type net-game-mgr-deathrace
-(defmethod process-nettable-method-40 ((this net-game-mgr-deathrace))
+(defmethod get-class-info ((this net-game-mgr-deathrace))
   *net-process-class-info-net-game-mgr-deathrace*
   )
 
@@ -550,17 +547,16 @@
   )
 
 ;; definition for function net-game-mgr-football-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-football-init-remote net-game-mgr-football ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-football
-(defmethod process-nettable-method-41 ((this net-game-mgr-football) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-football) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-football
                        :init net-game-mgr-football-init-remote
@@ -572,7 +568,7 @@
 
 ;; definition for method 37 of type net-game-mgr-football
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-football) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-football) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -598,7 +594,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-football*)
 
 ;; definition for method 40 of type net-game-mgr-football
-(defmethod process-nettable-method-40 ((this net-game-mgr-football))
+(defmethod get-class-info ((this net-game-mgr-football))
   *net-process-class-info-net-game-mgr-football*
   )
 
@@ -639,17 +635,16 @@
   )
 
 ;; definition for function net-player-football-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-football-init-remote net-player-football ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-football
-(defmethod process-nettable-method-41 ((this net-player-football) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-football) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-football :init net-player-football-init-remote arg0 :name "net-player-football")
     )
@@ -657,7 +652,7 @@
 
 ;; definition for method 37 of type net-player-football
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-football) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-football) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -681,7 +676,7 @@
 (net-process-class-register *net-process-class-info-net-player-football*)
 
 ;; definition for method 40 of type net-player-football
-(defmethod process-nettable-method-40 ((this net-player-football))
+(defmethod get-class-info ((this net-player-football))
   *net-process-class-info-net-player-football*
   )
 
@@ -706,17 +701,16 @@
   )
 
 ;; definition for function powercell-dispenser-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior powercell-dispenser-init-remote powercell-dispenser ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type powercell-dispenser
-(defmethod process-nettable-method-41 ((this powercell-dispenser) (arg0 mem-buffer))
+(defmethod spawn-remote ((this powercell-dispenser) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn powercell-dispenser :init powercell-dispenser-init-remote arg0 :name "powercell-dispenser")
     )
@@ -724,7 +718,7 @@
 
 ;; definition for method 37 of type powercell-dispenser
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this powercell-dispenser) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this powercell-dispenser) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -748,7 +742,7 @@
 (net-process-class-register *net-process-class-info-powercell-dispenser*)
 
 ;; definition for method 40 of type powercell-dispenser
-(defmethod process-nettable-method-40 ((this powercell-dispenser))
+(defmethod get-class-info ((this powercell-dispenser))
   *net-process-class-info-powercell-dispenser*
   )
 
@@ -776,17 +770,16 @@
   )
 
 ;; definition for function powercell-dispenser-draw-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior powercell-dispenser-draw-init-remote powercell-dispenser-draw ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type powercell-dispenser-draw
-(defmethod process-nettable-method-41 ((this powercell-dispenser-draw) (arg0 mem-buffer))
+(defmethod spawn-remote ((this powercell-dispenser-draw) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        powercell-dispenser-draw
                        :init powercell-dispenser-draw-init-remote
@@ -798,7 +791,7 @@
 
 ;; definition for method 37 of type powercell-dispenser-draw
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this powercell-dispenser-draw) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this powercell-dispenser-draw) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -824,13 +817,13 @@
 (net-process-class-register *net-process-class-info-powercell-dispenser-draw*)
 
 ;; definition for method 40 of type powercell-dispenser-draw
-(defmethod process-nettable-method-40 ((this powercell-dispenser-draw))
+(defmethod get-class-info ((this powercell-dispenser-draw))
   *net-process-class-info-powercell-dispenser-draw*
   )
 
 ;; definition of type powercell-footie
 (deftype powercell-footie (rigid-body-object)
-  ((owner       uint64)
+  ((owner       handle)
    (plyid       int8)
    (tip-vel     vector  :inline)
    (spring-pos  vector  :inline)
@@ -865,17 +858,16 @@
   )
 
 ;; definition for function powercell-footie-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior powercell-footie-init-remote powercell-footie ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type powercell-footie
-(defmethod process-nettable-method-41 ((this powercell-footie) (arg0 mem-buffer))
+(defmethod spawn-remote ((this powercell-footie) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn powercell-footie :init powercell-footie-init-remote arg0 :name "powercell-footie")
     )
@@ -883,7 +875,7 @@
 
 ;; definition for method 37 of type powercell-footie
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this powercell-footie) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this powercell-footie) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -907,13 +899,14 @@
 (net-process-class-register *net-process-class-info-powercell-footie*)
 
 ;; definition for method 40 of type powercell-footie
-(defmethod process-nettable-method-40 ((this powercell-footie))
+(defmethod get-class-info ((this powercell-footie))
   *net-process-class-info-powercell-footie*
   )
 
 ;; definition of type net-player-artifact
 (deftype net-player-artifact (net-player-deathmatch)
-  ((seek-after  int32)
+  ((mgr         net-game-mgr-artifact :override)
+   (seek-after  int32)
    )
   )
 
@@ -932,17 +925,16 @@
   )
 
 ;; definition for function net-player-artifact-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-artifact-init-remote net-player-artifact ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-artifact
-(defmethod process-nettable-method-41 ((this net-player-artifact) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-artifact) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-artifact :init net-player-artifact-init-remote arg0 :name "net-player-artifact")
     )
@@ -950,7 +942,7 @@
 
 ;; definition for method 37 of type net-player-artifact
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-artifact) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-artifact) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -974,13 +966,13 @@
 (net-process-class-register *net-process-class-info-net-player-artifact*)
 
 ;; definition for method 40 of type net-player-artifact
-(defmethod process-nettable-method-40 ((this net-player-artifact))
+(defmethod get-class-info ((this net-player-artifact))
   *net-process-class-info-net-player-artifact*
   )
 
 ;; definition of type artifact-location-array
 (deftype artifact-location-array (inline-array-class)
-  ((data  net-player-artifact  :dynamic)
+  ((data  vector  :inline :dynamic)
    )
   )
 
@@ -1003,17 +995,17 @@
 
 ;; definition of type net-game-mgr-artifact
 (deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
-  ((artifact-location-array  basic)
+  ((artifact-location-array  artifact-location-array)
    (artifact-location-count  int8)
    (artifact                 handle  6)
    (num-artifacts            int32)
    (last-artifact-index      int32)
    (last-position-index      int32   6)
-   (special-rule             basic)
+   (special-rule             symbol)
    )
   (:methods
-    (net-game-mgr-artifact-method-84 () none)
-    (net-game-mgr-artifact-method-85 () none)
+    (net-game-mgr-artifact-method-84 (_type_ int int) artifact)
+    (net-game-mgr-artifact-method-85 (_type_) none)
     )
   )
 
@@ -1038,17 +1030,16 @@
   )
 
 ;; definition for function net-game-mgr-artifact-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-artifact-init-remote net-game-mgr-artifact ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-artifact
-(defmethod process-nettable-method-41 ((this net-game-mgr-artifact) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-artifact) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-artifact
                        :init net-game-mgr-artifact-init-remote
@@ -1060,7 +1051,7 @@
 
 ;; definition for method 37 of type net-game-mgr-artifact
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-artifact) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-artifact) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'spawn-new-artifact)
   (+! (-> arg0 msg-count) 1)
   0
@@ -1088,7 +1079,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-artifact*)
 
 ;; definition for method 40 of type net-game-mgr-artifact
-(defmethod process-nettable-method-40 ((this net-game-mgr-artifact))
+(defmethod get-class-info ((this net-game-mgr-artifact))
   *net-process-class-info-net-game-mgr-artifact*
   )
 
@@ -1097,7 +1088,7 @@
   ((prev-send-score       int32)
    (last-score-send-time  int32)
    (big-air-launch-time   int32)
-   (in-big-air            basic)
+   (in-big-air            symbol)
    (last-fly-time         int32)
    )
   )
@@ -1121,17 +1112,16 @@
   )
 
 ;; definition for function net-player-beasthunt-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-beasthunt-init-remote net-player-beasthunt ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-beasthunt
-(defmethod process-nettable-method-41 ((this net-player-beasthunt) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-beasthunt) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-beasthunt :init net-player-beasthunt-init-remote arg0 :name "net-player-beasthunt")
     )
@@ -1139,7 +1129,7 @@
 
 ;; definition for method 37 of type net-player-beasthunt
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-beasthunt) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-beasthunt) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -1163,7 +1153,7 @@
 (net-process-class-register *net-process-class-info-net-player-beasthunt*)
 
 ;; definition for method 40 of type net-player-beasthunt
-(defmethod process-nettable-method-40 ((this net-player-beasthunt))
+(defmethod get-class-info ((this net-player-beasthunt))
   *net-process-class-info-net-player-beasthunt*
   )
 
@@ -1186,17 +1176,16 @@
   )
 
 ;; definition for function net-game-mgr-beasthunt-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-beasthunt-init-remote net-game-mgr-beasthunt ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-beasthunt
-(defmethod process-nettable-method-41 ((this net-game-mgr-beasthunt) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-beasthunt) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-beasthunt
                        :init net-game-mgr-beasthunt-init-remote
@@ -1208,7 +1197,7 @@
 
 ;; definition for method 37 of type net-game-mgr-beasthunt
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-beasthunt) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-beasthunt) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -1234,7 +1223,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-beasthunt*)
 
 ;; definition for method 40 of type net-game-mgr-beasthunt
-(defmethod process-nettable-method-40 ((this net-game-mgr-beasthunt))
+(defmethod get-class-info ((this net-game-mgr-beasthunt))
   *net-process-class-info-net-game-mgr-beasthunt*
   )
 
@@ -1257,17 +1246,16 @@
   )
 
 ;; definition for function net-player-collectable-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-player-collectable-init-remote net-player-collectable ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-player-collectable
-(defmethod process-nettable-method-41 ((this net-player-collectable) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-collectable) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-player-collectable
                        :init net-player-collectable-init-remote
@@ -1279,7 +1267,7 @@
 
 ;; definition for method 37 of type net-player-collectable
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-collectable) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-collectable) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -1305,7 +1293,7 @@
 (net-process-class-register *net-process-class-info-net-player-collectable*)
 
 ;; definition for method 40 of type net-player-collectable
-(defmethod process-nettable-method-40 ((this net-player-collectable))
+(defmethod get-class-info ((this net-player-collectable))
   *net-process-class-info-net-player-collectable*
   )
 
@@ -1330,17 +1318,16 @@
   )
 
 ;; definition for function net-game-mgr-collectable-init-remote
-;; WARN: Return type mismatch int vs none.
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-game-mgr-collectable-init-remote net-game-mgr-collectable ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-collectable
-(defmethod process-nettable-method-41 ((this net-game-mgr-collectable) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-collectable) (arg0 mem-buffer))
   (ppointer->process (process-spawn
                        net-game-mgr-collectable
                        :init net-game-mgr-collectable-init-remote
@@ -1352,7 +1339,7 @@
 
 ;; definition for method 37 of type net-game-mgr-collectable
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-collectable) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-collectable) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -1378,6 +1365,6 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-collectable*)
 
 ;; definition for method 40 of type net-game-mgr-collectable
-(defmethod process-nettable-method-40 ((this net-game-mgr-collectable))
+(defmethod get-class-info ((this net-game-mgr-collectable))
   *net-process-class-info-net-game-mgr-collectable*
   )

@@ -7,3 +7,4341 @@
 
 ;; DECOMP BEGINS
 
+(deftype spawn-point (process)
+  ()
+  )
+
+
+(defmethod set-intro-camera ((this net-game-mgr-deathmatch))
+  (with-pp
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs 0 0.0)
+    (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-battle-intro 0 0.0)
+    (none)
+    )
+  )
+
+(defmethod net-game-mgr-method-65 ((this net-game-mgr-deathmatch) (arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (cond
+         ((logtest? (-> *net-world* net-state options advanced-options flags)
+                    (game-task-advanced-options-flag score-limit)
+                    )
+          (format
+            (clear *temp-string*)
+            "~s:  ~d"
+            (lookup-text! *common-text* (text-id text-id-2533) #f)
+            (-> *net-world* net-state options advanced-options param2)
+            )
+          *temp-string*
+          )
+         (else
+           (format (clear *temp-string*) "")
+           *temp-string*
+           )
+         )
+       )
+      ((= v1-0 2)
+       (cond
+         ((logtest? (-> *net-world* net-state flags) 4)
+          (format
+            (clear *temp-string*)
+            "~s:  ~s"
+            (lookup-text! *common-text* (text-id text-id-3778) #f)
+            (if (logtest? (-> *net-world* net-state options advanced-options flags)
+                          (game-task-advanced-options-flag friendly-fire)
+                          )
+                (lookup-text! *common-text* (text-id text-id-37) #f)
+                (lookup-text! *common-text* (text-id text-id-38) #f)
+                )
+            )
+          *temp-string*
+          )
+         (else
+           (format (clear *temp-string*) "")
+           *temp-string*
+           )
+         )
+       )
+      ((= v1-0 1)
+       (cond
+         ((and (logtest? (-> *net-world* net-state options advanced-options flags)
+                         (game-task-advanced-options-flag time-limit)
+                         )
+               (logtest? (-> *net-world* net-state flags) 4)
+               )
+          (let ((s4-2 (-> *net-world* net-state options advanced-options param1)))
+            (format
+              (clear *temp-string*)
+              "~s:  ~d ~s"
+              (lookup-text! *common-text* (text-id text-id-2491) #f)
+              s4-2
+              (if (= s4-2 1)
+                  (lookup-text! *common-text* (text-id text-id-4915) #f)
+                  (lookup-text! *common-text* (text-id text-id-3889) #f)
+                  )
+              )
+            )
+          *temp-string*
+          )
+         (else
+           (format (clear *temp-string*) "")
+           *temp-string*
+           )
+         )
+       )
+      ((= v1-0 3)
+       (cond
+         ((and (logtest? (-> *net-world* net-state options advanced-options flags)
+                         (game-task-advanced-options-flag time-limit)
+                         )
+               (not (logtest? (-> *net-world* net-state flags) 4))
+               )
+          (let ((s4-3 (-> *net-world* net-state options advanced-options param1)))
+            (format
+              (clear *temp-string*)
+              "~s:  ~d ~s"
+              (lookup-text! *common-text* (text-id text-id-2491) #f)
+              s4-3
+              (if (= s4-3 1)
+                  (lookup-text! *common-text* (text-id text-id-4915) #f)
+                  (lookup-text! *common-text* (text-id text-id-3889) #f)
+                  )
+              )
+            )
+          *temp-string*
+          )
+         (else
+           (format (clear *temp-string*) "")
+           *temp-string*
+           )
+         )
+       )
+      (else
+        (format (clear *temp-string*) "")
+        *temp-string*
+        )
+      )
+    )
+  )
+
+(defstate startup (net-game-mgr-deathmatch)
+  :virtual #t
+  :code (behavior ()
+    (when (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+      (wait-for-all-net-players)
+      (let ((gp-0 (alloc-msg self 'set-intro-end-time)))
+        (write-int32 gp-0 (+ (- (- (if *net-mgr*
+                                       (-> *net-mgr* game-state time)
+                                       0
+                                       )
+                                   (if *net-world*
+                                       (-> *net-world* net-state game-start-time)
+                                       0
+                                       )
+                                   )
+                                (if *net-world*
+                                    (-> *net-world* net-state total-pause-time)
+                                    0
+                                    )
+                                )
+                             (the int (get-intro-duration self))
+                             )
+                     )
+        (send-msg self gp-0 -1 80)
+        (free-msg self gp-0)
+        )
+      )
+    (until (!= (-> self intro-end-time) -1)
+      (suspend)
+      )
+    (finish-startup self)
+    (until #f
+      (let ((a0-17 (-> *net-players* (* (if *net-mgr*
+                                            (-> *net-mgr* game-state local-machine-idx)
+                                            0
+                                            )
+                                        2
+                                        )
+                       )
+                   )
+            )
+        (when a0-17
+          (when (get-vehicle a0-17)
+            #t
+            (goto cfg-24)
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (label cfg-24)
+    (suspend-for (seconds 0.067)
+      )
+    (go-virtual waiting-game-start)
+    )
+  )
+
+(defstate waiting-game-start (net-game-mgr-deathmatch)
+  :virtual #t
+  :event net-game-mgr-default-handler
+  :enter (behavior ()
+    (cond
+      ((= (-> *viewport-array* mode) 1)
+       (spawn-hud-top-split-bar)
+       )
+      ((= (-> *viewport-array* mode) 2)
+       (spawn-hud-side-split-bar)
+       )
+      )
+    (dotimes (gp-0 *view-count*)
+      (view-push-context gp-0)
+      (cam-reconnect *setting-control* (view-get-active-index) self 'interp-time 'abs 0 0.0)
+      (set-intro-camera self)
+      (view-pop-context)
+      )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (when (= (-> *net-mgr* game-type) 4)
+      (when (and (not (paused?))
+                 (not (and (nonzero? (+ (-> self intro-end-time) -600 1))
+                           (>= (- (- (- (if *net-mgr*
+                                            (-> *net-mgr* game-state time)
+                                            0
+                                            )
+                                        (if *net-world*
+                                            (-> *net-world* net-state game-start-time)
+                                            0
+                                            )
+                                        )
+                                     (if *net-world*
+                                         (-> *net-world* net-state total-pause-time)
+                                         0
+                                         )
+                                     )
+                                  (+ (-> self intro-end-time) -600)
+                                  )
+                               0
+                               )
+                           )
+                      )
+                 (cpad-pressed? (view-get-active-index) x)
+                 )
+        (set-blackout-frames 0)
+        (dotimes (gp-2 *view-count*)
+          (view-push-context gp-2)
+          (set! *teleport* #t)
+          (cam-connect-pers
+            *setting-control*
+            (view-get-active-index)
+            'interp-time
+            (seconds 0.1)
+            'interp-time
+            'abs
+            0.0
+            0
+            )
+          (cam-disconnect *setting-control* (view-get-active-index) self 'interp-time)
+          (cam-disconnect *setting-control* (view-get-active-index) self 'mode-name)
+          (view-pop-context)
+          )
+        (set! (-> self intro-end-time) (+ (- (- 75 (if *net-world*
+                                                       (-> *net-world* net-state total-pause-time)
+                                                       0
+                                                       )
+                                                )
+                                             (if *net-world*
+                                                 (-> *net-world* net-state game-start-time)
+                                                 0
+                                                 )
+                                             )
+                                          (if *net-mgr*
+                                              (-> *net-mgr* game-state time)
+                                              0
+                                              )
+                                          )
+              )
+        (kill-current-talker '() '() 'exit)
+        )
+      )
+    (when (and (!= (-> self intro-end-time) -1) (>= (- (- (- (if *net-mgr*
+                                                                 (-> *net-mgr* game-state time)
+                                                                 0
+                                                                 )
+                                                             (if *net-world*
+                                                                 (-> *net-world* net-state game-start-time)
+                                                                 0
+                                                                 )
+                                                             )
+                                                          (if *net-world*
+                                                              (-> *net-world* net-state total-pause-time)
+                                                              0
+                                                              )
+                                                          )
+                                                       (-> self intro-end-time)
+                                                       )
+                                                    0
+                                                    )
+               )
+      (dotimes (gp-3 *view-count*)
+        (view-push-context gp-3)
+        (cam-connect-pers
+          *setting-control*
+          (view-get-active-index)
+          'interp-time
+          (seconds 2)
+          'interp-time
+          'abs
+          570.0
+          0
+          )
+        (cam-disconnect *setting-control* (view-get-active-index) self 'interp-time)
+        (cam-disconnect *setting-control* (view-get-active-index) self 'mode-name)
+        (view-pop-context)
+        )
+      (go-virtual running)
+      )
+    (if (and (!= (-> self scheduled-finish-time) -1) (>= (- (- (- (if *net-mgr*
+                                                                      (-> *net-mgr* game-state time)
+                                                                      0
+                                                                      )
+                                                                  (if *net-world*
+                                                                      (-> *net-world* net-state game-start-time)
+                                                                      0
+                                                                      )
+                                                                  )
+                                                               (if *net-world*
+                                                                   (-> *net-world* net-state total-pause-time)
+                                                                   0
+                                                                   )
+                                                               )
+                                                            (-> self scheduled-finish-time)
+                                                            )
+                                                         0
+                                                         )
+             )
+        (reset-game-now)
+        )
+    )
+  :code (behavior ()
+    (while (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+               (!= (-> *setting-control* user-current bg-a) 0.0)
+               (!= (-> *setting-control* user-current bg-a-force) 0.0)
+               )
+      (suspend)
+      )
+    (suspend-for (seconds 1.5)
+      )
+    (when (not (or (= (if *net-world*
+                          (the-as int (-> *net-world* task-node-info net-play-mode))
+                          18
+                          )
+                      15
+                      )
+                   (= (if *net-world*
+                          (the-as int (-> *net-world* task-node-info net-play-mode))
+                          18
+                          )
+                      16
+                      )
+                   )
+               )
+      (dotimes (gp-1 *active-net-player-count*)
+        (let ((s5-0 (-> *active-net-players* gp-1)))
+          (if (and (not (logtest? (-> s5-0 flags) (net-player-flag start-speech)))
+                   (and (>= (-> s5-0 player-id) 0) (< (-> s5-0 player-id) 16))
+                   (= (/ (-> s5-0 player-id) 2) (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                      )
+                   )
+              (speak-start s5-0)
+              )
+          (logior! (-> s5-0 flags) (net-player-flag start-speech))
+          )
+        )
+      )
+    (sleep-code)
+    )
+  :post (behavior ()
+    (update-vehicle-info self)
+    )
+  )
+
+(defstate running (net-game-mgr-deathmatch)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type net-game-mgr running) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 *active-net-player-count*)
+      (send-event (-> *active-net-players* gp-0) 'begin-game)
+      )
+    )
+  :trans (behavior ()
+    (call-parent-state-handler trans)
+    (sort-players self #f)
+    (if (send-event *net-game-mgr* 'game-finished?)
+        (net-game-mgr-method-64 self)
+        )
+    )
+  :post (behavior ()
+    (when #f
+      (dotimes (gp-0 (-> self spawner-count))
+        (let ((s5-0 add-debug-text-sphere)
+              (s4-0 #t)
+              (s3-0 785)
+              (s2-0 (-> self spawner-array data gp-0 entity extra trans))
+              (s1-0 #x47200000)
+              )
+          (format (clear *temp-string*) "~d" gp-0)
+          (s5-0 s4-0 (the-as bucket-id s3-0) s2-0 (the-as meters s1-0) *temp-string* *color-green*)
+          )
+        (add-debug-x #t (bucket-id debug-no-zbuf1) (-> self spawner-array data gp-0 entity extra trans) *color-green*)
+        )
+      )
+    (let ((t9-4 (-> (method-of-type net-game-mgr running) post)))
+      (if t9-4
+          ((the-as (function none) t9-4))
+          )
+      )
+    )
+  )
+
+(define *hud-deathmatch-single*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score-list
+      :scale #xb3
+      :flags (hud-item-flag align-right bit10 bit17)
+      :effect (new 'static 'hud-effect-slide :message 'enter :slide-time 150.0 :message-is-enter #f)
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-score
+          :scale #x100
+          :flags (hud-item-flag bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        )
+      :ignore-self #f
+      )
+    (new 'static 'hud-clock
+      :scale #xcc
+      :flags (hud-item-flag below-prev align-right)
+      :effect #f
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-string
+          :alpha #xff
+          :width #xc8
+          :height 30
+          :zval #xfff0
+          :scale #x80
+          :flags (hud-item-flag align-right)
+          :effect #f
+          :font-effect #x8
+          :color #x5
+          :font-flags (hud-string-flag right)
+          :has-outline #t
+          )
+        (new 'static 'hud-item-group
+          :position-y 5
+          :scale #x100
+          :flags (hud-item-flag below-prev align-right)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xd9
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag right)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            )
+          )
+        )
+      :count-up #f
+      :fixed-time? #f
+      :show-before-red #t
+      :red-time #xbb8
+      :text-id (text-id text-id-1614)
+      )
+    )
+  )
+
+(define *hud-deathmatch-single-proc* (the-as hud-deathmatch-single #f))
+
+(deftype hud-deathmatch-single (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-single.
+(defmethod relocate ((this hud-deathmatch-single) (offset int))
+  (set! *hud-deathmatch-single-proc* this)
+  (if (nonzero? *hud-deathmatch-single-proc*)
+      (set! *hud-deathmatch-single-proc* (&+ *hud-deathmatch-single-proc* offset))
+      )
+  (the-as hud-deathmatch-single ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-single))
+  (set! (-> this items) *hud-deathmatch-single*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-single-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-single))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-single-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-single))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-single*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-single.
+(defun spawn-hud-deathmatch-single ()
+  (the-as
+    hud-deathmatch-single
+    (cond
+      (*hud-deathmatch-single-proc*
+        *hud-deathmatch-single-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0
+                (ppointer->process
+                  (process-spawn hud-deathmatch-single :init hud-init-by-other :name "hud-deathmatch-single" :to *net-game-mgr*)
+                  )
+                )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-single v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(define *hud-deathmatch-split-view-0*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score
+      :position-y -10
+      :scale #xe6
+      :flags (hud-item-flag align-right bit10 bit17)
+      :effect (new 'static 'hud-effect-slide :message 'enter :slide-time 150.0 :message-is-enter #f)
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 64
+          :zval #xfff0
+          :scale #x100
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 24
+          :zval #xfff0
+          :scale #x100
+          :flags (hud-item-flag below-prev align-right)
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+          )
+        (new 'static 'hud-item-string
+          :alpha #xff
+          :position-y -38
+          :width 64
+          :height 30
+          :zval #xfff2
+          :scale #xd9
+          :flags (hud-item-flag below-prev center-x)
+          :effect (new 'static 'hud-effect-group
+            :items (new 'static 'boxed-array :type hud-effect
+              (new 'static 'hud-effect-throb
+                :message 'score-increment
+                :throb-time 60
+                :scale 0.6
+                :throb-alpha 1.0
+                :max-alpha 1.0
+                )
+              (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+              )
+            )
+          :font-effect #x8
+          :color #x5
+          :font-flags (hud-string-flag middle)
+          :has-outline #t
+          )
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 64
+          :zval #xfff1
+          :scale #x100
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+          )
+        )
+      :player-id -2
+      :initial-player-id -2
+      :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+      )
+    (new 'static 'hud-clock
+      :scale #xcc
+      :flags (hud-item-flag below-prev align-right)
+      :effect #f
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-string
+          :alpha #xff
+          :width #xc8
+          :height 30
+          :zval #xfff0
+          :scale #x80
+          :flags (hud-item-flag align-right)
+          :effect #f
+          :font-effect #x8
+          :color #x5
+          :font-flags (hud-string-flag right)
+          :has-outline #t
+          )
+        (new 'static 'hud-item-group
+          :position-y 5
+          :scale #x100
+          :flags (hud-item-flag below-prev align-right)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xd9
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag right)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            )
+          )
+        )
+      :count-up #f
+      :fixed-time? #f
+      :show-before-red #t
+      :red-time #xbb8
+      :text-id (text-id text-id-1614)
+      )
+    )
+  )
+
+(define *hud-deathmatch-split-view-0-proc* (the-as hud-deathmatch-split-view-0 #f))
+
+(deftype hud-deathmatch-split-view-0 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-split-view-0.
+(defmethod relocate ((this hud-deathmatch-split-view-0) (offset int))
+  (set! *hud-deathmatch-split-view-0-proc* this)
+  (if (nonzero? *hud-deathmatch-split-view-0-proc*)
+      (set! *hud-deathmatch-split-view-0-proc* (&+ *hud-deathmatch-split-view-0-proc* offset))
+      )
+  (the-as hud-deathmatch-split-view-0 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-split-view-0))
+  (set! (-> this items) *hud-deathmatch-split-view-0*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-split-view-0-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-split-view-0))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-split-view-0-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-split-view-0))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-split-view-0*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-split-view-0.
+(defun spawn-hud-deathmatch-split-view-0 ()
+  (the-as
+    hud-deathmatch-split-view-0
+    (cond
+      (*hud-deathmatch-split-view-0-proc*
+        *hud-deathmatch-split-view-0-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-split-view-0
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-split-view-0"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-split-view-0 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(define *hud-deathmatch-split-view-1*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score
+      :position-y -10
+      :scale #xe6
+      :flags (hud-item-flag align-right bit10 bit17)
+      :effect (new 'static 'hud-effect-slide :message 'enter :slide-time 150.0 :message-is-enter #f)
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 64
+          :zval #xfff0
+          :scale #x100
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 24
+          :zval #xfff0
+          :scale #x100
+          :flags (hud-item-flag below-prev align-right)
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+          )
+        (new 'static 'hud-item-string
+          :alpha #xff
+          :position-y -38
+          :width 64
+          :height 30
+          :zval #xfff2
+          :scale #xd9
+          :flags (hud-item-flag below-prev center-x)
+          :effect (new 'static 'hud-effect-group
+            :items (new 'static 'boxed-array :type hud-effect
+              (new 'static 'hud-effect-throb
+                :message 'score-increment
+                :throb-time 60
+                :scale 0.6
+                :throb-alpha 1.0
+                :max-alpha 1.0
+                )
+              (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+              )
+            )
+          :font-effect #x8
+          :color #x5
+          :font-flags (hud-string-flag middle)
+          :has-outline #t
+          )
+        (new 'static 'hud-item-sprite
+          :alpha #xff
+          :width 64
+          :height 64
+          :zval #xfff1
+          :scale #x100
+          :effect #f
+          :scale-y #x100
+          :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+          :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+          )
+        )
+      :player-id -3
+      :initial-player-id -3
+      :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+      )
+    (new 'static 'hud-clock
+      :scale #xcc
+      :flags (hud-item-flag below-prev align-right)
+      :effect #f
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-string
+          :alpha #xff
+          :width #xc8
+          :height 30
+          :zval #xfff0
+          :scale #x80
+          :flags (hud-item-flag align-right)
+          :effect #f
+          :font-effect #x8
+          :color #x5
+          :font-flags (hud-string-flag right)
+          :has-outline #t
+          )
+        (new 'static 'hud-item-group
+          :position-y 5
+          :scale #x100
+          :flags (hud-item-flag below-prev align-right)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xd9
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag right)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #xa6
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 20
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :width 50
+              :height 30
+              :zval #xfff0
+              :scale #x73
+              :flags (hud-item-flag right-of-prev)
+              :effect #f
+              :font-effect #x8
+              :color #x1
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            )
+          )
+        )
+      :count-up #f
+      :fixed-time? #f
+      :show-before-red #t
+      :red-time #xbb8
+      :text-id (text-id text-id-1614)
+      )
+    )
+  )
+
+(define *hud-deathmatch-split-view-1-proc* (the-as hud-deathmatch-split-view-1 #f))
+
+(deftype hud-deathmatch-split-view-1 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-split-view-1.
+(defmethod relocate ((this hud-deathmatch-split-view-1) (offset int))
+  (set! *hud-deathmatch-split-view-1-proc* this)
+  (if (nonzero? *hud-deathmatch-split-view-1-proc*)
+      (set! *hud-deathmatch-split-view-1-proc* (&+ *hud-deathmatch-split-view-1-proc* offset))
+      )
+  (the-as hud-deathmatch-split-view-1 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-split-view-1))
+  (set! (-> this items) *hud-deathmatch-split-view-1*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-split-view-1-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-split-view-1))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-split-view-1-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-split-view-1))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-split-view-1*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-split-view-1.
+(defun spawn-hud-deathmatch-split-view-1 ()
+  (the-as
+    hud-deathmatch-split-view-1
+    (cond
+      (*hud-deathmatch-split-view-1-proc*
+        *hud-deathmatch-split-view-1-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-split-view-1
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-split-view-1"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-split-view-1 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(defun spawn-hud-deathmatch-split ()
+  (if (zero? (view-get-active-index))
+      (spawn-hud-deathmatch-split-view-0)
+      (spawn-hud-deathmatch-split-view-1)
+      )
+  )
+
+(define *hud-deathmatch-score-drop-view-10*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score-list
+      :scale #xb3
+      :flags (hud-item-flag bit8 bit10)
+      :effect (new 'static 'hud-effect-group
+        :items (new 'static 'boxed-array :type hud-effect
+          (new 'static 'hud-effect-slide :message 'enter :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-offscreen :message 'enter :delay 60)
+          (new 'static 'hud-effect-fade :message 'enter :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-slide :message 'exit :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-fade :message 'exit :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-offscreen :message 'exit :delay 90 :offscreen-type #x1)
+          )
+        )
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-score
+          :scale #x100
+          :flags (hud-item-flag bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        )
+      :ignore-self #t
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-10-proc* (the-as hud-deathmatch-score-drop-view-10 #f))
+
+(deftype hud-deathmatch-score-drop-view-10 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-score-drop-view-10.
+(defmethod relocate ((this hud-deathmatch-score-drop-view-10) (offset int))
+  (set! *hud-deathmatch-score-drop-view-10-proc* this)
+  (if (nonzero? *hud-deathmatch-score-drop-view-10-proc*)
+      (set! *hud-deathmatch-score-drop-view-10-proc* (&+ *hud-deathmatch-score-drop-view-10-proc* offset))
+      )
+  (the-as hud-deathmatch-score-drop-view-10 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-score-drop-view-10))
+  (set! (-> this items) *hud-deathmatch-score-drop-view-10*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-score-drop-view-10-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-score-drop-view-10))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-score-drop-view-10-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-score-drop-view-10))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-score-drop-view-10*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-score-drop-view-10.
+(defun spawn-hud-deathmatch-score-drop-view-10 ()
+  (the-as
+    hud-deathmatch-score-drop-view-10
+    (cond
+      (*hud-deathmatch-score-drop-view-10-proc*
+        *hud-deathmatch-score-drop-view-10-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-score-drop-view-10
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-score-drop-view-10"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-score-drop-view-10 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-11*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score-list
+      :scale #xb3
+      :flags (hud-item-flag bit8 bit10)
+      :effect (new 'static 'hud-effect-group
+        :items (new 'static 'boxed-array :type hud-effect
+          (new 'static 'hud-effect-slide :message 'enter :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-offscreen :message 'enter :delay 60)
+          (new 'static 'hud-effect-fade :message 'enter :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-slide :message 'exit :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-fade :message 'exit :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-offscreen :message 'exit :delay 90 :offscreen-type #x1)
+          )
+        )
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-score
+          :scale #x100
+          :flags (hud-item-flag bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        )
+      :ignore-self #t
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-11-proc* (the-as hud-deathmatch-score-drop-view-11 #f))
+
+(deftype hud-deathmatch-score-drop-view-11 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-score-drop-view-11.
+(defmethod relocate ((this hud-deathmatch-score-drop-view-11) (offset int))
+  (set! *hud-deathmatch-score-drop-view-11-proc* this)
+  (if (nonzero? *hud-deathmatch-score-drop-view-11-proc*)
+      (set! *hud-deathmatch-score-drop-view-11-proc* (&+ *hud-deathmatch-score-drop-view-11-proc* offset))
+      )
+  (the-as hud-deathmatch-score-drop-view-11 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-score-drop-view-11))
+  (set! (-> this items) *hud-deathmatch-score-drop-view-11*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-score-drop-view-11-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-score-drop-view-11))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-score-drop-view-11-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-score-drop-view-11))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-score-drop-view-11*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-score-drop-view-11.
+(defun spawn-hud-deathmatch-score-drop-view-11 ()
+  (the-as
+    hud-deathmatch-score-drop-view-11
+    (cond
+      (*hud-deathmatch-score-drop-view-11-proc*
+        *hud-deathmatch-score-drop-view-11-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-score-drop-view-11
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-score-drop-view-11"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-score-drop-view-11 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(defun spawn-unused-hud-deathmatch-score-drop-view-1 ()
+  (cond
+    ((not *hud-deathmatch-score-drop-view-10-proc*)
+     (spawn-hud-deathmatch-score-drop-view-10)
+     )
+    ((not *hud-deathmatch-score-drop-view-11-proc*)
+     (spawn-hud-deathmatch-score-drop-view-11)
+     )
+    (else
+      (the-as in-game-hud #f)
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-20*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score-list
+      :scale #xb3
+      :flags (hud-item-flag bit8 bit10)
+      :effect (new 'static 'hud-effect-group
+        :items (new 'static 'boxed-array :type hud-effect
+          (new 'static 'hud-effect-slide :message 'enter :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-offscreen :message 'enter :delay 60)
+          (new 'static 'hud-effect-fade :message 'enter :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-slide :message 'exit :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-fade :message 'exit :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-offscreen :message 'exit :delay 90 :offscreen-type #x1)
+          )
+        )
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-score
+          :scale #x100
+          :flags (hud-item-flag bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        )
+      :ignore-self #t
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-20-proc* (the-as hud-deathmatch-score-drop-view-20 #f))
+
+(deftype hud-deathmatch-score-drop-view-20 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-score-drop-view-20.
+(defmethod relocate ((this hud-deathmatch-score-drop-view-20) (offset int))
+  (set! *hud-deathmatch-score-drop-view-20-proc* this)
+  (if (nonzero? *hud-deathmatch-score-drop-view-20-proc*)
+      (set! *hud-deathmatch-score-drop-view-20-proc* (&+ *hud-deathmatch-score-drop-view-20-proc* offset))
+      )
+  (the-as hud-deathmatch-score-drop-view-20 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-score-drop-view-20))
+  (set! (-> this items) *hud-deathmatch-score-drop-view-20*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-score-drop-view-20-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-score-drop-view-20))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-score-drop-view-20-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-score-drop-view-20))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-score-drop-view-20*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-score-drop-view-20.
+(defun spawn-hud-deathmatch-score-drop-view-20 ()
+  (the-as
+    hud-deathmatch-score-drop-view-20
+    (cond
+      (*hud-deathmatch-score-drop-view-20-proc*
+        *hud-deathmatch-score-drop-view-20-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-score-drop-view-20
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-score-drop-view-20"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-score-drop-view-20 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-21*
+  (new 'static 'boxed-array :type hud-item
+    (new 'static 'hud-item-score-list
+      :scale #xb3
+      :flags (hud-item-flag bit8 bit10)
+      :effect (new 'static 'hud-effect-group
+        :items (new 'static 'boxed-array :type hud-effect
+          (new 'static 'hud-effect-slide :message 'enter :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-offscreen :message 'enter :delay 60)
+          (new 'static 'hud-effect-fade :message 'enter :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-slide :message 'exit :slide-type #x2 :slide-time 150.0 :message-is-enter #f)
+          (new 'static 'hud-effect-fade :message 'exit :fade-time 150.0 :fade-out-on 'exit)
+          (new 'static 'hud-effect-offscreen :message 'exit :delay 90 :offscreen-type #x1)
+          )
+        )
+      :items (new 'static 'boxed-array :type hud-item
+        (new 'static 'hud-item-score
+          :scale #x100
+          :flags (hud-item-flag bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        (new 'static 'hud-item-score
+          :position-x 5
+          :scale #x100
+          :flags (hud-item-flag right-of-prev bit17)
+          :effect #f
+          :items (new 'static 'boxed-array :type hud-item
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff0
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xe0 :page #x9)
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 24
+              :zval #xfff0
+              :scale #x100
+              :flags (hud-item-flag below-prev align-right)
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #xd3 :page #x9)
+              )
+            (new 'static 'hud-item-string
+              :alpha #xff
+              :position-y -38
+              :width 64
+              :height 30
+              :zval #xfff2
+              :scale #xd9
+              :flags (hud-item-flag below-prev center-x)
+              :effect (new 'static 'hud-effect-group
+                :items (new 'static 'boxed-array :type hud-effect
+                  (new 'static 'hud-effect-throb
+                    :message 'score-increment
+                    :throb-time 60
+                    :scale 0.6
+                    :throb-alpha 1.0
+                    :max-alpha 1.0
+                    )
+                  (new 'static 'hud-effect-trigger-sound :message 'score-increment :soundname #x13e)
+                  )
+                )
+              :font-effect #x8
+              :color #x5
+              :font-flags (hud-string-flag middle)
+              :has-outline #t
+              )
+            (new 'static 'hud-item-sprite
+              :alpha #xff
+              :width 64
+              :height 64
+              :zval #xfff1
+              :scale #x100
+              :effect #f
+              :scale-y #x100
+              :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+              :tex-id (new 'static 'texture-id :index #x173 :page #x9)
+              )
+            )
+          :player-id -1
+          :initial-player-id -1
+          :initial-texture-id (new 'static 'texture-id :index #xe0 :page #x9)
+          )
+        )
+      :ignore-self #t
+      )
+    )
+  )
+
+(define *hud-deathmatch-score-drop-view-21-proc* (the-as hud-deathmatch-score-drop-view-21 #f))
+
+(deftype hud-deathmatch-score-drop-view-21 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-deathmatch-score-drop-view-21.
+(defmethod relocate ((this hud-deathmatch-score-drop-view-21) (offset int))
+  (set! *hud-deathmatch-score-drop-view-21-proc* this)
+  (if (nonzero? *hud-deathmatch-score-drop-view-21-proc*)
+      (set! *hud-deathmatch-score-drop-view-21-proc* (&+ *hud-deathmatch-score-drop-view-21-proc* offset))
+      )
+  (the-as hud-deathmatch-score-drop-view-21 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-deathmatch-score-drop-view-21))
+  (set! (-> this items) *hud-deathmatch-score-drop-view-21*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-deathmatch-score-drop-view-21-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-deathmatch-score-drop-view-21))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-deathmatch-score-drop-view-21-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-deathmatch-score-drop-view-21))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-deathmatch-score-drop-view-21*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-deathmatch-score-drop-view-21.
+(defun spawn-hud-deathmatch-score-drop-view-21 ()
+  (the-as
+    hud-deathmatch-score-drop-view-21
+    (cond
+      (*hud-deathmatch-score-drop-view-21-proc*
+        *hud-deathmatch-score-drop-view-21-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-deathmatch-score-drop-view-21
+                                         :init hud-init-by-other
+                                         :name "hud-deathmatch-score-drop-view-21"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-deathmatch-score-drop-view-21 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(defun spawn-unused-hud-deathmatch-score-drop-view-2 ()
+  (cond
+    ((not *hud-deathmatch-score-drop-view-20-proc*)
+     (spawn-hud-deathmatch-score-drop-view-20)
+     )
+    ((not *hud-deathmatch-score-drop-view-21-proc*)
+     (spawn-hud-deathmatch-score-drop-view-21)
+     )
+    (else
+      (the-as in-game-hud #f)
+      )
+    )
+  )
+
+(defun spawn-hud-deathmatch-score-drop ()
+  (cond
+    ((zero? (-> *viewport-array* mode))
+     (the-as in-game-hud #f)
+     )
+    ((zero? (view-get-active-index))
+     (spawn-unused-hud-deathmatch-score-drop-view-1)
+     )
+    (else
+      (spawn-unused-hud-deathmatch-score-drop-view-2)
+      )
+    )
+  )
+
+(defun spawn-hud-deathmatch ()
+  (if (zero? (-> *viewport-array* mode))
+      (spawn-hud-deathmatch-single)
+      (spawn-hud-deathmatch-split)
+      )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod spawn-huds ((this net-game-mgr-deathmatch))
+  (let ((t9-0 (method-of-type net-game-mgr spawn-huds)))
+    (t9-0 this)
+    )
+  (dotimes (s5-0 (if (zero? (-> *viewport-array* mode))
+                     1
+                     2
+                     )
+                 )
+    (view-push-context s5-0)
+    (set! (-> this stats-hud s5-0) (process->handle (spawn-hud-deathmatch)))
+    (view-pop-context)
+    )
+  (none)
+  )
+
+(defmethod pick-spawner ((this net-game-mgr-deathmatch) (arg0 process) (arg1 int) (arg2 int) (arg3 int))
+  (init-spawners this)
+  (when (> (-> this spawner-count) 0)
+    (let ((s4-1 (+ arg2 (mod (logand arg1 #xffff) (- arg3 arg2)))))
+      (when (nonzero? (-> this spawner-array))
+        (cond
+          ((< (- (- (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    (if *net-world*
+                        (-> *net-world* net-state game-start-time)
+                        0
+                        )
+                    )
+                 (if *net-world*
+                     (-> *net-world* net-state total-pause-time)
+                     0
+                     )
+                 )
+              (-> this spawner-array data s4-1 next-spawn-time)
+              )
+           (send-event arg0 'new-seed)
+           )
+          ((-> this spawner-array data s4-1 entity)
+           (case (net-colarb-request-id s4-1)
+             ((2)
+              (return (the-as int #f))
+              )
+             ((1)
+              (send-event arg0 'new-seed)
+              (return (the-as int #f))
+              )
+             )
+           (dotimes (s3-1 *active-net-player-count*)
+             (when (!= this (-> *active-net-players* s3-1))
+               (let ((a0-27
+                       (the-as
+                         wvehicle
+                         (as-type (the-as wvehicle (handle->process (-> *active-net-players* s3-1 vehicle))) process-focusable)
+                         )
+                       )
+                     )
+                 (when a0-27
+                   (when (< (vector-vector-xz-distance-squared (get-trans a0-27 0) (-> this spawner-array data s4-1 entity extra trans))
+                            (square 40960.0)
+                            )
+                     (send-event arg0 'new-seed)
+                     (return (the-as int #f))
+                     )
+                   )
+                 )
+               )
+             )
+           (return s4-1)
+           )
+          )
+        )
+      )
+    )
+  (the-as int #f)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-vehicles ((this net-game-mgr-deathmatch) (arg0 net-game-mgr-vehicle-info))
+  (call-parent-method this arg0)
+  (when (not (paused?))
+    (let ((f0-0 (current-level-difficulty)))
+      (dotimes (v1-0 (-> arg0 ai-vehicle-count))
+        (set! (-> arg0 ai-vehicles v1-0 ai weapon-aggression) f0-0)
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod handle-net-msg ((this net-game-mgr-deathmatch) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  (case arg0
+    (('set-intro-end-time)
+     (set! (-> this intro-end-time) (read-int32 arg1))
+     (set! (-> *net-world* net-state green-room-stats intro-end-time) (-> this intro-end-time))
+     (send-event *net-world* 'green-room-stats-update)
+     )
+    (('spawner-time-update)
+     (init-spawners this)
+     (let ((s4-0 (read-int8 arg1))
+           (v1-11 (read-int32 arg1))
+           )
+       (if (< s4-0 (-> this spawner-count))
+           (set! (-> this spawner-array data s4-0 next-spawn-time) (the-as time-frame v1-11))
+           (format 0 "!!! <DL> net-game-mgr-deathmatch::cb-msg-arrived incorrect spawner index ~d !!!~%" s4-0)
+           )
+       )
+     )
+    (else
+      ((method-of-type net-game-mgr handle-net-msg) this arg0 arg1 arg2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs net-player.
+(defmethod spawn-net-player ((this net-game-mgr-deathmatch) (arg0 int))
+  (the-as
+    net-player
+    (process-spawn net-player-deathmatch :init net-player-init-local arg0 :name "net-player-deathmatch")
+    )
+  )
+
+(defmethod init-spawners ((this net-game-mgr-deathmatch))
+  (let ((a0-2 (entity-by-type spawn-point)))
+    (when a0-2
+      (let* ((sv-16 (new 'static 'res-tag))
+             (s5-0 (res-lump-data a0-2 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
+        (when (and s5-0 (nonzero? (-> sv-16 elt-count)))
+          (when (> (-> sv-16 elt-count) 0)
+            (when (zero? (-> this spawner-array))
+              (set! (-> this spawner-count) (min 255 (-> s5-0 0 length)))
+              (set! (-> this spawner-array) (new 'process 'deathmatch-spawner-array (-> this spawner-count)))
+              )
+            (dotimes (v1-16 (-> this spawner-count))
+              (set! (-> this spawner-array data v1-16 entity) (-> s5-0 0 data v1-16 actor))
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod get-spawn-transform ((this net-game-mgr-deathmatch) (arg0 vector) (arg1 quaternion) (arg2 process) (arg3 int))
+  (let ((s5-0 (pick-spawner this arg2 arg3 0 (-> this spawner-count))))
+    (when s5-0
+      (let ((s4-0 (-> this spawner-array data s5-0)))
+        (set! (-> arg0 quad) (-> s4-0 entity extra trans quad))
+        (quaternion-copy! arg1 (-> s4-0 entity quat))
+        (set! (-> s4-0 next-spawn-time) (the-as time-frame (+ (- (- (if *net-mgr*
+                                                                        (-> *net-mgr* game-state time)
+                                                                        0
+                                                                        )
+                                                                    (if *net-world*
+                                                                        (-> *net-world* net-state game-start-time)
+                                                                        0
+                                                                        )
+                                                                    )
+                                                                 (if *net-world*
+                                                                     (-> *net-world* net-state total-pause-time)
+                                                                     0
+                                                                     )
+                                                                 )
+                                                              (the int (* 300.0 (rand-vu-float-range 3.0 5.0)))
+                                                              )
+                                                )
+              )
+        (let ((s3-2 (alloc-msg this 'spawner-time-update)))
+          (write-int8 s3-2 s5-0)
+          (write-int32 s3-2 (the-as int (-> s4-0 next-spawn-time)))
+          (send-msg this s3-2 -2 80)
+          (free-msg this s3-2)
+          )
+        )
+      #t
+      )
+    )
+  )
+
+;; WARN: Return type mismatch net-game-mgr vs net-game-mgr-deathmatch.
+(defmethod relocate ((this net-game-mgr-deathmatch) (offset int))
+  (when (nonzero? (-> this spawner-array))
+    (if (nonzero? (-> this spawner-array))
+        (&+! (-> this spawner-array) offset)
+        )
+    )
+  (the-as net-game-mgr-deathmatch ((method-of-type net-game-mgr relocate) this offset))
+  )
+
+(defmethod init-common ((this net-game-mgr-deathmatch))
+  (set! (-> this spawner-count) 0)
+  (set! (-> this scheduled-finish-time) -1)
+  (set! (-> this scheduled-finish-mode) #f)
+  (init-spawners this)
+  (if (zero? (-> this spawner-count))
+      (format 0 "WARNING: !!!!!!!!!!!! No spawn-point entities found !!!!!!!!!!!!!!!! ~%")
+      )
+  ((method-of-type net-game-mgr init-common) this)
+  (none)
+  )
+
+(defstate waiting (net-player-deathmatch)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type net-player waiting) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-time! (-> self next-spawn-time))
+    (set! (-> self next-spawn-seed) (the-as int (rand-uint31-gen *random-generator*)))
+    (set! (-> self target-vehicle) (the-as handle #f))
+    (set! (-> self last-attack-time) 0)
+    (set! (-> self last-attacker) (the-as handle #f))
+    (set! (-> self dropdown-score) (the-as handle #f))
+    (set! (-> self last-push-time) (the-as int (current-time)))
+    (if (!= (-> *net-mgr* game-type) 4)
+        (+! (-> self next-spawn-time) (seconds 1))
+        )
+    )
+  :exit (behavior ()
+    (send-event (get-vehicle self) 'set 'force-lod -1)
+    (send-event (the-as vehicle-rev-manager (handle->process (-> self rev-mgr))) 'die)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (get-vehicle self)))
+      (when gp-0
+        (send-event gp-0 'set 'player-wait)
+        (send-event gp-0 'set 'force-lod 0)
+        (when (not (if (= (/ (-> self player-id) 2) (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                          )
+                       #t
+                       #f
+                       )
+                   )
+          (if (not (the-as vehicle-rev-manager (handle->process (-> self rev-mgr))))
+              (set! (-> self rev-mgr) (process->handle (vehicle-rev-manager-spawn gp-0 (seconds 0.1))))
+              )
+          )
+        )
+      )
+    (if (can-spawn-vehicle? self)
+        (respawn self)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate running (net-player-deathmatch)
+  :virtual #t
+  :post (behavior ()
+    (when (and (and (>= (-> self player-id) 0) (< (-> self player-id) 16)) (< (-> self mgr scheduled-finish-time) 0))
+      (when (cpad-pressed? (view-get-active-index) l3)
+        (if (not (handle->process (-> self dropdown-score)))
+            (set! (-> self dropdown-score) (process->handle (spawn-hud-deathmatch-score-drop)))
+            )
+        (set! (-> self last-push-time) (the-as int (current-time)))
+        )
+      )
+    (when (and (handle->process (-> self dropdown-score)) (< (+ (-> self last-push-time) 1500) (current-time)))
+      (send-event (handle->process (-> self dropdown-score)) 'kill-hud 0)
+      (set! (-> self dropdown-score) (the-as handle #f))
+      )
+    (let ((t9-3 (-> (method-of-type net-player running) post)))
+      (if t9-3
+          ((the-as (function none) t9-3))
+          )
+      )
+    )
+  )
+
+(defmethod score-kill ((this net-player-deathmatch) (arg0 int))
+  (when (and (or (owner-is-local? this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                             (= (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                                                (-> *net-mgr* game-state session-master-idx)
+                                                )
+                                             )
+                 )
+             (not (finish-scheduled? this))
+             )
+    (when (!= arg0 (-> this player-id))
+      (cond
+        ((= (-> *net-players* arg0 team) (-> this team))
+         (set! (-> this score) (max 0 (+ (-> this score) -1)))
+         )
+        (else
+          (when (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+            (let ((v1-23 (make-sound-instance snd-kill-counter (new 'static 'sound-id) (the-as handle #f))))
+              (if v1-23
+                  (-> v1-23 id)
+                  0
+                  )
+              )
+            )
+          (+! (-> this score) 1)
+          )
+        )
+      (write-score-change this)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: disable def twice: 13. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod handle-events ((this net-player-deathmatch) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('vehicle-damaged)
+     (let ((f0-0 (the-as float (-> arg3 param 0)))
+           (v1-2 (the-as object (-> arg3 param 1)))
+           )
+       (when (and (< 0.0 f0-0) (-> (the-as rigid-body-impact v1-2) process))
+         (set-time! (-> this last-attack-time))
+         (set! v0-0 (process->handle (-> (the-as rigid-body-impact v1-2) process)))
+         (set! (-> this last-attacker) (the-as handle v0-0))
+         v0-0
+         )
+       )
+     )
+    (('new-seed)
+     (set! v0-0 (rand-uint31-gen *random-generator*))
+     (set! (-> this next-spawn-seed) (the-as int v0-0))
+     v0-0
+     )
+    (('begin-game)
+     (send-event (get-vehicle this) 'begin-event)
+     (go (method-of-object this running))
+     )
+    (('game-finished)
+     (net-player-method-97 this (-> arg3 param 0))
+     )
+    (else
+      ((method-of-type net-player handle-events) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; WARN: Return type mismatch event-message-block vs none.
+(defmethod net-player-method-90 ((this net-player-deathmatch))
+  (with-pp
+    (let ((gp-0 (get-vehicle this)))
+      (when gp-0
+        (send-event gp-0 'go 'hostile)
+        (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+          (let ((v0-4 (-> *event-queue* data (-> *event-queue* length))))
+            (+! (-> *event-queue* length) 1)
+            (set! (-> v0-4 from-handle) (process->handle pp))
+            (set! (-> v0-4 to-handle) (process->handle gp-0))
+            (set! (-> v0-4 num-params) 2)
+            (set! (-> v0-4 message) 'set)
+            (set! (-> v0-4 param 0) (the-as uint 'camera))
+            (set! (-> v0-4 param 1) (the-as uint #t))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defmethod find-spawn-pos ((this net-player-deathmatch) (arg0 vector) (arg1 quaternion))
+  (let ((a0-1 (-> this mgr)))
+    (the-as
+      symbol
+      (and a0-1
+           (get-spawn-transform (the-as net-game-mgr-deathmatch a0-1) arg0 arg1 this (-> this next-spawn-seed))
+           (adjust-spawn-position
+             this
+             arg0
+             (-> arg1 vec)
+             (vector-z-quaternion! (new 'stack-no-clear 'vector) arg1)
+             arg0
+             arg0
+             )
+           )
+      )
+    )
+  )
+
+(defmethod get-respawn-info ((this net-player-deathmatch) (arg0 net-player-respawn-info))
+  (set! (-> arg0 want-count) 0)
+  (cond
+    ((find-spawn-pos this (-> arg0 position) (-> arg0 quat))
+     (vector-z-quaternion! (-> arg0 velocity) (-> arg0 quat))
+     (if (not (and (-> this next-state) (= (-> this next-state name) 'waiting)))
+         (vector-normalize! (-> arg0 velocity) 61440.0)
+         )
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; WARN: Return type mismatch uint vs none.
+(defmethod on-vehicle-spawn ((this net-player-deathmatch) (arg0 wvehicle))
+  (let ((t9-0 (method-of-type net-player on-vehicle-spawn)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this next-spawn-seed) (the-as int (rand-uint31-gen *random-generator*)))
+  (none)
+  )
+
+(defmethod pick-target ((this net-player-deathmatch) (arg0 vector) (arg1 vector))
+  (let ((sv-16 arg0)
+        (sv-20 arg1)
+        (sv-24 -1)
+        (sv-32 (-> this team))
+        (sv-40 *active-net-non-spectator-count*)
+        )
+    (dotimes (v1-3 sv-40)
+      (let ((a0-3 (-> *active-net-non-spectators* v1-3)))
+        (when a0-3
+          (when (and (!= a0-3 this) (!= sv-32 (-> a0-3 team)))
+            (if (or (= sv-24 -1) (< sv-24 (-> a0-3 score)))
+                (set! sv-24 (-> a0-3 score))
+                )
+            )
+          )
+        )
+      )
+    (let ((sv-48 0.0)
+          (sv-52 (the-as wvehicle #f))
+          )
+      (let ((sv-56 (the-as vehicle (handle->process (-> this target-vehicle)))))
+        (dotimes (s5-0 sv-40)
+          (let ((s4-0 (-> *active-net-non-spectators* s5-0)))
+            (when s4-0
+              (when (and (!= s4-0 this) (!= sv-32 (-> s4-0 team)))
+                (let ((sv-60 (get-vehicle s4-0)))
+                  (when (and sv-60
+                             (not (focus-test? sv-60 disable dead ignore inactive))
+                             (not (logtest? (vehicle-flag shield) (-> sv-60 v-flags)))
+                             )
+                    (let* ((sv-80 (vector-! (new 'stack-no-clear 'vector) sv-16 (get-trans sv-60 0)))
+                           (sv-84 (vector-length sv-80))
+                           (sv-88 491520.0)
+                           (sv-92 (and (>= (-> sv-60 player-id) 0) (< (-> sv-60 player-id) 16)))
+                           )
+                      (vector-normalize! sv-80 1.0)
+                      (when (or (< (the-as float sv-88) sv-84)
+                                (not sv-20)
+                                (< (acos (vector-dot (vector-negate! (new 'stack-no-clear 'vector) sv-80) sv-20)) 5461.3335)
+                                )
+                        (if (= sv-60 sv-56)
+                            (set! sv-84 (* 0.5 sv-84))
+                            )
+                        (if sv-92
+                            (set! sv-84 (* sv-84 (lerp 1.5 0.5 (current-level-difficulty))))
+                            )
+                        (set! sv-84 (* sv-84 (-> sv-60 health)))
+                        (if (< (/ sv-40 2) sv-24)
+                            (set! sv-84 (* sv-84 (lerp-scale 1.0 0.1 (/ (the float (-> s4-0 score)) (the float sv-24)) 0.0 1.0)))
+                            )
+                        (if (and (= (if *net-world*
+                                        (the-as int (-> *net-world* task-node-info net-play-mode))
+                                        18
+                                        )
+                                    14
+                                    )
+                                 (= (net-game-mgr-assassin-method-85 (the-as net-game-mgr-assassin *net-game-mgr*) (-> this player-id))
+                                    (-> sv-60 player-id)
+                                    )
+                                 )
+                            (set! sv-84 (* 0.1 sv-84))
+                            )
+                        (when (or (< sv-84 (the-as float sv-48)) (not sv-52))
+                          (set! sv-48 sv-84)
+                          (set! sv-52 sv-60)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      sv-52
+      )
+    )
+  )
+
+(defun get-best-defensive-powerup ((arg0 wvehicle) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((sv-32 (the-as entity-actor #f)))
+    (let ((sv-36 0.0)
+          (v1-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> v1-0 quad) (-> arg1 quad))
+      (let ((sv-40 v1-0)
+            (sv-44 (-> arg0 ai flags))
+            )
+        (set! (-> sv-40 w) arg2)
+        (let* ((s4-0 (new 'stack-no-clear 'array 'uint32 384))
+               (s3-0 (fill-actor-list-for-sphere *eco-static-hash* sv-40 (the-as (pointer collide-shape) s4-0) 384))
+               )
+          (dotimes (s2-0 s3-0)
+            (let ((s1-0 (-> *eco-array* (-> s4-0 s2-0))))
+              (when (not (logtest? (-> (the-as eco-perm (-> s1-0 extra perm)) flags) (eco-perm-flag dead no-respawn)))
+                (let ((f30-0 (vector-vector-distance arg1 (-> s1-0 extra trans))))
+                  (cond
+                    ((type-type? (-> s1-0 etype) eco-green)
+                     (set! f30-0 (* f30-0 (* arg3 arg3)))
+                     )
+                    ((and (type-type? (-> s1-0 etype) eco-yellow) (logtest? sv-44 (wvehicle-ai-state-flag no-right-weapon)))
+                     (set! f30-0 (/ f30-0 5))
+                     )
+                    ((and (type-type? (-> s1-0 etype) eco-blue) (logtest? sv-44 (wvehicle-ai-state-flag turbo-not-full)))
+                     (set! f30-0 (* 0.3 f30-0))
+                     )
+                    ((and (type-type? (-> s1-0 etype) eco-red) (logtest? sv-44 (wvehicle-ai-state-flag no-left-weapon)))
+                     (set! f30-0 (* 0.3 f30-0))
+                     )
+                    )
+                  (when (or (< f30-0 (the-as float sv-36)) (not sv-32))
+                    (set! sv-32 s1-0)
+                    (set! sv-36 f30-0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    sv-32
+    )
+  )
+
+(defmethod vehicle-update ((this net-player-deathmatch) (arg0 wvehicle))
+  (when (and (owner-is-local? arg0)
+             (not (focus-test? arg0 dead))
+             (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+             )
+    )
+  (when (and (owner-is-local? arg0)
+             (not (focus-test? arg0 dead))
+             (and (or (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                      (or (>= (-> this mgr scheduled-finish-time) 0) (-> *target-camera-runtime* active))
+                      )
+                  (-> this last-known-pos-valid)
+                  )
+             )
+    (let ((s3-0 (the-as entity-actor #f)))
+      (-> arg0 ai flags)
+      (let ((s4-0 (pick-target this (-> arg0 root trans) (-> arg0 rbody matrix fvec))))
+        (cond
+          ((and (or (and (< (-> arg0 health) 0.5) (>= (+ (current-time) (seconds -0.5)) (-> this last-attack-time)))
+                    (not s4-0)
+                    )
+                (begin (set! s3-0 (get-best-defensive-powerup arg0 (-> arg0 root trans) 8192000.0 (-> arg0 health))) s3-0)
+                )
+           (set! (-> this target-vehicle) (the-as handle #f))
+           (send-event arg0 'set 'ai-target-position (-> s3-0 extra trans))
+           )
+          (s4-0
+            (set! (-> this target-vehicle) (process->handle s4-0))
+            (send-event arg0 'set 'ai-target-process s4-0)
+            )
+          (else
+            (set! (-> this target-vehicle) (the-as handle #f))
+            )
+          )
+        )
+      )
+    (set! (-> arg0 ai desired-speed) 491520.0)
+    )
+  ((method-of-type net-player vehicle-update) this arg0)
+  (none)
+  )
+
+(defmethod speak-start ((this net-player-deathmatch))
+  (play-on-channel
+    *speech-control*
+    this
+    (-> this speech-id)
+    (speech-type event-start)
+    (the-as string #f)
+    #f
+    (seconds 1)
+    )
+  0
+  (none)
+  )
+
+(defmethod play-win-speech ((this net-player-deathmatch))
+  (play-on-channel
+    *speech-control*
+    this
+    (-> this speech-id)
+    (speech-type deathmatch-finish-win)
+    (the-as string #f)
+    #f
+    (seconds 4)
+    )
+  0
+  (none)
+  )
+
+(defmethod play-lose-speech ((this net-player-deathmatch))
+  (play-on-channel
+    *speech-control*
+    this
+    (-> this speech-id)
+    (speech-type deathmatch-finish-lose)
+    (the-as string #f)
+    #f
+    (seconds 4)
+    )
+  0
+  (none)
+  )
+
+(defmethod net-game-mgr-method-64 ((this net-game-mgr-deathmatch))
+  (let ((gp-0 (-> *net-players* (* (if *net-mgr*
+                                       (-> *net-mgr* game-state local-machine-idx)
+                                       0
+                                       )
+                                   2
+                                   )
+                  )
+              )
+        )
+    (when (and gp-0 (and (not (logtest? (-> gp-0 flags) (net-player-flag finish-speech)))
+                         (= (/ (-> gp-0 player-id) 2) (if *net-mgr*
+                                                          (-> *net-mgr* game-state local-machine-idx)
+                                                          0
+                                                          )
+                            )
+                         (>= (-> gp-0 player-id) 0)
+                         (< (-> gp-0 player-id) 16)
+                         )
+               )
+      (if (and (sort-players *net-game-mgr* #f) (zero? (calc-player-rank (-> gp-0 player-id) #f)))
+          (play-win-speech gp-0)
+          (play-lose-speech gp-0)
+          )
+      (logior! (-> gp-0 flags) (net-player-flag finish-speech))
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defmethod use-target-cam? ((this net-player-deathmatch) (arg0 wvehicle))
+  (local-vars (v1-2 net-world-game-options))
+  (let ((a1-1 (get-vehicle this)))
+    (if a1-1
+        (and (use-target-cam-base-helper this a1-1 arg0 #f)
+             (begin
+               (set! v1-2 (-> *net-world* net-state options))
+               (logtest? (-> v1-2 advanced-options flags) (game-task-advanced-options-flag score-limit))
+               )
+             (= (-> this score) (-> v1-2 advanced-options param2))
+             )
+        )
+    )
+  )
+
+;; WARN: Function (method 49 net-game-mgr-deathmatch) has a return type of none, but the expression builder found a return statement.
+(defmethod running-post ((this net-game-mgr-deathmatch))
+  (let ((v1-1 (-> *net-world* net-state options)))
+    (when (logtest? (-> v1-1 advanced-options flags) (game-task-advanced-options-flag time-limit))
+      (let* ((a0-4 (-> v1-1 advanced-options param1))
+             (a0-5 (* #x4650 (the-as int a0-4)))
+             )
+        (when (and (nonzero? (+ (-> this intro-end-time) a0-5 1))
+                   (>= (- (- (- (if *net-mgr*
+                                    (-> *net-mgr* game-state time)
+                                    0
+                                    )
+                                (if *net-world*
+                                    (-> *net-world* net-state game-start-time)
+                                    0
+                                    )
+                                )
+                             (if *net-world*
+                                 (-> *net-world* net-state total-pause-time)
+                                 0
+                                 )
+                             )
+                          (+ (-> this intro-end-time) a0-5)
+                          )
+                       0
+                       )
+                   )
+          (if (demo?)
+              (send-event this 'finish-game 3000)
+              (send-event this 'finish-game (get-finish-delay this))
+              )
+          (return #f)
+          )
+        )
+      )
+    (when (logtest? (-> v1-1 advanced-options flags) (game-task-advanced-options-flag score-limit))
+      (let ((s5-1 (-> v1-1 advanced-options param2)))
+        (dotimes (s4-0 6)
+          (when (>= (calc-team-score s4-0) (the-as int s5-1))
+            (if (demo?)
+                (send-event this 'finish-game 3000)
+                (send-event this 'finish-game (get-finish-delay this))
+                )
+            (return #f)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )

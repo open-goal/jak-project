@@ -5,13 +5,100 @@
 ;; name in dgo: scert-9-h
 ;; dgos: ENGINE, GAME
 
+;; +++medius-character-encoding-type
+(defenum medius-character-encoding-type
+  :type int32
+  (medius-character-encoding-no-update 0)
+  (medius-character-encoding-iso8859-1 1)
+  (medius-character-encoding-utf8 2)
+  (extra-medius-character-encoding-type #xffffff)
+  )
+;; ---medius-character-encoding-type
+
+;; +++medius-language-type
+(defenum medius-language-type
+  :type int32
+  (medius-language-no-update 0)
+  (medius-language-usenglish 1)
+  (medius-language-ukenglish 2)
+  (medius-language-japanese 3)
+  (medius-language-korean 4)
+  (medius-language-italian 5)
+  (medius-language-spanish 6)
+  (medius-language-german 7)
+  (medius-language-french 8)
+  (medius-language-dutch 9)
+  (medius-language-portuguese 10)
+  (medius-language-chinese 11)
+  (medius-language-taiwanese 12)
+  (medius-language-finnish 13)
+  (medius-language-norwegian 14)
+  (extra-medius-language-type #xffffff)
+  )
+;; ---medius-language-type
+
+;; +++medius-message-type
+(defenum medius-message-type
+  :type int32
+  (announcement-message 0)
+  (extra-medius-message-type #xffffff)
+  )
+;; ---medius-message-type
+
+;; +++medius-text-filter-type
+(defenum medius-text-filter-type
+  :type int32
+  (medius-text-filter-pass-fail 0)
+  (medius-text-filter-replace 1)
+  (extra-medius-text-filter #xffffff)
+  )
+;; ---medius-text-filter-type
+
+;; +++medius-user-action
+(defenum medius-user-action
+  :type int32
+  (keep-alive 0)
+  (joined-chat-world 1)
+  (left-game-world 2)
+  (extra-medius-user-action #xffffff)
+  )
+;; ---medius-user-action
+
+;; +++medius-error-code
+(defenum medius-error-code
+  :type int32
+  (medius-error-invalid-parameter -21)
+  (medius-error-feature-not-enabled -20)
+  (medius-error-call-medius-close-bare-before-reinitializing -19)
+  (medius-error-call-medius-close-before-reinitializing -18)
+  (medius-error-already-connected -17)
+  (medius-error-not-connected -16)
+  (medius-error-not-initialized -15)
+  (medius-error-no-result -14)
+  (medius-error-item-already-exists -13)
+  (medius-error-item-not-found -12)
+  (medius-error-session-inactive -11)
+  (medius-error-general -10)
+  (medius-error-directory-not-found -8)
+  (medius-error-device-not-found -7)
+  (medius-error-file-not-found -6)
+  (medius-error-sending-message -5)
+  (medius-error-closing -4)
+  (medius-error-disconnecting -3)
+  (medius-error-connecting -2)
+  (medius-error-initializing -1)
+  (medius-error-none 0)
+  (medius-apiextra-error-code #xffffff)
+  )
+;; ---medius-error-code
+
 ;; DECOMP BEGINS
 
 (deftype medius-set-localization-params-request (structure)
   ((message-id          uint8  21)
    (session-key         uint8  17)
-   (character-encoding  int32)
-   (language            int32)
+   (character-encoding  medius-character-encoding-type)
+   (language            medius-language-type)
    )
   )
 
@@ -19,14 +106,14 @@
 (deftype medius-set-message-as-read-request (structure)
   ((message-id        uint8  21)
    (session-key       uint8  17)
-   (message-type      int32)
+   (message-type      medius-message-type)
    (message-idto-tag  int32)
    )
   )
 
 
 (deftype medius-set-stored-account-info-request (structure)
-  ((device            int32)
+  ((device            medius-device-type)
    (card-port         int32)
    (card-slot         int32)
    (account-id        int32)
@@ -37,7 +124,7 @@
 
 
 (deftype medius-set-stored-account-info-response (structure)
-  ((confirmation  int32)
+  ((confirmation  medius-stored-confirmation-type)
    )
   )
 
@@ -52,7 +139,7 @@
 (deftype medius-text-filter-request (structure)
   ((message-id        uint8  21)
    (session-key       uint8  17)
-   (text-filter-type  int32)
+   (text-filter-type  medius-text-filter-type)
    (text              uint8  64)
    )
   )
@@ -120,7 +207,7 @@
 
 (deftype medius-update-ladder-stats-request (structure)
   ((message-id   uint8   21)
-   (ladder-type  int32)
+   (ladder-type  medius-ladder-type)
    (stats        uint32  15)
    )
   )
@@ -128,7 +215,7 @@
 
 (deftype medius-update-ladder-stats-wide-request (structure)
   ((message-id   uint8   21)
-   (ladder-type  int32)
+   (ladder-type  medius-ladder-type)
    (stats        uint32  100)
    )
   )
@@ -144,7 +231,7 @@
 
 (deftype medius-update-user-state (structure)
   ((session-key  uint8  17)
-   (user-action  int32)
+   (user-action  medius-user-action)
    )
   )
 
@@ -177,7 +264,7 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (world-status        int32)
+   (world-status        medius-world-status)
    )
   )
 
@@ -185,8 +272,8 @@
 (deftype medius-get-universe-information-request (structure)
   ((message-id          uint8  21)
    (info-type           uint32)
-   (character-encoding  int32)
-   (language            int32)
+   (character-encoding  medius-character-encoding-type)
+   (language            medius-language-type)
    )
   )
 
@@ -246,8 +333,8 @@
 (deftype medius-get-universe-extra-info-request (structure)
   ((message-id          uint8  21)
    (info-type           uint32)
-   (character-encoding  int32)
-   (language            int32)
+   (character-encoding  medius-character-encoding-type)
+   (language            medius-language-type)
    )
   )
 
@@ -297,14 +384,14 @@
 
 (deftype medius-connect-out-params (structure)
   ((connection-handle  basic)
-   (error-code         int32)
+   (error-code         medius-error-code)
    )
   )
 
 
 (deftype medius-disconnect-params (structure)
   ((connection-handle       pointer)
-   (disconnect-reason       int32)
+   (disconnect-reason       net-disconnect-reason)
    (my-disconnect-callback  pointer)
    )
   )
@@ -312,18 +399,18 @@
 
 (deftype medius-initialize-in-params (structure)
   ((p-local-key-pair                                                  rsa-keypair)
-   (my-chat-fwd-message-callback                                      basic)
-   (my-chat-fwd-message-callback-user-data                            basic)
-   (my-binary-fwd-message-callback                                    basic)
-   (my-binary-fwd-message-callback-user-data                          basic)
-   (my-add-to-buddy-list-fwd-confirmation-request-callback            basic)
-   (my-add-to-buddy-list-fwd-confirmation-request-callback-user-data  basic)
-   (my-error-message-callback                                         basic)
-   (my-error-message-callback-user-data                               basic)
-   (my-reassign-game-medius-world-idcallback                          basic)
-   (my-reassign-game-medius-world-idcallback-user-data                basic)
-   (pf-system-message-callback                                        basic)
-   (p-system-message-callback-data                                    basic)
+   (my-chat-fwd-message-callback                                      pointer)
+   (my-chat-fwd-message-callback-user-data                            pointer)
+   (my-binary-fwd-message-callback                                    pointer)
+   (my-binary-fwd-message-callback-user-data                          pointer)
+   (my-add-to-buddy-list-fwd-confirmation-request-callback            pointer)
+   (my-add-to-buddy-list-fwd-confirmation-request-callback-user-data  pointer)
+   (my-error-message-callback                                         pointer)
+   (my-error-message-callback-user-data                               pointer)
+   (my-reassign-game-medius-world-idcallback                          pointer)
+   (my-reassign-game-medius-world-idcallback-user-data                pointer)
+   (pf-system-message-callback                                        pointer)
+   (p-system-message-callback-data                                    pointer)
    (application-id                                                    int32)
    (p-application-key-pair                                            rsa-keypair)
    (idf-compliance                                                    int32)
@@ -332,29 +419,29 @@
 
 
 (deftype medius-initialize-out-params (structure)
-  ((error-code  int32)
+  ((error-code  medius-error-code)
    )
   )
 
 
 (deftype medius-initialize-bare-in-params (structure)
-  ((my-chat-fwd-message-callback                                      basic)
-   (my-chat-fwd-message-callback-user-data                            basic)
-   (my-binary-fwd-message-callback                                    basic)
-   (my-binary-fwd-message-callback-user-data                          basic)
-   (my-add-to-buddy-list-fwd-confirmation-request-callback            basic)
-   (my-add-to-buddy-list-fwd-confirmation-request-callback-user-data  basic)
-   (my-error-message-callback                                         basic)
-   (my-error-message-callback-user-data                               basic)
-   (my-reassign-game-medius-world-idcallback                          basic)
-   (my-reassign-game-medius-world-idcallback-user-data                basic)
+  ((my-chat-fwd-message-callback                                      pointer)
+   (my-chat-fwd-message-callback-user-data                            pointer)
+   (my-binary-fwd-message-callback                                    pointer)
+   (my-binary-fwd-message-callback-user-data                          pointer)
+   (my-add-to-buddy-list-fwd-confirmation-request-callback            pointer)
+   (my-add-to-buddy-list-fwd-confirmation-request-callback-user-data  pointer)
+   (my-error-message-callback                                         pointer)
+   (my-error-message-callback-user-data                               pointer)
+   (my-reassign-game-medius-world-idcallback                          pointer)
+   (my-reassign-game-medius-world-idcallback-user-data                pointer)
    (idf-compliance                                                    int32)
    )
   )
 
 
 (deftype medius-initialize-bare-out-params (structure)
-  ((error-code  int32)
+  ((error-code  medius-error-code)
    )
   )
 
@@ -396,7 +483,7 @@
 
 
 (deftype medius-file-checksum (structure)
-  ((puc-data  uint32)
+  ((puc-data  pointer)
    (ui-size   uint32)
    (checksum  uint8  16)
    )

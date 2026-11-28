@@ -7,3 +7,64 @@
 
 ;; DECOMP BEGINS
 
+(deftype eco-powerup-draw (powerup-draw)
+  ((vehicle-handle  handle)
+   )
+  )
+
+
+(defmethod update-draw ((this eco-powerup-draw))
+  (let ((v1-1 (the-as net-powerup (handle->process (-> this parent-proc)))))
+    (set! (-> this root trans quad) (-> v1-1 pos quad))
+    )
+  (let ((f30-0 (the float (logand (+ (- (- (if *net-mgr*
+                                               (-> *net-mgr* game-state time)
+                                               0
+                                               )
+                                           (if *net-world*
+                                               (-> *net-world* net-state game-start-time)
+                                               0
+                                               )
+                                           )
+                                        (if *net-world*
+                                            (-> *net-world* net-state total-pause-time)
+                                            0
+                                            )
+                                        )
+                                     (the-as int (-> this parent-proc))
+                                     )
+                                  #xffff
+                                  )
+                    )
+               )
+        )
+    (+! (-> this root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
+    (quaternion-axis-angle! (-> this root rotation) 0.0 1.0 0.0 (* 50.0 f30-0))
+    )
+  0
+  (none)
+  )
+
+(defstate idle (eco-powerup-draw)
+  :virtual #t
+  :post (behavior ()
+    (if (and (nonzero? (-> self part)) (< (-> self draw cur-lod) 1))
+        (sparticle-launch-control-method-16 (-> self part) (-> self root trans))
+        )
+    (ja-post)
+    )
+  )
+
+(deftype eco-light (process)
+  ()
+  )
+
+
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this eco-light) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 32)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (process-entity-status! this (entity-perm-status dead) #t)
+  (go empty-state)
+  0
+  )

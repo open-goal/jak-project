@@ -18,11 +18,11 @@
 
 
 (defmethod net-simple-destruct-method-62 ((this coli-object-base) (arg0 object) (arg1 attack-info) (arg2 object) (arg3 object))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 563) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-bullet-impact (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> arg1 intersection quad))
-        (logior! (-> v1-1 flags) 96)
+        (logior! (-> v1-1 flags) (sound-spec-flag no-track needs-update))
         (-> v1-1 id)
         )
       (else
@@ -130,18 +130,18 @@
 
 
 (defbehavior coli-statue-init-remote coli-statue ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this coli-statue) (arg0 mem-buffer))
+(defmethod spawn-remote ((this coli-statue) (arg0 mem-buffer))
   (ppointer->process (process-spawn coli-statue :init coli-statue-init-remote arg0 :name "coli-statue"))
   )
 
-(defmethod process-nettable-method-37 ((this coli-statue) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this coli-statue) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-destruction-time)
   (+! (-> arg0 msg-count) 1)
   0
@@ -160,7 +160,7 @@
 
 (net-process-class-register *net-process-class-info-coli-statue*)
 
-(defmethod process-nettable-method-40 ((this coli-statue))
+(defmethod get-class-info ((this coli-statue))
   *net-process-class-info-coli-statue*
   )
 
@@ -273,10 +273,10 @@
 
 (defmethod coli-statue-method-52 ((this coli-statue) (arg0 int))
   (set! (-> this destruction-time) arg0)
-  (let ((s5-0 (process-nettable-method-27 this 'set-destruction-time)))
+  (let ((s5-0 (alloc-msg this 'set-destruction-time)))
     (write-int32 s5-0 arg0)
-    (process-nettable-method-29 this s5-0 -1 16)
-    (process-nettable-method-28 this s5-0)
+    (send-msg this s5-0 -1 16)
+    (free-msg this s5-0)
     )
   (none)
   )
@@ -300,13 +300,13 @@
   (none)
   )
 
-(defmethod process-nettable-method-15 ((this coli-statue) (arg0 mem-buffer))
+(defmethod write-create-data ((this coli-statue) (arg0 mem-buffer))
   (write-int32 arg0 (-> this destruction-time))
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-35 ((this coli-statue) (arg0 mem-buffer))
+(defmethod init-remote ((this coli-statue) (arg0 mem-buffer))
   (coli-statue-method-54 this (-> this entity))
   (set! (-> this destruction-time) (read-int32 arg0))
   (if (!= (-> this destruction-time) -1)
@@ -317,7 +317,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-17 ((this coli-statue) (arg0 symbol) (arg1 mem-buffer))
+(defmethod handle-net-msg ((this coli-statue) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
   (case arg0
     (('set-destruction-time)
      (set! (-> this destruction-time) (read-int32 arg1))
@@ -351,8 +351,8 @@
         )
       )
     )
-  (if (not (process-nettable-method-25 this))
-      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+  (if (not (registered? this))
+      (register this 8 #xffff)
       )
   0
   (none)
@@ -373,11 +373,11 @@
               )
 
 (defmethod coli-statue-method-53 ((this coli-atlas-statue))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 530) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-atlas-statue (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
-        (logior! (-> v1-1 flags) 96)
+        (logior! (-> v1-1 flags) (sound-spec-flag no-track needs-update))
         (-> v1-1 id)
         )
       (else
@@ -419,7 +419,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue" (the-as (pointer level) #f))
     0
@@ -466,7 +466,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-a" (the-as (pointer level) #f))
     0
@@ -484,11 +484,11 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-a))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-pillar-crack (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
-        (logior! (-> v1-1 flags) 96)
+        (logior! (-> v1-1 flags) (sound-spec-flag no-track needs-update))
         (-> v1-1 id)
         )
       (else
@@ -543,11 +543,11 @@
               )
 
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-b))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-pillar-crack (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
-        (logior! (-> v1-1 flags) 96)
+        (logior! (-> v1-1 flags) (sound-spec-flag no-track needs-update))
         (-> v1-1 id)
         )
       (else
@@ -624,7 +624,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-b" (the-as (pointer level) #f))
     0
@@ -653,11 +653,11 @@
   )
 
 (defmethod net-simple-destruct-method-66 ((this coli-atlas-base-c))
-  (let ((v1-1 (make-sound-instance (-> *sound-info* 531) (new 'static 'sound-id) #f)))
+  (let ((v1-1 (make-sound-instance snd-pillar-crack (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-1
         (set! (-> v1-1 trans quad) (-> this root trans quad))
-        (logior! (-> v1-1 flags) 96)
+        (logior! (-> v1-1 flags) (sound-spec-flag no-track needs-update))
         (-> v1-1 id)
         )
       (else
@@ -726,7 +726,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-c" (the-as (pointer level) #f))
     0
@@ -878,7 +878,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-ball-collision" (the-as (pointer level) #f))
     0
@@ -904,7 +904,7 @@
    (orientation            quaternion  :inline)
    (blend-position         vector      :inline)
    (last-position          vector      :inline)
-   (rolling-sound          uint32)
+   (rolling-sound          sound-id)
    (rolling-speed          float)
    (last-bounce-time       int32)
    (last-sync-time         int32)
@@ -924,20 +924,20 @@
 
 
 (defbehavior coli-atlas-globe-init-remote coli-atlas-globe ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   (none)
   )
 
-(defmethod process-nettable-method-41 ((this coli-atlas-globe) (arg0 mem-buffer))
+(defmethod spawn-remote ((this coli-atlas-globe) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn coli-atlas-globe :init coli-atlas-globe-init-remote arg0 :name "coli-atlas-globe")
     )
   )
 
-(defmethod process-nettable-method-37 ((this coli-atlas-globe) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this coli-atlas-globe) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'update)
   (+! (-> arg0 msg-count) 1)
   0
@@ -956,7 +956,7 @@
 
 (net-process-class-register *net-process-class-info-coli-atlas-globe*)
 
-(defmethod process-nettable-method-40 ((this coli-atlas-globe))
+(defmethod get-class-info ((this coli-atlas-globe))
   *net-process-class-info-coli-atlas-globe*
   )
 
@@ -1006,20 +1006,20 @@
     (set! (-> self set-angular-velocity) #f)
     (set! (-> self send-update) #f)
     (set! (-> self rolling-speed) 0.0)
-    (set! (-> self rolling-sound) (the-as uint 0))
+    (set! (-> self rolling-sound) (new 'static 'sound-id))
     (set! (-> self last-bounce-time) (the-as int (+ (current-time) (seconds -10))))
     (set! (-> self last-position quad) (-> self root trans quad))
     (set! (-> self blend-position quad) (-> self root trans quad))
-    (if (process-nettable-method-22 self)
+    (if (owner-is-local? self)
         (coli-atlas-globe-method-90 self)
         )
     )
   )
 
-(defmethod process-nettable-method-17 ((this coli-atlas-globe) (arg0 symbol) (arg1 mem-buffer))
+(defmethod handle-net-msg ((this coli-atlas-globe) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
   (case arg0
     (('update)
-     (if (not (process-nettable-method-22 this))
+     (if (not (owner-is-local? this))
          (coli-atlas-globe-method-92 this arg1)
          )
      )
@@ -1027,19 +1027,19 @@
   (none)
   )
 
-(defmethod process-nettable-method-20 ((this coli-atlas-globe))
-  (process-nettable-method-26 this 8 #f)
+(defmethod on-owner-left ((this coli-atlas-globe))
+  (set-desired-owner this 8 #f)
   0
   (none)
   )
 
-(defmethod process-nettable-method-15 ((this coli-atlas-globe) (arg0 mem-buffer))
+(defmethod write-create-data ((this coli-atlas-globe) (arg0 mem-buffer))
   (coli-atlas-globe-method-91 this arg0)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-35 ((this coli-atlas-globe) (arg0 mem-buffer))
+(defmethod init-remote ((this coli-atlas-globe) (arg0 mem-buffer))
   (init-collision! this)
   (logior! (-> this mask) (process-mask actor-pause))
   (vector-identity! (-> this root scale))
@@ -1081,10 +1081,10 @@
   )
 
 (defmethod coli-atlas-globe-method-90 ((this coli-atlas-globe))
-  (let ((s5-0 (process-nettable-method-27 this 'update)))
+  (let ((s5-0 (alloc-msg this 'update)))
     (coli-atlas-globe-method-91 this s5-0)
-    (process-nettable-method-29 this s5-0 -1 16)
-    (process-nettable-method-28 this s5-0)
+    (send-msg this s5-0 -1 16)
+    (free-msg this s5-0)
     )
   (none)
   )
@@ -1131,9 +1131,9 @@
   (set! (-> this blend-position quad) (-> this root trans quad))
   (let ((s5-0 (read-int32 arg0)))
     (set! (-> this last-sync-time) s5-0)
-    (read-pos *level-bounding-box* (the-as mem-buffer (-> this rbody position)) arg0)
-    (read-vector arg0 (the-as mem-buffer (-> this rbody lin-momentum)))
-    (read-vector arg0 (the-as mem-buffer (-> this angular-velocity)))
+    (read-pos *level-bounding-box* (-> this rbody position) arg0)
+    (read-vector arg0 (-> this rbody lin-momentum))
+    (read-vector arg0 (-> this angular-velocity))
     (set! (-> this last-position quad) (-> this rbody position quad))
     (simulate!
       (-> this rbody)
@@ -1165,11 +1165,11 @@
 
 (defmethod init-collision! ((this coli-atlas-globe))
   (set! (-> this prox) (new 'process 'proximity-ownership-params))
-  ((method-of-object (-> this prox) proximity-ownership-params-method-9))
+  (init! (-> this prox))
   (set! (-> this prox ownable-radius) 40960000.0)
   (set! (-> this prox consider-ai-players) #f)
-  (if (not (process-nettable-method-25 this))
-      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+  (if (not (registered? this))
+      (register this 8 #xffff)
       )
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1204,7 +1204,7 @@
   (set! (-> *coli-atlas-ball-constants* info gravity) 409600.0)
   (cond
     ((and (-> arg0 process) (logtest? (process-mask vehicle) (-> arg0 process mask)))
-     (if (not (process-nettable-method-22 this))
+     (if (not (owner-is-local? this))
          (return (the-as symbol #t))
          )
      (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -1243,14 +1243,14 @@
                  (when (!= net-simple-destruct (-> process type))
                    (let ((f28-0 (fmax 0.7 (fmin 1.0 (/ f30-0 (meters 40)))))
                          (f26-0 (fmax -1.0 (fmin -0.7 (+ -1.8 (/ 286720.0 f30-0)))))
-                         (v1-66 (make-sound-instance (-> *sound-info* 508) (new 'static 'sound-id) #f))
+                         (v1-66 (make-sound-instance snd-big-ball-bounce (new 'static 'sound-id) (the-as handle #f)))
                          )
                      (cond
                        (v1-66
                          (set! (-> v1-66 volume) (the int (* 1024.0 f28-0)))
                          (set! (-> v1-66 pitch-mod) (the int (* 1524.0 f26-0)))
                          (set! (-> v1-66 trans quad) (-> this root trans quad))
-                         (logior! (-> v1-66 flags) 96)
+                         (logior! (-> v1-66 flags) (sound-spec-flag no-track needs-update))
                          (logior! (-> v1-66 mask) 1)
                          (-> v1-66 id)
                          )
@@ -1300,14 +1300,14 @@
                    (when (!= net-simple-destruct (-> process type))
                      (let ((f28-1 (fmax 0.5 (fmin 1.0 (/ f30-0 (meters 70)))))
                            (f30-1 (fmax -1.0 (fmin -0.5 (+ -1.8 (/ 286720.0 f30-0)))))
-                           (v1-110 (make-sound-instance (-> *sound-info* 509) (new 'static 'sound-id) #f))
+                           (v1-110 (make-sound-instance snd-big-ball-hit (new 'static 'sound-id) (the-as handle #f)))
                            )
                        (cond
                          (v1-110
                            (set! (-> v1-110 volume) (the int (* 1024.0 f28-1)))
                            (set! (-> v1-110 pitch-mod) (the int (* 1524.0 f30-1)))
                            (set! (-> v1-110 trans quad) (-> this root trans quad))
-                           (logior! (-> v1-110 flags) 96)
+                           (logior! (-> v1-110 flags) (sound-spec-flag no-track needs-update))
                            (logior! (-> v1-110 mask) 1)
                            (-> v1-110 id)
                            )
@@ -1367,7 +1367,7 @@
                           (arg2 touching-shapes-entry)
                           (arg3 penetrate)
                           )
-  (if (not (process-nettable-method-22 this))
+  (if (not (owner-is-local? this))
       (return (the-as object #t))
       )
   (when arg2
@@ -1425,22 +1425,14 @@
 
 (defmethod rigid-body-object-method-71 ((this coli-atlas-globe))
   (cond
-    ((process-nettable-method-22 this)
-     (let* ((a0-2 this)
-            (t9-1 (method-of-object a0-2 process-nettable-method-31))
-            )
-       (t9-1 a0-2)
-       )
-     (if (not (process-nettable-method-22 this))
+    ((owner-is-local? this)
+     (update-proximity-ownership this (the-as vector #f))
+     (if (not (owner-is-local? this))
          (coli-atlas-globe-method-90 this)
          )
      )
     (else
-      (let* ((a0-5 this)
-             (t9-4 (method-of-object a0-5 process-nettable-method-31))
-             )
-        (t9-4 a0-5)
-        )
+      (update-proximity-ownership this (the-as vector #f))
       )
     )
   (cond
@@ -1468,7 +1460,7 @@
                 (set! (-> v1-30 volume) (the int (* 1024.0 (-> this volume-modulate))))
                 (set! (-> v1-30 pitch-mod) (the int (* 1524.0 f30-0)))
                 (set! (-> v1-30 trans quad) (-> this root trans quad))
-                (logior! (-> v1-30 flags) 96)
+                (logior! (-> v1-30 flags) (sound-spec-flag no-track needs-update))
                 (logior! (-> v1-30 mask) 1)
                 (-> v1-30 id)
                 )
@@ -1479,21 +1471,21 @@
             )
           )
          (else
-           (let ((v1-34 (make-sound-instance (-> *sound-info* 529) (new 'static 'sound-id) #f)))
+           (let ((v1-34 (make-sound-instance snd-big-ball-roll (new 'static 'sound-id) (the-as handle #f))))
              (set! (-> this rolling-sound)
-                   (the-as uint (cond
-                                  (v1-34
-                                    (set! (-> v1-34 volume) (the int (* 1024.0 (-> this volume-modulate))))
-                                    (set! (-> v1-34 pitch-mod) (the int (* 1524.0 f30-0)))
-                                    (set! (-> v1-34 trans quad) (-> this root trans quad))
-                                    (logior! (-> v1-34 flags) 96)
-                                    (logior! (-> v1-34 mask) 9)
-                                    (the-as int (-> v1-34 id))
-                                    )
-                                  (else
-                                    0
-                                    )
-                                  )
+                   (the-as sound-id (cond
+                                      (v1-34
+                                        (set! (-> v1-34 volume) (the int (* 1024.0 (-> this volume-modulate))))
+                                        (set! (-> v1-34 pitch-mod) (the int (* 1524.0 f30-0)))
+                                        (set! (-> v1-34 trans quad) (-> this root trans quad))
+                                        (logior! (-> v1-34 flags) (sound-spec-flag no-track needs-update))
+                                        (logior! (-> v1-34 mask) 9)
+                                        (the-as int (-> v1-34 id))
+                                        )
+                                      (else
+                                        0
+                                        )
+                                      )
                            )
                    )
              )
@@ -1505,8 +1497,8 @@
      )
     (else
       (when (nonzero? (-> this rolling-sound))
-        (sound-stop (the-as sound-id (-> this rolling-sound)) #t)
-        (set! (-> this rolling-sound) (the-as uint 0))
+        (sound-stop (-> this rolling-sound) #t)
+        (set! (-> this rolling-sound) (new 'static 'sound-id))
         0
         )
       )
@@ -1556,12 +1548,12 @@
         )
       (quaternion-normalize! (-> this orientation))
       (quaternion-copy! (-> this root rotation) (-> this orientation))
-      (if (and (coli-atlas-globe-method-93 this) (process-nettable-method-22 this))
+      (if (and (coli-atlas-globe-method-93 this) (owner-is-local? this))
           (coli-atlas-globe-method-90 this)
           )
       )
     )
-  (when (and (process-nettable-method-22 this) (-> this send-update))
+  (when (and (owner-is-local? this) (-> this send-update))
     (coli-atlas-globe-method-90 this)
     (set! (-> this send-update) #f)
     )
@@ -1574,7 +1566,7 @@
 (defmethod rigid-body-object-method-66 ((this coli-atlas-globe))
   (set! (-> this roll-sound-stop-time) (the-as int (current-time)))
   (rigid-body-object-method-64 this *coli-atlas-ball-constants*)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-globe" (the-as (pointer level) #f))
     0
@@ -1626,7 +1618,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1664,7 +1656,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue-break-a" (the-as (pointer level) #f))
     0
@@ -1726,7 +1718,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1765,7 +1757,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue-break-b" (the-as (pointer level) #f))
     0
@@ -1862,7 +1854,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1878,7 +1870,7 @@
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-break" (the-as (pointer level) #f))
     0

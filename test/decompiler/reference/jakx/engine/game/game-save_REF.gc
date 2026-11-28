@@ -972,8 +972,8 @@
                                                                           (s1-0 (the-as object s2-5))
                                                                           )
                                                                       (set! (-> (the-as car-info-save s1-0) car-type) (-> s0-0 car-type))
-                                                                      (set! (-> (the-as car-info-save s1-0) base-color) (car-rgb-color-method-10 (-> s0-0 base-color)))
-                                                                      (set! (-> (the-as car-info-save s1-0) stripe-color) (car-rgb-color-method-10 (-> s0-0 stripe-color)))
+                                                                      (set! (-> (the-as car-info-save s1-0) base-color) (to-rgba (-> s0-0 base-color)))
+                                                                      (set! (-> (the-as car-info-save s1-0) stripe-color) (to-rgba (-> s0-0 stripe-color)))
                                                                       (set! (-> (the-as car-info-save s1-0) flags) (-> s0-0 flags))
                                                                       (dotimes (v1-135 11)
                                                                         (set! (-> (the-as car-info-save s1-0) parts v1-135) (-> s0-0 current-parts v1-135))
@@ -1700,33 +1700,17 @@
                (s1-1 (the-as car-info-save (&+ (the-as game-save-tag s4-0) 16)))
                )
            (set! (-> s2-2 car-type) (-> s1-1 car-type))
-           (car-rgb-color-method-11 (-> s2-2 base-color) (-> s1-1 base-color))
-           (car-rgb-color-method-11 (-> s2-2 stripe-color) (-> s1-1 stripe-color))
+           (from-rgba! (-> s2-2 base-color) (-> s1-1 base-color))
+           (from-rgba! (-> s2-2 stripe-color) (-> s1-1 stripe-color))
            (set! (-> s2-2 flags) (-> s1-1 flags))
            (dotimes (v1-70 11)
              (set! (-> s2-2 current-parts v1-70) (-> s1-1 parts v1-70))
              )
            (let ((v1-76 (-> *car-upgrade-info* data (-> s2-2 car-type))))
-             (set! (-> s2-2 tuning)
-                   (logior (logand (-> s2-2 tuning) -256)
-                           (shr (shl (min (the-as int (shr (shl (-> s1-1 tuning) 56) 56)) (the-as int (-> v1-76 data 0 max))) 56) 56)
-                           )
-                   )
-             (set! (-> s2-2 tuning)
-                   (logior (logand (-> s2-2 tuning) -65281)
-                           (shr (shl (min (the-as int (shr (shl (-> s1-1 tuning) 48) 56)) (the-as int (-> v1-76 data 1 max))) 56) 48)
-                           )
-                   )
-             (set! (-> s2-2 tuning)
-                   (logior (logand (-> s2-2 tuning) -16711681)
-                           (shr (shl (min (the-as int (shr (shl (-> s1-1 tuning) 40) 56)) (the-as int (-> v1-76 data 2 max))) 56) 40)
-                           )
-                   )
-             (set! (-> s2-2 tuning)
-                   (logior (logand (-> s2-2 tuning) (the-as uint #xffffffff00ffffff))
-                           (shr (shl (min (the-as int (shr (-> s1-1 tuning) 24)) (the-as int (-> v1-76 data 3 max))) 56) 32)
-                           )
-                   )
+             (set! (-> s2-2 tuning engine) (min (the-as int (-> s1-1 tuning engine)) (the-as int (-> v1-76 data 0 max))))
+             (set! (-> s2-2 tuning gearbox) (min (the-as int (-> s1-1 tuning gearbox)) (the-as int (-> v1-76 data 1 max))))
+             (set! (-> s2-2 tuning armor) (min (the-as int (-> s1-1 tuning armor)) (the-as int (-> v1-76 data 2 max))))
+             (set! (-> s2-2 tuning turbo) (min (the-as int (-> s1-1 tuning turbo)) (the-as int (-> v1-76 data 3 max))))
              )
            )
          )
@@ -2027,23 +2011,32 @@
 ;; definition for function auto-save-post
 (defbehavior auto-save-post auto-save ()
   (when (and (= *cheat-mode* 'debug) (cpad-hold? 0 l3))
-    (let ((gp-0 (new
-                  'stack
-                  'font-context
-                  *font-default-matrix*
-                  32
-                  320
-                  8396850.0
-                  (font-color default)
-                  (font-flags shadow kerning)
-                  )
-                )
+    (let ((gp-0
+            (new
+              'stack
+              'font-context
+              *font-default-matrix*
+              32
+              320
+              8396850.0
+              (font-color default)
+              (font-flags shadow kerning)
+              )
+            )
           )
       (set-width! gp-0 440)
       (set-height! gp-0 80)
       (set! (-> gp-0 flags) (font-flags shadow kerning))
       (format (clear *temp-string*) "~S / ~S ~D~%" (-> self mode) (-> self state name) (-> self which))
-      (print-game-text *temp-string* gp-0 #f 44 (bucket-id hud-draw-hud-alpha) #f (the-as dma-buffer #f))
+      (print-game-text
+        *temp-string*
+        gp-0
+        #f
+        44
+        (bucket-id hud-draw-hud-alpha)
+        (the-as string #f)
+        (the-as dma-buffer #f)
+        )
       )
     )
   (when (and (or (= (-> self mode) 'auto-save)
@@ -3108,7 +3101,7 @@
                #f
                44
                (bucket-id hud-draw-hud-alpha)
-               #f
+               (the-as string #f)
                s5-0
                )
              (set-origin! s4-0 64 168)
@@ -3119,7 +3112,7 @@
                #f
                44
                (bucket-id hud-draw-hud-alpha)
-               #f
+               (the-as string #f)
                s5-0
                )
              (set-origin! s4-0 64 228)
@@ -3130,7 +3123,7 @@
                #f
                44
                (bucket-id hud-draw-hud-alpha)
-               #f
+               (the-as string #f)
                s5-0
                )
              )
@@ -3146,14 +3139,14 @@
                 #f
                 44
                 (bucket-id hud-draw-hud-alpha)
-                #f
+                (the-as string #f)
                 s5-0
                 )
               (set-origin! s4-0 64 138)
               (set-height! s4-0 40)
               (let ((s3-3 print-game-text))
                 (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-id-174) #f) 1)
-                (s3-3 *temp-string* *font-context* #f 44 (bucket-id hud-draw-hud-alpha) #f s5-0)
+                (s3-3 *temp-string* *font-context* #f 44 (bucket-id hud-draw-hud-alpha) (the-as string #f) s5-0)
                 )
               (set-origin! s4-0 64 178)
               (set-height! s4-0 30)
@@ -3163,7 +3156,7 @@
                 #f
                 44
                 (bucket-id hud-draw-hud-alpha)
-                #f
+                (the-as string #f)
                 s5-0
                 )
               (set-origin! s4-0 64 208)
@@ -3174,7 +3167,7 @@
                 #f
                 44
                 (bucket-id hud-draw-hud-alpha)
-                #f
+                (the-as string #f)
                 s5-0
                 )
               (set-origin! s4-0 64 278)
@@ -3185,7 +3178,7 @@
                 #f
                 44
                 (bucket-id hud-draw-hud-alpha)
-                #f
+                (the-as string #f)
                 s5-0
                 )
               )

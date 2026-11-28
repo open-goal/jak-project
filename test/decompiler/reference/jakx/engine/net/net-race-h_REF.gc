@@ -5,13 +5,13 @@
 (deftype net-player-race (net-player)
   ((last-on-track-pos        vector      :inline)
    (last-on-track-rot        quaternion  :inline)
-   (wrong-way-bot            uint64)
+   (wrong-way-bot            handle)
    (finish-time              int32)
    (last-lap-update-time     int32)
    (last-on-track-time       int32)
    (last-slice               int32)
    (last-slice-change-time   int32)
-   (last-valid-vehicle-time  uint64)
+   (last-valid-vehicle-time  time-frame)
    (rstate                   racer-state)
    (current-lap              int8)
    (racer-idx                int8)
@@ -22,7 +22,7 @@
    )
   (:methods
     (net-player-race-method-98 () none)
-    (net-player-race-method-99 () none)
+    (net-player-race-method-99 (_type_) none)
     (net-player-race-method-100 () none)
     (net-player-race-method-101 () none)
     (net-player-race-method-102 () none)
@@ -66,15 +66,15 @@
 ;; definition for function net-player-race-init-remote
 ;; WARN: Return type mismatch int vs none.
 (defbehavior net-player-race-init-remote net-player-race ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   (none)
   )
 
 ;; definition for method 41 of type net-player-race
-(defmethod process-nettable-method-41 ((this net-player-race) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-player-race) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-player-race :init net-player-race-init-remote arg0 :name "net-player-race")
     )
@@ -82,7 +82,7 @@
 
 ;; definition for method 37 of type net-player-race
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-player-race) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-player-race) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'lap-changed)
   (+! (-> arg0 msg-count) 1)
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'player-finished)
@@ -110,7 +110,7 @@
 (net-process-class-register *net-process-class-info-net-player-race*)
 
 ;; definition for method 40 of type net-player-race
-(defmethod process-nettable-method-40 ((this net-player-race))
+(defmethod get-class-info ((this net-player-race))
   *net-process-class-info-net-player-race*
   )
 
@@ -124,13 +124,15 @@
    (unknown-uint32-1  uint32)
    (unknown-uint32-2  uint32)
    (unknown-uint32-3  uint32)
-   (banner            uint64)
-   (hud-clock         uint64)
+   (banner            handle)
+   (hud-clock         handle)
    (auto-end-time     int32)
    )
+  (:state-methods
+    waiting-race-start
+    racing
+    )
   (:methods
-    (net-game-mgr-race-method-80 () none)
-    (net-game-mgr-race-method-81 () none)
     (net-game-mgr-race-method-82 () none)
     (net-game-mgr-race-method-83 () none)
     (net-game-mgr-race-method-84 () none)
@@ -164,15 +166,15 @@
 ;; definition for function net-game-mgr-race-init-remote
 ;; WARN: Return type mismatch int vs none.
 (defbehavior net-game-mgr-race-init-remote net-game-mgr-race ((arg0 int))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self (the-as mem-buffer arg0))
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self (the-as mem-buffer arg0))
+  (post-init-remote self)
   0
   (none)
   )
 
 ;; definition for method 41 of type net-game-mgr-race
-(defmethod process-nettable-method-41 ((this net-game-mgr-race) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-game-mgr-race) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn net-game-mgr-race :init net-game-mgr-race-init-remote arg0 :name "net-game-mgr-race")
     )
@@ -180,7 +182,7 @@
 
 ;; definition for method 37 of type net-game-mgr-race
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-game-mgr-race) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-game-mgr-race) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -204,7 +206,7 @@
 (net-process-class-register *net-process-class-info-net-game-mgr-race*)
 
 ;; definition for method 40 of type net-game-mgr-race
-(defmethod process-nettable-method-40 ((this net-game-mgr-race))
+(defmethod get-class-info ((this net-game-mgr-race))
   *net-process-class-info-net-game-mgr-race*
   )
 

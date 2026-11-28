@@ -1,0 +1,116 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type menumap-states
+(deftype menumap-states (structure)
+  ((current-values  float  5)
+   (target-values   float  5)
+   )
+  )
+
+;; definition for method 3 of type menumap-states
+(defmethod inspect ((this menumap-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'menumap-states)
+  (format #t "~1Tcurrent-values[5] @ #x~X~%" (-> this current-values))
+  (format #t "~1Ttarget-values[5] @ #x~X~%" (-> this target-values))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-menumap
+;; WARN: Return type mismatch vector vs object.
+(defun init-mood-menumap ((arg0 mood-context))
+  (let ((v1-0 (the-as menumap-states (-> arg0 state))))
+    (dotimes (a0-1 5)
+      (let ((f0-0 (if (zero? a0-1)
+                      1.0
+                      0.0
+                      )
+                  )
+            )
+        (set! (-> v1-0 current-values a0-1) f0-0)
+        (set! (-> v1-0 target-values a0-1) f0-0)
+        )
+      )
+    )
+  (let ((v1-4 (-> *time-of-day-context* fog-override)))
+    (set-vector! (-> v1-4 fog-color) 122.2838 132.4425 151.9377 128.0)
+    (set-vector! (-> v1-4 fog-dists) 98304.0 3072000.0 255.0 150.0)
+    (let ((v0-0 (-> v1-4 erase-color)))
+      (set! (-> v0-0 x) 0.0)
+      (set! (-> v0-0 y) 0.0)
+      (set! (-> v0-0 z) 0.0)
+      (set! (-> v0-0 w) 128.0)
+      v0-0
+      )
+    )
+  )
+
+;; definition for function update-mood-menumap
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-menumap time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (let ((v1-0 (-> arg0 current-fog)))
+    (set! (-> v1-0 fog-color x) 160.0)
+    (set! (-> v1-0 fog-color y) 150.0)
+    (set! (-> v1-0 fog-color z) 200.0)
+    (set! (-> v1-0 fog-color w) 128.0)
+    )
+  (set-vector! (-> arg0 current-fog fog-dists) 131072.0 6826667.0 255.0 162.0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((s5-0 (the-as menumap-states (-> arg0 state))))
+        (set! (-> arg0 times 0 w) (-> s5-0 current-values 0))
+        (set! (-> arg0 times 1 w) (-> s5-0 current-values 1))
+        (set! (-> arg0 times 2 w) (-> s5-0 current-values 2))
+        (set! (-> arg0 times 3 w) (-> s5-0 current-values 3))
+        (set! (-> arg0 times 4 w) (-> s5-0 current-values 4))
+        (set! (-> arg0 times 5 w) 1.0)
+        (set! (-> arg0 times 6 w) 0.0)
+        (set! (-> arg0 times 7 w) 0.0)
+        (dotimes (gp-1 5)
+          (seek! (-> s5-0 current-values gp-1) (-> s5-0 target-values gp-1) (seconds-per-frame))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-menumap-target!
+;; WARN: Return type mismatch symbol vs object.
+(defun set-menumap-target! ((arg0 int))
+  (let ((v1-1 (level-get *level* 'menumap)))
+    (when v1-1
+      (let ((v1-3 (the-as menumap-states (-> v1-1 mood-context state))))
+        (dotimes (a0-2 5)
+          (if (zero? a0-2)
+              (set! (-> v1-3 target-values a0-2) (if (= a0-2 arg0)
+                                                     1.0
+                                                     0.2
+                                                     )
+                    )
+              (set! (-> v1-3 target-values a0-2) (if (= a0-2 arg0)
+                                                     1.0
+                                                     0.0
+                                                     )
+                    )
+              )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+
+
+

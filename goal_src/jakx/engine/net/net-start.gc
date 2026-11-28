@@ -7,3 +7,367 @@
 
 ;; DECOMP BEGINS
 
+(define *net-start-view-ct* 1)
+
+(define *listener-cpt* (the-as continue-point #f))
+
+(define *net-hw-initted* #f)
+
+(define *net-hw-config-id* 0)
+
+(define *net-hw-last-error* 0)
+
+(defun net-hw-stop ()
+  (knet-eenet-shutdown)
+  (set! *net-hw-initted* #f)
+  (let ((v1-0 1))
+    (while (nonzero? v1-0)
+      (set! v1-0 (knet-eenet-poll-is-shutdown))
+      (if (< v1-0 0)
+          (return #f)
+          )
+      )
+    )
+  #f
+  )
+
+(defun net-hw-start-part1 ()
+  (if (and *lobby-menu-manager* (= (-> *lobby-menu-manager* game-connection-type) 1))
+      (knet-eenet-set-filter 15)
+      (knet-eenet-set-filter 7)
+      )
+  (set! *net-hw-last-error* 0)
+  (let ((gp-0 (knet-eenet-start-hw)))
+    (when (nonzero? gp-0)
+      (format 0 "failed to init net hw~%")
+      (set! *net-hw-last-error* gp-0)
+      (return #f)
+      )
+    )
+  (let ((gp-1 1))
+    (while (!= gp-1 2)
+      (set! gp-1 (knet-eenet-poll-is-started -1))
+      (when (< gp-1 0)
+        (set! *net-hw-last-error* gp-1)
+        (net-hw-stop)
+        (return #f)
+        )
+      (suspend)
+      )
+    )
+  (set! *net-hw-initted* #t)
+  #t
+  )
+
+(defun net-hw-start-part2 ()
+  (suspend-for (seconds 45)
+    (let ((v1-1 (knet-eenet-poll-is-started *net-hw-config-id*)))
+      (cond
+        ((< v1-1 0)
+         (net-hw-stop)
+         (return #f)
+         )
+        ((zero? v1-1)
+         (goto cfg-10)
+         )
+        )
+      )
+    )
+  (return #f)
+  (label cfg-10)
+  #t
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior hack-reset-state process ((arg0 symbol))
+  (when *net-mgr*
+    (format 0 "going idle~%")
+    (suspend-for (seconds 10)
+      (send-event *net-mgr* 'leave-game)
+      (send-event *net-mgr* 'leave-lobby)
+      (suspend)
+      (if (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'idle))
+          (goto cfg-14)
+          )
+      )
+    (label cfg-14)
+    (format 0 "killing mgr~%")
+    (while *net-mgr*
+      (send-event *net-mgr* 'go-die)
+      (suspend)
+      )
+    (format 0 "ok... he's dead...~%")
+    )
+  (when (and arg0 *net-hw-initted*)
+    (format 0 "shutting down net-hw~%")
+    (net-hw-stop)
+    )
+  0
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior net-mgr-start-hardware-already-done process ((arg0 symbol))
+  (when *net-mgr*
+    (format 0 "there is a net-mgr already... killing...~%")
+    (until (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'idle))
+      (send-event *net-mgr* 'leave-game)
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (let ((v1-5 (process->ppointer self)))
+          (set! (-> a1-2 from) v1-5)
+          )
+        (set! (-> a1-2 num-params) 0)
+        (set! (-> a1-2 message) 'leave-lobby)
+        (send-event-function *net-mgr* a1-2)
+        )
+      (suspend)
+      )
+    (format 0 "killing mgr~%")
+    (while *net-mgr*
+      (send-event *net-mgr* 'go-die)
+      (suspend)
+      )
+    (format 0 "ok... he's dead...~%")
+    )
+  (clear-local-players)
+  (net-mgr-start arg0)
+  (until #f
+    (suspend)
+    (if (= *net-mgr-startup-status* 'ok)
+        (return #t)
+        )
+    (when (= *net-mgr-startup-status* 'dead)
+      (hack-reset-state #t)
+      (return #f)
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defun hack-start-local-game ()
+  (local-vars (v1-14 object))
+  (hack-reset-state #t)
+  (suspend)
+  (suspend)
+  (clear-local-players)
+  (net-mgr-start #f)
+  (until #f
+    (suspend)
+    (when (= *net-mgr-startup-status* 'ok)
+      #t
+      (goto cfg-8)
+      )
+    (when (= *net-mgr-startup-status* 'dead)
+      (hack-reset-state #t)
+      (return (the-as object #f))
+      )
+    )
+  #f
+  (label cfg-8)
+  (suspend)
+  (suspend)
+  (format 0 "hack-start-local-game: net-mgr ~A~%" *net-mgr*)
+  (send-event *net-mgr* 'start-sp-game)
+  (until v1-14
+    (suspend)
+    (set! v1-14 (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-sp-game)))
+    )
+  (until *net-world*
+    (suspend)
+    )
+  (format 0 "hack-start-net-local-game succeeded~%")
+  (suspend)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun artist-clean-up-net-mgr ()
+  (local-vars (v1-14 object) (v1-31 object))
+  (when *net-mgr*
+    (when (and (-> *net-mgr* next-state) (let ((v1-7 (-> *net-mgr* next-state name)))
+                                           (or (= v1-7 'playing) (= v1-7 'playing-sp-game))
+                                           )
+               )
+      (send-event *net-mgr* 'leave-game)
+      (until v1-14
+        (suspend)
+        (set! v1-14 (and (-> *net-mgr* next-state) (let ((v1-17 (-> *net-mgr* next-state name)))
+                                                     (or (= v1-17 'idle) (= v1-17 'lobby-idle))
+                                                     )
+                         )
+              )
+        )
+      (when (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'lobby-idle))
+        (send-event *net-mgr* 'leave-lobby)
+        (until v1-31
+          (suspend)
+          (set! v1-31 (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'idle)))
+          )
+        )
+      )
+    (send-event *net-mgr* 'go-die)
+    (while *net-mgr*
+      (suspend)
+      )
+    )
+  0
+  )
+
+(define *artist-continue-busy* #f)
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior artist-continue process ((arg0 continue-point) (arg1 object))
+  (local-vars (v1-15 object) (v1-27 object))
+  (while *artist-continue-busy*
+    (suspend)
+    )
+  (set! *artist-continue-busy* #t)
+  (artist-clean-up-net-mgr)
+  (kill-by-type hud-map *active-pool*)
+  (when arg0
+    (when (not (logtest? (continue-flags race) (-> arg0 flags)))
+      (start 'play arg0 0)
+      (set! *artist-continue-busy* #f)
+      (return (the-as object #f))
+      )
+    )
+  (dotimes (v1-8 24)
+    (set! (-> *net-players* v1-8) #f)
+    )
+  (net-mgr-start #f)
+  (until *net-mgr*
+    (suspend)
+    )
+  (until v1-15
+    (suspend)
+    (set! v1-15 (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'idle)))
+    )
+  (send-event *net-mgr* 'start-sp-game)
+  (until *net-world*
+    (suspend)
+    )
+  (until v1-27
+    (suspend)
+    (set! v1-27 (and (-> *net-world* next-state) (= (-> *net-world* next-state name) 'running)))
+    )
+  (set-player-load-parts *net-world* *default-vehicle-load-parts* 0)
+  (set-player-desired-driver *net-world* 0 0)
+  (set-player-vehicle *net-world* 0 0 (new 'static 'vehicle-load-parts) (new 'static 'tuning-info))
+  (set-player-colors *net-world* (the-as int (the-as uint #x802a501c)) (the-as int (the-as uint #x80411c2d)) 0)
+  (if arg0
+      (set-artist-continue *net-world* arg0)
+      (set-task-node *net-world* (the-as game-task-node arg1))
+      )
+  (lock-game *net-world*)
+  (until (-> *net-players* 0)
+    (suspend)
+    )
+  (suspend)
+  (if arg0
+      (send-event (-> *net-players* 0) 'net-player-go-running)
+      )
+  (dotimes (gp-1 10)
+    (suspend)
+    )
+  (set! *artist-continue-busy* #f)
+  0
+  )
+
+;; WARN: Function listener-continue has a return type of none, but the expression builder found a return statement.
+(defun listener-continue ((arg0 string))
+  (let ((gp-0 (get-continue-by-name *game-info* arg0)))
+    (when (not gp-0)
+      (format 0 "can't find continue ~A~%" arg0)
+      (return #f)
+      )
+    (set-continue! *game-info* gp-0 0 #f)
+    (set! *listener-cpt* gp-0)
+    )
+  (kill-by-name "artist-continue" *active-pool*)
+  (process-spawn-function process artist-continue *listener-cpt* -1 :name "artist-continue")
+  0
+  (none)
+  )
+
+(defun listener-task ((arg0 uint))
+  (kill-by-name "artist-continue" *active-pool*)
+  (process-spawn-function process artist-continue #f arg0 :name "artist-continue")
+  0
+  (none)
+  )
+
+(defun select-continue-point ((arg0 int))
+  (local-vars (gp-0 continue-point))
+  (when (not *net-game-mgr*)
+    (set! gp-0 (the-as continue-point #f))
+    (goto cfg-7)
+    )
+  (set! gp-0 (-> *static-continues* arg0))
+  (-> *net-players* (+ arg0 (* (if *net-mgr*
+                                   (-> *net-mgr* game-state local-machine-idx)
+                                   0
+                                   )
+                               2
+                               )
+                       )
+      )
+  (break!)
+  (set-continue! *game-info* gp-0 arg0 #f)
+  (label cfg-7)
+  gp-0
+  )
+
+(defun set-local-vehicle ((arg0 int))
+  (set! (-> *game-info* current-vehicle) (the-as uint arg0))
+  (when *net-world*
+    (set! (-> *net-world* net-state players 0 vehicle-selection) 0)
+    (set! (-> *net-world* net-state assigned-drivers 0) (the-as uint 0))
+    (dotimes (v1-5 (-> *net-vehicles* length))
+      (if (= (-> *net-vehicles* v1-5 vt) (-> *game-info* current-vehicle))
+          (set! (-> *net-world* net-state players 0 vehicle-selection) v1-5)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs object.
+(defun qo ((arg0 string) (arg1 string))
+  (process-spawn-function
+    process
+    (lambda :behavior process
+      ((arg0 string) (arg1 string))
+      (hack-reset-state #t)
+      (net-hw-start-part1)
+      (set! *net-hw-config-id* (-> (the-as (pointer int32) (knet-eenet-get-config-list)) 1))
+      (net-hw-start-part2)
+      (format 0 "net-hw-initted is ~A~%" *net-hw-initted*)
+      (net-mgr-start-hardware-already-done #t)
+      (suspend)
+      (copy-string<-string *medius-account-name* arg0)
+      (copy-string<-string *medius-account-password* arg1)
+      (set! (-> *net-mgr* skip-policy) #t)
+      (send-event *net-mgr* 'connect-to-lobby)
+      (suspend-for (seconds 30)
+        (if (and *net-mgr* (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'lobby-idle))
+            (goto cfg-19)
+            )
+        (if (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'idle))
+            (goto cfg-19)
+            )
+        )
+      (label cfg-19)
+      (when (not (and *net-mgr* (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'lobby-idle)))
+        (format 0 "connect failed!!~%")
+        (hack-reset-state #t)
+        (return #f)
+        )
+      (send-event *lobby-menu-manager* 'hack-goto-lobby)
+      )
+    arg0
+    arg1
+    :name "qo"
+    )
+  )

@@ -144,16 +144,16 @@
 
 ;; definition of type base-menu-info
 (deftype base-menu-info (structure)
-  ((menu-type      basic)
-   (children       basic)
-   (name-symbol    basic)
-   (3d-menu-type   basic)
-   (trans-info     animation-info)
+  ((menu-type      symbol)
+   (children       (array base-menu-info))
+   (name-symbol    symbol)
+   (3d-menu-type   string)
+   (trans-info     transition-info)
    (joint-index    int8)
    (joint-index-2  int8)
    (box-index      int8)
-   (flags          uint8)
-   (joints         basic)
+   (flags          base-menu-info-flag)
+   (joints         (array int8))
    (anim-delay     uint32)
    (width          int32)
    (height         int32)
@@ -192,9 +192,9 @@
 
 ;; definition of type base-menu
 (deftype base-menu (process-drawable)
-  ((child-handles      basic)
+  ((child-handles      (array handle))
    (info-ptr           base-menu-info)
-   (focused?           basic)
+   (focused?           symbol)
    (3d-menu-2d-offset  vector               :inline)
    (pos-x              float)
    (pos-y              float)
@@ -202,14 +202,14 @@
    (menu-time          uint32)
    (width              int32)
    (height             int32)
-   (width-array        basic)
-   (height-array       basic)
+   (width-array        (array int32))
+   (height-array       (array int32))
    (joint-mat          matrix               :inline)
    (offset-matrix      matrix               :inline)
    (j-mod              joint-mod-set-world  :inline)
    (extra-offset       vector               :inline)
    (pad                int8)
-   (hidden?            basic)
+   (hidden?            symbol)
    )
   (:state-methods
     wait-enter
@@ -222,13 +222,13 @@
     dummy
     )
   (:methods
-    (base-menu-method-58 () none)
-    (base-menu-method-59 () none)
-    (base-menu-method-60 () none)
-    (base-menu-method-61 () none)
-    (base-menu-method-62 () none)
-    (base-menu-method-63 (_type_) none)
-    (base-menu-method-64 () none)
+    (spawn-children (_type_) symbol)
+    (init-menu! (_type_) none)
+    (draw-menu (_type_) object)
+    (default-event-handler (_type_ process int symbol event-message-block) object)
+    (handle-input (_type_ int) object)
+    (find-menu-by-name (_type_ symbol) base-menu)
+    (all-running? (_type_) symbol)
     )
   )
 
@@ -288,7 +288,7 @@
 (deftype map-menu (base-menu)
   ()
   (:methods
-    (map-menu-method-65 () none)
+    (update-masks (_type_) none)
     )
   )
 
@@ -309,11 +309,11 @@
 (deftype selection-menu-manager (base-menu)
   ((selection-index       int32)
    (prev-selection-index  int32)
-   (enabled               basic)
+   (enabled               symbol)
    )
   (:methods
-    (selection-menu-manager-method-65 () none)
-    (selection-menu-manager-method-66 () none)
+    (select-by-sym (_type_ symbol) none)
+    (play-move-sound (_type_) none)
     )
   )
 
@@ -341,11 +341,11 @@
    (offset-z           float   :overlay-at (-> offset data 2))
    (offset-w           float   :overlay-at (-> offset data 3))
    (pos-z              int32)
-   (tex-name           basic)
-   (tex-id             uint32)
+   (tex-name           string)
+   (tex-id             texture-id)
    (scale-x            float)
    (scale-y            float)
-   (flags              uint16)
+   (flags              hud-sprite-flags)
    (offset-from-index  int8)
    (offset-dir         uint8)
    (texture-index      int8)
@@ -433,8 +433,8 @@
 ;; definition of type sprite-menu-info
 (deftype sprite-menu-info (base-menu-info)
   ((trans-info    transition-info :override)
-   (sprites-info  basic)
-   (color         uint32)
+   (sprites-info  (array sprite-info))
+   (color         rgba)
    )
   )
 
@@ -492,11 +492,12 @@
 
 ;; definition of type sprite-menu
 (deftype sprite-menu (base-menu)
-  ((sprites  basic)
-   (alpha    float)
+  ((info-ptr  sprite-menu-info :override)
+   (sprites   hud-sprite-array)
+   (alpha     float)
    )
   (:methods
-    (sprite-menu-method-65 () none)
+    (update-sprites (_type_) none)
     )
   )
 
@@ -517,10 +518,10 @@
 
 ;; definition of type menu-prim-strip-client
 (deftype menu-prim-strip-client (prim-client)
-  ((strip  basic)
+  ((strip  prim-strip)
    )
   (:methods
-    (menu-prim-strip-client-method-10 () none)
+    (init-strip-vert! (_type_ prim-strip vector rgba float float) none)
     )
   )
 
@@ -538,11 +539,11 @@
 
 ;; definition of type prim-strip-menu
 (deftype prim-strip-menu (sprite-menu)
-  ((p-client-array  basic)
-   (colors          basic)
+  ((p-client-array  (array menu-prim-strip-client))
+   (colors          (array rgba))
    )
   (:methods
-    (prim-strip-menu-method-66 () none)
+    (update-strips (_type_) none)
     )
   )
 
@@ -563,7 +564,7 @@
 
 ;; definition of type sprite-ptr-info
 (deftype sprite-ptr-info (sprite-info)
-  ((sprite-ptr  basic)
+  ((sprite-ptr  symbol)
    )
   )
 
@@ -595,7 +596,8 @@
 
 ;; definition of type sprite-ptr-menu-info
 (deftype sprite-ptr-menu-info (sprite-menu-info)
-  ()
+  ((sprites-info  (array sprite-ptr-info) :override)
+   )
   )
 
 ;; definition for method 3 of type sprite-ptr-menu-info
@@ -629,7 +631,8 @@
 
 ;; definition of type sprite-ptr-menu
 (deftype sprite-ptr-menu (prim-strip-menu)
-  ()
+  ((info-ptr  sprite-ptr-menu-info :override)
+   )
   )
 
 ;; definition for method 3 of type sprite-ptr-menu
@@ -648,10 +651,10 @@
 ;; definition of type index-sprite-list-menu-info
 (deftype index-sprite-list-menu-info (sprite-menu-info)
   ((pad1         uint32  2)
-   (index-list   basic)
-   (horiz-list?  basic)
+   (index-list   symbol)
+   (horiz-list?  symbol)
    (item-offset  int32)
-   (color-array  basic)
+   (color-array  symbol)
    )
   )
 
@@ -692,7 +695,8 @@
 
 ;; definition of type index-sprite-list-menu
 (deftype index-sprite-list-menu (prim-strip-menu)
-  ((index-list  basic)
+  ((info-ptr    index-sprite-list-menu-info :override)
+   (index-list  (array int8))
    )
   )
 
@@ -718,22 +722,22 @@
    (offset-z                 float   :overlay-at (-> offset data 2))
    (offset-w                 float   :overlay-at (-> offset data 3))
    (pos-z                    int32)
-   (id                       uint32)
+   (id                       text-id)
    (font-scale               float)
    (width                    float)
    (height                   float)
-   (string-ptr               basic)
-   (string-ptr-needs-format  basic)
-   (font-flags               uint16)
-   (font-color               uint8)
-   (font-color-2             uint8)
-   (font-color-3             uint8)
+   (string-ptr               symbol)
+   (string-ptr-needs-format  symbol)
+   (font-flags               hud-string-flag)
+   (font-color               font-color)
+   (font-color-2             font-color)
+   (font-color-3             font-color)
    (offset-dir               uint8)
    (offset-from-index        int8)
    (offset-type-from         int8)
-   (is-player-string         basic)
+   (is-player-string         symbol)
    (tmp-talking              int32)
-   (extra-arg                basic)
+   (extra-arg                symbol)
    )
   )
 
@@ -795,8 +799,8 @@
 
 ;; definition of type string-menu-info
 (deftype string-menu-info (sprite-menu-info)
-  ((strings-info  basic)
-   (text-ids      basic)
+  ((strings-info  (array string-info))
+   (text-ids      symbol)
    )
   )
 
@@ -833,12 +837,13 @@
 
 ;; definition of type string-menu
 (deftype string-menu (prim-strip-menu)
-  ((strings   basic)
-   (text-ids  basic)
+  ((info-ptr  string-menu-info :override)
+   (strings   menu-string-array)
+   (text-ids  (array strings-extra-struct))
    )
   (:methods
-    (string-menu-method-67 () none)
-    (string-menu-method-68 () none)
+    (update-strings (_type_) none)
+    (update-text-ids (_type_) none)
     )
   )
 
@@ -877,7 +882,7 @@
 
 ;; definition of type game-text-menu-info
 (deftype game-text-menu-info (string-menu-info)
-  ((text-id  uint32)
+  ((text-id  text-id)
    )
   )
 
@@ -915,7 +920,8 @@
 
 ;; definition of type game-text-menu
 (deftype game-text-menu (string-menu)
-  ((text-id  uint32)
+  ((info-ptr  game-text-menu-info :override)
+   (text-id   text-id)
    )
   )
 
@@ -1015,14 +1021,14 @@
   ((trans-info                   dropdown-trans-info :override)
    (selection-box-width          int32)
    (selection-box-height         int32)
-   (selection-type               basic)
+   (selection-type               symbol)
    (selection-extra              int32)
    (selection-box-offset         vector               :inline)
    (selection-box-offset-x       float                :overlay-at (-> selection-box-offset data 0))
    (selection-box-offset-y       float                :overlay-at (-> selection-box-offset data 1))
    (selection-box-offset-z       float                :overlay-at (-> selection-box-offset data 2))
    (selection-box-offset-w       float                :overlay-at (-> selection-box-offset data 3))
-   (selection-box-color          uint32)
+   (selection-box-color          rgba)
    (down-index-modifier          int8)
    (up-index-modifier            int8)
    (left-index-modifier          int8)
@@ -1081,14 +1087,15 @@
 
 ;; definition of type dropdown-item
 (deftype dropdown-item (string-menu)
-  ((selected            basic)
-   (p-client-selection  basic)
+  ((info-ptr            dropdown-item-info :override)
+   (selected            symbol)
+   (p-client-selection  menu-prim-strip-client)
    (prev-selection      int32)
-   (enabled             basic)
-   (selected-offset     vector  :inline)
+   (enabled             symbol)
+   (selected-offset     vector              :inline)
    )
   (:methods
-    (dropdown-item-method-69 () none)
+    (draw-highlight (_type_) none)
     )
   )
 
@@ -1112,8 +1119,8 @@
 
 ;; definition of type item-list-selection-info
 (deftype item-list-selection-info (dropdown-item-info)
-  ((menu-options-info-sym  basic)
-   (add-string             uint32)
+  ((menu-options-info-sym  symbol)
+   (add-string             text-id)
    )
   )
 
@@ -1168,8 +1175,9 @@
 
 ;; definition of type item-list-selection
 (deftype item-list-selection (dropdown-item)
-  ((menu-options-info-ptr  menu-selection-struct)
-   (selection-type         basic)
+  ((info-ptr               item-list-selection-info :override)
+   (menu-options-info-ptr  menu-selection-struct)
+   (selection-type         symbol)
    (selection-index        int32)
    )
   )
@@ -1290,8 +1298,10 @@
 
 ;; definition of type item-num-selection
 (deftype item-num-selection (item-list-selection)
-  ((num-selection  int32)
-   (sound-id       uint32)
+  ((info-ptr       item-num-selection-info :override)
+   (num-info-ptr   menu-num-info            :overlay-at menu-options-info-ptr)
+   (num-selection  int32)
+   (sound-id       sound-id)
    )
   )
 
@@ -1390,7 +1400,7 @@
 
 ;; definition of type basic-list-selection-info
 (deftype basic-list-selection-info (string-menu-info)
-  ((menu-options-info-sym  basic)
+  ((menu-options-info-sym  symbol)
    )
   )
 
@@ -1428,7 +1438,8 @@
 
 ;; definition of type basic-list-selection
 (deftype basic-list-selection (string-menu)
-  ((menu-options-info-ptr  basic)
+  ((info-ptr               basic-list-selection-info :override)
+   (menu-options-info-ptr  (array menu-option-info))
    (selection-index        int8)
    )
   )
@@ -1451,7 +1462,7 @@
 ;; definition of type big-text-menu-info
 (deftype big-text-menu-info (sprite-menu-info)
   ((string-info  string-info)
-   (text         basic)
+   (text         string)
    (off-2d-x     float)
    (off-2d-y     float)
    )
@@ -1492,13 +1503,14 @@
 
 ;; definition of type big-text-menu
 (deftype big-text-menu (sprite-menu)
-  ((big-text     basic)
+  ((info-ptr     big-text-menu-info :override)
+   (big-text     string)
    (vert-offset  float)
    (vert-extent  float)
-   (temp-string  basic)
+   (temp-string  string)
    )
   (:methods
-    (big-text-menu-method-66 () none)
+    (set-text! (_type_ string string) object)
     )
   )
 
@@ -1521,7 +1533,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -782,6 +782,9 @@ std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0,
   IR2_Condition condition;
   if (s0 == rr0() && s1 == rr0()) {
     condition = IR2_Condition(IR2_Condition::Kind::ALWAYS);
+  } else if (s0 == rs7() && s1 == rr0()) {
+    // (and 0 ...)
+    condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_atom(s1, idx));
   } else if (s1 == rr0()) {
     condition = IR2_Condition(IR2_Condition::Kind::ZERO, make_src_atom(s0, idx));
   } else if (i0.get_src(0).is_reg(rs7())) {

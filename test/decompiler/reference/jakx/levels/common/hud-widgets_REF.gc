@@ -1,0 +1,2361 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hud-player-icon
+(deftype hud-player-icon (hud-item-group)
+  ((player-id  int32)
+   )
+  (:methods
+    (set-player-id! (_type_ int) none)
+    )
+  )
+
+;; definition for method 3 of type hud-player-icon
+(defmethod inspect ((this hud-player-icon))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tplayer-id: ~D~%" (-> this player-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-player-icon
+(defmethod init ((this hud-player-icon))
+  (let ((a1-0 (-> this items 0))
+        (v1-2 (-> this items 1))
+        )
+    (set! (-> (the-as hud-item-sprite a1-0) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    (set! (-> (the-as hud-item-sprite v1-2) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 24 of type hud-player-icon
+(defmethod set-player-id! ((this hud-player-icon) (arg0 int))
+  (set! (-> this player-id) arg0)
+  (let ((s5-0 (the-as hud-item-sprite (-> this items 0)))
+        (gp-0 (the-as hud-item-sprite (-> this items 1)))
+        (v1-5 (if *net-world*
+                  (-> *net-world* net-state assigned-drivers-s8 (-> this player-id))
+                  -1
+                  )
+              )
+        )
+    (when (!= v1-5 -1)
+      (let* ((v1-8 (-> *net-drivers* v1-5))
+             (a0-4 (-> v1-8 picture-part1))
+             (s4-0 (-> v1-8 picture-part2))
+             )
+        (set! (-> s5-0 tex-id) (the-as texture-id a0-4))
+        (set! (-> gp-0 tex-id) (the-as texture-id s4-0))
+        (set-texture! s5-0 (lookup-texture-by-id (the-as texture-id a0-4)))
+        (set-texture! gp-0 (lookup-texture-by-id (the-as texture-id s4-0)))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type hud-player-icon-name
+(deftype hud-player-icon-name (hud-player-icon)
+  ()
+  )
+
+;; definition for method 3 of type hud-player-icon-name
+(defmethod inspect ((this hud-player-icon-name))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tplayer-id: ~D~%" (-> this player-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 20 of type hud-player-icon-name
+(defmethod set-real-alpha! ((this hud-player-icon-name) (arg0 float))
+  (let ((v1-1 (-> this items 0))
+        (s4-0 (-> this items 1))
+        (s5-0 (-> this items 3))
+        )
+    (let ((s2-0 (-> this items 2))
+          (s3-0 (-> this items 4))
+          )
+      (set-real-alpha! v1-1 arg0)
+      (set-real-alpha! s2-0 arg0)
+      (set-real-alpha! s3-0 arg0)
+      )
+    (set-real-alpha! s4-0 (* 0.6 arg0))
+    (set-real-alpha! s5-0 (* 0.6 arg0))
+    )
+  (none)
+  )
+
+;; definition for method 9 of type hud-player-icon-name
+(defmethod init ((this hud-player-icon-name))
+  (let ((a3-0 (-> this items 1))
+        (a2-0 (-> this items 3))
+        (a1-0 (-> this items 2))
+        (v1-4 (-> this items 4))
+        )
+    (set! (-> (the-as hud-item-sprite a3-0) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    (set! (-> (the-as hud-item-sprite a2-0) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    (set! (-> (the-as hud-item-sprite a1-0) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    (set! (-> (the-as hud-item-sprite v1-4) tex-id) (new 'static 'texture-id :index #x3 :page #x1))
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 24 of type hud-player-icon-name
+;; INFO: Used lq/sq
+(defmethod set-player-id! ((this hud-player-icon-name) (arg0 int))
+  (set! (-> this player-id) arg0)
+  (let ((s1-0 (the-as hud-item-sprite (-> this items 1)))
+        (s2-0 (the-as hud-item-sprite (-> this items 3)))
+        (s3-0 (the-as hud-item-sprite (-> this items 2)))
+        (s4-0 (the-as hud-item-sprite (-> this items 4)))
+        (v1-7 (if *net-world*
+                  (-> *net-world* net-state assigned-drivers-s8 (-> this player-id))
+                  -1
+                  )
+              )
+        )
+    (when (!= v1-7 -1)
+      (let* ((v1-10 (-> *net-drivers* v1-7))
+             (sv-32 (-> v1-10 picture-part1))
+             (s0-0 (-> v1-10 picture-part2))
+             )
+        (set! (-> s1-0 tex-id) (the-as texture-id sv-32))
+        (set! (-> s2-0 tex-id) (the-as texture-id s0-0))
+        (set! (-> s3-0 tex-id) (the-as texture-id sv-32))
+        (set! (-> s4-0 tex-id) (the-as texture-id s0-0))
+        (set-texture! s1-0 (lookup-texture-by-id (the-as texture-id sv-32)))
+        (set-texture! s2-0 (lookup-texture-by-id (the-as texture-id s0-0)))
+        (set-texture! s3-0 (lookup-texture-by-id (the-as texture-id sv-32)))
+        (set-texture! s4-0 (lookup-texture-by-id (the-as texture-id s0-0)))
+        )
+      )
+    )
+  (set-string!
+    (the-as hud-item-string (-> this items 0))
+    (string<-charp *temp-string* (-> *net-player-names* arg0 format-name))
+    )
+  (none)
+  )
+
+;; definition of type hud-clock
+(deftype hud-clock (hud-item-group)
+  ((clock-id         int8)
+   (count-up         symbol)
+   (fixed-time?      symbol)
+   (show-before-red  symbol)
+   (red-time         int32)
+   (text-id          text-id)
+   (fixed-time-val   int32)
+   )
+  (:methods
+    (set-clock-time! (_type_ int int) none)
+    )
+  )
+
+;; definition for method 3 of type hud-clock
+(defmethod inspect ((this hud-clock))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tclock-id: ~D~%" (-> this clock-id))
+  (format #t "~1Tcount-up: ~A~%" (-> this count-up))
+  (format #t "~1Tfixed-time?: ~A~%" (-> this fixed-time?))
+  (format #t "~1Tshow-before-red: ~A~%" (-> this show-before-red))
+  (format #t "~1Tred-time: ~D~%" (-> this red-time))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfixed-time-val: ~D~%" (-> this fixed-time-val))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-clock
+(defmethod init ((this hud-clock))
+  (set! (-> (the-as hud-item-string (-> this items 0)) text-id) (-> this text-id))
+  (cond
+    ((zero? (-> *viewport-array* mode))
+     (let ((v1-4 (-> this items 1)))
+       (set! (-> (the-as hud-item-group v1-4) items 0 scale) 217)
+       (set! (-> (the-as hud-item-group v1-4) items 1 scale) 166)
+       (set! (-> (the-as hud-item-group v1-4) items 2 scale) 166)
+       (set! (-> (the-as hud-item-group v1-4) items 3 scale) 115)
+       (set! (-> (the-as hud-item-group v1-4) items 4 scale) 115)
+       )
+     )
+    (else
+      (let ((v1-8 (-> this items 1)))
+        (dotimes (a1-7 5)
+          (set! (-> (the-as hud-item-group v1-8) items a1-7 scale) 217)
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 19 of type hud-clock
+;; WARN: Return type mismatch hud-item-flag vs none.
+(defmethod update ((this hud-clock))
+  (with-pp
+    (if (nonzero? (-> this text-id))
+        (show (-> this items 0))
+        (hide (-> this items 0))
+        )
+    (cond
+      ((-> this fixed-time?)
+       (set-clock-time! this (-> this fixed-time-val) (-> this fixed-time-val))
+       )
+      ((-> this count-up)
+       (let* ((a1-1 (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> *net-game-mgr* intro-end-time)
+                       )
+                    )
+              (a2-1 (- (the-as time-frame a1-1) (- (current-time) (-> pp clock old-frame-counter))))
+              )
+         (set-clock-time! this a1-1 a2-1)
+         )
+       )
+      (else
+        (let* ((a1-10 (- (* #x4650 (the-as int (-> *net-world* net-state options advanced-options param1)))
+                         (- (- (- (if *net-mgr*
+                                      (-> *net-mgr* game-state time)
+                                      0
+                                      )
+                                  (if *net-world*
+                                      (-> *net-world* net-state game-start-time)
+                                      0
+                                      )
+                                  )
+                               (if *net-world*
+                                   (-> *net-world* net-state total-pause-time)
+                                   0
+                                   )
+                               )
+                            (-> *net-game-mgr* intro-end-time)
+                            )
+                         )
+                      )
+               (a2-2 (+ a1-10 (- (current-time) (-> pp clock old-frame-counter))))
+               )
+          (set-clock-time! this a1-10 a2-2)
+          )
+        )
+      )
+    (let ((t9-5 (method-of-type hud-item-group update)))
+      (t9-5 this)
+      )
+    (logior! (-> this flags) (hud-item-flag draw-dirty))
+    (none)
+    )
+  )
+
+;; definition for method 23 of type hud-clock
+(defmethod hud-item-method-23 ((this hud-clock) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('set-clock-time)
+     (when (< 1 (-> arg3 num-params))
+       (if (= (-> this clock-id) (-> arg3 param 1))
+           (set! (-> this fixed-time-val) (the-as int (-> arg3 param 0)))
+           )
+       )
+     )
+    (else
+      (let ((t9-0 (method-of-type hud-item-group hud-item-method-23)))
+        (t9-0 this arg0 arg1 arg2 arg3)
+        )
+      )
+    )
+  ((method-of-type hud-item-group hud-item-method-23) this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 24 of type hud-clock
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+(defmethod set-clock-time! ((this hud-clock) (arg0 int) (arg1 int))
+  (let ((sv-16 arg0)
+        (sv-20 0)
+        )
+    (set! sv-20 (/ sv-16 #x4650))
+    (set! sv-16 (- sv-16 (* #x4650 sv-20)))
+    (let* ((v1-5 (the-as hud-item-group (-> this items 1)))
+           (a0-5 (the-as hud-item-string (-> v1-5 items 0)))
+           (s0-0 (the-as hud-item-string (-> v1-5 items 1)))
+           (s1-0 (the-as hud-item-string (-> v1-5 items 2)))
+           (s2-0 (the-as hud-item-string (-> v1-5 items 3)))
+           (s3-0 (the-as hud-item-string (-> v1-5 items 4)))
+           )
+      (set-int! a0-5 sv-20)
+      (set-string! s0-0 ":")
+      (set! sv-20 (/ sv-16 300))
+      (set! sv-16 (- sv-16 (* 300 sv-20)))
+      (let ((s0-1 (method-of-object s1-0 set-string!)))
+        (format (clear *temp-string*) "~2,'0,D" sv-20)
+        (s0-1 s1-0 *temp-string*)
+        )
+      (set-string! s2-0 ":")
+      (set! sv-20 (/ sv-16 3))
+      (let ((s2-1 (method-of-object s3-0 set-string!)))
+        (format (clear *temp-string*) "~2,'0,D" sv-20)
+        (s2-1 s3-0 *temp-string*)
+        )
+      )
+    )
+  (let ((s3-1 (-> *net-world* net-state options)))
+    (cond
+      ((< arg0 (-> this red-time))
+       (dotimes (s2-2 5)
+         (set-color!
+           (the-as hud-item-string (-> (the-as hud-item-group (-> this items 1)) items s2-2))
+           (font-color red)
+           )
+         )
+       (when (and (logtest? (-> s3-1 advanced-options flags) (game-task-advanced-options-flag time-limit))
+                  (!= (/ arg1 300) (/ arg0 300))
+                  )
+         (let ((v0-10 (make-sound-instance snd-timer1 (new 'static 'sound-id) (the-as handle #f))))
+           (if v0-10
+               (-> v0-10 id)
+               0
+               )
+           )
+         )
+       (cond
+         ((or (-> this fixed-time?)
+              (-> this count-up)
+              (logtest? (-> s3-1 advanced-options flags) (game-task-advanced-options-flag time-limit))
+              )
+          (set! (-> this items 0 position-x) 0)
+          (set! (-> this items 1 position-x) 0)
+          0
+          )
+         (else
+           (set! (-> this items 0 position-x) 512)
+           (set! (-> this items 1 position-x) 512)
+           )
+         )
+       )
+      (else
+        (when (and (-> this show-before-red) (!= (/ arg1 300) (/ arg0 300)))
+          )
+        (dotimes (s5-1 5)
+          (set-color!
+            (the-as hud-item-string (-> (the-as hud-item-group (-> this items 1)) items s5-1))
+            (font-color white)
+            )
+          )
+        (cond
+          ((and (-> this show-before-red)
+                (or (-> this fixed-time?)
+                    (-> this count-up)
+                    (logtest? (-> s3-1 advanced-options flags) (game-task-advanced-options-flag time-limit))
+                    )
+                )
+           (set! (-> this items 0 position-x) 0)
+           (set! (-> this items 1 position-x) 0)
+           0
+           )
+          (else
+            (set! (-> this items 0 position-x) 512)
+            (set! (-> this items 1 position-x) 512)
+            )
+          )
+        )
+      )
+    )
+  (mark-position-dirty this)
+  (none)
+  )
+
+;; definition of type hud-medal
+(deftype hud-medal (hud-item-group)
+  ((score-as-time  symbol)
+   )
+  )
+
+;; definition for method 3 of type hud-medal
+(defmethod inspect ((this hud-medal))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tscore-as-time: ~A~%" (-> this score-as-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type hud-medal
+(defmethod update ((this hud-medal))
+  (local-vars (s5-1 int))
+  (cond
+    ((< 1 (-> *net-game-mgr* human-ct))
+     (hide (-> this items 0))
+     (hide (-> this items 1))
+     (hide (-> this items 2))
+     )
+    (else
+      (show (-> this items 0))
+      (let ((s3-0 (-> *net-players*
+                      (* (if *net-mgr*
+                             (-> *net-mgr* game-state local-machine-idx)
+                             0
+                             )
+                         2
+                         )
+                      display-score
+                      )
+                  )
+            )
+        0
+        (case (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+          ((2)
+           (set! s3-0 (-> *net-players*
+                          (* (if *net-mgr*
+                                 (-> *net-mgr* game-state local-machine-idx)
+                                 0
+                                 )
+                             2
+                             )
+                          score
+                          )
+                 )
+           )
+          )
+        (let ((s5-0 (get-open-task-node-info))
+              (s4-0 (if (and (= *game-mode* 'adventure) (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+                        1
+                        0
+                        )
+                    )
+              )
+          (if (-> this score-as-time)
+              (set! s3-0 (the int (* 0.0033333334 (the float s3-0))))
+              )
+          (cond
+            ((logtest? (game-task-node-flag score-lower-is-better) (-> s5-0 flags))
+             (cond
+               ((< s3-0 (the int (-> s5-0 gold-array s4-0)))
+                (set-string!
+                  (the-as hud-item-string (-> this items 0))
+                  (lookup-text! *common-text* (text-id text-id-1620) #f)
+                  )
+                (set! s5-1 (the int (-> s5-0 gold-array s4-0)))
+                (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-50))
+                )
+               ((< s3-0 (the int (-> s5-0 silver-array s4-0)))
+                (set-string!
+                  (the-as hud-item-string (-> this items 0))
+                  (lookup-text! *common-text* (text-id text-id-1619) #f)
+                  )
+                (set! s5-1 (the int (-> s5-0 silver-array s4-0)))
+                (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-49))
+                )
+               (else
+                 (set-string!
+                   (the-as hud-item-string (-> this items 0))
+                   (lookup-text! *common-text* (text-id text-id-1618) #f)
+                   )
+                 (set! s5-1 (the int (-> s5-0 bronze-array s4-0)))
+                 (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-48))
+                 )
+               )
+             )
+            (else
+              (if (-> this score-as-time)
+                  (set! s3-0 (the-as int (* 0.0033333334 (the float s3-0))))
+                  )
+              (cond
+                ((< s3-0 (the int (-> s5-0 bronze-array s4-0)))
+                 (set-string!
+                   (the-as hud-item-string (-> this items 0))
+                   (lookup-text! *common-text* (text-id text-id-1618) #f)
+                   )
+                 (set! s5-1 (the int (-> s5-0 bronze-array s4-0)))
+                 (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-48))
+                 )
+                ((< s3-0 (the int (-> s5-0 silver-array s4-0)))
+                 (set-string!
+                   (the-as hud-item-string (-> this items 0))
+                   (lookup-text! *common-text* (text-id text-id-1619) #f)
+                   )
+                 (set! s5-1 (the int (-> s5-0 silver-array s4-0)))
+                 (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-49))
+                 )
+                (else
+                  (set-string!
+                    (the-as hud-item-string (-> this items 0))
+                    (lookup-text! *common-text* (text-id text-id-1620) #f)
+                    )
+                  (set! s5-1 (the int (-> s5-0 gold-array s4-0)))
+                  (set-color! (the-as hud-item-string (-> this items 0)) (font-color font-color-50))
+                  )
+                )
+              )
+            )
+          )
+        )
+      (let ((s4-1 (-> this items 1))
+            (s3-7 (-> this items 2))
+            )
+        (cond
+          ((-> this score-as-time)
+           (show s3-7)
+           (hide s4-1)
+           (set! (-> (the-as hud-clock s3-7) fixed-time-val) (* 300 s5-1))
+           )
+          (else
+            (hide s3-7)
+            (show s4-1)
+            (set-int! (the-as hud-item-string s4-1) s5-1)
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition of type hud-lap
+(deftype hud-lap (hud-item-group)
+  ((show-total-laps     symbol)
+   (is-net-player-race  symbol)
+   (total-laps          int8)
+   (current-laps        int8)
+   )
+  )
+
+;; definition for method 3 of type hud-lap
+(defmethod inspect ((this hud-lap))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tshow-total-laps: ~A~%" (-> this show-total-laps))
+  (format #t "~1Tis-net-player-race: ~A~%" (-> this is-net-player-race))
+  (format #t "~1Ttotal-laps: ~D~%" (-> this total-laps))
+  (format #t "~1Tcurrent-laps: ~D~%" (-> this current-laps))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-lap
+(defmethod init ((this hud-lap))
+  (let ((v1-0 (new 'stack-no-clear 'array 'int8 1)))
+    (if (-> this is-net-player-race)
+        (set! (-> v1-0 0) (the-as int (-> *net-world* net-state options advanced-options param1)))
+        (set! (-> v1-0 0) (-> this total-laps))
+        )
+    (if (>= (-> v1-0 0) 10)
+        (set! (-> (the-as hud-item-group (-> this items 1)) items 2 width) 38)
+        (set! (-> (the-as hud-item-group (-> this items 1)) items 2 width) 22)
+        )
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 19 of type hud-lap
+(defmethod update ((this hud-lap))
+  (let ((s5-0 (new 'stack-no-clear 'array 'int8 2)))
+    (cond
+      ((-> this is-net-player-race)
+       (set! (-> s5-0 0)
+             (-> (the-as
+                   net-player-race
+                   (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                       (-> *net-mgr* game-state local-machine-idx)
+                                                                       0
+                                                                       )
+                                                                   2
+                                                                   )
+                                        )
+                       )
+                   )
+                 current-lap
+                 )
+             )
+       (set! (-> s5-0 1) (the-as int (-> *net-world* net-state options advanced-options param1)))
+       )
+      (else
+        (set! (-> s5-0 0) (-> this current-laps))
+        (set! (-> s5-0 1) (-> this total-laps))
+        )
+      )
+    (let ((s4-0 (the-as hud-item-group (-> this items 1))))
+      (set-int! (the-as hud-item-string (-> s4-0 items 0)) (max 1 (+ (-> s5-0 0) 1)))
+      (cond
+        ((-> this show-total-laps)
+         (set-string! (the-as hud-item-string (-> s4-0 items 1)) "/")
+         (set-int! (the-as hud-item-string (-> s4-0 items 2)) (-> s5-0 1))
+         )
+        (else
+          (hide (-> s4-0 items 1))
+          (hide (-> s4-0 items 2))
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition of type hud-position
+(deftype hud-position (hud-item-group)
+  ((race-position  int32)
+   )
+  )
+
+;; definition for method 3 of type hud-position
+(defmethod inspect ((this hud-position))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Trace-position: ~D~%" (-> this race-position))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-position
+(defmethod init ((this hud-position))
+  (let ((s5-0 (the-as hud-item-group (-> this items 0))))
+    (case (get-current-language)
+      (((language-enum russian))
+       (set! (-> s5-0 items 1 scale) 512)
+       (set! (-> s5-0 items 1 width) 25)
+       )
+      (((language-enum german))
+       (set! (-> s5-0 items 1 scale) 256)
+       (set! (-> s5-0 items 1 width) 5)
+       )
+      (((language-enum spanish) (language-enum italian) (language-enum portuguese))
+       (set! (-> s5-0 items 1 scale) 512)
+       (set! (-> s5-0 items 1 width) 10)
+       )
+      (((language-enum french))
+       (set! (-> s5-0 items 1 scale) 256)
+       (set! (-> s5-0 items 1 width) 25)
+       )
+      (else
+        (set! (-> s5-0 items 1 scale) 256)
+        (set! (-> s5-0 items 1 width) 40)
+        )
+      )
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 19 of type hud-position
+(defmethod update ((this hud-position))
+  (local-vars (a1-1 int))
+  (let ((s5-0 (-> this race-position)))
+    (if (= s5-0 -1)
+        (set! s5-0 (-> *net-players*
+                       (+ (view-get-active-index) (* (if *net-mgr*
+                                                         (-> *net-mgr* game-state local-machine-idx)
+                                                         0
+                                                         )
+                                                     2
+                                                     )
+                          )
+                       rank
+                       )
+              )
+        )
+    (let* ((v1-12 (the-as hud-item-group (-> this items 0)))
+           (a0-3 (the-as hud-item-string (-> v1-12 items 0)))
+           (s4-0 (the-as hud-item-string (-> v1-12 items 1)))
+           )
+      (set-int! a0-3 (+ s5-0 1))
+      0
+      (cond
+        ((zero? s5-0)
+         (set! a1-1 2017)
+         )
+        ((= s5-0 1)
+         (set! a1-1 2016)
+         )
+        ((= s5-0 2)
+         (set! a1-1 2014)
+         )
+        (else
+          (set! a1-1 2015)
+          )
+        )
+      (set-string! s4-0 (lookup-text! *common-text* (the-as text-id a1-1) #f))
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition of type hud-item-player-name
+(deftype hud-item-player-name (hud-item-string)
+  ()
+  )
+
+;; definition for method 3 of type hud-item-player-name
+(defmethod inspect ((this hud-item-player-name))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type hud-item-player-name
+(defmethod update ((this hud-item-player-name))
+  (string<-charp
+    (-> this string text)
+    (-> *net-player-names*
+        (+ (view-get-active-index) (* (if *net-mgr*
+                                          (-> *net-mgr* game-state local-machine-idx)
+                                          0
+                                          )
+                                      2
+                                      )
+           )
+        format-name
+        )
+    )
+  ((method-of-type hud-item-string update) this)
+  (none)
+  )
+
+;; definition of type hud-item-player-score
+(deftype hud-item-player-score (hud-item-string)
+  ()
+  )
+
+;; definition for method 3 of type hud-item-player-score
+(defmethod inspect ((this hud-item-player-score))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type hud-item-player-score
+(defmethod update ((this hud-item-player-score))
+  (let ((v1-7 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                                  0
+                                                                  )
+                                                              2
+                                                              )
+                                   )
+                  )
+              )
+        )
+    (if v1-7
+        (set-int! this (-> v1-7 score))
+        )
+    )
+  ((method-of-type hud-item-string update) this)
+  (none)
+  )
+
+;; definition of type hud-item-number
+(deftype hud-item-number (hud-item-string)
+  ((value  int32)
+   )
+  )
+
+;; definition for method 3 of type hud-item-number
+(defmethod inspect ((this hud-item-number))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (format #t "~1Tvalue: ~D~%" (-> this value))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type hud-item-number
+(defmethod update ((this hud-item-number))
+  (set-int! this (-> this value))
+  ((method-of-type hud-item-string update) this)
+  (none)
+  )
+
+;; definition of type hud-item-score
+(deftype hud-item-score (hud-item-group)
+  ((player-id           int32)
+   (initial-player-id   int32)
+   (previous-score      int32)
+   (initial-texture-id  texture-id)
+   )
+  )
+
+;; definition for method 3 of type hud-item-score
+(defmethod inspect ((this hud-item-score))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tplayer-id: ~D~%" (-> this player-id))
+  (format #t "~1Tinitial-player-id: ~D~%" (-> this initial-player-id))
+  (format #t "~1Tprevious-score: ~D~%" (-> this previous-score))
+  (format #t "~1Tinitial-texture-id: ~D~%" (-> this initial-texture-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 23 of type hud-item-score
+(defmethod hud-item-method-23 ((this hud-item-score) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('update-score)
+     (let ((v1-8 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                     (-> *net-mgr* game-state local-machine-idx)
+                                                                     0
+                                                                     )
+                                                                 2
+                                                                 )
+                                      )
+                     )
+                 )
+           )
+       (when (and v1-8 (= (-> v1-8 player-id) (-> this player-id)))
+         (+! (-> v1-8 score) (-> arg3 param 1))
+         (let ((v1-10 (make-sound-instance snd-kill-counter (new 'static 'sound-id) (the-as handle #f))))
+           (if v1-10
+               (-> v1-10 id)
+               0
+               )
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type hud-item-group hud-item-method-23) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 9 of type hud-item-score
+(defmethod init ((this hud-item-score))
+  (set! (-> this previous-score) -1)
+  (set! (-> this player-id) (-> this initial-player-id))
+  (set! (-> (the-as hud-item-sprite (-> this items 0)) tex-id) (-> this initial-texture-id))
+  (set! (-> (the-as hud-item-sprite (-> this items 1)) tex-id) (new 'static 'texture-id :index #xd3 :page #x9))
+  (cond
+    ((= (-> this player-id) -2)
+     (set! (-> this player-id) (* (if *net-mgr*
+                                      (-> *net-mgr* game-state local-machine-idx)
+                                      0
+                                      )
+                                  2
+                                  )
+           )
+     )
+    ((= (-> this player-id) -3)
+     (set! (-> this player-id) (+ (* (if *net-mgr*
+                                         (-> *net-mgr* game-state local-machine-idx)
+                                         0
+                                         )
+                                     2
+                                     )
+                                  1
+                                  )
+           )
+     )
+    )
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 19 of type hud-item-score
+(defmethod update ((this hud-item-score))
+  (cond
+    ((and (!= -1 (-> this player-id)) (not (logtest? (-> *net-world* net-state flags) 4)))
+     (when (-> *net-players* (-> this player-id))
+       (let ((s4-0 (the-as hud-item-sprite (-> this items 0)))
+             (s5-0 (the-as hud-item-sprite (-> this items 1)))
+             (v1-13 (if *net-world*
+                        (-> *net-world* net-state assigned-drivers-s8 (-> this player-id))
+                        -1
+                        )
+                    )
+             )
+         (when (and (not (logtest? (-> *net-world* net-state flags) 4)) (!= v1-13 -1))
+           (let* ((v1-16 (-> *net-drivers* v1-13))
+                  (a0-14 (-> v1-16 icon-part1))
+                  (s3-0 (-> v1-16 icon-part2))
+                  )
+             (set! (-> s4-0 tex-id) (the-as texture-id a0-14))
+             (set! (-> s5-0 tex-id) (the-as texture-id s3-0))
+             (set-texture! s4-0 (lookup-texture-by-id (the-as texture-id a0-14)))
+             (set-texture! s5-0 (lookup-texture-by-id (the-as texture-id s3-0)))
+             )
+           )
+         )
+       (let ((s5-1 (the-as hud-item-sprite (-> this items 3)))
+             (s4-2 -1)
+             )
+         (cond
+           ((and (= (if *net-world*
+                        (the-as int (-> *net-world* task-node-info net-play-mode))
+                        18
+                        )
+                    14
+                    )
+                 (let ((s3-1 (view-get-active-index)))
+                   (and (when (= (net-game-mgr-assassin-method-85
+                                   (the-as net-game-mgr-assassin *net-game-mgr*)
+                                   (+ s3-1 (* (if *net-mgr*
+                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                  0
+                                                  )
+                                              2
+                                              )
+                                      )
+                                   )
+                                 (-> this player-id)
+                                 )
+                          (cond
+                            ((< s4-2 0)
+                             (set! s4-2 s3-1)
+                             s4-2
+                             )
+                            (else
+                              (set! s4-2 2)
+                              s4-2
+                              )
+                            )
+                          )
+                        (>= s4-2 0)
+                        )
+                   )
+                 )
+            (when (not (paused?))
+              (let* ((f0-2 (sin (* 200.0 (the float (current-time)))))
+                     (v1-39 (the int (lerp-scale 0.0 128.0 f0-2 -1.0 1.0)))
+                     )
+                (cond
+                  ((= s4-2 2)
+                   (set! (-> s5-1 color x) v1-39)
+                   (set! (-> s5-1 color y) v1-39)
+                   (set! (-> s5-1 color z) v1-39)
+                   (set! (-> s5-1 color w) 128)
+                   )
+                  (else
+                    (let ((a0-31 (-> *net-players*
+                                     (+ s4-2 (* (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                                                2
+                                                )
+                                        )
+                                     color
+                                     )
+                                 )
+                          )
+                      (set! (-> s5-1 color x) (max 0 (min 128 (the-as int (+ (-> a0-31 r) v1-39)))))
+                      (set! (-> s5-1 color y) (max 0 (min 128 (the-as int (+ (-> a0-31 g) v1-39)))))
+                      (set! (-> s5-1 color z) (max 0 (min 128 (the-as int (+ (-> a0-31 b) v1-39)))))
+                      (set! (-> s5-1 color w) (the-as int (-> a0-31 a)))
+                      )
+                    )
+                  )
+                )
+              (show s5-1)
+              (mark-draw-dirty s5-1)
+              )
+            )
+           (else
+             (hide s5-1)
+             (mark-draw-dirty s5-1)
+             )
+           )
+         )
+       )
+     )
+    (else
+      (set-texture! (the-as hud-item-sprite (-> this items 0)) (get-counter-texture *net-game-mgr*))
+      (hide (-> this items 3))
+      )
+    )
+  (let* ((s3-2 (-> *net-players* (-> this player-id)))
+         (s4-4 (calc-team-score (the-as int (-> s3-2 team))))
+         (s5-3 (the-as hud-item-string (-> this items 2)))
+         (s3-3 (-> s3-2 font-color))
+         )
+    (let ((v1-62 (-> this previous-score)))
+      (if (and (!= -1 v1-62) (!= v1-62 s4-4))
+          (hud-item-method-23 this *current-hud* 0 'score-increment (the-as event-message-block #f))
+          )
+      )
+    (set! (-> this previous-score) s4-4)
+    (set-int! s5-3 s4-4)
+    (set! (-> s5-3 color) s3-3)
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition of type hud-score-single
+(deftype hud-score-single (hud-item-group)
+  ((need-event-before-update  symbol)
+   (other-human               symbol)
+   (display-score             int32)
+   )
+  (:methods
+    (find-other-player (_type_ int) net-player)
+    )
+  )
+
+;; definition for method 3 of type hud-score-single
+(defmethod inspect ((this hud-score-single))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tneed-event-before-update: ~A~%" (-> this need-event-before-update))
+  (format #t "~1Tother-human: ~A~%" (-> this other-human))
+  (format #t "~1Tdisplay-score: ~D~%" (-> this display-score))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-score-single
+(defmethod init ((this hud-score-single))
+  (set! (-> this display-score) 0)
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 24 of type hud-score-single
+(defmethod find-other-player ((this hud-score-single) (arg0 int))
+  (dotimes (v1-0 *active-net-player-count*)
+    (let* ((a0-3 (-> *active-net-players* v1-0))
+           (a2-1 (-> a0-3 player-id))
+           )
+      (if (and (!= a2-1 arg0) (>= a2-1 0) (< a2-1 16))
+          (return a0-3)
+          )
+      )
+    )
+  (the-as net-player #f)
+  )
+
+;; definition for method 19 of type hud-score-single
+(defmethod update ((this hud-score-single))
+  (let ((s4-0 (the-as hud-item-string (-> this items 0)))
+        (s5-0 (the-as hud-item-string (-> (the-as hud-item-group (-> this items 1)) items 0)))
+        )
+    (cond
+      ((logtest? (-> *net-world* net-state flags) 4)
+       (let ((a0-2 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                       (-> *net-mgr* game-state local-machine-idx)
+                                                                       0
+                                                                       )
+                                                                   2
+                                                                   )
+                                        )
+                       )
+                   )
+             )
+         (when a0-2
+           (let ((v1-15 (-> a0-2 team)))
+             (if (-> this other-human)
+                 (set! v1-15 (logand (+ v1-15 1) 1))
+                 )
+             (cond
+               ((= v1-15 1)
+                (set-string! s4-0 (lookup-text! *common-text* (text-id text-id-3019) #f))
+                (set-int! s5-0 (calc-team-score 1))
+                (set-color! s5-0 (font-color blue))
+                )
+               (else
+                 (set-string! s4-0 (lookup-text! *common-text* (text-id text-id-3018) #f))
+                 (set-int! s5-0 (calc-team-score 0))
+                 (set-color! s5-0 (font-color red))
+                 )
+               )
+             )
+           )
+         )
+       )
+      (else
+        (set-string! s4-0 (lookup-text! *common-text* (text-id text-id-1726) #f))
+        (let ((s4-3 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                                        0
+                                                                        )
+                                                                    2
+                                                                    )
+                                         )
+                        )
+                    )
+              )
+          (when s4-3
+            (let ((s3-5 (-> s4-3 score)))
+              (when (-> this other-human)
+                (let ((s2-0 (find-other-player this (-> s4-3 player-id))))
+                  (cond
+                    (s2-0
+                      (show this)
+                      (set! s3-5 (-> s2-0 score))
+                      (set! s4-3 s2-0)
+                      )
+                    (else
+                      (hide this)
+                      )
+                    )
+                  )
+                )
+              (if (not (-> this need-event-before-update))
+                  (set! (-> this display-score) s3-5)
+                  )
+              )
+            (set! (-> s4-3 display-score) (-> this display-score))
+            (set-int! s5-0 (-> this display-score))
+            (set! (-> s5-0 color) (-> s4-3 font-color))
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition for method 23 of type hud-score-single
+(defmethod hud-item-method-23 ((this hud-score-single) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('update-score)
+     (if (-> this other-human)
+         (return #f)
+         )
+     (+! (-> this display-score) (-> arg3 param 1))
+     (set-int!
+       (the-as hud-item-string (-> (the-as hud-item-group (-> this items 1)) items 0))
+       (-> this display-score)
+       )
+     (mark-draw-dirty this)
+     )
+    )
+  ((method-of-type hud-item-group hud-item-method-23) this arg0 arg1 arg2 arg3)
+  )
+
+;; definition of type hud-leader-score
+(deftype hud-leader-score (hud-item-group)
+  ((force-visible  symbol)
+   (only-humans    symbol)
+   )
+  )
+
+;; definition for method 3 of type hud-leader-score
+(defmethod inspect ((this hud-leader-score))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tforce-visible: ~A~%" (-> this force-visible))
+  (format #t "~1Tonly-humans: ~A~%" (-> this only-humans))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type hud-leader-score
+(defmethod update ((this hud-leader-score))
+  (cond
+    ((and (not (-> this force-visible)) (or (and (-> this only-humans) (< (-> *net-game-mgr* human-ct) 2))
+                                            (and (not (-> this only-humans)) (< *active-net-player-count* 2))
+                                            )
+          )
+     (hide this)
+     )
+    (else
+      (sort-players *net-game-mgr* #f)
+      (let* ((s3-0 (-> *net-players* (-> *net-game-mgr* sorted-ids-s8 0)))
+             (s2-0 (-> s3-0 score))
+             (s4-0 (-> this items 0))
+             (s5-0 (-> this items 1))
+             )
+        (cond
+          ((logtest? (-> *net-world* net-state flags) 4)
+           (let ((v1-28 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                            (-> *net-mgr* game-state local-machine-idx)
+                                                                            0
+                                                                            )
+                                                                        2
+                                                                        )
+                                             )
+                            )
+                        )
+                 )
+             (when v1-28
+               (cond
+                 ((zero? (-> v1-28 team))
+                  (set-string! (the-as hud-item-player-score s4-0) (lookup-text! *common-text* (text-id text-id-3019) #f))
+                  (set-int! (the-as hud-item-player-score s5-0) (calc-team-score 1))
+                  (set-color! (the-as hud-item-player-score s5-0) (font-color blue))
+                  )
+                 (else
+                   (set-string! (the-as hud-item-player-score s4-0) (lookup-text! *common-text* (text-id text-id-3018) #f))
+                   (set-int! (the-as hud-item-player-score s5-0) (calc-team-score 0))
+                   (set-color! (the-as hud-item-player-score s5-0) (font-color red))
+                   )
+                 )
+               )
+             )
+           )
+          ((= (-> s3-0 player-id) (+ (view-get-active-index) (* (if *net-mgr*
+                                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                                    0
+                                                                    )
+                                                                2
+                                                                )
+                                     )
+              )
+           (let ((s3-5 (-> *net-players* (-> *net-game-mgr* sorted-ids-s8 1))))
+             (let ((s2-1 (-> s3-5 score)))
+               (set-string! (the-as hud-item-player-score s4-0) (lookup-text! *common-text* (text-id text-id-1702) #f))
+               (set-int! (the-as hud-item-player-score s5-0) s2-1)
+               )
+             (set-color! (the-as hud-item-player-score s5-0) (the-as font-color (-> s3-5 font-color)))
+             )
+           )
+          (else
+            (set-string! (the-as hud-item-player-score s4-0) (lookup-text! *common-text* (text-id text-id-1621) #f))
+            (set-int! (the-as hud-item-player-score s5-0) s2-0)
+            (set-color! (the-as hud-item-player-score s5-0) (the-as font-color (-> s3-0 font-color)))
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition of type hud-item-score-list
+(deftype hud-item-score-list (hud-item-group)
+  ((ignore-self              symbol)
+   (active-net-player-count  int32)
+   )
+  )
+
+;; definition for method 3 of type hud-item-score-list
+(defmethod inspect ((this hud-item-score-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tignore-self: ~A~%" (-> this ignore-self))
+  (format #t "~1Tactive-net-player-count: ~D~%" (-> this active-net-player-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 23 of type hud-item-score-list
+(defmethod hud-item-method-23 ((this hud-item-score-list) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('update-score)
+     (let ((v1-8 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                     (-> *net-mgr* game-state local-machine-idx)
+                                                                     0
+                                                                     )
+                                                                 2
+                                                                 )
+                                      )
+                     )
+                 )
+           )
+       (when v1-8
+         (+! (-> v1-8 score) (-> arg3 param 1))
+         (let ((v1-10 (make-sound-instance snd-kill-counter (new 'static 'sound-id) (the-as handle #f))))
+           (if v1-10
+               (-> v1-10 id)
+               0
+               )
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type hud-item-group hud-item-method-23) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for function team-has-local-humans?
+(defun team-has-local-humans? ((arg0 int))
+  (dotimes (v1-0 *active-net-non-spectator-count*)
+    (let ((a1-2 (-> *active-net-non-spectators* v1-0)))
+      (if (and (= (-> a1-2 team) arg0)
+               (if (= (/ (-> a1-2 player-id) 2) (if *net-mgr*
+                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                    0
+                                                    )
+                      )
+                   #t
+                   #f
+                   )
+               )
+          (return #t)
+          )
+      )
+    )
+  #f
+  )
+
+;; definition for function get-player-id-by-team
+;; WARN: Return type mismatch int vs integer.
+(defun get-player-id-by-team ((arg0 int))
+  (dotimes (v1-0 *active-net-non-spectator-count*)
+    (let ((a1-2 (-> *active-net-non-spectators* v1-0)))
+      (if (= (-> a1-2 team) arg0)
+          (return (the-as integer (-> a1-2 player-id)))
+          )
+      )
+    )
+  -1
+  )
+
+;; definition for method 9 of type hud-item-score-list
+(defmethod init ((this hud-item-score-list))
+  (set! (-> this active-net-player-count) *active-net-player-count*)
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 17 of type hud-item-score-list
+(defmethod update-size ((this hud-item-score-list) (arg0 float))
+  (let ((s4-0 0))
+    (dotimes (v1-0 *active-net-non-spectator-count*)
+      (set! s4-0 (max s4-0 (the-as int (+ (-> *active-net-non-spectators* v1-0 team) 1))))
+      )
+    (if (-> this ignore-self)
+        (+! s4-0 -1)
+        )
+    (let ((s3-0 0))
+      (dotimes (s2-0 s4-0)
+        (when (not (team-has-local-humans? s2-0))
+          (let ((v1-9 (-> this items s3-0)))
+            (if (-> this ignore-self)
+                (set! (-> v1-9 scale) 256)
+                (set! (-> v1-9 scale) 204)
+                )
+            )
+          (+! s3-0 1)
+          )
+        )
+      (dotimes (s2-1 s4-0)
+        (let ((s1-0 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                                        0
+                                                                        )
+                                                                    2
+                                                                    )
+                                         )
+                        )
+                    )
+              )
+          (when (and (team-has-local-humans? s2-1) (not (and (-> this ignore-self) s1-0 (= (-> s1-0 team) s2-1))))
+            (let ((v1-27 (-> this items s3-0)))
+              (set! (-> v1-27 scale) 256)
+              )
+            (+! s3-0 1)
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud-item-group update-size) this arg0)
+  (none)
+  )
+
+;; definition for method 19 of type hud-item-score-list
+(defmethod update ((this hud-item-score-list))
+  (let ((s5-0 0))
+    (dotimes (v1-0 *active-net-non-spectator-count*)
+      (set! s5-0 (max s5-0 (the-as int (+ (-> *active-net-non-spectators* v1-0 team) 1))))
+      )
+    (let ((s4-0 0))
+      (dotimes (s3-0 s5-0)
+        (when (not (team-has-local-humans? s3-0))
+          (let ((s2-0 (-> this items s4-0)))
+            (set! (-> (the-as hud-item-score s2-0) player-id) (the-as int (get-player-id-by-team s3-0)))
+            (if (= (-> (the-as hud-item-score s2-0) player-id) -1)
+                (+! s4-0 -1)
+                (show (the-as hud-item-score s2-0))
+                )
+            )
+          (+! s4-0 1)
+          )
+        )
+      (dotimes (s3-1 s5-0)
+        (let ((s2-1 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                                        0
+                                                                        )
+                                                                    2
+                                                                    )
+                                         )
+                        )
+                    )
+              )
+          (when (and (team-has-local-humans? s3-1) (not (and (-> this ignore-self) s2-1 (= (-> s2-1 team) s3-1))))
+            (let ((s2-2 (-> this items s4-0)))
+              (set! (-> (the-as hud-item-score s2-2) player-id) (the-as int (get-player-id-by-team s3-1)))
+              (if (= (-> (the-as hud-item-score s2-2) player-id) -1)
+                  (+! s4-0 -1)
+                  (show s2-2)
+                  )
+              )
+            (+! s4-0 1)
+            )
+          )
+        )
+      (dotimes (s5-2 (- 6 s4-0))
+        (hide (-> this items (+ s5-2 s4-0)))
+        )
+      )
+    )
+  (let ((t9-8 (method-of-type hud-item-group update)))
+    (t9-8 this)
+    )
+  (when (!= *active-net-player-count* (-> this active-net-player-count))
+    (set! (-> this active-net-player-count) *active-net-player-count*)
+    (mark-position-dirty this)
+    (mark-size-dirty this)
+    )
+  (none)
+  )
+
+;; definition of type hud-localized-string
+(deftype hud-localized-string (hud-item-string)
+  ()
+  )
+
+;; definition for method 3 of type hud-localized-string
+(defmethod inspect ((this hud-localized-string))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 28 of type hud-localized-string
+(defmethod alloc-string ((this hud-localized-string))
+  (alloc-string-if-needed *current-hud* (-> *current-hud* num-strings) 128)
+  (none)
+  )
+
+;; definition for method 19 of type hud-localized-string
+(defmethod update ((this hud-localized-string))
+  (let ((t9-0 (method-of-type hud-item-string update)))
+    (t9-0 this)
+    )
+  (let* ((s4-0 this)
+         (s5-0 (-> s4-0 string))
+         (a1-1 (new
+                 'stack
+                 'font-context
+                 *font-default-matrix*
+                 0
+                 0
+                 8396850.0
+                 (font-color default)
+                 (font-flags shadow kerning)
+                 )
+               )
+         )
+    (when (and (-> s5-0 text) (and (< 0.0 (-> s5-0 alpha)) (nonzero? (-> s5-0 pos x))))
+      (set-vector!
+        (-> a1-1 origin)
+        (the float (-> s5-0 pos x))
+        (the float (-> s5-0 pos y))
+        (the float (-> s5-0 pos z))
+        1.0
+        )
+      (let ((v1-7 a1-1))
+        (set! (-> v1-7 width) (-> s5-0 width))
+        )
+      (let ((v1-8 a1-1))
+        (set! (-> v1-8 height) (-> s5-0 height))
+        )
+      (set! (-> a1-1 scale) (* 0.00390625 (the float (-> s4-0 real-scale))))
+      (set! (-> a1-1 flags) (the-as font-flags (-> s5-0 flags)))
+      (set! (-> a1-1 color) (-> s5-0 color))
+      (set! (-> a1-1 alpha) (-> s5-0 alpha))
+      (set! (-> a1-1 effect) (-> s5-0 effect))
+      (logior! (-> a1-1 flags) (font-flags ff8))
+      (let ((v1-16 (get-string-length (-> s5-0 text) a1-1)))
+        (when (< (the float (-> this real-width)) (-> v1-16 length))
+          (let* ((f0-15 0.01)
+                 (f1-5 (* 100.0 (/ (the float (-> s4-0 real-width)) (-> v1-16 length))))
+                 (f1-10 (* f0-15 (the float (the int (+ 0.5 f1-5)))))
+                 )
+            (set! (-> s5-0 scale) (* (-> s5-0 scale) (fmin 1.0 f1-10)))
+            )
+          (mark-draw-dirty this)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type hud-place-event
+(deftype hud-place-event (hud-item-group)
+  ((should-be-visible  symbol)
+   (hide-titles        symbol)
+   )
+  )
+
+;; definition for method 3 of type hud-place-event
+(defmethod inspect ((this hud-place-event))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (format #t "~1Tshould-be-visible: ~A~%" (-> this should-be-visible))
+  (format #t "~1Thide-titles: ~A~%" (-> this hide-titles))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-place-event
+(defmethod init ((this hud-place-event))
+  (set! (-> this should-be-visible) #t)
+  ((method-of-type hud-item-group init) this)
+  )
+
+;; definition for method 19 of type hud-place-event
+;; INFO: Used lq/sq
+(defmethod update ((this hud-place-event))
+  (if (-> this should-be-visible)
+      (set-real-alpha! this (fmin 1.0 (the float (+ (-> this real-alpha) (the int (* 0.5 (seconds-per-frame)))))))
+      (set-real-alpha!
+        this
+        (fmax 0.0 (the float (- (-> this real-alpha) (the-as uint (the int (* 0.5 (seconds-per-frame)))))))
+        )
+      )
+  (let ((s0-0 (the-as hud-item-string (-> this items 0)))
+        (s1-0 (the-as hud-item-string (-> this items 1)))
+        (s2-0 (the-as hud-item-string (-> this items 2)))
+        (s3-0 (the-as hud-item-string (-> this items 3)))
+        (s5-0 (the-as hud-item-string (-> this items 4)))
+        )
+    (let ((s4-0 (the-as hud-item-string (-> this items 5))))
+      (cond
+        ((-> this hide-titles)
+         (set-string! s0-0 "")
+         (set-string! s0-0 "")
+         )
+        (else
+          (let ((a1-10 (-> *task-level-info* (-> *net-world* task-info task-level) text-id)))
+            (set-string! s0-0 (lookup-text! *common-text* a1-10 #f))
+            )
+          (set-string!
+            s1-0
+            (lookup-text!
+              *common-text*
+              (-> *net-play-mode-text-ids* (if *net-world*
+                                               (the-as int (-> *net-world* task-node-info net-play-mode))
+                                               18
+                                               )
+                  )
+              #f
+              )
+            )
+          )
+        )
+      (set-string! s2-0 (net-game-mgr-method-65 *net-game-mgr* 0))
+      (set-string! s3-0 (net-game-mgr-method-65 *net-game-mgr* 1))
+      (set-string! s4-0 (net-game-mgr-method-65 *net-game-mgr* 2))
+      )
+    (set-string! s5-0 (net-game-mgr-method-65 *net-game-mgr* 3))
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+;; definition for method 23 of type hud-place-event
+(defmethod hud-item-method-23 ((this hud-place-event) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('fade)
+     (set! (-> this should-be-visible) #f)
+     #f
+     )
+    (else
+      ((method-of-type hud-item-group hud-item-method-23) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition of type hud-item-string-big
+(deftype hud-item-string-big (hud-item-string)
+  ()
+  )
+
+;; definition for method 3 of type hud-item-string-big
+(defmethod inspect ((this hud-item-string-big))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 28 of type hud-item-string-big
+(defmethod alloc-string ((this hud-item-string-big))
+  (alloc-string-if-needed *current-hud* (-> *current-hud* num-strings) 128)
+  (none)
+  )
+
+;; definition for symbol *hud-slowmo*, type (array hud-item)
+(define *hud-slowmo* (new 'static 'boxed-array :type hud-item (new 'static 'hud-item-string-big
+                                                                :alpha #xff
+                                                                :position-x -20
+                                                                :position-y -10
+                                                                :width #x258
+                                                                :height 32
+                                                                :zval #xfff0
+                                                                :scale #x99
+                                                                :flags (hud-item-flag align-right align-bottom)
+                                                                :effect #f
+                                                                :text-id (text-id text-id-1740)
+                                                                :color #x5
+                                                                :font-flags (hud-string-flag right)
+                                                                :has-outline #t
+                                                                )
+                                                              )
+        )
+
+;; definition for symbol *hud-slowmo-proc*, type hud-slowmo
+(define *hud-slowmo-proc* (the-as hud-slowmo #f))
+
+;; definition of type hud-slowmo
+(deftype hud-slowmo (in-game-hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-slowmo
+(defmethod inspect ((this hud-slowmo))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type in-game-hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-slowmo
+;; WARN: Return type mismatch in-game-hud vs hud-slowmo.
+(defmethod relocate ((this hud-slowmo) (offset int))
+  (set! *hud-slowmo-proc* this)
+  (if (nonzero? *hud-slowmo-proc*)
+      (set! *hud-slowmo-proc* (&+ *hud-slowmo-proc* offset))
+      )
+  (the-as hud-slowmo ((method-of-type in-game-hud relocate) this offset))
+  )
+
+;; definition for method 26 of type hud-slowmo
+(defmethod init-callback ((this hud-slowmo))
+  (set! (-> this items) *hud-slowmo*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-slowmo-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+;; definition for method 10 of type hud-slowmo
+(defmethod deactivate ((this hud-slowmo))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-slowmo-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+;; definition for method 24 of type hud-slowmo
+(defmethod draw ((this hud-slowmo))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-slowmo*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; definition for function spawn-hud-slowmo
+(defun spawn-hud-slowmo ()
+  (cond
+    (*hud-slowmo-proc*
+      *hud-slowmo-proc*
+      )
+    (*net-game-mgr*
+      (let ((v0-0
+              (ppointer->process (process-spawn hud-slowmo :init hud-init-by-other :name "hud-slowmo" :to *net-game-mgr*))
+              )
+            )
+        (when v0-0
+          (set! (-> (the-as hud-slowmo v0-0) inited-strings-count) 0)
+          0
+          )
+        v0-0
+        )
+      )
+    (else
+      (the-as process #f)
+      )
+    )
+  )
+
+;; definition for method 17 of type hud-slowmo
+(defmethod hide-during-letterbox? ((this hud-slowmo))
+  #f
+  )
+
+;; definition for symbol *hud-top-split-bar*, type (array hud-item)
+(define *hud-top-split-bar*
+  (new 'static 'boxed-array :type hud-item (new 'static 'hud-item-sprite
+                                             :alpha #xff
+                                             :width 8
+                                             :height 8
+                                             :zval #xfff1
+                                             :scale #x5555
+                                             :flags (hud-item-flag fullscreen center-x center-y)
+                                             :effect #f
+                                             :scale-y #x100
+                                             :color (new 'static 'vector4w :w #x80)
+                                             :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                             :sprite-flags (hud-sprite-flags alpha-test)
+                                             )
+                                           )
+  )
+
+;; definition for symbol *hud-top-split-bar-proc*, type hud-top-split-bar
+(define *hud-top-split-bar-proc* (the-as hud-top-split-bar #f))
+
+;; definition of type hud-top-split-bar
+(deftype hud-top-split-bar (in-game-hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-top-split-bar
+(defmethod inspect ((this hud-top-split-bar))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type in-game-hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-top-split-bar
+;; WARN: Return type mismatch in-game-hud vs hud-top-split-bar.
+(defmethod relocate ((this hud-top-split-bar) (offset int))
+  (set! *hud-top-split-bar-proc* this)
+  (if (nonzero? *hud-top-split-bar-proc*)
+      (set! *hud-top-split-bar-proc* (&+ *hud-top-split-bar-proc* offset))
+      )
+  (the-as hud-top-split-bar ((method-of-type in-game-hud relocate) this offset))
+  )
+
+;; definition for method 26 of type hud-top-split-bar
+(defmethod init-callback ((this hud-top-split-bar))
+  (set! (-> this items) *hud-top-split-bar*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-top-split-bar-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+;; definition for method 10 of type hud-top-split-bar
+(defmethod deactivate ((this hud-top-split-bar))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-top-split-bar-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+;; definition for method 24 of type hud-top-split-bar
+(defmethod draw ((this hud-top-split-bar))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-top-split-bar*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; definition for function spawn-hud-top-split-bar
+;; WARN: Return type mismatch process vs hud-top-split-bar.
+(defun spawn-hud-top-split-bar ()
+  (the-as
+    hud-top-split-bar
+    (cond
+      (*hud-top-split-bar-proc*
+        *hud-top-split-bar-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0
+                (ppointer->process
+                  (process-spawn hud-top-split-bar :init hud-init-by-other :name "hud-top-split-bar" :to *net-game-mgr*)
+                  )
+                )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-top-split-bar v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+;; definition for method 23 of type hud-top-split-bar
+(defmethod hide-during-grand-prix-totals? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 21 of type hud-top-split-bar
+(defmethod hide-during-high-scores? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 19 of type hud-top-split-bar
+(defmethod hide-during-in-game-menu? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 17 of type hud-top-split-bar
+(defmethod hide-during-letterbox? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 20 of type hud-top-split-bar
+(defmethod hide-during-cash-stats? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 18 of type hud-top-split-bar
+(defmethod hide-during-end-game-menu? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for method 22 of type hud-top-split-bar
+(defmethod hide-during-finish-mode? ((this hud-top-split-bar))
+  #f
+  )
+
+;; definition for symbol *hud-side-split-bar*, type (array hud-item)
+(define *hud-side-split-bar*
+  (new 'static 'boxed-array :type hud-item (new 'static 'hud-item-sprite
+                                             :alpha #xff
+                                             :width 8
+                                             :height 8
+                                             :zval #xfff1
+                                             :scale #x100
+                                             :flags (hud-item-flag fullscreen center-x center-y)
+                                             :effect #f
+                                             :scale-y #x4555
+                                             :color (new 'static 'vector4w :w #x80)
+                                             :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                             :sprite-flags (hud-sprite-flags alpha-test)
+                                             )
+                                           )
+  )
+
+;; definition for symbol *hud-side-split-bar-proc*, type hud-side-split-bar
+(define *hud-side-split-bar-proc* (the-as hud-side-split-bar #f))
+
+;; definition of type hud-side-split-bar
+(deftype hud-side-split-bar (in-game-hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-side-split-bar
+(defmethod inspect ((this hud-side-split-bar))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type in-game-hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-side-split-bar
+;; WARN: Return type mismatch in-game-hud vs hud-side-split-bar.
+(defmethod relocate ((this hud-side-split-bar) (offset int))
+  (set! *hud-side-split-bar-proc* this)
+  (if (nonzero? *hud-side-split-bar-proc*)
+      (set! *hud-side-split-bar-proc* (&+ *hud-side-split-bar-proc* offset))
+      )
+  (the-as hud-side-split-bar ((method-of-type in-game-hud relocate) this offset))
+  )
+
+;; definition for method 26 of type hud-side-split-bar
+(defmethod init-callback ((this hud-side-split-bar))
+  (set! (-> this items) *hud-side-split-bar*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-side-split-bar-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+;; definition for method 10 of type hud-side-split-bar
+(defmethod deactivate ((this hud-side-split-bar))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-side-split-bar-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+;; definition for method 24 of type hud-side-split-bar
+(defmethod draw ((this hud-side-split-bar))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-side-split-bar*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; definition for function spawn-hud-side-split-bar
+;; WARN: Return type mismatch process vs hud-side-split-bar.
+(defun spawn-hud-side-split-bar ()
+  (the-as
+    hud-side-split-bar
+    (cond
+      (*hud-side-split-bar-proc*
+        *hud-side-split-bar-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0
+                (ppointer->process
+                  (process-spawn hud-side-split-bar :init hud-init-by-other :name "hud-side-split-bar" :to *net-game-mgr*)
+                  )
+                )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-side-split-bar v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+;; definition for method 23 of type hud-side-split-bar
+(defmethod hide-during-grand-prix-totals? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 21 of type hud-side-split-bar
+(defmethod hide-during-high-scores? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 19 of type hud-side-split-bar
+(defmethod hide-during-in-game-menu? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 17 of type hud-side-split-bar
+(defmethod hide-during-letterbox? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 20 of type hud-side-split-bar
+(defmethod hide-during-cash-stats? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 18 of type hud-side-split-bar
+(defmethod hide-during-end-game-menu? ((this hud-side-split-bar))
+  #f
+  )
+
+;; definition for method 22 of type hud-side-split-bar
+(defmethod hide-during-finish-mode? ((this hud-side-split-bar))
+  #f
+  )

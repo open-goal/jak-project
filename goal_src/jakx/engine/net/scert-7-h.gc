@@ -5,6 +5,62 @@
 ;; name in dgo: scert-7-h
 ;; dgos: ENGINE, GAME
 
+;; +++medius-clan-challenge-status
+(defenum medius-clan-challenge-status
+  :type int32
+  (clan-challenge-request 0)
+  (clan-challenge-accepted 1)
+  (clan-challenge-revoked 2)
+  (clan-challenge-refused 3)
+  (clan-challenge-confirmed 4)
+  (extra-medius-clan-challenge-status #xffffff)
+  )
+;; ---medius-clan-challenge-status
+
+;; +++medius-comparison-operator
+(defenum medius-comparison-operator
+  :type int32
+  (less-than 0)
+  (less-than-or-equal-to 1)
+  (equal-to 2)
+  (greater-than-or-equal-to 3)
+  (greater-than 4)
+  (not-equals 5)
+  (extra-medius-comparison-operator #xffffff)
+  )
+;; ---medius-comparison-operator
+
+;; +++medius-ladder-type
+(defenum medius-ladder-type
+  :type int32
+  (medius-ladder-type-player 0)
+  (medius-ladder-type-clan 1)
+  (extra-medius-ladder-type #xffffff)
+  )
+;; ---medius-ladder-type
+
+;; +++medius-policy-type
+(defenum medius-policy-type
+  :type int32
+  (usage 0)
+  (privacy 1)
+  (extra-medius-policy-type #xffffff)
+  )
+;; ---medius-policy-type
+
+;; +++sce-territory-type
+(defenum sce-territory-type
+  :type int32
+  (scea 0)
+  (scee 1)
+  (scei 2)
+  (scea-thirdparty 3)
+  (scee-thirdparty 4)
+  (scei-thirdparty 5)
+  (extra-sceterritory-type #xffffff)
+  )
+;; ---sce-territory-type
+
 ;; DECOMP BEGINS
 
 (deftype medius-get-clan-member-list-request (structure)
@@ -40,7 +96,7 @@
   ((message-id       uint8  21)
    (status-code      medius-status-code)
    (against-clan-id  int32)
-   (status           int32)
+   (status           medius-clan-challenge-status)
    (end-of-list      int8)
    )
   )
@@ -52,7 +108,7 @@
    (clan-id          int32)
    (start            int32)
    (page-size        int32)
-   (status           int32)
+   (status           medius-clan-challenge-status)
    (challenged-only  int32)
    )
   )
@@ -63,7 +119,7 @@
    (status-code         medius-status-code)
    (challenger-clan-id  int32)
    (against-clan-id     int32)
-   (status              int32)
+   (status              medius-clan-challenge-status)
    (response-time       int32)
    (challenge-msg       uint8  200)
    (response-msg        uint8  200)
@@ -83,8 +139,8 @@
 (deftype medius-get-game-list-filter-response (structure)
   ((message-id           uint8  21)
    (status-code          medius-status-code)
-   (filter-field         int32)
-   (comparison-operator  int32)
+   (filter-field         medius-game-list-filter-field)
+   (comparison-operator  medius-comparison-operator)
    (baseline-value       int32)
    (end-of-list          int8)
    )
@@ -93,7 +149,7 @@
 
 (deftype medius-get-ladder-stats-request (structure)
   ((message-id   uint8  21)
-   (ladder-type  int32)
+   (ladder-type  medius-ladder-type)
    )
   )
 
@@ -109,7 +165,7 @@
 (deftype medius-get-ladder-stats-wide-request (structure)
   ((message-id             uint8  21)
    (account-id-or-clan-id  int32)
-   (ladder-type            int32)
+   (ladder-type            medius-ladder-type)
    )
   )
 
@@ -126,7 +182,7 @@
 (deftype medius-get-ladder-stats-wide-w-idarray-request (structure)
   ((message-id   uint8   21)
    (ids          uint32  50)
-   (ladder-type  int32)
+   (ladder-type  medius-ladder-type)
    )
   )
 
@@ -232,7 +288,7 @@
    (leader-account-id    int32)
    (leader-account-name  uint8  32)
    (stats                uint8  256)
-   (status               int32)
+   (status               medius-clan-status)
    (end-of-list          int8)
    )
   )
@@ -256,7 +312,7 @@
 (deftype medius-get-policy-request (structure)
   ((message-id   uint8  21)
    (session-key  uint8  17)
-   (policy       int32)
+   (policy       medius-policy-type)
    )
   )
 
@@ -271,7 +327,7 @@
 
 
 (deftype medius-get-stored-account-info-request (structure)
-  ((device      int32)
+  ((device      medius-device-type)
    (card-port   int32)
    (card-slot   int32)
    (account-id  int32)
@@ -288,7 +344,7 @@
 
 
 (deftype medius-get-stored-account-list-request (structure)
-  ((device     int32)
+  ((device     medius-device-type)
    (card-port  int32)
    (card-slot  int32)
    )
@@ -335,7 +391,7 @@
 
 (deftype medius-get-total-rankings-request (structure)
   ((message-id   uint8  21)
-   (ladder-type  int32)
+   (ladder-type  medius-ladder-type)
    )
   )
 
@@ -369,7 +425,7 @@
   ((message-id       uint8  21)
    (session-key      uint8  17)
    (medius-world-id  int32)
-   (app-type         int32)
+   (app-type         medius-application-type)
    )
   )
 
@@ -378,24 +434,24 @@
   ((message-id       uint8  21)
    (status-code      medius-status-code)
    (medius-world-id  int32)
-   (app-type         int32)
-   (security-level   int32)
+   (app-type         medius-application-type)
+   (security-level   medius-world-security-level-type)
    )
   )
 
 
 (deftype medius-initialize-storage-request (structure)
-  ((device         int32)
+  ((device         medius-device-type)
    (card-port      int32)
    (card-slot      int32)
    (icon-location  uint8  64)
-   (sceterritory   int32)
+   (sceterritory   sce-territory-type)
    )
   )
 
 
 (deftype medius-initialize-storage-response (structure)
-  ((confirmation  int32)
+  ((confirmation  medius-stored-confirmation-type)
    )
   )
 

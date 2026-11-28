@@ -30,28 +30,49 @@
 
 ;; definition of type vehicle-load-parts
 (deftype vehicle-load-parts (uint64)
-  ((bit0 uint8 :offset   0 :size   3)
-   (bit1 uint8 :offset   3 :size   3)
-   (bit2 uint8 :offset   6 :size   3)
-   (bit3 uint8 :offset   9 :size   3)
-   (bit4 uint8 :offset  12 :size   3)
-   (bit5 uint8 :offset  15 :size   3)
-   (bit6 uint8 :offset  18 :size   3)
-   (bit7 uint8 :offset  21 :size   3)
-   (bit8 uint8 :offset  24 :size   5)
+  ((f-fender uint8 :offset   0 :size   3)
+   (r-fender uint8 :offset   3 :size   3)
+   (door     uint8 :offset   6 :size   3)
+   (f-bumper uint8 :offset   9 :size   3)
+   (r-bumper uint8 :offset  12 :size   3)
+   (hood     uint8 :offset  15 :size   3)
+   (trunk    uint8 :offset  18 :size   3)
+   (roof     uint8 :offset  21 :size   3)
+   (wheel    uint8 :offset  24 :size   5)
+   (antenna  uint8 :offset  29 :size   3)
+   (helmet   uint8 :offset  32 :size   3)
    )
   )
 
-;; definition for symbol *default-vehicle-load-parts*, type int
-(define *default-vehicle-load-parts* #x1249249)
+;; definition for symbol *default-vehicle-load-parts*, type vehicle-load-parts
+(define *default-vehicle-load-parts* (new 'static 'vehicle-load-parts
+                                       :f-fender #x1
+                                       :r-fender #x1
+                                       :door #x1
+                                       :f-bumper #x1
+                                       :r-bumper #x1
+                                       :hood #x1
+                                       :trunk #x1
+                                       :roof #x1
+                                       :wheel #x1
+                                       )
+        )
 
 ;; definition for method 3 of type vehicle-load-parts
 ;; WARN: Return type mismatch object vs vehicle-load-parts.
 (defmethod inspect ((this vehicle-load-parts))
-  (format #t "~d ~d ~d ~d ~d " (-> this bit0) (-> this bit1) (-> this bit2) (-> this bit3) (-> this bit4))
+  (format
+    #t
+    "~d ~d ~d ~d ~d "
+    (-> this f-fender)
+    (-> this r-fender)
+    (-> this door)
+    (-> this f-bumper)
+    (-> this r-bumper)
+    )
   (the-as
     vehicle-load-parts
-    (format #t "~d ~d ~d ~d~%" (-> this bit5) (-> this bit6) (-> this bit7) (-> this bit8))
+    (format #t "~d ~d ~d ~d~%" (-> this hood) (-> this trunk) (-> this roof) (-> this wheel))
     )
   )
 
@@ -88,7 +109,7 @@
    )
   :pack-me
   (:methods
-    (net-world-staging-player-method-9 () none)
+    (reset! (_type_) none)
     )
   )
 
@@ -118,7 +139,9 @@
   ((intro-end-time         int32)
    (scheduled-finish-time  int32)
    (scores                 uint16  6)
+   (scores-s16             int16   6 :overlay-at (-> scores 0))
    (laps                   uint8   6)
+   (laps-s8                int8    6 :overlay-at (-> laps 0))
    )
   )
 
@@ -157,24 +180,26 @@
 
 ;; definition of type net-world-state
 (deftype net-world-state (structure)
-  ((players             net-world-staging-player  24 :inline)
-   (assigned-drivers    uint8                     24)
-   (game-creator-ip     uint32)
-   (game-creation-time  uint32)
-   (game-start-time     int32)
-   (total-pause-time    int32)
-   (task-node-name      uint8                     32)
-   (player-ready-flags  uint8)
-   (flags               int8)
-   (max-humans          int8)
-   (buddy-slots         int8)
-   (clan-slots          int8)
-   (ai-slots            int8)
-   (vehicle-class       int8)
-   (options             net-world-game-options    :inline)
-   (clan-ids            uint32                    2)
-   (green-room-stats    green-room-stats          :inline)
-   (time-of-day         int8)
+  ((players              net-world-staging-player  24 :inline)
+   (assigned-drivers     uint8                     24)
+   (assigned-drivers-s8  int8                      24 :overlay-at (-> assigned-drivers 0))
+   (game-creator-ip      uint32)
+   (game-creation-time   uint32)
+   (game-start-time      int32)
+   (total-pause-time     int32)
+   (task-node-name       uint8                     32)
+   (player-ready-flags   uint8)
+   (flags                int8)
+   (max-humans           int8)
+   (buddy-slots          int8)
+   (clan-slots           int8)
+   (ai-slots             int8)
+   (vehicle-class        int8)
+   (options              net-world-game-options    :inline)
+   (clan-ids             uint32                    2)
+   (clan-ids-s32         int32                     2  :overlay-at (-> clan-ids 0))
+   (green-room-stats     green-room-stats          :inline)
+   (time-of-day          int8)
    )
   )
 
@@ -261,7 +286,7 @@
    (need-start-load                symbol)
    (current-garage-player          int32)
    (current-garage-spare-slot      int32)
-   (cont                           basic)
+   (cont                           continue-point)
    (task                           uint8)
    (task-node                      uint16)
    (task-info                      game-task-info)
@@ -269,53 +294,56 @@
    (player-to-vehicle-slot-map     uint8            24)
    (player-to-vehicle-slot-map-s8  int8             24 :overlay-at (-> player-to-vehicle-slot-map 0))
    (vehicle-slot-to-player-map     uint8            6)
+   (vehicle-slot-to-player-map-s8  int8             6  :overlay-at (-> vehicle-slot-to-player-map 0))
    )
+  (:state-methods
+    (running symbol)
+    demo-screen
+    play-movie
+    )
   (:methods
-    (net-world-method-42 () none)
-    (net-world-method-43 () none)
-    (net-world-method-44 () none)
-    (net-world-method-45 () none)
-    (net-world-method-46 () none)
-    (net-world-method-47 () none)
-    (net-world-method-48 () none)
-    (net-world-method-49 () none)
-    (net-world-method-50 () none)
-    (net-world-method-51 () none)
-    (net-world-method-52 () none)
-    (net-world-method-53 () none)
-    (net-world-method-54 () none)
-    (net-world-method-55 () none)
-    (net-world-method-56 () none)
-    (net-world-method-57 () none)
-    (net-world-method-58 () none)
-    (net-world-method-59 () none)
-    (net-world-method-60 () none)
-    (net-world-method-61 () none)
-    (net-world-method-62 () none)
-    (net-world-method-63 () none)
-    (net-world-method-64 () none)
-    (net-world-method-65 () none)
-    (net-world-method-66 () none)
-    (net-world-method-67 () none)
-    (net-world-method-68 () none)
-    (net-world-method-69 () none)
-    (net-world-method-70 () none)
-    (net-world-method-71 () none)
-    (net-world-method-72 () none)
-    (net-world-method-73 () none)
-    (net-world-method-74 () none)
-    (net-world-method-75 () none)
-    (net-world-method-76 () none)
-    (net-world-method-77 () none)
-    (net-world-method-78 () none)
-    (net-world-method-79 () none)
-    (net-world-method-80 () none)
-    (net-world-method-81 () none)
-    (net-world-method-82 () none)
-    (net-world-method-83 () none)
-    (net-world-method-84 () none)
-    (net-world-method-85 () none)
-    (net-world-method-86 () none)
+    (try-add-machine (_type_ int) symbol)
+    (remove-machine (_type_ int) none)
+    (set-player-vehicle (_type_ int int vehicle-load-parts tuning-info) none)
+    (set-player-team (_type_ uint int) none)
+    (set-player-load-parts (_type_ vehicle-load-parts int) none)
+    (set-player-tuning (_type_ int int) none)
+    (set-player-desired-driver (_type_ int int) none)
+    (set-assigned-driver (_type_ int int) none)
+    (set-player-colors (_type_ int int int) none)
+    (assign-drivers (_type_) object)
+    (net-world-method-55 (_type_ int int int) symbol)
+    (set-slot-counts (_type_ int int int int) none)
+    (set-ai-counts (_type_ int) none)
+    (set-vehicle-class (_type_ int) none)
+    (net-world-method-59 (_type_ symbol) none)
+    (set-player-flags (_type_ int int) none)
+    (get-staging-player-flag (_type_ int) net-world-staging-player-flag)
+    (set-player-name (_type_ int (pointer uint8)) none)
+    (lock-game (_type_) none)
+    (player-idx-vehicle-selected? (_type_ int) symbol)
+    (send-player-info (_type_ int) none)
+    (net-world-method-66 (_type_ int) int)
+    (get-assigned-driver (_type_ int) int)
+    (set-task-node (_type_ game-task-node) none)
+    (set-artist-continue (_type_ continue-point) none)
+    (apply-task (_type_) none)
+    (update-ai-players (_type_) none)
+    (send-options (_type_) none)
+    (set-garage-player (_type_ int) none)
+    (get-spare-garage-slot (_type_ int) integer)
+    (swap-garage-slots (_type_ int) none)
+    (update-load-levels (_type_ symbol) none)
+    (levels-loaded? (_type_) symbol)
+    (ocean-levels-loaded? (_type_) symbol)
+    (all-players-ready? (_type_) symbol)
+    (net-world-method-80 (_type_) symbol)
+    (net-world-method-81 (_type_) none)
+    (assign-teams (_type_) none)
+    (player-vehicle-loaded? (_type_ int) symbol)
+    (player-driver-loaded? (_type_ int) symbol)
+    (set-time-of-day (_type_ int) none)
+    (net-world-method-86 (_type_ int) int)
     )
   )
 
@@ -347,20 +375,20 @@
 ;; definition for function net-world-init-remote
 ;; WARN: Return type mismatch int vs object.
 (defbehavior net-world-init-remote net-world ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   )
 
 ;; definition for method 41 of type net-world
-(defmethod process-nettable-method-41 ((this net-world) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-world) (arg0 mem-buffer))
   (ppointer->process (process-spawn net-world :init net-world-init-remote arg0 :name "net-world"))
   )
 
 ;; definition for method 37 of type net-world
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this net-world) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-world) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-task)
   (+! (-> arg0 msg-count) 1)
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-player-info)
@@ -410,7 +438,7 @@
 (net-process-class-register *net-process-class-info-net-world*)
 
 ;; definition for method 40 of type net-world
-(defmethod process-nettable-method-40 ((this net-world))
+(defmethod get-class-info ((this net-world))
   *net-process-class-info-net-world*
   )
 
@@ -423,7 +451,7 @@
    (format-name  uint8  64)
    )
   (:methods
-    (net-player-name-method-9 () none)
+    (net-player-name-method-9 (_type_) none)
     )
   )
 
@@ -473,7 +501,7 @@
 (deftype prebuilt-ai-vehicle (structure)
   ((levname     symbol)
    (v-type      vehicle-type-u8)
-   (load-parts  uint64)
+   (load-parts  vehicle-load-parts)
    )
   )
 
@@ -494,42 +522,182 @@
 ;; definition for symbol *prebuilt-ai-vehicles*, type (array prebuilt-ai-vehicle)
 (define *prebuilt-ai-vehicles*
   (new 'static 'boxed-array :type prebuilt-ai-vehicle
-    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl :v-type (vehicle-type-u8 tiger) :load-parts #x56200e2)
-    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl2 :v-type (vehicle-type-u8 falcon) :load-parts #xeb68140)
-    (new 'static 'prebuilt-ai-vehicle :levname 'ashvl3 :v-type (vehicle-type-u8 wombat) :load-parts #x14528150)
-    (new 'static 'prebuilt-ai-vehicle :levname 'razvl :v-type (vehicle-type-u8 cheetah) :load-parts #xb618153)
-    (new 'static 'prebuilt-ai-vehicle :levname 'klevl :v-type (vehicle-type-u8 panther) :load-parts #x9608680)
-    (new 'static 'prebuilt-ai-vehicle :levname 'klevl2 :v-type (vehicle-type-u8 bear) :load-parts #xd4e8118)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thavl :v-type (vehicle-type-u8 possum) :load-parts #x30e0142)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thavl2 :v-type (vehicle-type-u8 panther) :load-parts #xfa28b40)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thavl3 :v-type (vehicle-type-u8 gila) :load-parts #xfa40813)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl :v-type (vehicle-type-u8 cougar) :load-parts #x70182d3)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl2 :v-type (vehicle-type-u8 leopard) :load-parts #x5a1814d)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thbvl3 :v-type (vehicle-type-u8 gila) :load-parts #x10500a2c)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl :v-type (vehicle-type-u8 wombat) :load-parts #x44180ca)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl2 :v-type (vehicle-type-u8 falcon) :load-parts #x126980a8)
-    (new 'static 'prebuilt-ai-vehicle :levname 'thcvl3 :v-type (vehicle-type-u8 cheetah) :load-parts #xe82011a)
-    (new 'static 'prebuilt-ai-vehicle :levname 'torvl :v-type (vehicle-type-u8 tiger) :load-parts #x8808113)
-    (new 'static 'prebuilt-ai-vehicle :levname 'torvl2 :v-type (vehicle-type-u8 possum) :load-parts #x31280c5)
-    (new 'static 'prebuilt-ai-vehicle :levname 'torvl3 :v-type (vehicle-type-u8 wolf) :load-parts #x1402a480)
-    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl :v-type (vehicle-type-u8 leopard) :load-parts #xa010092)
-    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl2 :v-type (vehicle-type-u8 cougar) :load-parts #x15020b64)
-    (new 'static 'prebuilt-ai-vehicle :levname 'sigvl3 :v-type (vehicle-type-u8 bear) :load-parts #xcb580e8)
-    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl :v-type (vehicle-type-u8 bear) :load-parts #x9290090)
-    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl2 :v-type (vehicle-type-u8 bobcat) :load-parts #x13a0012b)
-    (new 'static 'prebuilt-ai-vehicle :levname 'ur8vl3 :v-type (vehicle-type-u8 wolf) :load-parts #x1181c6c0)
-    (new 'static 'prebuilt-ai-vehicle :levname 'rayvl :v-type (vehicle-type-u8 wolf) :load-parts #x9819300)
-    (new 'static 'prebuilt-ai-vehicle :levname 'rayvl2 :v-type (vehicle-type-u8 tiger) :load-parts #x1a28148)
-    (new 'static 'prebuilt-ai-vehicle :levname 'gtbvl :v-type (vehicle-type-u8 falcon) :load-parts #xb2d0088)
-    (new 'static 'prebuilt-ai-vehicle :levname 'kievl :v-type (vehicle-type-u8 bobcat) :load-parts #x181811a)
-    (new 'static 'prebuilt-ai-vehicle :levname 'jakvl :v-type (vehicle-type-u8 falcon) :load-parts #x8249249)
-    (new 'static 'prebuilt-ai-vehicle :levname 'pecvl :v-type (vehicle-type-u8 bobcat) :load-parts #x466132d)
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ashvl
+      :v-type (vehicle-type-u8 tiger)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :r-fender #x4 :door #x3 :hood #x4 :roof #x3 :wheel #x5)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ashvl2
+      :v-type (vehicle-type-u8 falcon)
+      :load-parts (new 'static 'vehicle-load-parts :door #x5 :hood #x5 :trunk #x5 :roof #x5 :wheel #xe)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ashvl3
+      :v-type (vehicle-type-u8 wombat)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x2 :door #x5 :hood #x5 :trunk #x4 :roof #x2 :wheel #x14)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'razvl
+      :v-type (vehicle-type-u8 cheetah)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x3 :r-fender #x2 :door #x5 :hood #x3 :roof #x3 :wheel #xb)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'klevl
+      :v-type (vehicle-type-u8 panther)
+      :load-parts (new 'static 'vehicle-load-parts :door #x2 :f-bumper #x3 :hood #x1 :roof #x3 :wheel #x9)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'klevl2
+      :v-type (vehicle-type-u8 bear)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x3 :door #x4 :hood #x5 :trunk #x3 :roof #x2 :wheel #xd)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thavl
+      :v-type (vehicle-type-u8 possum)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :door #x5 :hood #x4 :trunk #x3 :wheel #x3)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thavl2
+      :v-type (vehicle-type-u8 panther)
+      :load-parts (new 'static 'vehicle-load-parts :door #x5 :f-bumper #x5 :hood #x5 :roof #x5 :wheel #xf)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thavl3
+      :v-type (vehicle-type-u8 gila)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x3 :r-fender #x2 :f-bumper #x4 :trunk #x1 :roof #x5 :wheel #xf)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thbvl
+      :v-type (vehicle-type-u8 cougar)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x3 :r-fender #x2 :door #x3 :f-bumper #x1 :hood #x3 :wheel #x7)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thbvl2
+      :v-type (vehicle-type-u8 leopard)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x5 :r-fender #x1 :door #x5 :hood #x3 :roof #x5 :wheel #x5)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thbvl3
+      :v-type (vehicle-type-u8 gila)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x4 :r-fender #x5 :f-bumper #x5 :trunk #x4 :roof #x2 :wheel #x10)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thcvl
+      :v-type (vehicle-type-u8 wombat)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :r-fender #x1 :door #x3 :hood #x3 :roof #x2 :wheel #x4)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thcvl2
+      :v-type (vehicle-type-u8 falcon)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x5 :door #x2 :hood #x3 :trunk #x2 :roof #x3 :wheel #x12)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'thcvl3
+      :v-type (vehicle-type-u8 cheetah)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :r-fender #x3 :door #x4 :hood #x4 :roof #x4 :wheel #xe)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'torvl
+      :v-type (vehicle-type-u8 tiger)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x3 :r-fender #x2 :door #x4 :hood #x1 :roof #x4 :wheel #x8)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'torvl2
+      :v-type (vehicle-type-u8 possum)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x5 :door #x3 :hood #x5 :trunk #x4 :wheel #x3)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'torvl3
+      :v-type (vehicle-type-u8 wolf)
+      :load-parts (new 'static 'vehicle-load-parts :door #x2 :f-bumper #x2 :r-bumper #x2 :hood #x5 :wheel #x14)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'sigvl
+      :v-type (vehicle-type-u8 leopard)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :r-fender #x2 :door #x2 :hood #x2 :wheel #xa)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'sigvl2
+      :v-type (vehicle-type-u8 cougar)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x4 :r-fender #x4 :door #x5 :f-bumper #x5 :hood #x4 :wheel #x15)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'sigvl3
+      :v-type (vehicle-type-u8 bear)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x5 :door #x3 :hood #x3 :trunk #x5 :roof #x5 :wheel #xc)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ur8vl
+      :v-type (vehicle-type-u8 bear)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x2 :door #x2 :hood #x2 :trunk #x2 :roof #x1 :wheel #x9)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ur8vl2
+      :v-type (vehicle-type-u8 bobcat)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x3 :r-fender #x5 :door #x4 :roof #x5 :wheel #x13)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'ur8vl3
+      :v-type (vehicle-type-u8 wolf)
+      :load-parts (new 'static 'vehicle-load-parts :door #x3 :f-bumper #x3 :r-bumper #x4 :hood #x3 :roof #x4 :wheel #x11)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'rayvl
+      :v-type (vehicle-type-u8 wolf)
+      :load-parts (new 'static 'vehicle-load-parts :door #x4 :f-bumper #x1 :r-bumper #x1 :hood #x3 :roof #x4 :wheel #x9)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'rayvl2
+      :v-type (vehicle-type-u8 tiger)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x1 :door #x5 :hood #x5 :roof #x5 :wheel #x1)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'gtbvl
+      :v-type (vehicle-type-u8 falcon)
+      :load-parts (new 'static 'vehicle-load-parts :r-fender #x1 :door #x2 :hood #x2 :trunk #x3 :roof #x1 :wheel #xb)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'kievl
+      :v-type (vehicle-type-u8 bobcat)
+      :load-parts (new 'static 'vehicle-load-parts :f-fender #x2 :r-fender #x3 :door #x4 :hood #x3 :roof #x4 :wheel #x1)
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'jakvl
+      :v-type (vehicle-type-u8 falcon)
+      :load-parts (new 'static 'vehicle-load-parts
+        :f-fender #x1
+        :r-fender #x1
+        :door #x1
+        :f-bumper #x1
+        :r-bumper #x1
+        :hood #x1
+        :trunk #x1
+        :roof #x1
+        :wheel #x8
+        )
+      )
+    (new 'static 'prebuilt-ai-vehicle
+      :levname 'pecvl
+      :v-type (vehicle-type-u8 bobcat)
+      :load-parts (new 'static 'vehicle-load-parts
+        :f-fender #x5
+        :r-fender #x5
+        :door #x4
+        :f-bumper #x1
+        :r-bumper #x1
+        :hood #x4
+        :trunk #x1
+        :roof #x3
+        :wheel #x4
+        )
+      )
     )
   )
 
 ;; definition of type net-vehicle
 (deftype net-vehicle (structure)
-  ((id          uint32)
+  ((id          text-id)
    (name        symbol)
    (levname     symbol)
    (vt          vehicle-type-u8)
@@ -537,8 +705,8 @@
    (tex-name    string)
    (sound-bank  symbol)
    (index       net-vehicle-type)
-   (cup-mask    uint32)
-   (id-variant  uint32)
+   (cup-mask    game-task-node-flag)
+   (id-variant  text-id)
    (ai-levels   (array prebuilt-ai-vehicle))
    )
   )
@@ -568,19 +736,19 @@
 ;; definition for symbol *net-vehicles*, type (array net-vehicle)
 (define *net-vehicles* (new 'static 'boxed-array :type net-vehicle
                          (new 'static 'net-vehicle
-                           :id #x600
+                           :id (text-id text-id-1536)
                            :name 'falcon
                            :levname 'falcl
                            :vt (vehicle-type-u8 falcon)
                            :ct (car-type falcon)
                            :tex-name "icon-car-falcon-01"
                            :sound-bank 'falc
-                           :cup-mask #x80
-                           :id-variant #xcf0
+                           :cup-mask (game-task-node-flag cup1)
+                           :id-variant (text-id text-id-3312)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x719
+                           :id (text-id text-id-1817)
                            :name 'possum
                            :levname 'possl
                            :vt (vehicle-type-u8 possum)
@@ -588,12 +756,12 @@
                            :tex-name "icon-car-possum-01"
                            :sound-bank 'poss
                            :index (net-vehicle-type possum)
-                           :cup-mask #x80
-                           :id-variant #xcf9
+                           :cup-mask (game-task-node-flag cup1)
+                           :id-variant (text-id text-id-3321)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x715
+                           :id (text-id text-id-1813)
                            :name 'bobcat
                            :levname 'bobcl
                            :vt (vehicle-type-u8 bobcat)
@@ -601,12 +769,12 @@
                            :tex-name "icon-car-bobcat-01"
                            :sound-bank 'bobc
                            :index (net-vehicle-type bobcat)
-                           :cup-mask #x80
-                           :id-variant #xced
+                           :cup-mask (game-task-node-flag cup1)
+                           :id-variant (text-id text-id-3309)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x716
+                           :id (text-id text-id-1814)
                            :name 'cougar
                            :levname 'cougl
                            :vt (vehicle-type-u8 cougar)
@@ -614,12 +782,12 @@
                            :tex-name "icon-car-cougar-01"
                            :sound-bank 'coug
                            :index (net-vehicle-type cougar)
-                           :cup-mask #x80
-                           :id-variant #xcef
+                           :cup-mask (game-task-node-flag cup1)
+                           :id-variant (text-id text-id-3311)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x60e
+                           :id (text-id text-id-1550)
                            :name 'wombat
                            :levname 'wombl
                            :vt (vehicle-type-u8 wombat)
@@ -627,12 +795,12 @@
                            :tex-name "icon-car-wombat-01"
                            :sound-bank 'womb
                            :index (net-vehicle-type wombat)
-                           :cup-mask #x100
-                           :id-variant #xd02
+                           :cup-mask (game-task-node-flag cup2)
+                           :id-variant (text-id text-id-3330)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x709
+                           :id (text-id text-id-1801)
                            :name 'leopard
                            :levname 'leopl
                            :vt (vehicle-type-u8 leopard)
@@ -640,12 +808,12 @@
                            :tex-name "icon-car-leopard-01"
                            :sound-bank 'leop
                            :index (net-vehicle-type leopard)
-                           :cup-mask #x100
-                           :id-variant #xcf4
+                           :cup-mask (game-task-node-flag cup2)
+                           :id-variant (text-id text-id-3316)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x717
+                           :id (text-id text-id-1815)
                            :name 'wolf
                            :levname 'wolfl
                            :vt (vehicle-type-u8 wolf)
@@ -653,12 +821,12 @@
                            :tex-name "icon-car-wolf-01"
                            :sound-bank 'wolf
                            :index (net-vehicle-type wolf)
-                           :cup-mask #x100
-                           :id-variant #xd01
+                           :cup-mask (game-task-node-flag cup2)
+                           :id-variant (text-id text-id-3329)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x70a
+                           :id (text-id text-id-1802)
                            :name 'panther
                            :levname 'pantl
                            :vt (vehicle-type-u8 panther)
@@ -666,12 +834,12 @@
                            :tex-name "icon-car-panther-01"
                            :sound-bank 'pant
                            :index (net-vehicle-type panther)
-                           :cup-mask #x100
-                           :id-variant #xcf7
+                           :cup-mask (game-task-node-flag cup2)
+                           :id-variant (text-id text-id-3319)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x70b
+                           :id (text-id text-id-1803)
                            :name 'tiger
                            :levname 'tigel
                            :vt (vehicle-type-u8 tiger)
@@ -679,12 +847,12 @@
                            :tex-name "icon-car-tiger-01"
                            :sound-bank 'tige
                            :index (net-vehicle-type tiger)
-                           :cup-mask #x200
-                           :id-variant #xcfd
+                           :cup-mask (game-task-node-flag cup3)
+                           :id-variant (text-id text-id-3325)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x718
+                           :id (text-id text-id-1816)
                            :name 'bear
                            :levname 'bearl
                            :vt (vehicle-type-u8 bear)
@@ -692,12 +860,12 @@
                            :tex-name "icon-car-bear-01"
                            :sound-bank 'bear
                            :index (net-vehicle-type bear)
-                           :cup-mask #x200
-                           :id-variant #xcec
+                           :cup-mask (game-task-node-flag cup3)
+                           :id-variant (text-id text-id-3308)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #xd2f
+                           :id (text-id text-id-3375)
                            :name 'gila
                            :levname 'gilal
                            :vt (vehicle-type-u8 gila)
@@ -705,12 +873,12 @@
                            :tex-name "icon-car-gila-01"
                            :sound-bank 'gila
                            :index (net-vehicle-type gila)
-                           :cup-mask #x200
-                           :id-variant #xd30
+                           :cup-mask (game-task-node-flag cup3)
+                           :id-variant (text-id text-id-3376)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x70c
+                           :id (text-id text-id-1804)
                            :name 'cheetah
                            :levname 'cheel
                            :vt (vehicle-type-u8 cheetah)
@@ -718,12 +886,12 @@
                            :tex-name "icon-car-cheetah-01"
                            :sound-bank 'chee
                            :index (net-vehicle-type cheetah)
-                           :cup-mask #x200
-                           :id-variant #xcee
+                           :cup-mask (game-task-node-flag cup3)
+                           :id-variant (text-id text-id-3310)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x70f
+                           :id (text-id text-id-1807)
                            :name 'snake
                            :levname 'snakl
                            :vt (vehicle-type-u8 snake)
@@ -731,23 +899,23 @@
                            :tex-name "icon-car-snake-01"
                            :sound-bank 'snak
                            :index (net-vehicle-type snake)
-                           :cup-mask #x400
-                           :id-variant #xcfb
+                           :cup-mask (game-task-node-flag cup4)
+                           :id-variant (text-id text-id-3323)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #x5ff
+                           :id (text-id text-id-1535)
                            :name 'mongoose
                            :levname 'mongl
                            :tex-name "icon-car-mongoose-01"
                            :sound-bank 'mong
                            :index (net-vehicle-type mongoose)
-                           :cup-mask #x400
-                           :id-variant #xcf6
+                           :cup-mask (game-task-node-flag cup4)
+                           :id-variant (text-id text-id-3318)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          (new 'static 'net-vehicle
-                           :id #xe3b
+                           :id (text-id text-id-3643)
                            :name 'daxtermobile
                            :levname 'daxtl
                            :vt (vehicle-type-u8 daxtermobile)
@@ -755,8 +923,8 @@
                            :tex-name "icon-car-daxtermobile-01"
                            :sound-bank 'daxt
                            :index (net-vehicle-type daxtermobile)
-                           :cup-mask #x400
-                           :id-variant #xe3c
+                           :cup-mask (game-task-node-flag cup4)
+                           :id-variant (text-id text-id-3644)
                            :ai-levels (new 'static 'boxed-array :type prebuilt-ai-vehicle :length 0 :allocated-length 4)
                            )
                          )
@@ -829,7 +997,7 @@
 
 ;; definition of type net-driver
 (deftype net-driver (structure)
-  ((id             uint32)
+  ((id             text-id)
    (levname        symbol)
    (dt             driver-type)
    (tex-name       string)
@@ -844,7 +1012,7 @@
    (sex            int8)
    (height         int8)
    (weight         int16)
-   (eyes           basic)
+   (eyes           string)
    (age            int8)
    (helmet-scale   float)
    (no-ai          symbol)
@@ -884,7 +1052,7 @@
 ;; definition for symbol *net-drivers*, type (array net-driver)
 (define *net-drivers* (new 'static 'boxed-array :type net-driver
                         (new 'static 'net-driver
-                          :id #x601
+                          :id (text-id text-id-1537)
                           :levname 'jaklev
                           :tex-name "jak"
                           :picture-part1 #xe6e00200
@@ -903,7 +1071,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x602
+                          :id (text-id text-id-1538)
                           :levname 'ashlev
                           :dt (driver-type d-ashelin)
                           :tex-name "ashelin"
@@ -924,7 +1092,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x640
+                          :id (text-id text-id-1600)
                           :levname 'razlev
                           :dt (driver-type d-razer)
                           :tex-name "razer"
@@ -944,7 +1112,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x64f
+                          :id (text-id text-id-1615)
                           :levname 'klelev
                           :dt (driver-type d-klever)
                           :tex-name "kleiver"
@@ -964,7 +1132,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x6c1
+                          :id (text-id text-id-1729)
                           :levname 'kielev
                           :dt (driver-type d-kiera)
                           :tex-name "kiera"
@@ -985,7 +1153,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x6c2
+                          :id (text-id text-id-1730)
                           :levname 'thalev
                           :dt (driver-type d-thug-a)
                           :tex-name "thug-a"
@@ -1005,7 +1173,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x7e6
+                          :id (text-id text-id-2022)
                           :levname 'thblev
                           :dt (driver-type d-thug-b)
                           :tex-name "thug-b"
@@ -1025,7 +1193,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #xd55
+                          :id (text-id text-id-3413)
                           :levname 'thclev
                           :dt (driver-type d-thug-c)
                           :tex-name "thug-c"
@@ -1045,7 +1213,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x72b
+                          :id (text-id text-id-1835)
                           :levname 'tarlev
                           :dt (driver-type d-taryn)
                           :tex-name "taryn"
@@ -1066,7 +1234,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #x7e3
+                          :id (text-id text-id-2019)
                           :levname 'torlev
                           :dt (driver-type d-torn)
                           :tex-name "torn"
@@ -1086,7 +1254,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x7e4
+                          :id (text-id text-id-2020)
                           :levname 'siglev
                           :dt (driver-type d-sig)
                           :tex-name "sig"
@@ -1106,7 +1274,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #x7e5
+                          :id (text-id text-id-2021)
                           :levname 'ur8lev
                           :dt (driver-type d-ur-86)
                           :tex-name "ur-86"
@@ -1127,7 +1295,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #xd56
+                          :id (text-id text-id-3414)
                           :levname 'kaelev
                           :dt (driver-type d-kaeden)
                           :tex-name "kaeden"
@@ -1147,7 +1315,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xd64
+                          :id (text-id text-id-3428)
                           :levname 'raylev
                           :dt (driver-type d-rayn)
                           :tex-name "rayn"
@@ -1168,7 +1336,7 @@
                           :no-ai #f
                           )
                         (new 'static 'net-driver
-                          :id #xd65
+                          :id (text-id text-id-3429)
                           :levname 'ratlev
                           :dt (driver-type d-ratchet)
                           :tex-name "ratchet"
@@ -1188,7 +1356,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xd66
+                          :id (text-id text-id-3430)
                           :levname 'jkalev
                           :dt (driver-type d-jaka)
                           :tex-name "jak1"
@@ -1208,7 +1376,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xd67
+                          :id (text-id text-id-3431)
                           :levname 'jkblev
                           :dt (driver-type d-jakb)
                           :tex-name "jak2"
@@ -1228,7 +1396,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xd68
+                          :id (text-id text-id-3432)
                           :levname 'jkclev
                           :dt (driver-type d-jakc)
                           :tex-name "jak3"
@@ -1248,7 +1416,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xd94
+                          :id (text-id text-id-3476)
                           :levname 'daxlev
                           :dt (driver-type d-daxter)
                           :tex-name "daxter"
@@ -1268,7 +1436,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xda0
+                          :id (text-id text-id-3488)
                           :levname 'gtblev
                           :dt (driver-type d-gtblitz)
                           :tex-name "gtblitz"
@@ -1288,7 +1456,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xe99
+                          :id (text-id text-id-3737)
                           :levname 'peclev
                           :dt (driver-type d-pecker)
                           :tex-name "pecker"
@@ -1308,7 +1476,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xe9c
+                          :id (text-id text-id-3740)
                           :levname 'ximlev
                           :dt (driver-type d-ximon)
                           :tex-name "ximon"
@@ -1328,7 +1496,7 @@
                           :no-ai #t
                           )
                         (new 'static 'net-driver
-                          :id #xe9e
+                          :id (text-id text-id-3742)
                           :levname 'osmlev
                           :dt (driver-type d-osmo)
                           :tex-name "osmo"
@@ -1353,7 +1521,7 @@
 ;; definition for function get-vehicle-name
 (defun get-vehicle-name ((arg0 net-vehicle-type))
   (if (< (the-as int arg0) (length *net-vehicles*))
-      (lookup-text! *common-text* (the-as text-id (-> *net-vehicles* arg0 id)) #f)
+      (lookup-text! *common-text* (-> *net-vehicles* arg0 id) #f)
       ""
       )
   )
@@ -1364,11 +1532,9 @@
 ;; definition for function protect-vehicle-slot-1
 (defun protect-vehicle-slot-1 ((arg0 symbol))
   (set! *protect-vehicle-slot-1* arg0)
-  (when (and *net-world* (not arg0))
-    (let ((t9-0 (method-of-object *net-world* net-world-method-76)))
-      (t9-0)
+  (if (and *net-world* (not arg0))
+      (update-load-levels *net-world* #f)
       )
-    )
   0
   )
 
@@ -1521,7 +1687,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

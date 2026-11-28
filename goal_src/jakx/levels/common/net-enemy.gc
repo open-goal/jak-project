@@ -7,3 +7,1218 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior play-anim-along-path net-enemy ((arg0 symbol) (arg1 symbol) (arg2 symbol))
+  (update!
+    (-> self net-anim)
+    self
+    (- (- (if *net-mgr*
+              (-> *net-mgr* game-state time)
+              0
+              )
+          (if *net-world*
+              (-> *net-world* net-state game-start-time)
+              0
+              )
+          )
+       (if *net-world*
+           (-> *net-world* net-state total-pause-time)
+           0
+           )
+       )
+    #f
+    )
+  (if (and arg0 (-> self net-anim result path-wrapped))
+      (return (the-as object #t))
+      )
+  (if (and arg1 (-> self net-anim result anim-wrapped))
+      (return (the-as object #t))
+      )
+  (when (not arg2)
+    (let ((a0-2 (-> self skel root-channel 0)))
+      (set! (-> a0-2 param 0) (-> self net-anim result cur-frame))
+      (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop-set!)
+      )
+    )
+  (let ((gp-1 (new 'stack-no-clear 'inline-array 'vector 3))
+        (v1-20 (-> self net-anim active path-info path-idx))
+        )
+    (when (!= v1-20 127)
+      (let ((s5-1 (-> self paths (-> self net-anim active path-info path-idx)))
+            (f30-0 (-> self net-anim result path-pos))
+            )
+        (path-control-method-14 s5-1 (-> gp-1 1) f30-0 'interp)
+        (path-control-method-16 s5-1 (-> gp-1 0) f30-0)
+        )
+      (set! (-> self forward-path-vector quad) (-> gp-1 0 quad))
+      (if (= (-> self net-anim active path-info reversed) 1)
+          (vector-float*! (-> gp-1 0) (-> gp-1 0) -1.0)
+          )
+      (forward-up->quaternion (the-as quaternion (-> gp-1 2)) (-> gp-1 0) (new 'static 'vector :y 1.0 :w 1.0))
+      (update-trans self (-> gp-1 1) (the-as quaternion (-> gp-1 2)))
+      (vector-float*! (-> self root transv) (-> self forward-path-vector) (-> self net-anim active vel z))
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior advance-anim-by-motion net-enemy ((arg0 float) (arg1 int))
+  (let* ((a2-2 (the-as art-joint-anim (-> self draw art-group data (-> self net-anim active anim-idx))))
+         (v1-5 (+ (-> a2-2 frames num-frames) -1))
+         (f0-2 (* 60.0 (-> self net-anim active anim-rate) (-> a2-2 speed)))
+         (f1-2 (-> self info anim-info arg1 forward-vel z))
+         (f0-3 (* f0-2 (/ arg0 f1-2)))
+         (a0-1 (-> self net-anim result))
+         (f0-4 (+ (-> a0-1 cur-frame) f0-3))
+         (f1-6 (the float v1-5))
+         )
+    (set! (-> a0-1 cur-frame) (- f0-4 (* (the float (the int (/ f0-4 f1-6))) f1-6)))
+    )
+  (let ((a0-2 (-> self skel root-channel 0)))
+    (set! (-> a0-2 param 0) (-> self net-anim result cur-frame))
+    (joint-control-channel-group-eval! a0-2 (the-as art-joint-anim #f) num-func-loop-set!)
+    )
+  0
+  )
+
+(defmethod update-trans ((this net-enemy) (arg0 vector) (arg1 quaternion))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+    (set! (-> s5-0 0 quad) (-> this root trans quad))
+    (if (logtest? (-> this snap-flags) (net-enemy-snap-flag snap-quat))
+        (quaternion-copy! (-> this root rotation) arg1)
+        (quaternion-smooth-seek! (-> this root rotation) (-> this root rotation) arg1 (-> this info smooth-root-quat))
+        )
+    (if (logtest? (-> this snap-flags) (net-enemy-snap-flag snap-trans))
+        (set! (-> this root trans quad) (-> arg0 quad))
+        (vector-smooth-seek! (-> this root trans) arg0 (-> this info smooth-root-trans))
+        )
+    (set! (-> this snap-flags) (net-enemy-snap-flag))
+    (when (and (< (find-nearest-camera-distance (-> this root trans)) (-> this info ground-probe-lod-dist))
+               (logtest? (-> this draw status) (draw-control-status on-screen))
+               )
+      (when (or (logtest? (-> this flags) (net-enemy-flag snap-to-ground))
+                (logtest? (-> this flags) (net-enemy-flag keep-ground-offset))
+                )
+        (let ((v1-27 (new 'stack-no-clear 'inline-array 'vector 2)))
+          (when (find-ground
+                  (the-as collide-shape-moving (-> this root))
+                  (the-as collide-query (-> v1-27 1))
+                  (collide-spec backgnd)
+                  8192.0
+                  81920.0
+                  1024.0
+                  (the-as process #f)
+                  )
+            (if (logtest? (-> this flags) (net-enemy-flag snap-to-ground))
+                (set! (-> this root trans quad) (-> (the-as collide-shape-moving (-> this root)) gspot-pos quad))
+                )
+            (when (logtest? (-> this flags) (net-enemy-flag keep-ground-offset))
+              (let ((f1-2 (- (-> this root trans y) (-> (the-as collide-shape-moving (-> this root)) gspot-pos y))))
+                (set! (-> this root trans y) (+ (-> (the-as collide-shape-moving (-> this root)) trans y)
+                                                (fmax 0.0 (- (-> this info min-ground-offset) f1-2))
+                                                )
+                      )
+                )
+              )
+            )
+          )
+        )
+      )
+    (vector-! (-> s5-0 0) (-> this root trans) (-> s5-0 0))
+    (vector-float*! (-> this vel-for-ragdoll) (-> s5-0 0) (* 50.0 (seconds-per-frame)))
+    )
+  (when (logtest? (-> this flags) (net-enemy-flag check-overlaps))
+    (let ((v1-51 (new 'stack-no-clear 'inline-array 'overlaps-others-params 1)))
+      (set! (-> v1-51 0 options) (overlaps-others-options oo0))
+      (set! (-> v1-51 0 collide-with-filter) (the-as collide-spec -1))
+      (set! (-> v1-51 0 tlist) *touching-list*)
+      (-> v1-51 0)
+      (find-overlapping-shapes (-> this root) (-> v1-51 0))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init! ((this net-enemy))
+  (with-pp
+    (set! (-> this flags) (net-enemy-flag))
+    (init-info! this)
+    (init-collision! this)
+    (process-drawable-from-entity! this (-> this entity))
+    (set! (-> pp level) (get-level (-> this entity)))
+    (logior! (-> this mask) (process-mask enemy))
+    (cond
+      ((>= (-> *attackable-hash* len1) (-> *attackable-hash* len0))
+       (format 0 "Attackable hash has been overfilled. Tell Elan.~%")
+       (break!)
+       0
+       )
+      (else
+        (let ((s5-0 (-> *attackable-hash* len1)))
+          (+! (-> *attackable-hash* len1) 1)
+          (set! (-> *attackable-hash* procs s5-0) (process->handle this))
+          (set! (-> *attackable-hash* trans s5-0 quad) (-> (get-trans this 3) quad))
+          (set! (-> *attackable-hash* masks s5-0) (the-as uint (get-search-info-flag this)))
+          )
+        )
+      )
+    (set! (-> this ragdoll-proc) (the-as handle #f))
+    (init-skeleton! this)
+    (init-paths! this)
+    (set! (-> this net-anim path-array) (-> this paths data))
+    (set! (-> this minimap) #f)
+    (set! (-> this nav-poly) #f)
+    (set! (-> this nav) #f)
+    (reset! this)
+    (if (not (registered? this))
+        (register this 8 #xffff)
+        )
+    (add-link *net-enemy-list* (the-as list-link (-> this enemy-link)))
+    0
+    (none)
+    )
+  )
+
+(defmethod reset! ((this net-enemy))
+  (set! (-> this pending-impulse-valid) #f)
+  (set! (-> this health) (-> this info max-health))
+  (set! (-> this last-health-send-time) (+ (- (- -1500 (if *net-world*
+                                                           (-> *net-world* net-state total-pause-time)
+                                                           0
+                                                           )
+                                                 )
+                                              (if *net-world*
+                                                  (-> *net-world* net-state game-start-time)
+                                                  0
+                                                  )
+                                              )
+                                           (if *net-mgr*
+                                               (-> *net-mgr* game-state time)
+                                               0
+                                               )
+                                           )
+        )
+  (set! (-> this local-damage) 0.0)
+  (set! (-> this killed-by) -1)
+  (set! (-> this last-attack-time) (+ (- (- -1500 (if *net-world*
+                                                      (-> *net-world* net-state total-pause-time)
+                                                      0
+                                                      )
+                                            )
+                                         (if *net-world*
+                                             (-> *net-world* net-state game-start-time)
+                                             0
+                                             )
+                                         )
+                                      (if *net-mgr*
+                                          (-> *net-mgr* game-state time)
+                                          0
+                                          )
+                                      )
+        )
+  (set! (-> this vehicle-penetrate-time) (+ (- (- -1500 (if *net-world*
+                                                            (-> *net-world* net-state total-pause-time)
+                                                            0
+                                                            )
+                                                  )
+                                               (if *net-world*
+                                                   (-> *net-world* net-state game-start-time)
+                                                   0
+                                                   )
+                                               )
+                                            (if *net-mgr*
+                                                (-> *net-mgr* game-state time)
+                                                0
+                                                )
+                                            )
+        )
+  (set! (-> this transition-ct) 0)
+  (set! (-> this last-transition-time) 0)
+  (logior! (-> this mask) (process-mask enemy))
+  (logclear! (-> this focus-status) (focus-status dead))
+  (if (logtest? (-> this info flags) (net-enemy-info-flag use-nav))
+      (init-nav! this)
+      )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch process-focusable vs net-enemy.
+(defmethod relocate ((this net-enemy) (offset int))
+  (when (nonzero? (-> this paths))
+    (dotimes (v1-2 (-> this paths length))
+      (if (nonzero? (-> this paths v1-2))
+          (&+! (-> this paths v1-2) offset)
+          )
+      )
+    (if (nonzero? (-> this paths))
+        (&+! (-> this paths) offset)
+        )
+    (set! (-> this net-anim path-array) (-> this paths data))
+    )
+  (fixup-relocated-link (-> this enemy-link) (the-as int *net-enemy-list*) offset)
+  (the-as net-enemy ((method-of-type process-focusable relocate) this offset))
+  )
+
+(defmethod deactivate ((this net-enemy))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (remove-link *net-enemy-list* (the-as list-link (-> this enemy-link)))
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod init-nav! ((this net-enemy))
+  (let ((a0-2 (find-first-containing-nav-mesh (-> this root trans) 99999.9 (the-as symbol (&-> this nav-poly)))))
+    (when a0-2
+      (nav-mesh-method-27 a0-2 this #t)
+      (let ((v1-5 (-> this nav state)))
+        (set! (-> v1-5 speed) 0.0)
+        )
+      0
+      (let ((v1-7 (-> this nav)))
+        (set! (-> v1-7 acceleration) 4096.0)
+        )
+      0
+      (let ((v1-9 (-> this nav)))
+        (set! (-> v1-9 target-speed) 307200.0)
+        )
+      0
+      (let ((v1-11 (-> this nav)))
+        (set! (-> v1-11 turning-acceleration) 307200.0)
+        )
+      0
+      (logior! (-> this nav flags) (nav-control-flag limit-rotation-rate))
+      (set! (-> this nav callback-info) *default-nav-callback-info*)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this net-enemy) (arg0 entity-actor))
+  (set! (-> this entity) arg0)
+  (init! this)
+  (go (method-of-object this startup))
+  )
+
+(defmethod init-remote ((this net-enemy) (arg0 mem-buffer))
+  (init! this)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod post-init-remote ((this net-enemy))
+  (go (method-of-object this startup))
+  (none)
+  )
+
+(defmethod common-post ((this net-enemy))
+  (when (and (!= (-> this vehicle-penetrate-time) -1) (>= (- (- (- (if *net-mgr*
+                                                                       (-> *net-mgr* game-state time)
+                                                                       0
+                                                                       )
+                                                                   (if *net-world*
+                                                                       (-> *net-world* net-state game-start-time)
+                                                                       0
+                                                                       )
+                                                                   )
+                                                                (if *net-world*
+                                                                    (-> *net-world* net-state total-pause-time)
+                                                                    0
+                                                                    )
+                                                                )
+                                                             (-> this vehicle-penetrate-time)
+                                                             )
+                                                          0
+                                                          )
+             )
+    (set! (-> this vehicle-penetrate-time) -1)
+    (logclear! (-> this root penetrated-by) (penetrate vehicle))
+    )
+  (if (logtest? (-> this flags) (net-enemy-flag proximity-ownership))
+      (update-proximity-ownership this (the-as vector #f))
+      (set-desired-owner this 8 #f)
+      )
+  (update-transitions this)
+  (if (logtest? (-> this flags) (net-enemy-flag attackable))
+      (send-local-damage this)
+      )
+  (update-transforms (-> this root))
+  (ja-post)
+  0
+  (none)
+  )
+
+(defstate startup (net-enemy)
+  :virtual #t
+  :enter (behavior ()
+    '()
+    )
+  :code sleep-code
+  )
+
+(defmethod transition-pending? ((this net-enemy))
+  (nonzero? (-> this transition-ct))
+  )
+
+(define *tmp-transition* (new 'static 'net-enemy-transition))
+
+(defmethod update-transitions ((this net-enemy))
+  (dotimes (s5-0 (-> this transition-ct))
+    (when (and (!= (-> this transitions s5-0 timestamp) -1) (>= (- (- (- (if *net-mgr*
+                                                                             (-> *net-mgr* game-state time)
+                                                                             0
+                                                                             )
+                                                                         (if *net-world*
+                                                                             (-> *net-world* net-state game-start-time)
+                                                                             0
+                                                                             )
+                                                                         )
+                                                                      (if *net-world*
+                                                                          (-> *net-world* net-state total-pause-time)
+                                                                          0
+                                                                          )
+                                                                      )
+                                                                   (-> this transitions s5-0 timestamp)
+                                                                   )
+                                                                0
+                                                                )
+               )
+      (mem-copy! (the-as pointer *tmp-transition*) (the-as pointer (-> this transitions s5-0)) 80)
+      (dotimes (s4-0 (+ (- -1 s5-0) (-> this transition-ct)))
+        (mem-copy!
+          (the-as pointer (-> this transitions (+ s5-0 s4-0)))
+          (the-as pointer (-> this transitions (+ s4-0 1 s5-0)))
+          80
+          )
+        )
+      (+! (-> this transition-ct) -1)
+      (+! s5-0 -1)
+      (let ((s4-1 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+        (set-buffer! (-> s4-1 0) (-> *tmp-transition* buf-data) (-> *tmp-transition* data-len))
+        (set! (-> this last-transition-time) (-> *tmp-transition* timestamp))
+        (do-transition this (-> s4-1 0) (-> *tmp-transition* timestamp) (-> *tmp-transition* name))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Function (method 72 net-enemy) has a return type of none, but the expression builder found a return statement.
+(defmethod queue-transition ((this net-enemy) (arg0 net-enemy-transition))
+  (when (-> arg0 preempt)
+    (set! (-> this transition-ct) 0)
+    0
+    )
+  (when (>= (-> this transition-ct) 3)
+    (format 0 "***too many transitions~%")
+    (inspect arg0)
+    (dotimes (s5-1 (-> this transition-ct))
+      (inspect (-> this transitions s5-1))
+      )
+    (return #f)
+    )
+  (mem-copy! (the-as pointer (-> this transitions (-> this transition-ct))) (the-as pointer arg0) 80)
+  (+! (-> this transition-ct) 1)
+  0
+  (none)
+  )
+
+(defmethod do-transition ((this net-enemy) (arg0 mem-buffer) (arg1 int) (arg2 symbol))
+  (case arg2
+    (('fatal-impact)
+     (when (logtest? (-> this flags) (net-enemy-flag impactable))
+       (decode-net-anim-state (-> this net-anim) arg0)
+       (update! (-> this net-anim) this arg1 #t)
+       (let ((s4-1 (new 'stack-no-clear 'inline-array 'rigid-body-impact 1))
+             (s3-0 (read-int8 arg0))
+             )
+         (mem-clear! (the-as pointer (-> s4-1 0)) 68)
+         (set! (-> s4-1 0 impulse) (read-float arg0))
+         (read-vector arg0 (-> s4-1 0 point))
+         (read-vector arg0 (-> s4-1 0 velocity))
+         (on-fatal-impact this (-> s4-1 0) s3-0)
+         )
+       )
+     )
+    (('fatal-attack)
+     (when (logtest? (-> this flags) (net-enemy-flag attackable))
+       (decode-net-anim-state (-> this net-anim) arg0)
+       (update! (-> this net-anim) this arg1 #t)
+       (let ((a1-9 (read-int8 arg0)))
+         (on-fatal-attack this a1-9 -1)
+         )
+       )
+     )
+    (('respawn)
+     (reset! this)
+     (go (method-of-object this startup))
+     )
+    (else
+      (format 0 "~A is ignoring ~A~%" this arg2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Function (method 65 net-enemy) has a return type of none, but the expression builder found a return statement.
+(defmethod on-attack ((this net-enemy) (arg0 attack-info))
+  (if (not (logtest? (-> this flags) (net-enemy-flag attackable)))
+      (return #f)
+      )
+  0
+  (when (!= (-> arg0 id) (-> this last-attack-id))
+    (set! (-> this last-attack-id) (the-as int (-> arg0 id)))
+    (when (logtest? (-> arg0 mask) (attack-mask attacker))
+      (let ((s5-0 (as-type (handle->process (-> arg0 attacker)) vehicle)))
+        (when s5-0
+          (if (not (owner-is-local? s5-0))
+              (return #f)
+              )
+          (let* ((f0-1 (* (-> this info damage-scale) (-> arg0 damage)))
+                 (f0-3 (fmin (+ (-> this local-damage) f0-1) (-> this health)))
+                 (f30-0 (- f0-3 (-> this local-damage)))
+                 )
+            (set! (-> this local-damage) f0-3)
+            (let ((v1-21 (the int (* (-> this info wound-score-scale) f30-0))))
+              (when (< 0.0 (-> this info wound-score-scale))
+                (let ((a0-12 (-> *net-players* (-> s5-0 player-id))))
+                  (if a0-12
+                      (send-event a0-12 'you-hurt-beast v1-21)
+                      )
+                  )
+                )
+              )
+            (when (and (= (-> this killed-by) -1) (>= (-> this local-damage) (-> this health)))
+              (let ((s4-1 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+                (set-buffer! (-> s4-1 0) (-> *tmp-construct-transition* buf-data) 64)
+                (encode-net-anim-state (-> this net-anim) (-> s4-1 0))
+                (write-int8 (-> s4-1 0) (-> s5-0 player-id))
+                (write-int32 (-> s4-1 0) (the int f30-0))
+                (let ((s3-1 (alloc-msg this 'transition)))
+                  (write-int16 s3-1 (- (- (if *net-mgr*
+                                              (-> *net-mgr* game-state time)
+                                              0
+                                              )
+                                          (if *net-world*
+                                              (-> *net-world* net-state game-start-time)
+                                              0
+                                              )
+                                          )
+                                       (if *net-world*
+                                           (-> *net-world* net-state total-pause-time)
+                                           0
+                                           )
+                                       )
+                               )
+                  (write-bool s3-1 #t)
+                  (write-symbol s3-1 'fatal-attack)
+                  (write-int16 s3-1 (bytes-used (-> s4-1 0)))
+                  (copy-buffer s3-1 (-> s4-1 0))
+                  (send-msg this s3-1 -2 208)
+                  (free-msg this s3-1)
+                  )
+                )
+              (when #f
+                (set! (-> *tmp-construct-transition* timestamp) (- (- (if *net-mgr*
+                                                                          (-> *net-mgr* game-state time)
+                                                                          0
+                                                                          )
+                                                                      (if *net-world*
+                                                                          (-> *net-world* net-state game-start-time)
+                                                                          0
+                                                                          )
+                                                                      )
+                                                                   (if *net-world*
+                                                                       (-> *net-world* net-state total-pause-time)
+                                                                       0
+                                                                       )
+                                                                   )
+                      )
+                (set! (-> *tmp-construct-transition* preempt) #t)
+                (set! (-> *tmp-construct-transition* name) 'fatal-attack)
+                (queue-transition this *tmp-construct-transition*)
+                )
+              (set! (-> this last-transition-time) (- (- (if *net-mgr*
+                                                             (-> *net-mgr* game-state time)
+                                                             0
+                                                             )
+                                                         (if *net-world*
+                                                             (-> *net-world* net-state game-start-time)
+                                                             0
+                                                             )
+                                                         )
+                                                      (if *net-world*
+                                                          (-> *net-world* net-state total-pause-time)
+                                                          0
+                                                          )
+                                                      )
+                    )
+              (clear-transitions this)
+              (let* ((v1-71 (-> this info show-kill-score))
+                     (a2-5 (cond
+                             ((= v1-71 -1)
+                              -1
+                              )
+                             ((zero? v1-71)
+                              (+ (the int (-> this local-damage)) (-> this info kill-score))
+                              )
+                             (else
+                               (-> this info show-kill-score)
+                               )
+                             )
+                           )
+                     )
+                (on-fatal-attack this (-> s5-0 player-id) a2-5)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defbehavior net-enemy-default-handler net-enemy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-1 object))
+  (case arg2
+    (('touched)
+     (when (type? arg0 net-simple-destruct)
+       (let ((s4-0
+               (new 'static 'attack-info :mask (attack-mask attacker id damage vehicle-damage-factor vehicle-impulse-factor))
+               )
+             )
+         (let* ((v1-1 *game-info*)
+                (a0-5 (+ (-> v1-1 attack-id) 1))
+                )
+           (set! (-> v1-1 attack-id) a0-5)
+           (set! (-> s4-0 id) a0-5)
+           )
+         (set! (-> s4-0 damage) 100.0)
+         (set! (-> s4-0 vehicle-damage-factor) 1.0)
+         (set! (-> s4-0 vehicle-impulse-factor) 1.0)
+         (set! (-> s4-0 attacker) (process->handle self))
+         (send-event arg0 'attack (-> arg3 param 0) s4-0)
+         (if (nonzero? (-> s4-0 attacker))
+             (send-event (handle->process (-> s4-0 attacker)) 'you-attacked 'attack arg0 s4-0)
+             )
+         )
+       )
+     )
+    (('attack)
+     (on-attack self (the-as attack-info (-> arg3 param 1)))
+     )
+    (('impact-impulse)
+     (let ((a1-5 (-> arg3 param 0)))
+       (on-impact self (the-as rigid-body-impact a1-5))
+       )
+     )
+    (('ai-attackable)
+     (return #t)
+     v0-1
+     )
+    (('instant-death)
+     (set! (-> self last-transition-time) (- (- (if *net-mgr*
+                                                    (-> *net-mgr* game-state time)
+                                                    0
+                                                    )
+                                                (if *net-world*
+                                                    (-> *net-world* net-state game-start-time)
+                                                    0
+                                                    )
+                                                )
+                                             (if *net-world*
+                                                 (-> *net-world* net-state total-pause-time)
+                                                 0
+                                                 )
+                                             )
+           )
+     (clear-transitions self)
+     (on-fatal-attack self 0 0)
+     )
+    )
+  )
+
+(defmethod get-anim-end-time ((this net-enemy) (arg0 int) (arg1 int))
+  (let* ((v1-0 (-> this net-anim))
+         (f0-1 (* 0.0033333334 (the float (- arg0 (-> v1-0 active timestamp)))))
+         (a1-4 (the-as art-joint-anim (-> this draw art-group data (-> v1-0 active anim-idx))))
+         (a0-6 (+ (-> a1-4 frames num-frames) -1))
+         (f1-4 (* 60.0 (-> v1-0 active anim-rate) (-> a1-4 speed)))
+         )
+    0.0
+    (if (= f1-4 0.0)
+        (return arg1)
+        )
+    (let* ((f1-5 (/ (the float a0-6) f1-4))
+           (f0-3 (- f1-5 (- f0-1 (* (the float (the int (/ f0-1 f1-5))) f1-5))))
+           )
+      (+ arg1 (the int (* 300.0 f0-3)))
+      )
+    )
+  )
+
+(defmethod send-local-damage ((this net-enemy))
+  (when (and (< 0.0 (-> this local-damage)) (< 300 (- (- (- (if *net-mgr*
+                                                                (-> *net-mgr* game-state time)
+                                                                0
+                                                                )
+                                                            (if *net-world*
+                                                                (-> *net-world* net-state game-start-time)
+                                                                0
+                                                                )
+                                                            )
+                                                         (if *net-world*
+                                                             (-> *net-world* net-state total-pause-time)
+                                                             0
+                                                             )
+                                                         )
+                                                      (-> this last-health-send-time)
+                                                      )
+                                               )
+             )
+    (set! (-> this last-health-send-time) (- (- (if *net-mgr*
+                                                    (-> *net-mgr* game-state time)
+                                                    0
+                                                    )
+                                                (if *net-world*
+                                                    (-> *net-world* net-state game-start-time)
+                                                    0
+                                                    )
+                                                )
+                                             (if *net-world*
+                                                 (-> *net-world* net-state total-pause-time)
+                                                 0
+                                                 )
+                                             )
+          )
+    (let ((s5-0 (alloc-msg this 'damage)))
+      (write-float s5-0 (-> this local-damage))
+      (send-msg this s5-0 -2 64)
+      (free-msg this s5-0)
+      )
+    )
+  (set! (-> this health) (- (-> this health) (-> this local-damage)))
+  (set! (-> this local-damage) 0.0)
+  0
+  (none)
+  )
+
+(defstate in-ragdoll (net-enemy)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((v1-2 (the-as ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+         (when v1-2
+           (let ((gp-1 (-> v1-2 ragdoll))
+                 (s4-0 (-> block param 1))
+                 (s5-0 (new 'stack-no-clear 'vector))
+                 )
+             (when (< (vector-length (-> self root transv)) 409600.0)
+               (let ((f0-1 (vector-length-squared (the-as vector (+ s4-0 32)))))
+                 (if (< (square 1228800.0) f0-1)
+                     (vector-normalize! (the-as vector (+ s4-0 32)) 1228800.0)
+                     )
+                 )
+               (ragdoll-method-23 gp-1 (the-as vector (+ s4-0 48)) (the-as vector (+ s4-0 32)) 0.2 #t)
+               (vector-float*! s5-0 (the-as vector (+ s4-0 32)) (/ 0.01 (-> self clock time-adjust-ratio)))
+               (let ((v0-0 (the-as object (-> gp-1 ragdoll-joints 0 velocity))))
+                 (set! (-> (the-as vector v0-0) quad) (-> s5-0 quad))
+                 v0-0
+                 )
+               )
+             )
+           )
+         )
+       )
+      (('impact-impulse)
+       (send-impact-attack self (the-as process-focusable proc) (the-as rigid-body-impact (-> block param 0)))
+       (when (type? proc vehicle)
+         (when (-> self info allow-vehicle-penetrate)
+           (logior! (-> self root penetrated-by) (penetrate vehicle))
+           (set! (-> self vehicle-penetrate-time) (+ (- (- 300 (if *net-world*
+                                                                   (-> *net-world* net-state total-pause-time)
+                                                                   0
+                                                                   )
+                                                           )
+                                                        (if *net-world*
+                                                            (-> *net-world* net-state game-start-time)
+                                                            0
+                                                            )
+                                                        )
+                                                     (if *net-mgr*
+                                                         (-> *net-mgr* game-state time)
+                                                         0
+                                                         )
+                                                     )
+                 )
+           )
+         )
+       #f
+       )
+      (('death-end)
+       (if (-> self skel effect)
+           (logior! (-> self skel effect flags) (effect-control-flag ecf2))
+           )
+       (let ((a0-26 (the-as ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+         (if a0-26
+             (deactivate a0-26)
+             )
+         )
+       (set! (-> self ragdoll-proc) (the-as handle #f))
+       (when (type? (-> self root) collide-shape)
+         (let ((v1-47 (-> self root root-prim)))
+           (set! (-> v1-47 prim-core collide-as) (collide-spec))
+           (set! (-> v1-47 prim-core collide-with) (collide-spec))
+           )
+         0
+         )
+       (logior! (-> self draw status) (draw-control-status no-draw))
+       (if (type? (-> self root) collide-shape)
+           (transform-post)
+           )
+       (go-virtual waiting-respawn)
+       )
+      (else
+        (net-enemy-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status dead))
+    (set! (-> self flags) (net-enemy-flag check-overlaps))
+    (when (not (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))))
+      (set! (-> self ragdoll-proc)
+            (ppointer->handle
+              (process-spawn ragdoll-proc (-> self info ragdoll-info) :name "ragdoll-proc" :to self :stack-size #x5000)
+              )
+            )
+      (let ((gp-1 (the-as ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+        (when gp-1
+          (logior! (-> gp-1 ragdoll ragdoll-flags) (ragdoll-flag rf4))
+          (ragdoll-proc-method-16 gp-1 #f (the-as vector #f) #t)
+          (set! (-> gp-1 ragdoll ragdoll-joints 0 velocity quad) (-> self vel-for-ragdoll quad))
+          )
+        )
+      )
+    (when (-> self pending-impulse-valid)
+      (inspect (-> self pending-impulse))
+      (set! (-> self pending-impulse-valid) #f)
+      (send-event self 'impact-impulse (-> self pending-impulse))
+      )
+    )
+  :exit (behavior ()
+    (if (-> self skel effect)
+        (logior! (-> self skel effect flags) (effect-control-flag ecf2))
+        )
+    (set! (-> self vehicle-penetrate-time) -1)
+    (logclear! (-> self root penetrated-by) (penetrate vehicle))
+    )
+  :trans (behavior ()
+    (vector-float*! (-> self root transv) (-> self root transv) 0.8)
+    (update-transforms (-> self root))
+    )
+  :code (behavior ()
+    (local-vars (v1-4 symbol))
+    (until v1-4
+      (suspend)
+      (set! v1-4 (and (nonzero? (+ (-> self info time-before-evaporate) (-> self last-transition-time) 1))
+                      (>= (- (- (- (if *net-mgr*
+                                       (-> *net-mgr* game-state time)
+                                       0
+                                       )
+                                   (if *net-world*
+                                       (-> *net-world* net-state game-start-time)
+                                       0
+                                       )
+                                   )
+                                (if *net-world*
+                                    (-> *net-world* net-state total-pause-time)
+                                    0
+                                    )
+                                )
+                             (+ (-> self info time-before-evaporate) (-> self last-transition-time))
+                             )
+                          0
+                          )
+                      )
+            )
+      )
+    (logior! (-> self skel effect flags) (effect-control-flag ecf1))
+    (logclear! (-> self skel effect flags) (effect-control-flag ecf2))
+    (do-effect (-> self skel effect) "death-default" 0.0 -1)
+    (suspend-for (seconds 0.017)
+      )
+    (send-event self 'death-end)
+    )
+  :post (behavior ()
+    (update-trans self (-> self root trans) (-> self root rotation))
+    (common-post self)
+    (ja-post)
+    )
+  )
+
+(defstate waiting-respawn (net-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self flags) (net-enemy-flag))
+    (logclear! (-> self mask) (process-mask enemy))
+    (when (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+      (let ((gp-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+        (set-buffer! (-> gp-0 0) (-> *tmp-construct-transition* buf-data) 64)
+        (let ((s5-0 (alloc-msg self 'transition)))
+          (write-int16 s5-0 (+ (- (- (if *net-mgr*
+                                         (-> *net-mgr* game-state time)
+                                         0
+                                         )
+                                     (if *net-world*
+                                         (-> *net-world* net-state game-start-time)
+                                         0
+                                         )
+                                     )
+                                  (if *net-world*
+                                      (-> *net-world* net-state total-pause-time)
+                                      0
+                                      )
+                                  )
+                               (-> self info time-before-respawn)
+                               )
+                       )
+          (write-bool s5-0 #f)
+          (write-symbol s5-0 'respawn)
+          (write-int16 s5-0 (bytes-used (-> gp-0 0)))
+          (copy-buffer s5-0 (-> gp-0 0))
+          (send-msg self s5-0 -2 208)
+          (free-msg self s5-0)
+          )
+        )
+      (when #t
+        (set! (-> *tmp-construct-transition* timestamp) (+ (- (- (if *net-mgr*
+                                                                     (-> *net-mgr* game-state time)
+                                                                     0
+                                                                     )
+                                                                 (if *net-world*
+                                                                     (-> *net-world* net-state game-start-time)
+                                                                     0
+                                                                     )
+                                                                 )
+                                                              (if *net-world*
+                                                                  (-> *net-world* net-state total-pause-time)
+                                                                  0
+                                                                  )
+                                                              )
+                                                           (-> self info time-before-respawn)
+                                                           )
+              )
+        (set! (-> *tmp-construct-transition* preempt) #f)
+        (set! (-> *tmp-construct-transition* name) 'respawn)
+        (queue-transition self *tmp-construct-transition*)
+        )
+      )
+    (when (-> self minimap)
+      (logior! (-> self minimap flags) (minimap-flag fade-out))
+      (set! (-> self minimap) #f)
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (common-post self)
+    )
+  )
+
+(defmethod impulse->attack-velocity ((this net-enemy) (arg0 vector) (arg1 vector) (arg2 float))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  (vector-normalize! arg0 arg2)
+  arg0
+  )
+
+(defmethod process-focusable-method-57 ((this net-enemy))
+  (-> this info inverse-mass)
+  )
+
+(defmethod send-impact-attack ((this net-enemy) (arg0 process-focusable) (arg1 rigid-body-impact))
+  (let ((s3-0 (as-type arg0 process-focusable))
+        (f30-1 (* (-> arg1 impulse) (process-focusable-method-57 this)))
+        )
+    (when (and s3-0 (< 20480.0 f30-1))
+      (let ((s5-1 (new 'stack-no-clear 'attack-info)))
+        (let ((v1-7 (process->handle s3-0)))
+          (let ((a0-6 s5-1))
+            (set! (-> a0-6 mode) 'impact)
+            (set! (-> a0-6 penetrate-using) (penetrate vehicle))
+            (set! (-> a0-6 mask) (attack-mask mode penetrate-using))
+            )
+          (let* ((a0-7 *game-info*)
+                 (a1-6 (+ (-> a0-7 attack-id) 1))
+                 )
+            (set! (-> a0-7 attack-id) a1-6)
+            (set! (-> s5-1 id) a1-6)
+            )
+          (logior! (-> s5-1 mask) (attack-mask id))
+          (set! (-> s5-1 attacker) (the-as handle v1-7))
+          )
+        (logior! (-> s5-1 mask) (attack-mask attacker))
+        (let ((v1-11 (impulse->attack-velocity
+                       this
+                       (new 'stack-no-clear 'vector)
+                       (vector-negate! (new 'stack-no-clear 'vector) (-> arg1 velocity))
+                       f30-1
+                       )
+                     )
+              )
+          (vector-float*! v1-11 v1-11 10.0)
+          (set! (-> s5-1 attacker-velocity quad) (-> v1-11 quad))
+          (set! (-> s5-1 vector quad) (-> v1-11 quad))
+          )
+        (logior! (-> s5-1 mask) (attack-mask attacker-velocity))
+        (logior! (-> s5-1 mask) (attack-mask vector))
+        (set! (-> s5-1 intersection quad) (-> arg1 point quad))
+        (logior! (-> s5-1 mask) (attack-mask intersection))
+        (set! (-> s5-1 damage) 0.0)
+        (logior! (-> s5-1 mask) (attack-mask damage))
+        (send-event this 'attack #f s5-1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod clear-transitions ((this net-enemy))
+  (set! (-> this transition-ct) 0)
+  0
+  (none)
+  )
+
+;; WARN: Function (method 67 net-enemy) has a return type of none, but the expression builder found a return statement.
+(defmethod on-impact ((this net-enemy) (arg0 rigid-body-impact))
+  (if (not (logtest? (-> this flags) (net-enemy-flag impactable)))
+      (return #f)
+      )
+  (let ((s4-0 (as-type (-> arg0 process) vehicle)))
+    (when s4-0
+      (when (and (owner-is-local? s4-0) (>= (-> s4-0 player-id) 0))
+        (when (< (-> this info fatal-impact-impulse) (-> arg0 impulse))
+          (if (and (>= (-> s4-0 player-id) 0) (< (-> s4-0 player-id) 16))
+              (cpad-set-buzz! (-> *cpad-list* cpads (logand (-> s4-0 player-id) 1)) 1 192 (seconds 0.3))
+              )
+          (when (-> this info allow-vehicle-penetrate)
+            (logior! (-> this root penetrated-by) (penetrate vehicle))
+            (set! (-> this vehicle-penetrate-time) (+ (- (- 300 (if *net-world*
+                                                                    (-> *net-world* net-state total-pause-time)
+                                                                    0
+                                                                    )
+                                                            )
+                                                         (if *net-world*
+                                                             (-> *net-world* net-state game-start-time)
+                                                             0
+                                                             )
+                                                         )
+                                                      (if *net-mgr*
+                                                          (-> *net-mgr* game-state time)
+                                                          0
+                                                          )
+                                                      )
+                  )
+            )
+          (if (< (vector-length-squared (-> s4-0 root transv)) (square (-> this info min-fatal-impact-enemy-vel)))
+              (return #f)
+              )
+          (let ((s3-1 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+            (set-buffer! (-> s3-1 0) (-> *tmp-construct-transition* buf-data) 64)
+            (encode-net-anim-state (-> this net-anim) (-> s3-1 0))
+            (write-int8 (-> s3-1 0) (-> s4-0 player-id))
+            (write-float (-> s3-1 0) (-> arg0 impulse))
+            (write-vector (-> s3-1 0) (-> arg0 point))
+            (write-vector (-> s3-1 0) (-> arg0 velocity))
+            (let ((s2-0 (alloc-msg this 'transition)))
+              (write-int16 s2-0 (- (- (if *net-mgr*
+                                          (-> *net-mgr* game-state time)
+                                          0
+                                          )
+                                      (if *net-world*
+                                          (-> *net-world* net-state game-start-time)
+                                          0
+                                          )
+                                      )
+                                   (if *net-world*
+                                       (-> *net-world* net-state total-pause-time)
+                                       0
+                                       )
+                                   )
+                           )
+              (write-bool s2-0 #t)
+              (write-symbol s2-0 'fatal-impact)
+              (write-int16 s2-0 (bytes-used (-> s3-1 0)))
+              (copy-buffer s2-0 (-> s3-1 0))
+              (send-msg this s2-0 -2 208)
+              (free-msg this s2-0)
+              )
+            )
+          (when #f
+            (set! (-> *tmp-construct-transition* timestamp) (- (- (if *net-mgr*
+                                                                      (-> *net-mgr* game-state time)
+                                                                      0
+                                                                      )
+                                                                  (if *net-world*
+                                                                      (-> *net-world* net-state game-start-time)
+                                                                      0
+                                                                      )
+                                                                  )
+                                                               (if *net-world*
+                                                                   (-> *net-world* net-state total-pause-time)
+                                                                   0
+                                                                   )
+                                                               )
+                  )
+            (set! (-> *tmp-construct-transition* preempt) #t)
+            (set! (-> *tmp-construct-transition* name) 'fatal-impact)
+            (queue-transition this *tmp-construct-transition*)
+            )
+          (set! (-> this last-transition-time) (- (- (if *net-mgr*
+                                                         (-> *net-mgr* game-state time)
+                                                         0
+                                                         )
+                                                     (if *net-world*
+                                                         (-> *net-world* net-state game-start-time)
+                                                         0
+                                                         )
+                                                     )
+                                                  (if *net-world*
+                                                      (-> *net-world* net-state total-pause-time)
+                                                      0
+                                                      )
+                                                  )
+                )
+          (clear-transitions this)
+          (on-fatal-impact this arg0 (-> s4-0 player-id))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod on-fatal-impact ((this net-enemy) (arg0 rigid-body-impact) (arg1 int))
+  (mem-copy! (the-as pointer (-> this pending-impulse)) (the-as pointer arg0) 68)
+  (set! (-> this pending-impulse-valid) #t)
+  (set! (-> this killed-by) arg1)
+  (let* ((v1-2 (-> this info show-kill-score))
+         (s5-0 (if (= v1-2 -1)
+                   -1
+                   (-> this info kill-score)
+                   )
+               )
+         )
+    (when (>= (-> this killed-by) 0)
+      (send-event (get-vehicle (-> *net-players* arg1)) 'you-killed this (-> this info max-health))
+      (send-event (-> *net-players* (-> this killed-by)) 'you-killed-beast (-> this info kill-score) s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod on-fatal-attack ((this net-enemy) (arg0 int) (arg1 int))
+  (set! (-> this killed-by) arg0)
+  (when (>= (-> this killed-by) 0)
+    (send-event (get-vehicle (-> *net-players* arg0)) 'you-killed this (-> this info max-health))
+    (send-event (-> *net-players* (-> this killed-by)) 'you-killed-beast (-> this info kill-score) arg1)
+    )
+  0
+  (none)
+  )
+
+(defmethod handle-net-msg ((this net-enemy) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  (case arg0
+    (('transition)
+     (set! (-> *tmp-construct-transition* timestamp)
+           (net-process-mgr-method-52 *net-process-mgr* (read-int16 arg1))
+           )
+     (set! (-> *tmp-construct-transition* preempt) (read-bool arg1))
+     (set! (-> *tmp-construct-transition* name) (read-symbol arg1))
+     (set! (-> *tmp-construct-transition* data-len) (read-int16 arg1))
+     (read-bytes arg1 (-> *tmp-construct-transition* buf-data) (-> *tmp-construct-transition* data-len))
+     (queue-transition this *tmp-construct-transition*)
+     )
+    (('damage)
+     (set! (-> this health) (- (-> this health) (read-float arg1)))
+     )
+    )
+  0
+  (none)
+  )
+
+(defmethod face-nav-heading ((this net-enemy) (arg0 nav-control))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((a1-1 (-> arg0 state)))
+      (set! (-> s5-0 quad) (-> a1-1 heading quad))
+      )
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 1.0)
+    (quaternion-set! (-> this root rotation) 0.0 (-> s5-0 x) 0.0 (+ 1.0 (-> s5-0 z)))
+    )
+  (quaternion-normalize! (-> this root rotation))
+  0
+  (none)
+  )
+
+(defmethod integrate-nav-vel ((this net-enemy) (arg0 nav-control))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (let ((a3-0 (-> this nav state)))
+      (set! (-> v1-0 quad) (-> a3-0 velocity quad))
+      )
+    (let ((a1-4 (-> this root transv)))
+      (set! (-> a1-4 x) (-> v1-0 x))
+      (set! (-> a1-4 z) (-> v1-0 z))
+      )
+    )
+  (let ((a2-1 (new 'stack-no-clear 'overlaps-others-params)))
+    (set! (-> a2-1 options) (overlaps-others-options oo0))
+    (set! (-> a2-1 collide-with-filter) (the-as collide-spec -1))
+    (set! (-> a2-1 tlist) *touching-list*)
+    (integrate-for-enemy-no-mtg (the-as collide-shape-moving (-> this root)) (-> this root transv) a2-1)
+    )
+  0
+  (none)
+  )
+
+(defmethod process-focusable-method-58 ((this net-enemy))
+  (-> this health)
+  )
+
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod get-search-info-flag ((this net-enemy))
+  (the-as search-info-flag (if (and (-> this next-state) (= (-> this next-state name) 'waiting-respawn))
+                               0
+                               104
+                               )
+          )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun kill-all-enemies ()
+  (execute-process-tree
+    *active-pool*
+    (lambda ((arg0 process-focusable)) (if (type? arg0 net-enemy)
+                                           (send-event arg0 'instant-death)
+                                           )
+            )
+    *kernel-context*
+    )
+  0
+  )

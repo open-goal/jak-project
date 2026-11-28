@@ -922,6 +922,14 @@ std::optional<std::string> Env::get_part_group_name(int id) const {
   }
 }
 
+std::optional<std::string> Env::get_sound_info_name(int idx) const {
+  ASSERT(dts);
+  if (idx < 0 || idx >= (int)dts->sound_info_names.size()) {
+    return {};
+  }
+  return dts->sound_info_names.at(idx);
+}
+
 std::optional<std::string> Env::get_joint_node_name(int idx) const {
   ASSERT(dts);
   auto it = dts->jg_info.find(joint_geo());

@@ -1,0 +1,1077 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type scrolling-item
+(deftype scrolling-item (string-menu)
+  ((info-ptr      item-list-selection-info :override)
+   (selected      symbol)
+   (scroll-alpha  float)
+   )
+  )
+
+;; definition for method 3 of type scrolling-item
+(defmethod inspect ((this scrolling-item))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type string-menu inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tselected: ~A~%" (-> this selected))
+  (format #t "~2Tscroll-alpha: ~f~%" (-> this scroll-alpha))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 59 of type scrolling-item
+;; WARN: Return type mismatch symbol vs none.
+(defmethod init-menu! ((this scrolling-item))
+  (let ((t9-0 (method-of-type string-menu init-menu!)))
+    (t9-0 this)
+    )
+  (set! (-> this selected) #f)
+  (set! (-> this scroll-alpha) 0.0)
+  (dotimes (s5-0 (-> this strings length))
+    (clear (-> this strings data s5-0 text))
+    )
+  (none)
+  )
+
+;; definition for method 61 of type scrolling-item
+;; INFO: Used lq/sq
+(defmethod default-event-handler ((this scrolling-item) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('selected)
+     (set! (-> this selected) #t)
+     (update-strings this)
+     )
+    (('deselected)
+     (set! (-> this selected) #f)
+     (update-strings this)
+     )
+    (('set-alpha)
+     (let* ((f0-0 (the-as float (-> arg3 param 0)))
+            (f1-1 (* (square f0-0) f0-0))
+            )
+       (set! (-> this scroll-alpha) (fmax 0.0 (fmin 1.0 f1-1)))
+       )
+     )
+    (('set-extra-offset)
+     (let ((v0-0 (the-as object (-> this extra-offset))))
+       (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       v0-0
+       )
+     )
+    (('set-index)
+     (if (< (the-as int (-> arg3 param 0)) 0)
+         (clear (-> this strings data 0 text))
+         (format (clear (-> this strings data 0 text)) "~D" (-> arg3 param 0))
+         )
+     )
+    (else
+      ((method-of-type string-menu default-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 60 of type scrolling-item
+;; WARN: Return type mismatch int vs object.
+(defmethod draw-menu ((this scrolling-item))
+  (dotimes (v1-0 (-> this strings length))
+    (set! (-> this strings data v1-0 alpha) (-> this scroll-alpha))
+    (set! (-> this strings data v1-0 alpha) (-> this scroll-alpha))
+    )
+  (when (nonzero? (-> this colors))
+    (dotimes (v1-5 (-> this colors length))
+      (set! (-> this colors v1-5 a) (the int (* 128.0 (-> this scroll-alpha))))
+      )
+    )
+  (call-parent-method this)
+  0
+  )
+
+;; definition for method 67 of type scrolling-item
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-strings ((this scrolling-item))
+  (let ((t9-0 (method-of-type string-menu update-strings)))
+    (t9-0 this)
+    )
+  (dotimes (v1-1 (-> this strings length))
+    (cond
+      ((-> this selected)
+       (set! (-> this strings data v1-1 color) (-> this info-ptr strings-info v1-1 font-color-2))
+       (set! (-> this strings data v1-1 scale) (-> this info-ptr strings-info v1-1 font-scale))
+       )
+      (else
+        (set! (-> this strings data v1-1 color) (-> this info-ptr strings-info v1-1 font-color))
+        (set! (-> this strings data v1-1 scale) (-> this info-ptr strings-info v1-1 font-scale))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type scrolling-menu-info
+(deftype scrolling-menu-info (dropdown-item-info)
+  ((item-spacing                 vector  :inline)
+   (offset-to-top-item           vector  :inline)
+   (scroll-stages                int32)
+   (visible-item-ct              int32)
+   (child-info                   base-menu-info)
+   (sel-id-backup-symbol         symbol)
+   (use-third-color              symbol)
+   (selection-box-item-offset-x  int32)
+   (selection-box-item-offset-y  int32)
+   (lr-scroll                    symbol)
+   )
+  )
+
+;; definition for method 3 of type scrolling-menu-info
+(defmethod inspect ((this scrolling-menu-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'scrolling-menu-info)
+  (format #t "~1Tmenu-type: ~A~%" (-> this menu-type))
+  (format #t "~1Tchildren: ~A~%" (-> this children))
+  (format #t "~1Tname-symbol: ~A~%" (-> this name-symbol))
+  (format #t "~1T3d-menu-type: ~A~%" (-> this 3d-menu-type))
+  (format #t "~1Ttrans-info: #<dropdown-trans-info @ #x~X>~%" (-> this trans-info))
+  (format #t "~1Tjoint-index: ~D~%" (-> this joint-index))
+  (format #t "~1Tjoint-index-2: ~D~%" (-> this joint-index-2))
+  (format #t "~1Tbox-index: ~D~%" (-> this box-index))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tjoints: ~A~%" (-> this joints))
+  (format #t "~1Tanim-delay: ~D~%" (-> this anim-delay))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Tscale-y: ~f~%" (-> this scale-y))
+  (format #t "~1Tscale-x: ~f~%" (-> this scale-x))
+  (format #t "~1Tuser-data: ~D~%" (-> this user-data))
+  (format #t "~1Tsprites-info: ~A~%" (-> this sprites-info))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tstrings-info: ~A~%" (-> this strings-info))
+  (format #t "~1Ttext-ids: ~A~%" (-> this text-ids))
+  (format #t "~1Tselection-box-width: ~D~%" (-> this selection-box-width))
+  (format #t "~1Tselection-box-height: ~D~%" (-> this selection-box-height))
+  (format #t "~1Tselection-type: ~A~%" (-> this selection-type))
+  (format #t "~1Tselection-extra: ~D~%" (-> this selection-extra))
+  (format #t "~1Tselection-box-offset: #<vector @ #x~X>~%" (-> this selection-box-offset))
+  (format #t "~1Tselection-box-offset-x: ~f~%" (-> this selection-box-offset x))
+  (format #t "~1Tselection-box-offset-y: ~f~%" (-> this selection-box-offset y))
+  (format #t "~1Tselection-box-offset-z: ~f~%" (-> this selection-box-offset z))
+  (format #t "~1Tselection-box-offset-w: ~f~%" (-> this selection-box-offset w))
+  (format #t "~1Tselection-box-color: ~D~%" (-> this selection-box-color))
+  (format #t "~1Tdown-index-modifier: ~D~%" (-> this down-index-modifier))
+  (format #t "~1Tup-index-modifier: ~D~%" (-> this up-index-modifier))
+  (format #t "~1Tleft-index-modifier: ~D~%" (-> this left-index-modifier))
+  (format #t "~1Tright-index-modifier: ~D~%" (-> this right-index-modifier))
+  (format #t "~1Tselection-box-texture-index: ~D~%" (-> this selection-box-texture-index))
+  (format #t "~1Treset-pad: ~D~%" (-> this reset-pad))
+  (format #t "~1Titem-spacing: #<vector @ #x~X>~%" (-> this item-spacing))
+  (format #t "~1Toffset-to-top-item: #<vector @ #x~X>~%" (-> this offset-to-top-item))
+  (format #t "~1Tscroll-stages: ~D~%" (-> this scroll-stages))
+  (format #t "~1Tvisible-item-ct: ~D~%" (-> this visible-item-ct))
+  (format #t "~1Tchild-info: #<base-menu-info @ #x~X>~%" (-> this child-info))
+  (format #t "~1Tsel-id-backup-symbol: ~A~%" (-> this sel-id-backup-symbol))
+  (format #t "~1Tuse-third-color: ~A~%" (-> this use-third-color))
+  (format #t "~1Tselection-box-item-offset-x: ~D~%" (-> this selection-box-item-offset-x))
+  (format #t "~1Tselection-box-item-offset-y: ~D~%" (-> this selection-box-item-offset-y))
+  (format #t "~1Tlr-scroll: ~A~%" (-> this lr-scroll))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type scrolling-menu
+(deftype scrolling-menu (dropdown-item)
+  ((info-ptr          scrolling-menu-info :override)
+   (cur-idx           int32)
+   (top-idx           int32)
+   (cur-scroll        int32)
+   (scroll-dir        int32)
+   (total-item-ct     int32)
+   (physical-item-ct  int32)
+   )
+  (:methods
+    (scrolling-menu-method-70 (_type_) none)
+    (scrolling-menu-method-71 (_type_) none)
+    (scrolling-menu-method-72 (_type_ int) none)
+    (scrolling-menu-method-73 (_type_ int symbol) none)
+    (scrolling-menu-method-74 (_type_) none)
+    (scrolling-menu-method-75 (_type_) symbol)
+    (scrolling-menu-method-76 (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type scrolling-menu
+(defmethod inspect ((this scrolling-menu))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type dropdown-item inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcur-idx: ~D~%" (-> this cur-idx))
+  (format #t "~2Ttop-idx: ~D~%" (-> this top-idx))
+  (format #t "~2Tcur-scroll: ~D~%" (-> this cur-scroll))
+  (format #t "~2Tscroll-dir: ~D~%" (-> this scroll-dir))
+  (format #t "~2Ttotal-item-ct: ~D~%" (-> this total-item-ct))
+  (format #t "~2Tphysical-item-ct: ~D~%" (-> this physical-item-ct))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 59 of type scrolling-menu
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this scrolling-menu))
+  (set! (-> this total-item-ct) (+ (-> this info-ptr visible-item-ct) 2))
+  (set! (-> this cur-idx) 0)
+  (set! (-> this top-idx) 0)
+  (set! (-> this cur-scroll) 0)
+  (set! (-> this scroll-dir) 0)
+  (set! (-> this physical-item-ct) 0)
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+    (vector-! (-> s5-0 0) (-> this info-ptr offset-to-top-item) (-> this info-ptr item-spacing))
+    (set! (-> this child-handles) (new 'process 'boxed-array handle (-> this total-item-ct)))
+    (let ((s4-0 (-> this info-ptr child-info menu-type value)))
+      (dotimes (s3-0 (-> this total-item-ct))
+        (let* ((s2-0 (get-process *default-dead-pool* (the-as type s4-0) #x4000 1))
+               (v1-10
+                 (when s2-0
+                   (let ((s1-0 (method-of-type process activate)))
+                     (s1-0 s2-0 this (symbol->string (-> (the-as type s4-0) symbol)) (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s2-0 base-menu-init-by-other (-> this info-ptr child-info) (-> s5-0 0) (-> this pad))
+                   (-> s2-0 ppointer)
+                   )
+                 )
+               )
+          (when v1-10
+            (set! (-> this child-handles s3-0) (process->handle (-> v1-10 0)))
+            (let ((v1-19 (the-as base-menu (handle->process (-> this child-handles s3-0)))))
+              (if v1-19
+                  (set! (-> v1-19 extra-offset quad) (-> s5-0 0 quad))
+                  )
+              )
+            (vector+! (-> s5-0 0) (-> s5-0 0) (-> this info-ptr item-spacing))
+            (send-event (handle->process (-> this child-handles s3-0)) 'set-alpha 0)
+            )
+          )
+        )
+      )
+    )
+  (scrolling-menu-method-74 this)
+  (scrolling-menu-method-73 this (-> this cur-idx) #f)
+  (let ((t9-8 (method-of-type dropdown-item init-menu!)))
+    (t9-8 this)
+    )
+  (let ((a0-34 (ppointer->process (-> this parent))))
+    (when a0-34
+      (if (not (type? a0-34 selection-menu-manager))
+          (set! (-> this selected) #t)
+          )
+      )
+    )
+  (when (-> this info-ptr sprites-info)
+    (set! (-> this colors 0) (new 'static 'rgba :r #x80 :g #x80 :b #x80))
+    (set! (-> this colors 1) (new 'static 'rgba :r #x80 :g #x80 :b #x80))
+    )
+  (set! (-> this info-ptr selection-box-offset y)
+        (the float (- (+ (* (- (-> this cur-idx) (-> this top-idx)) (the int (-> this info-ptr item-spacing y)))
+                         (the int (-> this info-ptr offset-to-top-item y))
+                         )
+                      (the int (/ (-> this info-ptr item-spacing y) 2))
+                      )
+             )
+        )
+  (if (= (-> this info-ptr selection-box-height) -1)
+      (set! (-> this info-ptr selection-box-height) (the int (fabs (-> this info-ptr item-spacing y))))
+      )
+  (none)
+  )
+
+;; definition for method 67 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 67 scrolling-menu) has a return type of none, but the expression builder found a return statement.
+(defmethod update-strings ((this scrolling-menu))
+  (if (not (-> this info-ptr strings-info))
+      (return #f)
+      )
+  (clear (-> this strings data 0 text))
+  (if (<= (-> this physical-item-ct) 0)
+      (call-parent-method this)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 74 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod scrolling-menu-method-74 ((this scrolling-menu))
+  (set! (-> this scroll-dir) 1)
+  (set! (-> this cur-scroll) (+ (-> this info-ptr scroll-stages) 1))
+  (scrolling-menu-method-70 this)
+  (set! (-> this scroll-dir) 0)
+  (set! (-> this cur-scroll) 0)
+  (scrolling-menu-method-72 this (-> this cur-idx))
+  (scrolling-menu-method-71 this)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate running (scrolling-menu)
+  :virtual #t
+  :enter (behavior ()
+    (scrolling-menu-method-74 self)
+    )
+  :trans (behavior ()
+    (scrolling-menu-method-70 self)
+    (let* ((f0-3 (* 32.0 (sin (* 200.0 (the float (-> *display* real-clock frame-counter))))))
+           (f30-1 (+ 96.0 f0-3))
+           )
+      (cond
+        ((scrolling-menu-method-75 self)
+         (when (-> self info-ptr sprites-info)
+           (let ((f0-6 (seek (the float (-> self colors 0 a)) f30-1 10.0)))
+             (set! (-> self colors 0) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a (the int f0-6)))
+             )
+           )
+         )
+        (else
+          (when (-> self info-ptr sprites-info)
+            (let ((f0-10 (seek (the float (-> self colors 0 a)) 0.0 10.0)))
+              (set! (-> self colors 0) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a (the int f0-10)))
+              )
+            )
+          )
+        )
+      (cond
+        ((scrolling-menu-method-76 self)
+         (when (-> self info-ptr sprites-info)
+           (let ((f0-14 (seek (the float (-> self colors 1 a)) f30-1 10.0)))
+             (set! (-> self colors 1) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a (the int f0-14)))
+             )
+           )
+         )
+        (else
+          (when (-> self info-ptr sprites-info)
+            (let ((f0-18 (seek (the float (-> self colors 1 a)) 0.0 10.0)))
+              (set! (-> self colors 1) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a (the int f0-18)))
+              )
+            )
+          )
+        )
+      )
+    (let ((v1-45 (+ (* (- (-> self cur-idx) (-> self top-idx)) (the int (-> self info-ptr item-spacing y)))
+                    (the int (-> self info-ptr offset-to-top-item y))
+                    )
+                 )
+          )
+      (if (= (-> self info-ptr selection-box-item-offset-y) -1)
+          (set! (-> self info-ptr selection-box-offset y)
+                (the float (- v1-45 (the int (/ (-> self info-ptr item-spacing y) 4))))
+                )
+          (set! (-> self info-ptr selection-box-offset y)
+                (the float (+ v1-45 (-> self info-ptr selection-box-item-offset-y)))
+                )
+          )
+      )
+    (if (= (-> self info-ptr selection-box-height) -1)
+        (set! (-> self info-ptr selection-box-height) (the int (fabs (-> self info-ptr item-spacing y))))
+        )
+    (let ((t9-8 (-> (method-of-type dropdown-item running) trans)))
+      (if t9-8
+          (t9-8)
+          )
+      )
+    )
+  )
+
+;; definition for method 71 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod scrolling-menu-method-71 ((this scrolling-menu))
+  (dotimes (s5-0 (-> this total-item-ct))
+    (let ((v1-2 (+ (-> this top-idx) -1 s5-0)))
+      (if (or (< v1-2 0) (>= v1-2 (-> this physical-item-ct)))
+          (set! v1-2 -1)
+          )
+      (send-event (handle->process (-> this child-handles s5-0)) 'set-index v1-2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 72 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod scrolling-menu-method-72 ((this scrolling-menu) (arg0 int))
+  (let ((s5-0 (- arg0 (+ (-> this top-idx) -1))))
+    (dotimes (s4-0 (-> this total-item-ct))
+      (send-event (handle->process (-> this child-handles s4-0)) (if (and (-> this selected) (= s5-0 s4-0))
+                                                                     'selected
+                                                                     'deselected
+                                                                     )
+                  )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 70 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 70 scrolling-menu) has a return type of none, but the expression builder found a return statement.
+(defmethod scrolling-menu-method-70 ((this scrolling-menu))
+  (if (zero? (-> this scroll-dir))
+      (return #f)
+      )
+  (when (nonzero? (-> this cur-scroll))
+    (+! (-> this cur-scroll) -1)
+    (when (zero? (-> this cur-scroll))
+      (set! (-> this scroll-dir) 0)
+      (scrolling-menu-method-71 this)
+      (scrolling-menu-method-72 this (-> this cur-idx))
+      (scrolling-menu-method-73 this (-> this cur-idx) #t)
+      )
+    )
+  (let* ((f0-1 (- 1.0 (/ (the float (-> this cur-scroll)) (the float (-> this info-ptr scroll-stages)))))
+         (f1-3 -1.0)
+         (f30-0 (the float (-> this info-ptr visible-item-ct)))
+         (f0-2 (* f0-1 (- (the float (-> this scroll-dir)))))
+         (f28-0 (+ f1-3 f0-2))
+         (s5-0 (new 'stack-no-clear 'inline-array 'vector 1))
+         )
+    (vector-! (-> s5-0 0) (-> this info-ptr offset-to-top-item) (-> this info-ptr item-spacing))
+    (vector+float*! (-> s5-0 0) (-> s5-0 0) (-> this info-ptr item-spacing) f0-2)
+    (dotimes (s4-0 (-> this total-item-ct))
+      (let ((s3-0 (as-type (handle->process (-> this child-handles s4-0)) scrolling-item)))
+        (when s3-0
+          (send-event s3-0 'set-extra-offset (-> s5-0 0))
+          (cond
+            ((>= 0.0 f28-0)
+             (send-event s3-0 'set-alpha (fmax 0.0 (fmin 1.0 (+ 1.0 f28-0))))
+             )
+            ((>= f28-0 (+ -1.0 f30-0))
+             (let* ((f0-10 (- f28-0 (+ -1.0 f30-0)))
+                    (f0-11 (- 1.0 f0-10))
+                    )
+               (send-event s3-0 'set-alpha f0-11)
+               )
+             )
+            (else
+              (send-event s3-0 'set-alpha #x3f800000)
+              )
+            )
+          (vector+! (-> s5-0 0) (-> s5-0 0) (-> this info-ptr item-spacing))
+          (set! f28-0 (+ 1.0 f28-0))
+          )
+        )
+      )
+    )
+  (send-event (ppointer->process (-> this parent)) 'force-box-update)
+  0
+  (none)
+  )
+
+;; definition for method 62 of type scrolling-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod handle-input ((this scrolling-menu) (arg0 int))
+  (if (nonzero? (-> this cur-scroll))
+      (return (the-as object #f))
+      )
+  (if (not (and (-> this selected) (-> this enabled)))
+      (return (the-as object #f))
+      )
+  (let ((s5-0 0)
+        (s3-0 (-> this cur-idx))
+        (s4-0 (-> this top-idx))
+        )
+    0
+    (cond
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons up))
+       (set! s5-0 -1)
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons down))
+       (set! s5-0 1)
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons square))
+       (when (send-event
+               (ppointer->process (-> this parent))
+               'menu-selection-event
+               'square
+               (-> this info-ptr selection-type)
+               (-> this cur-idx)
+               )
+         (let ((v1-25 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-25
+               (logior! (-> v1-25 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-25 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+       (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons square))
+       (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons square))
+       (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons square))
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons circle))
+       (when (send-event
+               (ppointer->process (-> this parent))
+               'menu-selection-event
+               'circle
+               (-> this info-ptr selection-type)
+               (-> this cur-idx)
+               )
+         (let ((v1-46 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+           (cond
+             (v1-46
+               (logior! (-> v1-46 flags) (sound-spec-flag needs-update non-positional))
+               (-> v1-46 id)
+               )
+             (else
+               0
+               )
+             )
+           )
+         )
+       (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons circle))
+       (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons circle))
+       (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons circle))
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons triangle))
+       (send-event
+         (ppointer->process (-> this parent))
+         'menu-selection-event
+         'cancel
+         (-> this info-ptr selection-type)
+         (-> this cur-idx)
+         )
+       (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons triangle))
+       (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons triangle))
+       (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons triangle))
+       (let ((v1-70 (make-sound-instance snd-undo1 (new 'static 'sound-id) (the-as handle #f))))
+         (cond
+           (v1-70
+             (logior! (-> v1-70 flags) (sound-spec-flag needs-update non-positional))
+             (-> v1-70 id)
+             )
+           (else
+             0
+             )
+           )
+         )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+       (cond
+         ((> (-> this physical-item-ct) 0)
+          (when (send-event
+                  (ppointer->process (-> this parent))
+                  'menu-selection-event
+                  'accept
+                  (-> this info-ptr selection-type)
+                  (-> this cur-idx)
+                  )
+            (let ((v1-87 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+              (cond
+                (v1-87
+                  (logior! (-> v1-87 flags) (sound-spec-flag needs-update non-positional))
+                  (-> v1-87 id)
+                  )
+                (else
+                  0
+                  )
+                )
+              )
+            )
+          (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons x))
+          (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons x))
+          (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons x))
+          )
+         (else
+           )
+         )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons left))
+       (cond
+         ((-> this info-ptr lr-scroll)
+          (set! s5-0 (- (-> this info-ptr visible-item-ct)))
+          )
+         (else
+           (send-event
+             (ppointer->process (-> this parent))
+             'menu-selection-event
+             'left
+             (-> this info-ptr selection-type)
+             (-> this cur-idx)
+             )
+           (return (the-as object #f))
+           )
+         )
+       )
+      ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons right))
+       (cond
+         ((-> this info-ptr lr-scroll)
+          (set! s5-0 (-> this info-ptr visible-item-ct))
+          )
+         (else
+           (send-event
+             (ppointer->process (-> this parent))
+             'menu-selection-event
+             'right
+             (-> this info-ptr selection-type)
+             (-> this cur-idx)
+             )
+           (return (the-as object #f))
+           )
+         )
+       )
+      )
+    (if (zero? s5-0)
+        (return (the-as object #f))
+        )
+    (set! (-> this cur-idx) (max 0 (min (+ s5-0 (-> this cur-idx)) (+ (-> this physical-item-ct) -1))))
+    (when (= (-> this cur-idx) s3-0)
+      (let ((v1-136 (make-sound-instance snd-illegal1 (new 'static 'sound-id) (the-as handle #f))))
+        (cond
+          (v1-136
+            (logior! (-> v1-136 flags) (sound-spec-flag needs-update non-positional))
+            (-> v1-136 id)
+            )
+          (else
+            0
+            )
+          )
+        )
+      (cond
+        ((< s5-0 0)
+         (send-event
+           (ppointer->process (-> this parent))
+           'menu-selection-event
+           'failed-up
+           (-> this info-ptr selection-type)
+           )
+         )
+        ((> s5-0 0)
+         (send-event
+           (ppointer->process (-> this parent))
+           'menu-selection-event
+           'failed-down
+           (-> this info-ptr selection-type)
+           )
+         )
+        )
+      (return (the-as object #f))
+      )
+    (let ((v1-161 (make-sound-instance snd-cycle-vert1 (new 'static 'sound-id) (the-as handle #f))))
+      (cond
+        (v1-161
+          (logior! (-> v1-161 flags) (sound-spec-flag needs-update non-positional))
+          (-> v1-161 id)
+          )
+        (else
+          0
+          )
+        )
+      )
+    (when (and (!= s5-0 1) (!= s5-0 -1))
+      (let ((a0-109 (- s3-0 s4-0)))
+        (set! (-> this top-idx)
+              (max 0 (min (+ a0-109 (-> this cur-idx)) (- (-> this cur-idx) (+ (-> this info-ptr visible-item-ct) -1))))
+              )
+        )
+      (scrolling-menu-method-72 this (-> this cur-idx))
+      (scrolling-menu-method-73 this (-> this cur-idx) #t)
+      (scrolling-menu-method-74 this)
+      (return (the-as object #f))
+      )
+    (set! (-> this top-idx) (max
+                              (min (-> this top-idx) (-> this cur-idx))
+                              (- (-> this cur-idx) (+ (-> this info-ptr visible-item-ct) -1))
+                              )
+          )
+    (cond
+      ((!= s4-0 (-> this top-idx))
+       (set! (-> this cur-scroll) (-> this info-ptr scroll-stages))
+       (set! (-> this scroll-dir) s5-0)
+       (scrolling-menu-method-72 this -100)
+       )
+      (else
+        (scrolling-menu-method-72 this (-> this cur-idx))
+        (scrolling-menu-method-73 this (-> this cur-idx) #t)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 61 of type scrolling-menu
+(defmethod default-event-handler ((this scrolling-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('selected 'deselected 'enabled 'disabled)
+     (call-parent-method this arg0 arg1 arg2 arg3)
+     (scrolling-menu-method-74 this)
+     )
+    (('set-selection-index)
+     (set! (-> this cur-idx) (max 0 (min (the-as int (-> arg3 param 0)) (-> this physical-item-ct))))
+     (scrolling-menu-method-72 this (-> this cur-idx))
+     (scrolling-menu-method-74 this)
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 73 of type scrolling-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod scrolling-menu-method-73 ((this scrolling-menu) (arg0 int) (arg1 symbol))
+  (send-event
+    (ppointer->process (-> this parent))
+    'menu-selection-event
+    'selection-changed
+    (-> this info-ptr selection-type)
+    (-> this cur-idx)
+    arg1
+    )
+  0
+  (none)
+  )
+
+;; definition for method 75 of type scrolling-menu
+(defmethod scrolling-menu-method-75 ((this scrolling-menu))
+  (> (-> this top-idx) 0)
+  )
+
+;; definition for method 76 of type scrolling-menu
+(defmethod scrolling-menu-method-76 ((this scrolling-menu))
+  (< (+ (-> this top-idx) (-> this info-ptr visible-item-ct)) (-> this physical-item-ct))
+  )
+
+;; definition for method 59 of type game-text-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this game-text-menu))
+  (call-parent-method this)
+  (set! (-> this text-id) (-> this info-ptr text-id))
+  0
+  (none)
+  )
+
+;; definition for method 60 of type game-text-menu
+(defmethod draw-menu ((this game-text-menu))
+  (if (= (-> this text-id) (text-id text-id-0))
+      (return #f)
+      )
+  (format (clear (-> this strings data 0 text)) (lookup-text! *common-text* (-> this text-id) #f))
+  (call-parent-method this)
+  )
+
+;; definition for method 61 of type game-text-menu
+;; WARN: disable def twice: 10. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod default-event-handler ((this game-text-menu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('update-text-id)
+     (set! v0-0 (-> arg3 param 0))
+     (set! (-> this text-id) (the-as text-id v0-0))
+     v0-0
+     )
+    (('to-all-children)
+     (case (-> arg3 param 0)
+       (('update-task-text-id)
+        (set! v0-0 (-> arg3 param 1))
+        (set! (-> this text-id) (the-as text-id v0-0))
+        v0-0
+        )
+       )
+     )
+    (else
+      ((method-of-type base-menu default-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition of type scrolling-menu-medius
+(deftype scrolling-menu-medius (scrolling-menu)
+  ((prev-id          int32)
+   (prev-top-offset  int32)
+   )
+  (:methods
+    (scrolling-menu-medius-method-77 (_type_) none)
+    (get-room-id (_type_ int) int)
+    )
+  )
+
+;; definition for method 3 of type scrolling-menu-medius
+(defmethod inspect ((this scrolling-menu-medius))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type scrolling-menu inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tprev-id: ~D~%" (-> this prev-id))
+  (format #t "~2Tprev-top-offset: ~D~%" (-> this prev-top-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 59 of type scrolling-menu-medius
+(defmethod init-menu! ((this scrolling-menu-medius))
+  (set! (-> this prev-id) -1)
+  (set! (-> this prev-top-offset) 0)
+  (call-parent-method this)
+  (scrolling-menu-medius-method-77 this)
+  (none)
+  )
+
+;; definition for method 73 of type scrolling-menu-medius
+;; WARN: Return type mismatch int vs none.
+(defmethod scrolling-menu-method-73 ((this scrolling-menu-medius) (arg0 int) (arg1 symbol))
+  (set! (-> this prev-id) (get-room-id this arg0))
+  (set! (-> this prev-top-offset) (- (-> this cur-idx) (-> this top-idx)))
+  (if (and arg1 (-> this info-ptr sel-id-backup-symbol))
+      (set! (-> this info-ptr sel-id-backup-symbol value) (get-room-id this arg0))
+      )
+  (call-parent-method this arg0 arg1)
+  0
+  (none)
+  )
+
+;; definition for method 77 of type scrolling-menu-medius
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 77 scrolling-menu-medius) has a return type of none, but the expression builder found a return statement.
+(defmethod scrolling-menu-medius-method-77 ((this scrolling-menu-medius))
+  (if (-> this info-ptr sel-id-backup-symbol)
+      (set! (-> this prev-id) (the-as int (-> this info-ptr sel-id-backup-symbol value)))
+      )
+  (set! (-> this cur-scroll) 0)
+  (set! (-> this scroll-dir) 0)
+  (dotimes (s5-0 (-> this physical-item-ct))
+    (when (= (-> this prev-id) (get-room-id this s5-0))
+      (set! (-> this cur-idx) s5-0)
+      (set! (-> this top-idx) (- s5-0 (max 0 (-> this prev-top-offset))))
+      (set! (-> this top-idx)
+            (min (-> this top-idx) (- (-> this physical-item-ct) (-> this info-ptr visible-item-ct)))
+            )
+      (set! (-> this top-idx) (max 0 (-> this top-idx)))
+      (scrolling-menu-method-74 this)
+      (return #f)
+      )
+    )
+  (set! (-> this cur-idx) (max 0 (min (-> this cur-idx) (+ (-> this physical-item-ct) -1))))
+  (set! (-> this top-idx) (- (-> this cur-idx) (+ (-> this info-ptr visible-item-ct) -1)))
+  (set! (-> this top-idx)
+        (min (-> this top-idx) (- (-> this physical-item-ct) (-> this info-ptr visible-item-ct)))
+        )
+  (set! (-> this top-idx) (max 0 (-> this top-idx)))
+  (scrolling-menu-method-74 this)
+  (scrolling-menu-method-73 this (-> this cur-idx) #f)
+  0
+  (none)
+  )
+
+;; definition for method 78 of type scrolling-menu-medius
+(defmethod get-room-id ((this scrolling-menu-medius) (arg0 int))
+  arg0
+  )
+
+;; definition for method 61 of type scrolling-menu-medius
+(defmethod default-event-handler ((this scrolling-menu-medius) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('restore-selection)
+     (scrolling-menu-medius-method-77 this)
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition of type dropdown-menu
+(deftype dropdown-menu (dropdown-item)
+  ()
+  )
+
+;; definition for method 3 of type dropdown-menu
+(defmethod inspect ((this dropdown-menu))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type dropdown-item inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate running (dropdown-menu)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (let ((a0-5 (as-type (handle->process (-> self child-handles 0)) scrolling-menu)))
+      (when (= a0-5 proc)
+        (case message
+          (('menu-selection-event)
+           (case (-> block param 0)
+             (('cancel)
+              (send-event a0-5 'deselected)
+              (send-event (ppointer->process (-> self parent)) 'enable #t)
+              (return #f)
+              )
+             )
+           )
+          )
+        )
+      )
+    (base-menu-event-handler proc argc message block)
+    )
+  :trans (behavior ()
+    (let ((a0-4 (as-type (handle->process (-> self child-handles 0)) scrolling-menu)))
+      (when (and (the-as scrolling-menu a0-4)
+                 (zero? (-> (the-as scrolling-menu a0-4) physical-item-ct))
+                 (-> (the-as scrolling-menu a0-4) selected)
+                 )
+        (send-event a0-4 'deselected)
+        (send-event (ppointer->process (-> self parent)) 'enable #t)
+        )
+      )
+    (call-parent-state-handler trans)
+    )
+  )
+
+;; definition for method 59 of type dropdown-menu
+;; WARN: Return type mismatch int vs none.
+(defmethod init-menu! ((this dropdown-menu))
+  (call-parent-method this)
+  (let ((a0-7 (as-type (handle->process (-> this child-handles 0)) scrolling-menu)))
+    (send-event a0-7 'deselected)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 62 of type dropdown-menu
+;; WARN: Return type mismatch int vs object.
+(defmethod handle-input ((this dropdown-menu) (arg0 int))
+  (cond
+    ((cpad-or-kbd-pressed-var? (the-as uint arg0) (pad-buttons x))
+     (let ((s4-0 (as-type (handle->process (-> this child-handles 0)) scrolling-menu)))
+       (cond
+         ((and (the-as scrolling-menu s4-0) (> (-> (the-as scrolling-menu s4-0) physical-item-ct) 0))
+          (let ((v1-7 (make-sound-instance snd-choice1 (new 'static 'sound-id) (the-as handle #f))))
+            (cond
+              (v1-7
+                (logior! (-> v1-7 flags) (sound-spec-flag needs-update non-positional))
+                (-> v1-7 id)
+                )
+              (else
+                0
+                )
+              )
+            )
+          (logclear! (-> *cpad-list* cpads arg0 button0-abs 0) (pad-buttons x))
+          (logclear! (-> *cpad-list* cpads arg0 button0-rel 0) (pad-buttons x))
+          (cpad-or-kbd-clear-func! (the-as uint arg0) (pad-buttons x))
+          (send-event s4-0 'selected)
+          (send-event (ppointer->process (-> this parent)) 'enable #f)
+          )
+         (else
+           (let ((v1-24 (make-sound-instance snd-illegal1 (new 'static 'sound-id) (the-as handle #f))))
+             (cond
+               (v1-24
+                 (logior! (-> v1-24 flags) (sound-spec-flag needs-update non-positional))
+                 (-> v1-24 id)
+                 )
+               (else
+                 0
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (else
+      (call-parent-method this arg0)
+      )
+    )
+  0
+  )
+
+;; definition of type indicator
+(deftype indicator (string-menu)
+  ((got  int32)
+   (max  int32)
+   (msg  text-id)
+   )
+  )
+
+;; definition for method 3 of type indicator
+(defmethod inspect ((this indicator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type string-menu inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgot: ~D~%" (-> this got))
+  (format #t "~2Tmax: ~D~%" (-> this max))
+  (format #t "~2Tmsg: ~D~%" (-> this msg))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 61 of type indicator
+(defmethod default-event-handler ((this indicator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('set-text-id)
+     (set! (-> this msg) (the-as text-id (-> arg3 param 0)))
+     )
+    (('update)
+     (set! (-> this got) (the-as int (-> arg3 param 0)))
+     (set! (-> this max) (the-as int (-> arg3 param 1)))
+     )
+    (('complete)
+     (set! (-> this got) (-> this max))
+     )
+    (('init)
+     (set! (-> this got) -1)
+     (set! (-> this max) -1)
+     )
+    )
+  (call-parent-method this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 67 of type indicator
+;; WARN: Return type mismatch object vs none.
+(defmethod update-strings ((this indicator))
+  (call-parent-method this)
+  (/ (* 100 (-> this got)) (-> this max))
+  (format (clear (-> this strings data 0 text)) (lookup-text! *common-text* (-> this msg) #f))
+  (none)
+  )
+
+;; definition for method 59 of type indicator
+(defmethod init-menu! ((this indicator))
+  (set! (-> this got) -1)
+  (set! (-> this max) -1)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 60 of type indicator
+(defmethod draw-menu ((this indicator))
+  (call-parent-method this)
+  )

@@ -5,11 +5,53 @@
 ;; name in dgo: scert-11-h
 ;; dgos: ENGINE, GAME
 
+;; +++dme-init-status
+(defenum dme-init-status
+  :type int32
+  (dmeinitialized 0)
+  (dmenot-initialized 1)
+  (extra-dmeinit-status #xffffff)
+  )
+;; ---dme-init-status
+
+;; +++net-platform-id
+(defenum net-platform-id
+  :type int32
+  (enum-net-platform-id-unknown 0)
+  (enum-net-platform-id-ps2 1)
+  (enum-net-platform-id-psp 2)
+  (extra-enum-net-platform-id #xffffff)
+  )
+;; ---net-platform-id
+
+;; +++net-connectivity-type
+(defenum net-connectivity-type
+  :type int32
+  (extra-net-connectivity-type -1)
+  (net-connectivity-none 0)
+  (net-connectivity-internet 1)
+  (net-connectivity-lan 2)
+  )
+;; ---net-connectivity-type
+
+;; +++net-threshold-method
+(defenum net-threshold-method
+  :type int32
+  (no-threshold 0)
+  (threshold-equality 1)
+  (threshold-absolute-magnitude 2)
+  (threshold-ratio-magnitude 3)
+  (threshold-anchor-delta 4)
+  (threshold-callback 5)
+  (extra-net-threshold-method #xffffff)
+  )
+;; ---net-threshold-method
+
 ;; DECOMP BEGINS
 
 (deftype mgclinitialize-in-params (structure)
   ((p-local-key-pair                                 rsa-keypair)
-   (status                                           int32)
+   (status                                           dme-init-status)
    (my-server-create-game-callback                   basic)
    (my-server-create-game-callback-user-data         basic)
    (my-server-create-game-with-attributes-callback   basic)
@@ -30,14 +72,14 @@
 
 
 (deftype mgclinitialize-out-params (structure)
-  ((error-code  int32)
+  ((error-code  mgcl-status-code)
    )
   )
 
 
 (deftype net-lanpeer-desc (structure)
   ((dme-version       net-dme-version          :inline)
-   (net-platform-id   int32)
+   (net-platform-id   net-platform-id)
    (application-id    int32)
    (peer-address      net-address              :inline)
    (localization      net-localization-params  :inline)
@@ -55,7 +97,7 @@
    (application-name                uint8                    72)
    (p-local-key-pair                rsa-keypair)
    (p-application-key-pair          rsa-keypair)
-   (connectivity-type               int32)
+   (connectivity-type               net-connectivity-type)
    (udp-bind-port                   int32)
    (upn-pmemory-ceiling             int32)
    (b-enable-lanbroadcast-comms     int32)
@@ -91,7 +133,7 @@
 
 (deftype net-resolve-addr-data (structure)
   ((b-is-set      int32)
-   (error-code    int32)
+   (error-code    net-error)
    (address-list  net-address-list  :inline)
    )
   )
@@ -115,7 +157,7 @@
 
 (deftype net-type-broadcast-schedule (structure)
   ((min-update-interval   uint32)
-   (error-threshold-type  int32)
+   (error-threshold-type  net-threshold-method)
    (threshold-data        anonymous-0  :inline)
    (transport-flags       int8)
    )
@@ -144,7 +186,7 @@
 
 (deftype net-lanfind-exchange-callback-in-args (structure)
   ((connection-handle  basic)
-   (session-type       int32)
+   (session-type       net-session-type)
    (peer-desc          net-lanpeer-desc  :inline)
    (details            net-data          :inline)
    (p-user-data        basic)
@@ -155,7 +197,7 @@
 (deftype net-lanfind-callback-data-args (structure)
   ((n-num-clients      int16)
    (n-max-num-clients  int16)
-   (session-type       int32)
+   (session-type       net-session-type)
    (peer-desc          net-lanpeer-desc  :inline)
    (details            net-data          :inline)
    (p-user-data        basic)

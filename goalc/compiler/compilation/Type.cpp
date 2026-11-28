@@ -588,6 +588,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto behavior = method_info.type.try_get_tag("behavior");
   if (behavior) {
     auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
+    self_var->mark_as_settable();
     IRegConstraint constr;
     constr.contrain_everywhere = true;
     constr.desired_register = emitter::reg_info(m_instr_set).get_process_reg();
@@ -1334,7 +1335,8 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   rest = &pair_cdr(*rest);
 
   if (allocation == "global" || allocation == "debug" || allocation == "process" ||
-      allocation == "process-level-heap" || allocation == "loading-level") {
+      allocation == "process-level-heap" || allocation == "loading-level" ||
+      allocation == "scratch") {
     // allocate on a named heap
     return compile_heap_new(form, allocation, type, rest, env);
   } else if (allocation == "static") {

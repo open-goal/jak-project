@@ -220,10 +220,10 @@
 (defun lan-game-find-callback ((arg0 net-lanfind-callback-data-args))
   (format 0 "game-find callback~%")
   (when (< *net-available-game-ct* 16)
-    (let ((s5-0 (&+ *net-available-games* (* 336 *net-available-game-ct*))))
-      (mem-clear! s5-0 328)
-      ((method-of-type net-available-game init-from-lanfind!) (the-as net-available-game s5-0) arg0)
-      (if ((method-of-type net-available-game valid?) (the-as net-available-game s5-0))
+    (let ((s5-0 (-> *net-available-games* *net-available-game-ct*)))
+      (mem-clear! (the-as pointer s5-0) 328)
+      (init-from-lanfind! s5-0 arg0)
+      (if (valid-game? s5-0)
           (set! *net-available-game-ct* (+ *net-available-game-ct* 1))
           )
       )
@@ -240,14 +240,10 @@
     24
     )
   (set! (-> this connect-info world-id) -1)
-  (set! (-> this connect-info e-type) 2)
-  (let ((s4-0 (new 'stack-no-clear 'mem-buffer)))
-    ((method-of-type mem-buffer set-buffer!)
-     (the-as mem-buffer (&-> s4-0 base))
-     (the-as pointer (-> arg0 details p-data))
-     (-> arg0 details n-size)
-     )
-    (decode-net-available-game-info (-> this info) (the-as mem-buffer (&-> s4-0 base)))
+  (set! (-> this connect-info e-type) (net-connection-type net-connection-type-peer-to-peer-udp))
+  (let ((s4-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+    (set-buffer! (-> s4-0 0) (-> arg0 details p-data) (-> arg0 details n-size))
+    (decode-net-available-game-info (-> this info) (-> s4-0 0))
     )
   (format-game-name! this)
   0
@@ -406,7 +402,7 @@
                                         0
                                         )
                          )
-                     ((method-of-object *net-world* net-world-method-64))
+                     (player-idx-vehicle-selected? *net-world* s5-2)
                      )
                 (set! gp-1 #f)
                 )
@@ -441,17 +437,15 @@
 ;; definition for function remote-client-event-callback
 ;; INFO: Called from C
 (defun remote-client-event-callback ((arg0 net-remote-client-event-data))
-  (let ((v1-0 (-> arg0 event-type)))
-    (cond
-      ((zero? v1-0)
-       (format 0 "*** client join: ~D~%" (-> arg0 client-index))
-       0
-       )
-      ((= v1-0 1)
-       (format 0 "*** client leave: ~D~%" (-> arg0 client-index))
-       0
-       )
-      )
+  (case (-> arg0 event-type)
+    (((net-client-event-type net-client-event-join))
+     (format 0 "*** client join: ~D~%" (-> arg0 client-index))
+     0
+     )
+    (((net-client-event-type net-client-event-leave))
+     (format 0 "*** client leave: ~D~%" (-> arg0 client-index))
+     0
+     )
     )
   )
 
@@ -521,7 +515,7 @@
       (set! (-> gp-0 originator-account-name s4-2) (the-as uint 0))
       )
     0
-    (set! (-> gp-0 message-type) 1)
+    (set! (-> gp-0 message-type) (medius-chat-message-type whisper))
     (handle-chat-msg (the-as medius-chat-fwd-message (-> gp-0 message-id)) #f)
     )
   0
@@ -959,7 +953,7 @@
   (format 0 "size of user data is : ~D~%" (bytes-used *lanfind-scratch-buf*))
   (set! (-> arg1 b-respond-to-sender) 1)
   (set! (-> arg1 details n-size) (bytes-used *lanfind-scratch-buf*))
-  (set! (-> arg1 details p-data) (the-as basic (-> *lanfind-scratch-buf* base)))
+  (set! (-> arg1 details p-data) (-> *lanfind-scratch-buf* base))
   0
   )
 
@@ -1067,7 +1061,7 @@
   (set! (-> *dme-init-in* p-application-key-pair) *net-app-rsa-keypair*)
   (set! (-> *dme-init-in* p-local-key-pair) *net-local-rsa-keypair*)
   (set! (-> *dme-init-in* pf-system-message-callback) net-sys-msg-callback)
-  (set! (-> *dme-init-in* connectivity-type) 2)
+  (set! (-> *dme-init-in* connectivity-type) (net-connectivity-type net-connectivity-lan))
   (set! (-> *dme-init-in* b-enable-lanbroadcast-comms) 1)
   (format 0 "calling net-initialize...~%")
   (set! *scert-function-id* (scert-function net-initialize))

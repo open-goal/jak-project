@@ -481,6 +481,15 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         return as_const_float->value() == *m_float_match;
       }
 
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        const auto& atom = as_expr->expr().get_arg(0);
+        if (atom.is_integer_promoted_to_float()) {
+          return !m_float_match.has_value() ||
+                 atom.get_integer_promoted_to_float() == *m_float_match;
+        }
+      }
+
       return false;
     } break;
 

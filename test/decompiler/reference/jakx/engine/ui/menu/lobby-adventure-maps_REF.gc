@@ -1,0 +1,1348 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *lobby-maps-y-delta*, type float
+(define *lobby-maps-y-delta* 0.0)
+
+;; definition for function spt-func-set-delta-y
+;; WARN: Return type mismatch int vs none.
+(defun spt-func-set-delta-y ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (+! (-> arg2 launchrot y) *lobby-maps-y-delta*)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-map-car
+  :id 283
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 1028 :flags (is-3d sp6)) (sp-item 1029 :flags (is-3d sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 1028
+  :init-specs ((:texture (harddot level-default-sprite))
+    (:num 1.0)
+    (:z (meters 0))
+    (:scale-x (meters 1.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 0.0)
+    (:a 64.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    (:func 'spt-func-set-delta-y)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 1029
+  :init-specs ((:texture (harddot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 0.0)
+    (:a 64.0)
+    (:fade-g -0.21333334)
+    (:fade-a -0.10666667)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:func 'spt-func-set-delta-y)
+    (:next-time (seconds 1))
+    (:next-launcher 1030)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 1030
+  :init-specs ((:scalevel-x (meters -0.0033333334)) (:scalevel-y :copy scalevel-x))
+  )
+
+;; definition for symbol *world-map-shadow-control*, type shadow-control
+(define *world-map-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :center (new 'static 'vector :w (the-as float #x182))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 409600.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 204800.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
+                                           :fade-dist 409600.0
+                                           )
+                               )
+  )
+
+;; definition of type interface-world-map
+(deftype interface-world-map (process-drawable)
+  ((root             collide-shape :override)
+   (u                float)
+   (curve            curve-control  :offset 256)
+   (path-u           float)
+   (draw?            symbol)
+   (particle-matrix  matrix         :inline)
+   )
+  (:state-methods
+    idle
+    leave
+    )
+  (:methods
+    (init! (_type_) draw-control-status)
+    )
+  )
+
+;; definition for method 3 of type interface-world-map
+(defmethod inspect ((this interface-world-map))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tu: ~f~%" (-> this u))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tcurve: ~A~%" (-> this curve))
+  (format #t "~2Tpath-u: ~f~%" (-> this path-u))
+  (format #t "~2Tdraw?: ~A~%" (-> this draw?))
+  (format #t "~2Tparticle-matrix: #<matrix @ #x~X>~%" (-> this particle-matrix))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function align-to-interface-world-map
+(defbehavior align-to-interface-world-map interface-world-map ()
+  (let ((f30-0 (lerp 0.0 12288.0 (-> self u))))
+    (when (-> self draw?)
+      (set! (-> self root trans y) (+ (-> self entity trans y) f30-0))
+      (set! (-> self draw force-fade) (the-as uint (the int (* 128.0 (square (-> self u))))))
+      )
+    (when (and (-> self curve) (nonzero? (-> self curve)) (> (-> self curve curve num-cverts) 0))
+      (let ((s5-0 (new 'stack-no-clear 'matrix))
+            (gp-0 (-> self particle-matrix))
+            )
+        (set! (-> self path-u)
+              (path-control-method-26 (-> self curve) (-> self path-u) (* 40960.0 (seconds-per-frame)))
+              )
+        (if (>= (-> self path-u) 1.0)
+            (set! (-> self path-u) 0.0)
+            )
+        (path-control-method-16 (-> self curve) (-> s5-0 uvec) (-> self path-u))
+        (quaternion-look-at! (the-as quaternion (-> s5-0 rvec)) (-> s5-0 uvec) *up-vector*)
+        (quaternion->matrix gp-0 (the-as quaternion (-> s5-0 rvec)))
+        (path-control-method-14 (-> self curve) (-> gp-0 trans) (-> self path-u) 'interp)
+        (cond
+          ((-> self draw?)
+           (+! (-> gp-0 trans y) f30-0)
+           )
+          (else
+            (when (type? (-> self root) collide-shape)
+              (let ((v1-28 (-> self root root-prim)))
+                (set! (-> v1-28 prim-core collide-as) (collide-spec))
+                (set! (-> v1-28 prim-core collide-with) (collide-spec))
+                )
+              0
+              )
+            (logior! (-> self draw status) (draw-control-status no-draw))
+            (if (type? (-> self root) collide-shape)
+                (transform-post)
+                )
+            )
+          )
+        (set! (-> *part-id-table* 1028 init-specs 8 initial-valuef) (* 64.0 (square (-> self u))))
+        (set! (-> *part-id-table* 1029 init-specs 7 initial-valuef) (* 64.0 (square (-> self u))))
+        (spawn-from-mat (-> self part) gp-0)
+        )
+      )
+    )
+  (let ((f0-21 (- 1.0 (* 0.35 (square (-> self u))))))
+    (if (< 0.99 f0-21)
+        (logior! (-> self draw status) (draw-control-status disable-shadow))
+        (logclear! (-> self draw status) (draw-control-status disable-shadow))
+        )
+    (cond
+      ((and (!= (-> *time-of-day-context* shadow-override) 0.0)
+            (-> self draw shadow)
+            (not (logtest? (draw-control-status disable-shadow) (-> self draw status)))
+            )
+       (set! (-> *time-of-day-context* shadow-override) (fmin f0-21 (-> *time-of-day-context* shadow-override)))
+       )
+      ((and (-> self draw shadow) (not (logtest? (draw-control-status disable-shadow) (-> self draw status))))
+       (set! (-> *time-of-day-context* shadow-override) f0-21)
+       f0-21
+       )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hidden (interface-world-map)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('appear)
+       (go-virtual idle)
+       )
+      )
+    )
+  :enter (behavior ()
+    (when (type? (-> self root) collide-shape)
+      (let ((v1-2 (-> self root root-prim)))
+        (set! (-> v1-2 prim-core collide-as) (collide-spec))
+        (set! (-> v1-2 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (if (type? (-> self root) collide-shape)
+        (transform-post)
+        )
+    )
+  :exit (behavior ()
+    (when (type? (-> self root) collide-shape)
+      (let ((v1-2 (-> self root root-prim)))
+        (set! (-> v1-2 prim-core collide-as) (-> self root backup-collide-as))
+        (set! (-> v1-2 prim-core collide-with) (-> self root backup-collide-with))
+        )
+      )
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (if (type? (-> self root) collide-shape)
+        (transform-post)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate idle (interface-world-map)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('leave)
+       (go-virtual leave)
+       )
+      )
+    )
+  :code (behavior ()
+    (set-time! (-> self state-time))
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((f0-0 (-> self u)))
+      (if (time-elapsed? (-> self state-time) (seconds 1))
+          (+! (-> self u) (* 0.05 (- 1.0 (-> self u))))
+          )
+      (if (-> self draw?)
+          (set! *lobby-maps-y-delta* (* 12288.0 (- (-> self u) f0-0)))
+          (set! *lobby-maps-y-delta* 0.0)
+          )
+      )
+    (align-to-interface-world-map)
+    (ja-post)
+    )
+  )
+
+;; definition for method 10 of type interface-world-map
+(defmethod deactivate ((this interface-world-map))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  ((method-of-type process-drawable deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type interface-world-map
+;; WARN: Return type mismatch process-drawable vs interface-world-map.
+(defmethod relocate ((this interface-world-map) (offset int))
+  (if (nonzero? (-> this curve))
+      (&+! (-> this curve) offset)
+      )
+  (the-as interface-world-map ((method-of-type process-drawable relocate) this offset))
+  )
+
+;; definition for method 52 of type interface-world-map
+;; WARN: Return type mismatch int vs draw-control-status.
+(defmethod init! ((this interface-world-map))
+  (break!)
+  (the-as draw-control-status 0)
+  )
+
+;; definition for function interface-world-map-local-space
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defun interface-world-map-local-space ((arg0 particle-local-space-info))
+  (let ((a1-0 (handle->process (-> arg0 hand))))
+    (when a1-0
+      (let ((s4-0 (-> (the-as interface-world-map a1-0) particle-matrix))
+            (gp-0 (-> arg0 mat-new))
+            )
+        (when (not (paused?))
+          (logior! (-> arg0 flags) (part-local-space-flags pls2))
+          (cond
+            ((logtest? (-> arg0 flags) (part-local-space-flags pls0))
+             (matrix-identity! gp-0)
+             (set! (-> gp-0 trans quad) (-> s4-0 trans quad))
+             )
+            ((logtest? (-> arg0 flags) (part-local-space-flags pls1))
+             (matrix-copy! gp-0 s4-0)
+             (set! (-> gp-0 rvec y) 0.0)
+             (set! (-> gp-0 fvec y) 0.0)
+             (vector-normalize! (-> gp-0 rvec) 1.0)
+             (vector-normalize! (-> gp-0 fvec) 1.0)
+             (vector-cross! (-> gp-0 uvec) (-> gp-0 fvec) (-> gp-0 rvec))
+             )
+            (else
+              (matrix-copy! gp-0 s4-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 11 of type interface-world-map
+(defmethod init-from-entity! ((this interface-world-map) (arg0 entity-actor))
+  (set! (-> this level) (level-get *level* 'menumap))
+  (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this u) 0.0)
+  (quaternion-identity! (-> this root rotation))
+  (init! this)
+  (logior! (-> this draw status) (draw-control-status force-fade))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (set! (-> this curve) (new 'process 'curve-control this 'path (the-as res-lump #f) #f -1000000000.0))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 283) this))
+  (set! (-> this path-u) 0.0)
+  (process-entity-status! this (entity-perm-status no-kill) #t)
+  (go hidden)
+  )
+
+;; failed to figure out what this is:
+(defstate leave (interface-world-map)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('appear)
+       (go-virtual idle)
+       )
+      )
+    )
+  :enter (behavior ()
+    (sparticle-launch-control-method-21 (-> self part))
+    )
+  :trans (behavior ()
+    (if (>= 0.01 (-> self u))
+        (go hidden)
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (+! (-> self u) (* 0.05 (- (-> self u))))
+    (align-to-interface-world-map)
+    (ja-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-kras-mesh world-map-kras-mesh world-map-kras-mesh-lod0-jg world-map-kras-mesh-idle-ja
+              ((world-map-kras-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-kras-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-kras-mesh-proc*, type world-map-kras-mesh
+(define *world-map-kras-mesh-proc* (the-as world-map-kras-mesh #f))
+
+;; definition of type world-map-kras-mesh
+(deftype world-map-kras-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-kras-mesh
+(defmethod inspect ((this world-map-kras-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-kras-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-kras-mesh))
+  (set! *world-map-kras-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-kras-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-kras-mesh
+(defmethod deactivate ((this world-map-kras-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-kras-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-kras-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-kras-mesh.
+(defmethod relocate ((this world-map-kras-mesh) (offset int))
+  (if (nonzero? *world-map-kras-mesh-proc*)
+      (set! *world-map-kras-mesh-proc* (&+ *world-map-kras-mesh-proc* offset))
+      )
+  (the-as world-map-kras-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-docks-mesh world-map-docks-mesh world-map-docks-mesh-lod0-jg world-map-docks-mesh-idle-ja
+              ((world-map-docks-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-docks-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-docks-mesh-proc*, type world-map-docks-mesh
+(define *world-map-docks-mesh-proc* (the-as world-map-docks-mesh #f))
+
+;; definition of type world-map-docks-mesh
+(deftype world-map-docks-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-docks-mesh
+(defmethod inspect ((this world-map-docks-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-docks-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-docks-mesh))
+  (set! *world-map-docks-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-docks-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-docks-mesh
+(defmethod deactivate ((this world-map-docks-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-docks-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-docks-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-docks-mesh.
+(defmethod relocate ((this world-map-docks-mesh) (offset int))
+  (if (nonzero? *world-map-docks-mesh-proc*)
+      (set! *world-map-docks-mesh-proc* (&+ *world-map-docks-mesh-proc* offset))
+      )
+  (the-as world-map-docks-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-drome-mesh world-map-drome-mesh world-map-drome-mesh-lod0-jg world-map-drome-mesh-idle-ja
+              ((world-map-drome-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-drome-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-drome-mesh-proc*, type world-map-drome-mesh
+(define *world-map-drome-mesh-proc* (the-as world-map-drome-mesh #f))
+
+;; definition of type world-map-drome-mesh
+(deftype world-map-drome-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-drome-mesh
+(defmethod inspect ((this world-map-drome-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-drome-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-drome-mesh))
+  (set! *world-map-drome-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-drome-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-drome-mesh
+(defmethod deactivate ((this world-map-drome-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-drome-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-drome-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-drome-mesh.
+(defmethod relocate ((this world-map-drome-mesh) (offset int))
+  (if (nonzero? *world-map-drome-mesh-proc*)
+      (set! *world-map-drome-mesh-proc* (&+ *world-map-drome-mesh-proc* offset))
+      )
+  (the-as world-map-drome-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-dockkra-mesh world-map-dockkra-mesh world-map-dockkra-mesh-lod0-jg world-map-dockkra-mesh-idle-ja
+              ((world-map-dockkra-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-dockkra-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-dockkra-mesh-proc*, type world-map-dockkra-mesh
+(define *world-map-dockkra-mesh-proc* (the-as world-map-dockkra-mesh #f))
+
+;; definition of type world-map-dockkra-mesh
+(deftype world-map-dockkra-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-dockkra-mesh
+(defmethod inspect ((this world-map-dockkra-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-dockkra-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-dockkra-mesh))
+  (set! *world-map-dockkra-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-dockkra-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-dockkra-mesh
+(defmethod deactivate ((this world-map-dockkra-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-dockkra-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-dockkra-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-dockkra-mesh.
+(defmethod relocate ((this world-map-dockkra-mesh) (offset int))
+  (if (nonzero? *world-map-dockkra-mesh-proc*)
+      (set! *world-map-dockkra-mesh-proc* (&+ *world-map-dockkra-mesh-proc* offset))
+      )
+  (the-as world-map-dockkra-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-dromedoc-mesh world-map-dromedoc-mesh world-map-dromedoc-mesh-lod0-jg world-map-dromedoc-mesh-idle-ja
+              ((world-map-dromedoc-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-dromedoc-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-dromedoc-mesh-proc*, type world-map-dromedoc-mesh
+(define *world-map-dromedoc-mesh-proc* (the-as world-map-dromedoc-mesh #f))
+
+;; definition of type world-map-dromedoc-mesh
+(deftype world-map-dromedoc-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-dromedoc-mesh
+(defmethod inspect ((this world-map-dromedoc-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-dromedoc-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-dromedoc-mesh))
+  (set! *world-map-dromedoc-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-dromedoc-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-dromedoc-mesh
+(defmethod deactivate ((this world-map-dromedoc-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-dromedoc-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-dromedoc-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-dromedoc-mesh.
+(defmethod relocate ((this world-map-dromedoc-mesh) (offset int))
+  (if (nonzero? *world-map-dromedoc-mesh-proc*)
+      (set! *world-map-dromedoc-mesh-proc* (&+ *world-map-dromedoc-mesh-proc* offset))
+      )
+  (the-as world-map-dromedoc-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-kras-tour-mesh world-map-kras-tour-mesh world-map-kras-tour-mesh-lod0-jg world-map-kras-tour-mesh-idle-ja
+              ((world-map-kras-tour-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-kras-tour-mesh-proc*, type world-map-kras-tour-mesh
+(define *world-map-kras-tour-mesh-proc* (the-as world-map-kras-tour-mesh #f))
+
+;; definition of type world-map-kras-tour-mesh
+(deftype world-map-kras-tour-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-kras-tour-mesh
+(defmethod inspect ((this world-map-kras-tour-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-kras-tour-mesh
+(defmethod init! ((this world-map-kras-tour-mesh))
+  (set! *world-map-kras-tour-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-kras-tour-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #t)
+  (when #f
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-kras-tour-mesh
+(defmethod deactivate ((this world-map-kras-tour-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-kras-tour-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-kras-tour-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-kras-tour-mesh.
+(defmethod relocate ((this world-map-kras-tour-mesh) (offset int))
+  (if (nonzero? *world-map-kras-tour-mesh-proc*)
+      (set! *world-map-kras-tour-mesh-proc* (&+ *world-map-kras-tour-mesh-proc* offset))
+      )
+  (the-as world-map-kras-tour-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-coliseum-mesh world-map-coliseum-mesh world-map-coliseum-mesh-lod0-jg world-map-coliseum-mesh-idle-ja
+              ((world-map-coliseum-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-coliseum-mesh-proc*, type world-map-coliseum-mesh
+(define *world-map-coliseum-mesh-proc* (the-as world-map-coliseum-mesh #f))
+
+;; definition of type world-map-coliseum-mesh
+(deftype world-map-coliseum-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-coliseum-mesh
+(defmethod inspect ((this world-map-coliseum-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-coliseum-mesh
+(defmethod init! ((this world-map-coliseum-mesh))
+  (set! *world-map-coliseum-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-coliseum-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #f)
+  (when #t
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-coliseum-mesh
+(defmethod deactivate ((this world-map-coliseum-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-coliseum-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-coliseum-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-coliseum-mesh.
+(defmethod relocate ((this world-map-coliseum-mesh) (offset int))
+  (if (nonzero? *world-map-coliseum-mesh-proc*)
+      (set! *world-map-coliseum-mesh-proc* (&+ *world-map-coliseum-mesh-proc* offset))
+      )
+  (the-as world-map-coliseum-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-kcross-mesh world-map-kcross-mesh world-map-kcross-mesh-lod0-jg world-map-kcross-mesh-idle-ja
+              ((world-map-kcross-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-kcross-mesh-proc*, type world-map-kcross-mesh
+(define *world-map-kcross-mesh-proc* (the-as world-map-kcross-mesh #f))
+
+;; definition of type world-map-kcross-mesh
+(deftype world-map-kcross-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-kcross-mesh
+(defmethod inspect ((this world-map-kcross-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-kcross-mesh
+(defmethod init! ((this world-map-kcross-mesh))
+  (set! *world-map-kcross-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-kcross-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #f)
+  (when #t
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-kcross-mesh
+(defmethod deactivate ((this world-map-kcross-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-kcross-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-kcross-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-kcross-mesh.
+(defmethod relocate ((this world-map-kcross-mesh) (offset int))
+  (if (nonzero? *world-map-kcross-mesh-proc*)
+      (set! *world-map-kcross-mesh-proc* (&+ *world-map-kcross-mesh-proc* offset))
+      )
+  (the-as world-map-kcross-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-jungle-mesh world-map-jungle-mesh world-map-jungle-mesh-lod0-jg world-map-jungle-mesh-idle-ja
+              ((world-map-jungle-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-jungle-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-jungle-mesh-proc*, type world-map-jungle-mesh
+(define *world-map-jungle-mesh-proc* (the-as world-map-jungle-mesh #f))
+
+;; definition of type world-map-jungle-mesh
+(deftype world-map-jungle-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-jungle-mesh
+(defmethod inspect ((this world-map-jungle-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-jungle-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-jungle-mesh))
+  (set! *world-map-jungle-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-jungle-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-jungle-mesh
+(defmethod deactivate ((this world-map-jungle-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-jungle-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-jungle-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-jungle-mesh.
+(defmethod relocate ((this world-map-jungle-mesh) (offset int))
+  (if (nonzero? *world-map-jungle-mesh-proc*)
+      (set! *world-map-jungle-mesh-proc* (&+ *world-map-jungle-mesh-proc* offset))
+      )
+  (the-as world-map-jungle-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-haven-mesh world-map-haven-mesh world-map-haven-mesh-lod0-jg world-map-haven-mesh-idle-ja
+              ((world-map-haven-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-haven-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-haven-mesh-proc*, type world-map-haven-mesh
+(define *world-map-haven-mesh-proc* (the-as world-map-haven-mesh #f))
+
+;; definition of type world-map-haven-mesh
+(deftype world-map-haven-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-haven-mesh
+(defmethod inspect ((this world-map-haven-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-haven-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-haven-mesh))
+  (set! *world-map-haven-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-haven-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-haven-mesh
+(defmethod deactivate ((this world-map-haven-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-haven-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-haven-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-haven-mesh.
+(defmethod relocate ((this world-map-haven-mesh) (offset int))
+  (if (nonzero? *world-map-haven-mesh-proc*)
+      (set! *world-map-haven-mesh-proc* (&+ *world-map-haven-mesh-proc* offset))
+      )
+  (the-as world-map-haven-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-sewer-mesh world-map-sewer-mesh world-map-sewer-mesh-lod0-jg world-map-sewer-mesh-idle-ja
+              ((world-map-sewer-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-sewer-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-sewer-mesh-proc*, type world-map-sewer-mesh
+(define *world-map-sewer-mesh-proc* (the-as world-map-sewer-mesh #f))
+
+;; definition of type world-map-sewer-mesh
+(deftype world-map-sewer-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-sewer-mesh
+(defmethod inspect ((this world-map-sewer-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-sewer-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-sewer-mesh))
+  (set! *world-map-sewer-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-sewer-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-sewer-mesh
+(defmethod deactivate ((this world-map-sewer-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-sewer-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-sewer-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-sewer-mesh.
+(defmethod relocate ((this world-map-sewer-mesh) (offset int))
+  (if (nonzero? *world-map-sewer-mesh-proc*)
+      (set! *world-map-sewer-mesh-proc* (&+ *world-map-sewer-mesh-proc* offset))
+      )
+  (the-as world-map-sewer-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-havjung-mesh world-map-havjung-mesh world-map-havjung-mesh-lod0-jg world-map-havjung-mesh-idle-ja
+              ((world-map-havjung-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-havjung-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-havjung-mesh-proc*, type world-map-havjung-mesh
+(define *world-map-havjung-mesh-proc* (the-as world-map-havjung-mesh #f))
+
+;; definition of type world-map-havjung-mesh
+(deftype world-map-havjung-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-havjung-mesh
+(defmethod inspect ((this world-map-havjung-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-havjung-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-havjung-mesh))
+  (set! *world-map-havjung-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-havjung-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-havjung-mesh
+(defmethod deactivate ((this world-map-havjung-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-havjung-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-havjung-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-havjung-mesh.
+(defmethod relocate ((this world-map-havjung-mesh) (offset int))
+  (if (nonzero? *world-map-havjung-mesh-proc*)
+      (set! *world-map-havjung-mesh-proc* (&+ *world-map-havjung-mesh-proc* offset))
+      )
+  (the-as world-map-havjung-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-havsew-mesh world-map-havsew-mesh world-map-havsew-mesh-lod0-jg world-map-havsew-mesh-idle-ja
+              ((world-map-havsew-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              :shadow world-map-havsew-mesh-shadow-mg
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *world-map-havsew-mesh-proc*, type world-map-havsew-mesh
+(define *world-map-havsew-mesh-proc* (the-as world-map-havsew-mesh #f))
+
+;; definition of type world-map-havsew-mesh
+(deftype world-map-havsew-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-havsew-mesh
+(defmethod inspect ((this world-map-havsew-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-havsew-mesh
+;; WARN: Return type mismatch symbol vs draw-control-status.
+(defmethod init! ((this world-map-havsew-mesh))
+  (set! *world-map-havsew-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-havsew-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw shadow-ctrl) *world-map-shadow-control*)
+  (let ((v0-2 #t))
+    (set! (-> this draw?) v0-2)
+    (the-as draw-control-status v0-2)
+    )
+  )
+
+;; definition for method 10 of type world-map-havsew-mesh
+(defmethod deactivate ((this world-map-havsew-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-havsew-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-havsew-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-havsew-mesh.
+(defmethod relocate ((this world-map-havsew-mesh) (offset int))
+  (if (nonzero? *world-map-havsew-mesh-proc*)
+      (set! *world-map-havsew-mesh-proc* (&+ *world-map-havsew-mesh-proc* offset))
+      )
+  (the-as world-map-havsew-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-hav-tour-mesh world-map-hav-tour-mesh world-map-hav-tour-mesh-lod0-jg world-map-hav-tour-mesh-idle-ja
+              ((world-map-hav-tour-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-hav-tour-mesh-proc*, type world-map-hav-tour-mesh
+(define *world-map-hav-tour-mesh-proc* (the-as world-map-hav-tour-mesh #f))
+
+;; definition of type world-map-hav-tour-mesh
+(deftype world-map-hav-tour-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-hav-tour-mesh
+(defmethod inspect ((this world-map-hav-tour-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-hav-tour-mesh
+(defmethod init! ((this world-map-hav-tour-mesh))
+  (set! *world-map-hav-tour-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-hav-tour-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #t)
+  (when #f
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-hav-tour-mesh
+(defmethod deactivate ((this world-map-hav-tour-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-hav-tour-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-hav-tour-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-hav-tour-mesh.
+(defmethod relocate ((this world-map-hav-tour-mesh) (offset int))
+  (if (nonzero? *world-map-hav-tour-mesh-proc*)
+      (set! *world-map-hav-tour-mesh-proc* (&+ *world-map-hav-tour-mesh-proc* offset))
+      )
+  (the-as world-map-hav-tour-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-atoll-mesh world-map-atoll-mesh world-map-atoll-mesh-lod0-jg world-map-atoll-mesh-idle-ja
+              ((world-map-atoll-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-atoll-mesh-proc*, type world-map-atoll-mesh
+(define *world-map-atoll-mesh-proc* (the-as world-map-atoll-mesh #f))
+
+;; definition of type world-map-atoll-mesh
+(deftype world-map-atoll-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-atoll-mesh
+(defmethod inspect ((this world-map-atoll-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-atoll-mesh
+(defmethod init! ((this world-map-atoll-mesh))
+  (set! *world-map-atoll-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-atoll-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #f)
+  (when #t
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-atoll-mesh
+(defmethod deactivate ((this world-map-atoll-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-atoll-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-atoll-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-atoll-mesh.
+(defmethod relocate ((this world-map-atoll-mesh) (offset int))
+  (if (nonzero? *world-map-atoll-mesh-proc*)
+      (set! *world-map-atoll-mesh-proc* (&+ *world-map-atoll-mesh-proc* offset))
+      )
+  (the-as world-map-atoll-mesh ((method-of-type interface-world-map relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-world-map-cliffs-mesh world-map-cliffs-mesh world-map-cliffs-mesh-lod0-jg world-map-cliffs-mesh-idle-ja
+              ((world-map-cliffs-mesh-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 400)
+              )
+
+;; definition for symbol *world-map-cliffs-mesh-proc*, type world-map-cliffs-mesh
+(define *world-map-cliffs-mesh-proc* (the-as world-map-cliffs-mesh #f))
+
+;; definition of type world-map-cliffs-mesh
+(deftype world-map-cliffs-mesh (interface-world-map)
+  ()
+  )
+
+;; definition for method 3 of type world-map-cliffs-mesh
+(defmethod inspect ((this world-map-cliffs-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type interface-world-map inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 52 of type world-map-cliffs-mesh
+(defmethod init! ((this world-map-cliffs-mesh))
+  (set! *world-map-cliffs-mesh-proc* this)
+  (initialize-skeleton
+    this
+    (art-group-get-by-name *level* "skel-world-map-cliffs-mesh" (the-as (pointer level) #f))
+    0
+    )
+  (set! (-> this draw?) #f)
+  (when #t
+    (let ((v0-2 (logior (-> this draw status) (draw-control-status no-draw))))
+      (set! (-> this draw status) v0-2)
+      v0-2
+      )
+    )
+  )
+
+;; definition for method 10 of type world-map-cliffs-mesh
+(defmethod deactivate ((this world-map-cliffs-mesh))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *world-map-cliffs-mesh-proc* #f)
+  ((method-of-type interface-world-map deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type world-map-cliffs-mesh
+;; WARN: Return type mismatch interface-world-map vs world-map-cliffs-mesh.
+(defmethod relocate ((this world-map-cliffs-mesh) (offset int))
+  (if (nonzero? *world-map-cliffs-mesh-proc*)
+      (set! *world-map-cliffs-mesh-proc* (&+ *world-map-cliffs-mesh-proc* offset))
+      )
+  (the-as world-map-cliffs-mesh ((method-of-type interface-world-map relocate) this offset))
+  )

@@ -1,0 +1,324 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function add-recent-opponent
+;; WARN: Return type mismatch int vs object.
+(defun add-recent-opponent ((arg0 int))
+  (if (or (contains? *medius-buddies* arg0)
+          (contains? *medius-ignores* arg0)
+          (= arg0 (-> *net-mgr* lobby-state my-account-id))
+          )
+      (return (the-as object #f))
+      )
+  (dotimes (v1-9 32)
+    (when (= (-> *medius-recent-opponents* v1-9) arg0)
+      (set! (-> *medius-recent-opponents* v1-9) (-> *medius-recent-opponents* 0))
+      (set! (-> *medius-recent-opponents* 0) arg0)
+      (return (the-as object #f))
+      )
+    )
+  (countdown (v1-15 32)
+    (set! (-> *medius-recent-opponents* v1-15) (-> *medius-recent-opponents* (+ v1-15 -1)))
+    )
+  (set! (-> *medius-recent-opponents* 0) arg0)
+  0
+  )
+
+;; definition for function get-recent-players
+;; WARN: Return type mismatch int vs object.
+(defun get-recent-players ()
+  (set! (-> *medius-recent-players* ct) 0)
+  (dotimes (gp-0 32)
+    (let ((s5-0 (-> *medius-recent-opponents* gp-0)))
+      (if (not (or (contains? *medius-buddies* s5-0)
+                   (contains? *medius-ignores* s5-0)
+                   (= s5-0 (-> *net-mgr* lobby-state my-account-id))
+                   (<= s5-0 0)
+                   )
+               )
+          (add! *medius-recent-players* s5-0)
+          )
+      )
+    )
+  0
+  )
+
+;; definition for symbol *tmp-player*, type medius-cached-info-player
+(define *tmp-player* (new 'static 'medius-cached-info-player))
+
+;; definition for function medius-player-info-retrieve-behavior
+;; WARN: Return type mismatch int vs object.
+(defbehavior medius-player-info-retrieve-behavior net-mgr ((arg0 medius-cached-info-player))
+  (let ((gp-0 *tmp-player*))
+    (mem-copy! (&-> gp-0 type) (&-> arg0 type) 684)
+    (let ((s4-0 (new 'stack 'medius-player-info-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s4-0 message-id))
+      (mem-copy! (-> s4-0 session-key) *medius-session-key* 17)
+      (set! (-> s4-0 account-id) (-> gp-0 medius-id))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-player-info))
+      (let ((s4-1 (knet-scert-function-3-args s4-0 medius-simple-request-callback #f)))
+        (when (nonzero? s4-1)
+          (format 0 "initial function call returned ~D~%" s4-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s4-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 15) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       (set! (-> gp-0 status) (medius-cached-info-status free))
+       (return (the-as object #f))
+       )
+      (else
+        *medius-last-response*
+        0
+        )
+      )
+    (let ((s4-2 (the-as medius-player-info-response *medius-last-response*)))
+      (mem-copy! (the-as pointer (-> gp-0 stats)) (-> s4-2 stats) 12)
+      (mem-clear! (the-as pointer (-> gp-0 online-state)) 140)
+      (mem-copy! (-> gp-0 name) (-> s4-2 account-name) 32)
+      (set! (-> gp-0 online-state connect-status) (-> s4-2 player-status))
+      )
+    (expand-text-to-charp! *common-text* (the-as (pointer uint8) *net-mgr-scratch*) (-> gp-0 name))
+    (let ((s4-4 (min 159 (strlen *net-mgr-scratch*))))
+      (mem-copy! (-> gp-0 format-name) *net-mgr-scratch* s4-4)
+      (set! (-> gp-0 format-name s4-4) (the-as uint 0))
+      )
+    0
+    (mem-clear! (the-as pointer (-> gp-0 ladder-stats)) 316)
+    (let ((s4-5 (new 'stack 'medius-get-ladder-stats-wide-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> s4-5 message-id))
+      (set! (-> s4-5 account-id-or-clan-id) (-> gp-0 medius-id))
+      (set! (-> s4-5 ladder-type) (medius-ladder-type medius-ladder-type-player))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-get-ladder-stats-wide))
+      (let ((s4-6 (knet-scert-function-3-args s4-5 medius-simple-request-callback #f)))
+        (when (nonzero? s4-6)
+          (format 0 "initial function call returned ~D~%" s4-6)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s4-6)
+          )
+        )
+      )
+    (net-async-wait (seconds 15) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       0
+       )
+      (else
+        (let ((v1-47 (the-as medius-get-ladder-stats-wide-response *medius-last-response*)))
+          (mem-copy! (the-as pointer (-> gp-0 ladder-stats)) (-> v1-47 stats) 316)
+          )
+        (update-computed-stats! *net-player-ladder-stats-info* (-> gp-0 ladder-stats))
+        )
+      )
+    (when (or (= (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-chat-world))
+              (or (= (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-game-world))
+                  (= (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-other-universe))
+                  )
+              )
+      (let ((s4-7 (new 'stack 'medius-find-player-request)))
+        (set! *async-request-ct* (+ *async-request-ct* 1))
+        (itoa *async-request-ct* (-> s4-7 message-id))
+        (mem-copy! (-> s4-7 session-key) *medius-session-key* 17)
+        (set! (-> s4-7 id) (-> gp-0 medius-id))
+        (set! (-> s4-7 search-type) (medius-player-search-type player-account-id))
+        (reset-lobby-state! self)
+        (set! *scert-function-id* (scert-function medius-find-player))
+        (let ((s4-8 (knet-scert-function-3-args s4-7 medius-simple-request-callback #f)))
+          (when (nonzero? s4-8)
+            (format 0 "initial function call returned ~D~%" s4-8)
+            (set! (-> self lobby-state got-error) #t)
+            (set! (-> self lobby-state last-medius-error) s4-8)
+            )
+          )
+        )
+      (net-async-wait (seconds 15) #t)
+      (cond
+        ((or (-> self lobby-state got-error)
+             (-> self lobby-state timeout)
+             (nonzero? (-> self lobby-state last-medius-error))
+             (nonzero? (-> self lobby-state last-mgcl-error))
+             (nonzero? (-> self lobby-state last-dme-error))
+             (nonzero? (-> self lobby-state callback-status))
+             )
+         *medius-last-response*
+         (set! (-> gp-0 status) (medius-cached-info-status free))
+         (return (the-as object #f))
+         )
+        (else
+          *medius-last-response*
+          0
+          )
+        )
+      (mem-clear! (the-as pointer (-> gp-0 online-state)) 140)
+      (let ((v1-78 (the-as medius-find-player-response *medius-last-response*)))
+        (when (= (-> v1-78 status-code) (medius-status-code medius-success))
+          (case (-> v1-78 application-type)
+            (((medius-application-type lobby-chat-channel))
+             (set! (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-chat-world))
+             (set! (-> gp-0 online-state medius-lobby-world-id) (-> v1-78 medius-world-id))
+             )
+            (((medius-application-type game))
+             (set! (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-game-world))
+             (set! (-> gp-0 online-state medius-game-world-id) (-> v1-78 medius-world-id))
+             )
+            )
+          )
+        )
+      (when (= (-> gp-0 online-state connect-status) (medius-player-status medius-player-in-game-world))
+        )
+      )
+    (set! (-> gp-0 status) (medius-cached-info-status valid))
+    (mem-copy! (&-> arg0 type) (&-> gp-0 type) 684)
+    )
+  0
+  )
+
+;; definition for method 9 of type medius-cached-info-player
+;; WARN: Return type mismatch (function medius-cached-info-player object :behavior net-mgr) vs (function medius-cached-info object).
+(defmethod get-retrieve-behavior ((this medius-cached-info-player))
+  (the-as (function medius-cached-info object) medius-player-info-retrieve-behavior)
+  )
+
+;; definition for function update-client-state
+;; WARN: Return type mismatch int vs object.
+(defun update-client-state ((arg0 medius-user-action) (arg1 object) (arg2 symbol))
+  (let ((gp-0 (new 'stack-no-clear 'medius-update-user-state)))
+    (mem-copy! (-> gp-0 session-key) *medius-session-key* 17)
+    (set! (-> gp-0 user-action) arg0)
+    (set! *scert-function-id* (scert-function medius-update-user-state))
+    (knet-scert-function-1-args (-> gp-0 session-key))
+    )
+  0
+  )
+
+;; definition for method 11 of type medius-player
+;; WARN: Return type mismatch object vs medius-cached-info-player.
+(defmethod lookup-player ((this medius-player))
+  (the-as medius-cached-info-player (lookup *medius-player-cache* (get-id this) 9000 #t #f))
+  )
+
+;; definition for function init-player-lists
+;; WARN: Return type mismatch int vs object.
+(defun init-player-lists ()
+  (clear-objects! *medius-player-cache*)
+  (retrieve-player-lists)
+  (retrieve-my-clan-data)
+  (dotimes (v1-2 32)
+    (set! (-> *medius-recent-opponents* v1-2) -1)
+    )
+  0
+  )
+
+;; definition for symbol *tmp-player-name*, type string
+(define *tmp-player-name* (new 'global 'string 128 (the-as string #f)))
+
+;; definition for method 12 of type medius-player
+;; WARN: Swapped fp-relative label and field offsets for "---"
+(defmethod get-player-name-and-clan ((this medius-player))
+  (local-vars (v0-3 (pointer uint8)))
+  (let ((s5-1 (lookup *medius-player-cache* (get-id this) -1 #f #f)))
+    (if (= s5-1 'error)
+        (set! s5-1 #f)
+        )
+    (cond
+      (s5-1
+        (cond
+          (#f
+            (let ((s4-1
+                    (lookup *medius-clan-cache* (-> (the-as medius-cached-info-player s5-1) stats current-clan) #xd2f0 #f #f)
+                    )
+                  )
+              (if (= s4-1 'error)
+                  (return (-> (the-as medius-cached-info-player s5-1) name))
+                  )
+              (when (and s4-1 (contains? (-> (the-as medius-cached-info-clan s4-1) members) (get-id this)))
+                (format
+                  (clear *tmp-player-name*)
+                  "~G [~G]"
+                  (-> (the-as medius-cached-info-player s5-1) name)
+                  (-> (the-as medius-cached-info-clan s4-1) name)
+                  )
+                (return (-> *tmp-player-name* data))
+                v0-3
+                )
+              )
+            )
+          (else
+            (return (-> (the-as medius-cached-info-player s5-1) name))
+            v0-3
+            )
+          )
+        )
+      (else
+        (return (-> "---" data))
+        v0-3
+        )
+      )
+    )
+  )
+
+;; definition for method 13 of type medius-player
+(defmethod get-game-status ((this medius-player))
+  (let ((v1-2 (the-as medius-cached-info-player (lookup *medius-player-cache* (get-id this) -1 #f #f))))
+    (if (not (and v1-2
+                  (!= v1-2 'error)
+                  (= (-> v1-2 online-state connect-status) (medius-player-status medius-player-in-game-world))
+                  (> (-> v1-2 online-state medius-game-world-id) 0)
+                  )
+             )
+        (return 0)
+        )
+    (get-game-status-cached (-> v1-2 online-state medius-game-world-id))
+    )
+  )
+
+;; definition for function get-player-amplitude
+;; WARN: Return type mismatch int vs object.
+(defun get-player-amplitude ((arg0 (pointer uint8)))
+  (local-vars (a0-7 int))
+  (if (not (and *aux-voice-mgr*
+                (and (-> *aux-voice-mgr* next-state) (= (-> *aux-voice-mgr* next-state name) 'active))
+                *headset*
+                (!= (-> *medius-my-clan* medius-id) -1)
+                )
+           )
+      (return (the-as object 0))
+      )
+  (dotimes (s5-0 (length (-> *medius-player-cache* objects)))
+    (let ((s4-0 (-> *medius-player-cache* objects s5-0)))
+      (when (and (has-data? s4-0) (strncmp (-> (the-as medius-cached-info-player s4-0) format-name) arg0 -1))
+        (set! a0-7 (-> s4-0 medius-id))
+        (goto cfg-23)
+        )
+      )
+    )
+  (set! a0-7 -1)
+  (label cfg-23)
+  (dotimes (v1-26 16)
+    (if (and (= (-> *aux-voice-acct-ids* v1-26) a0-7) (logtest? (ash 1 v1-26) (-> *aux-voice-mgr* bitfield)))
+        (return (the-as object (-> *headset* client-talking-s8 v1-26)))
+        )
+    )
+  0
+  )

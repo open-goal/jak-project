@@ -1,0 +1,699 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition (debug) for function lobby-vehicle-flag->string
+(defun-debug lobby-vehicle-flag->string ((arg0 lobby-vehicle-flag))
+  (if (= (logand arg0 (lobby-vehicle-flag destroy)) (lobby-vehicle-flag destroy))
+      (format #t "destroy ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag reload)) (lobby-vehicle-flag reload))
+      (format #t "reload ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag load-when-offscreen)) (lobby-vehicle-flag load-when-offscreen))
+      (format #t "load-when-offscreen ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag no-turntable)) (lobby-vehicle-flag no-turntable))
+      (format #t "no-turntable ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag no-vehicle-selection)) (lobby-vehicle-flag no-vehicle-selection))
+      (format #t "no-vehicle-selection ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag fade-part)) (lobby-vehicle-flag fade-part))
+      (format #t "fade-part ")
+      )
+  (if (= (logand arg0 (lobby-vehicle-flag spawn-when-ready)) (lobby-vehicle-flag spawn-when-ready))
+      (format #t "spawn-when-ready ")
+      )
+  )
+
+;; definition of type lobby-menu-manager
+(deftype lobby-menu-manager (process)
+  ((game-type                   uint32)
+   (menu-handles                handle  8)
+   (in-focus-index              int8)
+   (menu-handle-1               handle  :overlay-at (-> menu-handles 0))
+   (menu-handle-2               handle  :overlay-at (-> menu-handles 1))
+   (menu-handle-popup           handle  :overlay-at (-> menu-handles 2))
+   (menu-handle-background      handle  :offset 224)
+   (menu-handle-logo-main       handle  :offset 232)
+   (menu-handle-logo-subtitle   handle  :offset 240)
+   (local-players               int32)
+   (refresh-time                uint32)
+   (game-connection-type        uint8)
+   (vehicle-handle              handle)
+   (vehicle-selected            uint8)
+   (vehicle-flags               lobby-vehicle-flag)
+   (vehicle-paint-mode          uint64)
+   (tuning-type-selected        tuning-type)
+   (all-ready?                  symbol)
+   (map-proc                    handle)
+   (venue-map                   handle)
+   (current-local-player        int8)
+   (spawn-another?              symbol)
+   (state-time                  time-frame)
+   (has-driver?                 symbol  2)
+   (car-part-type-selected      uint8)
+   (cam-string                  string)
+   (driver-was-taken?           symbol)
+   (interpolate-camera?         symbol)
+   (last-selected-human-count   int8)
+   (last-selected-cpu-count     int8)
+   (game-visible?               symbol)
+   (psp-mode-run?               symbol)
+   (garage-lights               float)
+   (garage-lights-target        float)
+   (memcard-status              uint32)
+   (time-limit?                 symbol)
+   (profile-save-mode           basic)
+   (machine-id-to-kick          int8)
+   (cookie-id-to-kick           int8)
+   (override-fov                basic)
+   (profile-new-save            basic)
+   (voice-id                    sound-id)
+   (split-selection-prev-state  symbol)
+   (vehicle-part-fade           uint8)
+   (vehicle-loaded-time         time-frame)
+   )
+  (:state-methods
+    init-state
+    local-init
+    adventure-init
+    single-event-menu
+    options-menu
+    video-options-menu
+    (progressive-warning symbol)
+    progressive-accept
+    center-screen-menu
+    sound-options-menu
+    game-options-menu
+    secrets-menu
+    psp-secrets-menu
+    (psp-wait-disconnect symbol)
+    die
+    __empty__30
+    (lobby-generic-error-menu base-menu-info (function object :behavior lobby-menu-manager) (function symbol object :behavior lobby-menu-manager) symbol symbol symbol)
+    waiting-for-cd
+    pre-game-type-menu
+    game-type-menu
+    pre-choose-event-menu
+    choose-event-menu
+    internet-connect
+    lan-connect
+    connecting-to-lobby
+    num-local-players
+    host-join-menu
+    join-game-menu
+    join-wait
+    host-wait
+    __empty__45
+    (wait-for-world symbol)
+    going-to-ready-room
+    ready-room-state
+    (personal-selection-pop-up int)
+    choose-your-adventure
+    waiting-network-config-list
+    choose-network-config
+    waiting-network-hardware
+    (waiting-network-hardware-shutdown symbol)
+    net-connection-error
+    __empty__56
+    choose-account
+    entering-password
+    __empty__59
+    (waiting-mc base-menu-info (function object) (function object object) symbol symbol)
+    edit-account
+    showing-policy
+    (showing-announcements symbol)
+    lobby-main-screen
+    buddy-list-management
+    player-info-screen
+    (player-ladder-stats int)
+    (clan-ladder-stats int)
+    single-clan-stats
+    my-stats-screen
+    change-password
+    (saving-password symbol)
+    saving-password-online
+    (saving-accounts symbol)
+    loading-accounts
+    editing-clan-msg
+    inviting-player-to-clan
+    (inviting-buddies int)
+    chat-room-select
+    chat-room
+    game-info-screen
+    game-search-screen
+    clan-create-screen
+    clan-main-screen
+    clan-incoming-invites
+    clan-info-screen
+    clan-room-creation
+    (challenge-room-creation int)
+    clan-sent-invites
+    clan-challenges
+    __empty__91
+    anti-cheat
+    patch-downloading
+    patch-authorizing
+    patch-installing
+    do-quickplay
+    customize-main-menu
+    customize-select-vehicle
+    customize-tune-performance
+    customize-body-parts
+    customize-body-parts-selection
+    customize-paintjob
+    customize-accessories
+    customize-accessories-selection
+    purchase-popup
+    (purchase-finish car-info uint float)
+    watch-intro
+    watch-introb
+    adventure-cup
+    adventure-map
+    adventure-venue
+    adventure-task
+    adventure-save
+    adventure-training
+    adventure-intro-b
+    adventure-vehicle-select
+    (host-advanced-options int)
+    advanced-options
+    e3-join-game-menu
+    test-screen
+    (go-net-config-util int)
+    __empty__122
+    dnas-running-screen
+    dnas-error-screen
+    new-load-profile
+    load-profile
+    loading-profile
+    __empty__128
+    enter-profile-name
+    save-profile
+    no-card
+    want-format
+    formating-card
+    want-create-file
+    creating-file
+    select-save-profile
+    overwrite-profile
+    saving-profile
+    new-load-save-profile
+    boot-memory-card
+    (kick-player int)
+    __empty__142
+    lobby-results-new-body-parts-screen
+    lobby-results-new-vehicle-animation
+    lobby-results-new-vehicle-screen
+    lobby-results-new-events-screen
+    lobby-results-new-driver-screen
+    lobby-results-new-qualifier-screen
+    lobby-results-movie
+    green-room
+    demo-press-start
+    num-local-players-demo
+    set-game-name
+    adventure-grand-prix
+    playing-grand-prix
+    (ready-room-options int)
+    die-fast
+    lobby-scene-player
+    (lobby-play-fmv int)
+    local-highscore-table
+    lobby-commentary-scene-player
+    autosave-icon
+    lobby-credits
+    (lobby-scrapbook int)
+    )
+  (:methods
+    (select-event (_type_ int symbol) symbol)
+    (reset-event-selection (_type_) none)
+    (select-level (_type_) symbol)
+    (next-selection (_type_ menu-selection-struct) none)
+    (prev-selection (_type_ menu-selection-struct) none)
+    (lobby-menu-manager-method-170 (_type_) none)
+    (update-game-info-strings (_type_) none)
+    (update-human-slots (_type_ symbol) none)
+    (update-ai-slots (_type_ symbol) none)
+    (update-buddy-slots (_type_ symbol) none)
+    (update-clan-slots (_type_ symbol) none)
+    (update-ready-room-players (_type_) none)
+    (fill-vehicle-list (_type_) none)
+    (fill-driver-list (_type_) none)
+    (update-vehicle (_type_) none)
+    (set-vehicle-part! (_type_ int int) none)
+    (apply-vehicle-colors (_type_) none)
+    (create-menu (_type_ base-menu-info int) object)
+    (kill-menu (_type_ symbol symbol) object)
+    (get-in-focus-menu (_type_) base-menu)
+    (find-menu (_type_ symbol) base-menu)
+    (no-menus-dying? (_type_) symbol)
+    (fill-vehicle-parts-list (_type_ (array vehicle-configuration)) none)
+    (apply-vehicle-colors-for (_type_ vehicle-type-u8 int) none)
+    (apply-load-parts (_type_ int) none)
+    (get-vehicle (_type_) vehicle)
+    (show-venue-map (_type_ symbol) none)
+    (vehicle-level-ready? (_type_ int) symbol)
+    (send-vehicle-to-net-world (_type_) none)
+    (init-local-selection (_type_ int) none)
+    )
+  )
+
+;; definition for method 3 of type lobby-menu-manager
+(defmethod inspect ((this lobby-menu-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgame-type: ~D~%" (-> this game-type))
+  (format #t "~2Tmenu-handles[8] @ #x~X~%" (-> this menu-handles))
+  (format #t "~2Tin-focus-index: ~D~%" (-> this in-focus-index))
+  (format #t "~2Tmenu-handle-1: ~D~%" (-> this menu-handle-1))
+  (format #t "~2Tmenu-handle-2: ~D~%" (-> this menu-handle-2))
+  (format #t "~2Tmenu-handle-popup: ~D~%" (-> this menu-handle-popup))
+  (format #t "~2Tmenu-handle-background: ~D~%" (-> this menu-handle-background))
+  (format #t "~2Tmenu-handle-logo-main: ~D~%" (-> this menu-handle-logo-main))
+  (format #t "~2Tmenu-handle-logo-subtitle: ~D~%" (-> this menu-handle-logo-subtitle))
+  (format #t "~2Tlocal-players: ~D~%" (-> this local-players))
+  (format #t "~2Trefresh-time: ~D~%" (-> this refresh-time))
+  (format #t "~2Tgame-connection-type: ~D~%" (-> this game-connection-type))
+  (format #t "~2Tvehicle-handle: ~D~%" (-> this vehicle-handle))
+  (format #t "~2Tvehicle-selected: ~D~%" (-> this vehicle-selected))
+  (format #t "~2Tvehicle-flags: ~D~%" (-> this vehicle-flags))
+  (format #t "~2Tvehicle-paint-mode: ~D~%" (-> this vehicle-paint-mode))
+  (format #t "~2Ttuning-type-selected: ~D~%" (-> this tuning-type-selected))
+  (format #t "~2Tall-ready?: ~A~%" (-> this all-ready?))
+  (format #t "~2Tmap-proc: ~D~%" (-> this map-proc))
+  (format #t "~2Tvenue-map: ~D~%" (-> this venue-map))
+  (format #t "~2Tcurrent-local-player: ~D~%" (-> this current-local-player))
+  (format #t "~2Tspawn-another?: ~A~%" (-> this spawn-another?))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Thas-driver?[2] @ #x~X~%" (-> this has-driver?))
+  (format #t "~2Tcar-part-type-selected: ~D~%" (-> this car-part-type-selected))
+  (format #t "~2Tcam-string: ~A~%" (-> this cam-string))
+  (format #t "~2Tdriver-was-taken?: ~A~%" (-> this driver-was-taken?))
+  (format #t "~2Tinterpolate-camera?: ~A~%" (-> this interpolate-camera?))
+  (format #t "~2Tlast-selected-human-count: ~D~%" (-> this last-selected-human-count))
+  (format #t "~2Tlast-selected-cpu-count: ~D~%" (-> this last-selected-cpu-count))
+  (format #t "~2Tgame-visible?: ~A~%" (-> this game-visible?))
+  (format #t "~2Tpsp-mode-run?: ~A~%" (-> this psp-mode-run?))
+  (format #t "~2Tgarage-lights: ~f~%" (-> this garage-lights))
+  (format #t "~2Tgarage-lights-target: ~f~%" (-> this garage-lights-target))
+  (format #t "~2Tmemcard-status: ~D~%" (-> this memcard-status))
+  (format #t "~2Ttime-limit?: ~A~%" (-> this time-limit?))
+  (format #t "~2Tprofile-save-mode: ~A~%" (-> this profile-save-mode))
+  (format #t "~2Tmachine-id-to-kick: ~D~%" (-> this machine-id-to-kick))
+  (format #t "~2Tcookie-id-to-kick: ~D~%" (-> this cookie-id-to-kick))
+  (format #t "~2Toverride-fov: ~A~%" (-> this override-fov))
+  (format #t "~2Tprofile-new-save: ~A~%" (-> this profile-new-save))
+  (format #t "~2Tvoice-id: ~D~%" (-> this voice-id))
+  (format #t "~2Tsplit-selection-prev-state: ~A~%" (-> this split-selection-prev-state))
+  (format #t "~2Tvehicle-part-fade: ~D~%" (-> this vehicle-part-fade))
+  (format #t "~2Tvehicle-loaded-time: ~D~%" (-> this vehicle-loaded-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *lobby-reset-mode*, type symbol
+(define *lobby-reset-mode* #f)
+
+;; definition for symbol *net-mgr-finish-mode*, type symbol
+(define *net-mgr-finish-mode* #f)
+
+;; definition for symbol *lobby-menu-manager*, type lobby-menu-manager
+(define *lobby-menu-manager* (the-as lobby-menu-manager #f))
+
+;; definition for function get-selected-local-player-count
+(defun get-selected-local-player-count ()
+  (if (and *lobby-menu-manager* (= (-> *lobby-menu-manager* local-players) 2))
+      2
+      1
+      )
+  )
+
+;; definition for function kiosk-code?
+(defun kiosk-code? ()
+  (if (and (cpad-hold? 0 left) (cpad-hold? 0 l1) (cpad-hold? 0 l2) (cpad-hold? 0 r1) (cpad-hold? 0 r2))
+      #f
+      (kiosk?)
+      )
+  )
+
+;; definition for function min-max-wrap-around
+(defun min-max-wrap-around ((arg0 int) (arg1 int) (arg2 int))
+  (let ((v1-2 (+ (- 1 arg1) arg2)))
+    (while (< arg0 arg1)
+      (+! arg0 v1-2)
+      )
+    (while (< arg2 arg0)
+      (set! arg0 (- arg0 v1-2))
+      )
+    )
+  arg0
+  )
+
+;; definition for symbol *lobby-last-selected-task-index*, type int
+(define *lobby-last-selected-task-index* 0)
+
+;; definition for symbol *last-selected-human-ct*, type int
+(define *last-selected-human-ct* 0)
+
+;; definition for symbol *last-selected-ai-ct*, type int
+(define *last-selected-ai-ct* 0)
+
+;; definition for symbol *last-selected-buddy-ct*, type int
+(define *last-selected-buddy-ct* 0)
+
+;; definition for symbol *last-selected-clan-ct*, type int
+(define *last-selected-clan-ct* 0)
+
+;; definition for symbol *lobby-menu-manager-game-connection-type*, type int
+(define *lobby-menu-manager-game-connection-type* 0)
+
+;; definition for symbol *lobby-handling-db-error*, type symbol
+(define *lobby-handling-db-error* #f)
+
+;; definition for symbol *no-net-hw-warning-shown*, type symbol
+(define *no-net-hw-warning-shown* #f)
+
+;; definition for symbol *ready-room-human-ct*, type int
+(define *ready-room-human-ct* 0)
+
+;; definition for symbol *ready-room-ai-ct*, type int
+(define *ready-room-ai-ct* 0)
+
+;; definition for symbol *game-launched-from-room*, type symbol
+(define *game-launched-from-room* #f)
+
+;; definition for symbol camera-seek-time, type float
+(define camera-seek-time 0.5)
+
+;; definition for symbol real-camera-seek-time, type float
+(define real-camera-seek-time (/ 1.0 camera-seek-time))
+
+;; definition for function set-lobby-camera-seek-time!
+(defun set-lobby-camera-seek-time! ((arg0 float))
+  (if (= arg0 0.0)
+      (set! camera-seek-time 0.0001)
+      (set! camera-seek-time arg0)
+      )
+  (set! real-camera-seek-time (/ 1.0 camera-seek-time))
+  )
+
+;; definition for symbol *class-mode*, type int
+(define *class-mode* 1)
+
+;; definition for function restore-selection-index
+;; WARN: Return type mismatch symbol vs object.
+(defun restore-selection-index ()
+  (let ((a0-1 (the-as selection-menu-manager (find-menu *lobby-menu-manager* 'manager))))
+    (when a0-1
+      (dotimes (v1-1 3)
+        (let ((a1-4 (mod (+ (- -1 v1-1) *selection-cache-index*) 3)))
+          (if (< a1-4 0)
+              (+! a1-4 3)
+              )
+          (when (= (-> *selection-cache-array* a1-4 state) (-> *lobby-menu-manager* state name))
+            (select-by-sym a0-1 (-> *selection-cache-array* a1-4 selection-type))
+            (return (the-as object #t))
+            )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+;; definition for symbol *lobby-timetrial-lock-mode*, type symbol
+(define *lobby-timetrial-lock-mode* #f)
+
+;; definition for symbol *vehicle-class-data*, type (array menu-option-info)
+(define *vehicle-class-data*
+  (new 'static 'boxed-array :type menu-option-info
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3407) :sym 'rookie)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3408) :sym 'pro :extra-int 1)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3409) :sym 'custom :extra-int 2)
+    )
+  )
+
+;; definition for symbol *vehicle-class*, type menu-selection-struct
+(define *vehicle-class* (new 'static 'menu-selection-struct
+                          :array-ptr (new 'static 'boxed-array :type menu-option-info
+                            (new 'static 'menu-option-info)
+                            (new 'static 'menu-option-info)
+                            )
+                          :last-sym #f
+                          )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *vehicle-class* array-ptr) *vehicle-class-data*)
+
+;; failed to figure out what this is:
+(set! (-> *vehicle-class* selection-index) 0)
+
+;; definition for symbol *time-of-day-data*, type (array menu-option-info)
+(define *time-of-day-data*
+  (new 'static 'boxed-array :type menu-option-info
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3546) :sym #f :extra-int -1)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3538) :sym #f :extra-int 7)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3539) :sym #f :extra-int 10)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3540) :sym #f :extra-int 12)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3541) :sym #f :extra-int 14)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3542) :sym #f :extra-int 18)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3543) :sym #f :extra-int 19)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3544) :sym #f :extra-int 21)
+    (new 'static 'menu-option-info :display-name-id (text-id text-id-3545) :sym #f :extra-int 4)
+    )
+  )
+
+;; definition for symbol *time-of-day-array*, type menu-selection-struct
+(define *time-of-day-array* (new 'static 'menu-selection-struct
+                              :array-ptr (new 'static 'boxed-array :type menu-option-info
+                                (new 'static 'menu-option-info)
+                                (new 'static 'menu-option-info)
+                                )
+                              :last-sym #f
+                              )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *time-of-day-array* array-ptr) *time-of-day-data*)
+
+;; failed to figure out what this is:
+(set! (-> *time-of-day-array* selection-index) 0)
+
+;; definition for symbol *ready-room-host-id*, type int
+(define *ready-room-host-id* 0)
+
+;; definition for symbol *keyboard-buf*, type (pointer uint8)
+(define *keyboard-buf* (new 'static 'array uint8 128
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         #x0
+                         )
+        )
+
+;; definition for function kbd-auto-activate
+(defun kbd-auto-activate ()
+  (if (get-keyboard-control)
+      (return #f)
+      )
+  (let ((v1-2 (keybd-read-ascii)))
+    (when (and (< 31 v1-2) (< v1-2 128))
+      (set! *keybd-ungetc* (the-as uint v1-2))
+      (return #t)
+      )
+    )
+  #f
+  )
+
+;; definition for symbol *return-to-secrets*, type symbol
+(define *return-to-secrets* #f)
+
+;; definition for symbol *this-create-menu-state-name*, type string
+(define *this-create-menu-state-name* (the-as string #f))
+
+;; definition for symbol *prev-create-menu-state-name*, type string
+(define *prev-create-menu-state-name* (the-as string #f))
+
+;; definition for symbol *lobby-fast-connect*, type symbol
+(define *lobby-fast-connect* #f)
+
+;; definition for symbol *lobby-body-parts-return-state-name*, type string
+(define *lobby-body-parts-return-state-name* (the-as string #f))
+
+;; definition for symbol *eligible-for-body-part-award*, type symbol
+(define *eligible-for-body-part-award* #f)
+
+;; definition for symbol *pending-op*, type (function object object object object object object object object object)
+(define *pending-op* (the-as (function object object object object object object object object object) #f))
+
+;; definition for symbol *pending-op-serial*, type uint
+(define *pending-op-serial* (the-as uint 0))
+
+;; definition for symbol *pending-op-arg-ct*, type int
+(define *pending-op-arg-ct* 0)
+
+;; definition for symbol *pending-op-args*, type (pointer int32)
+(define *pending-op-args* (new 'static 'array int32 8 0 0 0 0 0 0 0 0))
+
+;; definition for function teams-valid-to-start-game?
+(defun teams-valid-to-start-game? ()
+  (let ((s5-0 0)
+        (gp-0 0)
+        )
+    (cond
+      ((logtest? (-> *net-world* net-state options advanced-options flags)
+                 (game-task-advanced-options-flag team-game)
+                 )
+       (dotimes (s4-0 24)
+         (when (player-idx-vehicle-selected? *net-world* s4-0)
+           (format #t "valid player: ~D~%" s4-0)
+           (if (zero? (-> *net-world* net-state players s4-0 team-id))
+               (+! s5-0 1)
+               (+! gp-0 1)
+               )
+           )
+         )
+       )
+      (else
+        (return #t)
+        )
+      )
+    (if (or (zero? s5-0) (zero? gp-0))
+        (return #f)
+        (return #t)
+        )
+    )
+  (the-as symbol 0)
+  )

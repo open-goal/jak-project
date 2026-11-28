@@ -1368,10 +1368,7 @@
 
 ;; definition for method 10 of type process
 ;; INFO: Return type mismatch int vs none.
-;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod deactivate ((this process))
-  (local-vars (s7-0 none) (ra-0 int))
   (with-pp
     (when (!= (-> this status) 'dead)
       (set! (-> this next-state) dead-state)
@@ -1409,9 +1406,7 @@
       (cond
         ((= (-> *kernel-context* current-process) this)
          (set! (-> this status) 'dead)
-         (.lw ra-0 return-from-thread s7-0)
-         (.jr ra-0)
-         (nop!)
+         (abandon-thread)
          0
          )
         ((= (-> this status) 'initialize)

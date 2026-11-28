@@ -7,3 +7,3617 @@
 
 ;; DECOMP BEGINS
 
+(define *lobby-results-enabled* #f)
+
+(define *lobby-results-no-adventure-mode* #f)
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior wait-and-play-award lobby-menu-manager ()
+  0
+  (set! (-> self voice-id)
+        (add-process *gui-control* self (gui-channel alert) (gui-action queue) "award1" -99.0 0)
+        )
+  (sound-params-set! *gui-control* (-> self voice-id) #f -1.0 -1.0 1.0 1.0 #f)
+  (while (!= (get-status *gui-control* (-> self voice-id)) (gui-status ready))
+    (suspend)
+    )
+  (set-action!
+    *gui-control*
+    (gui-action play)
+    (-> self voice-id)
+    (gui-channel none)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  )
+
+(defun lobby-results-awarded-vehicle ()
+  *lobby-awards-new-vehicle*
+  )
+
+(defun lobby-results-first-awarded-vehicle ((arg0 symbol))
+  (cond
+    (arg0
+      (set! *lobby-awards-first-new-vehicle* #f)
+      #f
+      )
+    (else
+      *lobby-awards-first-new-vehicle*
+      )
+    )
+  )
+
+(defun lobby-results-awarded-event ()
+  *lobby-awards-new-event*
+  )
+
+(defun lobby-results-awarded-car-parts ()
+  *lobby-awards-new-body-part*
+  )
+
+(defun lobby-awards-test-qualifier ()
+  (let ((v1-0 (get-new-qualifier)))
+    (if (and (= *game-mode* 'adventure) (nonzero? v1-0))
+        (-> *game-info* sub-task-list v1-0)
+        (the-as game-task-node-info #f)
+        )
+    )
+  )
+
+(define *gtb-speech-last-venue* 0)
+
+(defun lobby-speech-gtb-new-venue ()
+  (while (and (zero? *gtb-speech-last-venue*) (not (pecker-can-speak?)))
+    (set! *gtb-speech-last-venue* (mod (+ *gtb-speech-last-venue* 1) 3))
+    )
+  (let ((v1-6 *gtb-speech-last-venue*))
+    (cond
+      ((zero? v1-6)
+       (talker-spawn-func (-> *talker-speech* 214) *entity-pool* (target-pos 0) (the-as region #f))
+       )
+      ((= v1-6 1)
+       (talker-spawn-func (-> *talker-speech* 215) *entity-pool* (target-pos 0) (the-as region #f))
+       )
+      (else
+        (talker-spawn-func (-> *talker-speech* 216) *entity-pool* (target-pos 0) (the-as region #f))
+        )
+      )
+    )
+  (let ((v0-7 (+ *gtb-speech-last-venue* 1)))
+    (set! v0-7 (cond
+                 ((< 2 v0-7)
+                  0
+                  )
+                 (else
+                   (empty)
+                   v0-7
+                   )
+                 )
+          )
+    (set! *gtb-speech-last-venue* v0-7)
+    v0-7
+    )
+  )
+
+(define *lobby-results-new-body-part-screen-text* (new 'static 'boxed-array :type strings-extra-struct
+                                                    (new 'static 'strings-extra-struct)
+                                                    (new 'static 'strings-extra-struct)
+                                                    (new 'static 'strings-extra-struct)
+                                                    (new 'static 'strings-extra-struct)
+                                                    )
+        )
+
+(define *lobby-results-new-body-part-tab-text*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-body-part-tab-text-ii*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-body-part-screen*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3109)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'dynamic-string-menu
+        :children #f
+        :name-symbol #f
+        :3d-menu-type "skel-lg-player-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x1e
+          :3d-offset (new 'static 'vector :y 24985.6 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 9 18)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :y 6676.48 :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3102)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          (new 'static 'string-info
+            :offset (new 'static 'vector :y 1761.28 :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3102)
+            :font-scale 0.55
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          (new 'static 'string-info
+            :offset (new 'static 'vector :y -3072.0 :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3102)
+            :font-scale 0.5
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-60)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          (new 'static 'string-info
+            :offset (new 'static 'vector :y -7987.2 :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3102)
+            :font-scale 0.5
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-52)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids '*lobby-results-new-body-part-screen-text*
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'dynamic-string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #x12000
+            :height #x1800
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2048.0 :y -6963.2 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3109)
+                :font-scale 0.9
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color font-color-51)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-body-part-tab-text-ii*
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-body-parts-tab"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x3c
+          :3d-offset (new 'static 'vector :x 15360.0 :y 4710.4 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 8 9)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :x 2048.0 :y -2048.0 :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3109)
+            :font-scale 0.5
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning right large draw-3d italic ff12)
+            :font-color (font-color font-color-52)
+            :font-color-2 (font-color font-color-51)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids '*lobby-results-new-body-part-tab-text*
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x5a
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 10 9 12 11 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate lobby-results-new-body-parts-screen (lobby-menu-manager)
+  :virtual #t
+  :event lobby-menu-manager-default-handler
+  :enter (behavior ()
+    (lobby-awards-handle-body-part-awarding)
+    (let ((s5-0 (lobby-results-awarded-car-parts))
+          (gp-0 (clear *temp-string*))
+          )
+      (when (not s5-0)
+        (case *lobby-body-parts-return-state-name*
+          (('ready-room-state)
+           (set! *lobby-body-parts-return-state-name* #f)
+           (if (= (if *net-mgr*
+                      (-> *net-mgr* game-state local-machine-idx)
+                      0
+                      )
+                  (-> *net-mgr* game-state session-master-idx)
+                  )
+               (create-menu self *ready-room-host* 2)
+               (create-menu self *ready-room* 2)
+               )
+           (go-virtual ready-room-state)
+           )
+          (('choose-event-menu)
+           (set! *lobby-body-parts-return-state-name* #f)
+           (go-virtual choose-event-menu)
+           )
+          (else
+            (go-virtual lobby-results-new-driver-screen)
+            )
+          )
+        )
+      (let ((v1-17 (-> s5-0 part-id)))
+        (cond
+          ((zero? v1-17)
+           (let ((v1-18 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-18)
+                (talker-spawn-func (-> *talker-speech* 178) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-18 1)
+                (talker-spawn-func (-> *talker-speech* 179) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-18 2)
+                (talker-spawn-func (-> *talker-speech* 180) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-18 3)
+                (talker-spawn-func (-> *talker-speech* 181) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 1)
+           (let ((v1-28 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-28)
+                (talker-spawn-func (-> *talker-speech* 182) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-28 1)
+                (talker-spawn-func (-> *talker-speech* 183) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-28 2)
+                (talker-spawn-func (-> *talker-speech* 184) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-28 3)
+                (talker-spawn-func (-> *talker-speech* 185) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 2)
+           (let ((v1-38 (rand-vu-int-count 5)))
+             (cond
+               ((zero? v1-38)
+                (talker-spawn-func (-> *talker-speech* 186) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-38 1)
+                (talker-spawn-func (-> *talker-speech* 187) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-38 2)
+                (talker-spawn-func (-> *talker-speech* 188) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-38 3)
+                (talker-spawn-func (-> *talker-speech* 189) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-38 4)
+                (talker-spawn-func (-> *talker-speech* 190) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 7)
+           (let ((v1-50 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-50)
+                (talker-spawn-func (-> *talker-speech* 191) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-50 1)
+                (talker-spawn-func (-> *talker-speech* 192) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-50 2)
+                (talker-spawn-func (-> *talker-speech* 193) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-50 3)
+                (talker-spawn-func (-> *talker-speech* 194) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 6)
+           (let ((v1-60 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-60)
+                (talker-spawn-func (-> *talker-speech* 195) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-60 1)
+                (talker-spawn-func (-> *talker-speech* 196) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-60 2)
+                (talker-spawn-func (-> *talker-speech* 197) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-60 3)
+                (talker-spawn-func (-> *talker-speech* 198) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 5)
+           (let ((v1-70 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-70)
+                (talker-spawn-func (-> *talker-speech* 199) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-70 1)
+                (talker-spawn-func (-> *talker-speech* 200) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-70 2)
+                (talker-spawn-func (-> *talker-speech* 201) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-70 3)
+                (talker-spawn-func (-> *talker-speech* 202) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          ((= v1-17 8)
+           (let ((v1-80 (rand-vu-int-count 4)))
+             (cond
+               ((zero? v1-80)
+                (talker-spawn-func (-> *talker-speech* 203) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-80 1)
+                (talker-spawn-func (-> *talker-speech* 204) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-80 2)
+                (talker-spawn-func (-> *talker-speech* 205) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               ((= v1-80 3)
+                (talker-spawn-func (-> *talker-speech* 206) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+               )
+             )
+           )
+          (else
+            (let ((v1-90 (rand-vu-int-count 8)))
+              (cond
+                ((zero? v1-90)
+                 (talker-spawn-func (-> *talker-speech* 207) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 1)
+                 (talker-spawn-func (-> *talker-speech* 208) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 2)
+                 (talker-spawn-func (-> *talker-speech* 209) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 3)
+                 (talker-spawn-func (-> *talker-speech* 210) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 4)
+                 (talker-spawn-func (-> *talker-speech* 210) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 5)
+                 (talker-spawn-func (-> *talker-speech* 211) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 6)
+                 (talker-spawn-func (-> *talker-speech* 212) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v1-90 7)
+                 (talker-spawn-func (-> *talker-speech* 213) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                )
+              )
+            )
+          )
+        )
+      (format (clear gp-0) "~s" (lookup-text! *common-text* (text-id text-id-1456) #f))
+      (charp<-string (-> *lobby-results-new-body-part-screen-text* 0 text) gp-0)
+      (let* ((v1-111 (get-open-task-node-info))
+             (s4-38 (if v1-111
+                        (the-as int (-> v1-111 medals 0))
+                        3
+                        )
+                    )
+             )
+        (let* ((s3-38 format)
+               (s2-38 (clear gp-0))
+               (s1-0 "~s")
+               (a0-159 *common-text*)
+               (t9-96 (method-of-object a0-159 lookup-text!))
+               (v1-113 s4-38)
+               )
+          (s3-38 s2-38 s1-0 (t9-96
+                              a0-159
+                              (cond
+                                ((= v1-113 3)
+                                 (text-id text-id-1733)
+                                 )
+                                ((= v1-113 2)
+                                 (text-id text-id-1734)
+                                 )
+                                (else
+                                  (text-id text-id-1735)
+                                  )
+                                )
+                              #f
+                              )
+                 )
+          )
+        (charp<-string (-> *lobby-results-new-body-part-screen-text* 1 text) gp-0)
+        (when (!= *game-mode* 'adventure)
+          (set! (-> *lobby-results-new-body-part-screen-text* 1 text 0) (the-as uint 0))
+          0
+          )
+        (set! (-> (the-as string-menu-info (-> *lobby-results-new-body-part-screen* children 1)) strings-info 1 font-color)
+              (cond
+                ((= s4-38 3)
+                 (font-color font-color-50)
+                 )
+                ((= s4-38 2)
+                 (font-color font-color-49)
+                 )
+                ((= s4-38 1)
+                 (font-color font-color-48)
+                 )
+                (else
+                  (font-color font-color-53)
+                  )
+                )
+              )
+        )
+      (let* ((v1-125 (get-open-task-node-info))
+             (a0-168 (if v1-125
+                         (the-as int (-> v1-125 task))
+                         0
+                         )
+                     )
+             )
+        (set! a0-168 (cond
+                       ((nonzero? a0-168)
+                        (empty)
+                        a0-168
+                        )
+                       (else
+                         32
+                         )
+                       )
+              )
+        (let ((s4-39 (-> *task-level-info* (-> *game-info* play-list a0-168 task-level) text-id))
+              (s0-0 (-> *net-play-mode-text-ids*
+                        (-> *game-info* sub-task-list (-> *game-info* play-list a0-168 play-node) net-play-mode)
+                        )
+                    )
+              )
+          (format (clear gp-0) "~s ~s" (lookup-text! *common-text* s4-39 #f) (lookup-text! *common-text* s0-0 #f))
+          )
+        )
+      (charp<-string (-> *lobby-results-new-body-part-screen-text* 2 text) gp-0)
+      (format (clear gp-0) "~s" (lookup-text! *common-text* (text-id text-id-3110) #f))
+      (charp<-string (-> *lobby-results-new-body-part-screen-text* 3 text) gp-0)
+      (let ((s4-42 (-> s5-0 name-id))
+            (s5-1 (-> s5-0 short-name-id))
+            )
+        (format (clear gp-0) "~s" (lookup-text! *common-text* s4-42 #f))
+        (charp<-string (-> *lobby-results-new-body-part-tab-text-ii* 0 text) gp-0)
+        (format (clear gp-0) "~s" (lookup-text! *common-text* s5-1 #f))
+        )
+      (charp<-string (-> *lobby-results-new-body-part-tab-text* 0 text) gp-0)
+      )
+    )
+  :code (behavior ()
+    (local-vars (v1-4 symbol))
+    (remove-setting! 'bg-a)
+    (dotimes (v1-2 (+ (-> self in-focus-index) 1))
+      (when (and (handle->process (-> self menu-handles v1-2))
+                 (= (-> (the-as base-menu (handle->process (-> self menu-handles v1-2))) info-ptr)
+                    *lobby-results-new-body-part-screen*
+                    )
+                 )
+        (set! v1-4 #t)
+        (goto cfg-20)
+        )
+      )
+    (set! v1-4 #f)
+    (label cfg-20)
+    (if v1-4
+        (goto cfg-24)
+        )
+    (kill-menu self #t #f)
+    (create-menu self *lobby-results-new-body-part-screen* 0)
+    #t
+    (label cfg-24)
+    (sleep-code)
+    )
+  :post (behavior ()
+    (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+      (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+      (set-action!
+        *gui-control*
+        (gui-action stop)
+        (-> self voice-id)
+        (gui-channel none)
+        (gui-action none)
+        (the-as string #f)
+        (the-as (function gui-connection symbol) #f)
+        (the-as process #f)
+        )
+      (if (kill-menu self #f #f)
+          (go-virtual lobby-results-new-body-parts-screen)
+          )
+      )
+    (lobby-default-post)
+    )
+  )
+
+(defstate lobby-results-new-vehicle-animation (lobby-menu-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('garage-cinema)
+       (go-virtual lobby-results-new-vehicle-screen)
+       )
+      (else
+        (lobby-menu-manager-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (cond
+      ((nonzero? (get-next-training-task))
+       (load-state-method-25 *load-state* #f)
+       (cond
+         (*lobby-results-no-adventure-mode*
+           (remove-setting! 'bg-a)
+           (kill-menu self #t #f)
+           (create-menu self *base-menu-info* 0)
+           (go-virtual game-type-menu)
+           )
+         (else
+           (remove-setting! 'bg-a)
+           (set! *adv-coming-back-from-game* #t)
+           (go-virtual adventure-save)
+           )
+         )
+       )
+      (else
+        (lobby-awards-handle-vehicle-awarding)
+        (if (not (lobby-results-awarded-vehicle))
+            (go-virtual lobby-results-new-vehicle-screen)
+            )
+        (set! (-> self vehicle-selected)
+              (the-as uint (vehicle-type-from-car-type (the-as car-type (lobby-results-awarded-vehicle))))
+              )
+        (kill-menu self #f #f)
+        (send-event (the-as base-menu (handle->process (-> *lobby-menu-manager* menu-handle-background))) 'die)
+        )
+      )
+    )
+  :exit (behavior ()
+    (set! (-> *lobby-menu-manager* override-fov) #f)
+    (let ((a0-1 (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) garage-turntable)))))
+      (send-event a0-1 'speed 1.0)
+      )
+    (lmm-make-background-menu self)
+    (if *garage-cinema*
+        (deactivate *garage-cinema*)
+        )
+    (send-event
+      (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) garage-sliding-door)))
+      'hide
+      )
+    )
+  :code (behavior ()
+    (while (not (handle->process (-> self vehicle-handle)))
+      (suspend)
+      )
+    (remove-setting! 'bg-a)
+    (set-setting! 'music 'awardcar 0.0 0)
+    (let ((gp-0 (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) garage-turntable)))))
+      (send-event gp-0 'speed 1.1)
+      (send-event gp-0 'go-down)
+      )
+    (suspend-for (seconds 1)
+      )
+    (if (= (-> self vehicle-selected) 1)
+        (talker-spawn-func (-> *talker-speech* 100) *entity-pool* (target-pos 0) (the-as region #f))
+        )
+    (send-event
+      (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) garage-sliding-door)))
+      'show
+      )
+    (let ((f30-0 camera-seek-time))
+      (set! (-> *lobby-menu-manager* override-fov) (the-as basic #t))
+      (set-lobby-camera-seek-time! 0.0000001)
+      (copy-string<-string (-> self cam-string) "camera-63")
+      (let ((gp-4 (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) garage-turntable)))))
+        (send-event gp-4 'speed 0.099)
+        (send-event gp-4 'go-up)
+        )
+      (suspend-for (seconds 1.25)
+        )
+      (suspend)
+      (copy-string<-string (-> self cam-string) "camera-64")
+      (suspend)
+      (set-lobby-camera-seek-time! 0.11)
+      (copy-string<-string (-> self cam-string) "camera-65")
+      (suspend-for (seconds 2.5)
+        )
+      (set-lobby-camera-seek-time! 0.000000001)
+      (set! (-> *lobby-menu-manager* override-fov) #f)
+      (copy-string<-string (-> self cam-string) "camera-66")
+      (suspend)
+      (when #t
+        (let ((a0-25 *garage-cinema*))
+          (if a0-25
+              (deactivate a0-25)
+              )
+          )
+        (process-spawn
+          garage-cinema
+          (new 'static 'vector :w 1.0)
+          (entity-by-name "garage-turntable-3")
+          :name "garage-cinema"
+          :to self
+          )
+        )
+      (set-lobby-camera-seek-time! f30-0)
+      )
+    (sleep-code)
+    )
+  :post (behavior ()
+    (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+      (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+      (go-virtual lobby-results-new-vehicle-screen)
+      )
+    (lobby-default-post)
+    )
+  )
+
+(define *lobby-results-new-vehicle-screen-text*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-vehicle-class-text*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-vehicle-screen*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3112)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'dynamic-string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y 2457.6 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-4034)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -2826.24 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3113)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-vehicle-class-text*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 3
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3113)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d italic ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-vehicle-screen-text*
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-lg-player-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :y 29491.2 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index 1
+        :joints (new 'static 'boxed-array :type int8 9 18 9 10 13 14 17 18)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-1456)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'index-sprite-list-menu-info
+        :menu-type 'index-sprite-list-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-2419)
+                :font-scale 0.35
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-tune-meter-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x3c
+          :3d-offset (new 'static 'vector :x 1552.384 :y -19251.2 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :box-index 1
+        :joints (new 'static 'boxed-array :type int8 6 7 8 9)
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xae :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xad :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :index-list '*engine-sprite-list*
+        :horiz-list? #t
+        :item-offset -2252
+        :color-array #f
+        )
+      (new 'static 'index-sprite-list-menu-info
+        :menu-type 'index-sprite-list-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-2420)
+                :font-scale 0.35
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-tune-meter-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x2d
+          :3d-offset (new 'static 'vector :x 1560.576 :y -27852.8 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :box-index 1
+        :joints (new 'static 'boxed-array :type int8 6 7 8 9)
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xae :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xad :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :index-list '*gearbox-sprite-list*
+        :horiz-list? #t
+        :item-offset -2252
+        :color-array #f
+        )
+      (new 'static 'index-sprite-list-menu-info
+        :menu-type 'index-sprite-list-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-2421)
+                :font-scale 0.35
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-tune-meter-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #x1e
+          :3d-offset (new 'static 'vector :x 1568.768 :y -36454.4 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :box-index 1
+        :joints (new 'static 'boxed-array :type int8 6 7 8 9)
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xae :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xad :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :index-list '*armor-sprite-list*
+        :horiz-list? #t
+        :item-offset -2252
+        :color-array #f
+        )
+      (new 'static 'index-sprite-list-menu-info
+        :menu-type 'index-sprite-list-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-2422)
+                :font-scale 0.35
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-tune-meter-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :enter-delay #xf
+          :3d-offset (new 'static 'vector :x 1576.96 :y -45056.0 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :box-index 1
+        :joints (new 'static 'boxed-array :type int8 6 7 8 9)
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info (new 'static 'boxed-array :type sprite-info
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xae :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          (new 'static 'sprite-info
+            :offset (new 'static 'vector :y -409.6 :w 1.0)
+            :pos-z #xffff00
+            :tex-name #f
+            :tex-id (new 'static 'texture-id :index #xad :page #x659)
+            :scale-x 2.0
+            :scale-y 2.0
+            :offset-from-index -1
+            :offset-dir #x2
+            :texture-index 7
+            )
+          )
+        :index-list '*turbo-sprite-list*
+        :horiz-list? #t
+        :item-offset -2252
+        :color-array #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 10 9 12 11 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate lobby-results-new-vehicle-screen (lobby-menu-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('elan-cycle)
+       (go-virtual lobby-results-new-vehicle-screen)
+       )
+      (else
+        (lobby-menu-manager-default-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (not (lobby-results-awarded-vehicle))
+      (jukebox-onoff #t)
+      (go-virtual lobby-results-new-body-parts-screen)
+      )
+    (let ((gp-0 (lobby-results-awarded-vehicle)))
+      (let ((s5-0 (vehicle-type-from-car-type (the-as car-type gp-0))))
+        (find-vehicle-info (the-as symbol s5-0))
+        (cond
+          ((= s5-0 (vehicle-type possum))
+           (talker-spawn-func (-> *talker-speech* 101) *entity-pool* (target-pos 0) (the-as region #f))
+           )
+          ((= s5-0 (vehicle-type falcon))
+           )
+          (else
+            (let ((v0-8 (rand-vu-int-count 8)))
+              (cond
+                ((zero? v0-8)
+                 (talker-spawn-func (-> *talker-speech* 170) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 1)
+                 (talker-spawn-func (-> *talker-speech* 171) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 2)
+                 (talker-spawn-func (-> *talker-speech* 172) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 3)
+                 (talker-spawn-func (-> *talker-speech* 173) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 4)
+                 (talker-spawn-func (-> *talker-speech* 174) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 5)
+                 (talker-spawn-func (-> *talker-speech* 175) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 6)
+                 (talker-spawn-func (-> *talker-speech* 176) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                ((= v0-8 7)
+                 (talker-spawn-func (-> *talker-speech* 177) *entity-pool* (target-pos 0) (the-as region #f))
+                 )
+                )
+              )
+            )
+          )
+        (let ((s4-9 (clear *temp-string*)))
+          (format s4-9 "~s" (lookup-text! *common-text* (text-id-for-vehicle-type s5-0 #t) #f))
+          (charp<-string (-> *lobby-results-new-vehicle-screen-text* 0 text) s4-9)
+          )
+        (let ((s4-10 (clear *temp-string*)))
+          (format s4-10 "~s" (lookup-text! *common-text* (text-id-class-for-vehicle-type s5-0) #f))
+          (charp<-string (-> *lobby-results-new-vehicle-class-text* 0 text) s4-10)
+          )
+        )
+      (let ((a1-16 (-> *game-info* car-info data gp-0 tuning)))
+        (lobby-menu-update-performance-globals (the-as car-type gp-0) (the-as symbol a1-16))
+        )
+      )
+    (copy-string<-string (-> self cam-string) "camera-18")
+    )
+  :exit (behavior ()
+    (if *garage-cinema*
+        (deactivate *garage-cinema*)
+        )
+    (copy-string<-string (-> self cam-string) "camera-6")
+    )
+  :code (behavior ()
+    (local-vars (v1-2 symbol))
+    (dotimes (v1-0 (+ (-> self in-focus-index) 1))
+      (when (and (handle->process (-> self menu-handles v1-0))
+                 (= (-> (the-as base-menu (handle->process (-> self menu-handles v1-0))) info-ptr)
+                    *lobby-results-new-vehicle-screen*
+                    )
+                 )
+        (set! v1-2 #t)
+        (goto cfg-20)
+        )
+      )
+    (set! v1-2 #f)
+    (label cfg-20)
+    (if v1-2
+        (goto cfg-24)
+        )
+    (kill-menu self #t #f)
+    (create-menu self *lobby-results-new-vehicle-screen* 0)
+    #t
+    (label cfg-24)
+    (remove-setting! 'bg-a)
+    (sleep-code)
+    )
+  :post (behavior ()
+    (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+      (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+      (when (kill-menu self #f #f)
+        (set! *lobby-awards-new-vehicle* (the-as int #f))
+        (lobby-awards-handle-vehicle-awarding)
+        (cond
+          ((lobby-results-awarded-vehicle)
+           (set! (-> self vehicle-selected)
+                 (the-as uint (vehicle-type-from-car-type (the-as car-type (lobby-results-awarded-vehicle))))
+                 )
+           (go-virtual lobby-results-new-vehicle-screen)
+           )
+          (else
+            (when (lobby-results-first-awarded-vehicle #f)
+              (set! (-> *game-info* player-info (-> self current-local-player) last-selected-vehicle)
+                    (the-as uint (vehicle-type-from-car-type (the-as car-type (lobby-results-first-awarded-vehicle #f))))
+                    )
+              (lobby-results-first-awarded-vehicle #t)
+              )
+            (go-virtual lobby-results-new-body-parts-screen)
+            )
+          )
+        )
+      )
+    (lobby-default-post)
+    )
+  )
+
+(define *lobby-results-new-events-levname-text*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-events-levmode-text*
+  (new 'static 'boxed-array :type strings-extra-struct (new 'static 'strings-extra-struct))
+  )
+
+(define *lobby-results-new-events-screen-back*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3898)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 10 9 12 11 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(define *lobby-results-new-events-screen-front*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height #x17ae
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -9830.4 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3897)
+                :font-scale 0.55
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-events-levname-text*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #xf400
+            :height #x1547
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -4096.0 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3897)
+                :font-scale 0.6
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'awarded-level-desc
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #xe800
+            :height #xa000
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -3276.8 :y -15564.8 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3897)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-adv-event-panel"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children #f
+        :name-symbol #f
+        :3d-menu-type "skel-map-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 6)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height #x1547
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -409.6 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3897)
+                :font-scale 0.55
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-events-levname-text*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -5734.4 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-4250)
+                :font-scale 0.45
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-side-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate lobby-results-new-events-screen (lobby-menu-manager)
+  :virtual #t
+  :event lobby-menu-manager-default-handler
+  :enter (behavior ()
+    (lobby-awards-handle-event-awarding)
+    (if (not (lobby-results-awarded-event))
+        (go-virtual lobby-results-new-qualifier-screen)
+        )
+    )
+  :exit (behavior ()
+    0
+    )
+  :code (behavior ()
+    (remove-setting! 'bg-a)
+    (create-menu self *lobby-results-new-events-screen-back* 0)
+    (let ((gp-0 (lobby-results-awarded-event)))
+      (let ((s5-0 (-> *task-level-info* (-> *game-info* play-list (-> gp-0 task) task-level) text-id)))
+        (-> *net-play-mode-text-ids* (-> gp-0 net-play-mode))
+        (let ((s4-0 (clear *temp-string*)))
+          (format s4-0 "~s" (lookup-text! *common-text* s5-0 #f))
+          (charp<-string (-> *lobby-results-new-events-levname-text* 0 text) s4-0)
+          )
+        )
+      (format
+        (clear *map-texture-string*)
+        "~s-map"
+        (-> *task-level-info* (-> *game-info* play-list (-> gp-0 task) task-level) tex-name)
+        )
+      (kill-by-type fmv-player *active-pool*)
+      (if (-> gp-0 ipu)
+          (fmv-player-run-texture (-> gp-0 ipu) *default-pool*)
+          )
+      (create-menu self *lobby-results-new-events-screen-front* 0)
+      (let ((v1-33 (find-menu self 'awarded-level-desc)))
+        (set! (-> (the-as string-menu-info (-> v1-33 info-ptr)) strings-info 0 id)
+              (-> *task-level-info* (-> *game-info* play-list (-> gp-0 task) task-level) venue-text-id)
+              )
+        )
+      )
+    (suspend)
+    (lobby-speech-gtb-new-venue)
+    (until #f
+      (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+        (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+        (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+        (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> self voice-id)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        (if (kill-menu self #f #f)
+            (goto cfg-8)
+            )
+        )
+      (suspend)
+      )
+    #f
+    (label cfg-8)
+    (suspend-for (seconds 0.5)
+      )
+    (kill-menu self #t #f)
+    (go-virtual lobby-results-new-events-screen)
+    )
+  :post lobby-default-post
+  )
+
+(define *lobby-results-new-qualifier-screen*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3392)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'qualifier-cup-name
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #xf000
+            :height #x1666
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -4096.0 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3392)
+                :font-scale 0.6
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #x9800
+            :height #x1051
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -21504.0 :y -10649.6 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-events-levname-text*
+            )
+          (new 'static 'sprite-ptr-menu-info
+            :menu-type 'sprite-ptr-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info (new 'static 'boxed-array :type sprite-ptr-info
+              (new 'static 'sprite-ptr-info
+                :offset (new 'static 'vector :x -5324.8 :y -7782.4 :w 1.0)
+                :pos-z #xffff00
+                :tex-name #f
+                :scale-x 2.0
+                :scale-y 2.0
+                :offset-from-index -1
+                :offset-dir #x2
+                :texture-index 7
+                :sprite-ptr '*icon-texture-string*
+                )
+              )
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #x9800
+            :height #x1051
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -21504.0 :y -15155.2 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d italic ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*lobby-results-new-events-levmode-text*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'awarded-level-desc
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #xd999
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -5324.8 :y -21299.2 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-adv-event-panel"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children #f
+        :name-symbol #f
+        :3d-menu-type "skel-map-screen"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 6)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'sprite-ptr-menu-info
+            :menu-type 'sprite-ptr-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info (new 'static 'boxed-array :type sprite-ptr-info
+              (new 'static 'sprite-ptr-info
+                :offset (new 'static 'vector :x -24576.0 :y -10240.0 :w 1.0)
+                :pos-z #xffff00
+                :tex-name #f
+                :scale-x 2.0
+                :scale-y 2.0
+                :flags (hud-sprite-flags center)
+                :offset-from-index -1
+                :offset-dir #x2
+                :texture-index 7
+                :sprite-ptr '*map-texture-string*
+                )
+              )
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-side-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 10 9 12 11 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate lobby-results-new-qualifier-screen (lobby-menu-manager)
+  :virtual #t
+  :event lobby-menu-manager-default-handler
+  :enter (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (remove-setting! 'bg-a)
+    (let ((gp-0 (lobby-awards-test-qualifier)))
+      (cond
+        ((not gp-0)
+         (load-state-method-25 *load-state* #f)
+         (cond
+           (*lobby-results-no-adventure-mode*
+             (remove-setting! 'bg-a)
+             (kill-menu self #t #f)
+             (create-menu self *base-menu-info* 0)
+             (go-virtual game-type-menu)
+             )
+           (else
+             (remove-setting! 'bg-a)
+             (set! *adv-coming-back-from-game* #t)
+             (go-virtual adventure-save)
+             )
+           )
+         )
+        (else
+          (set-task-node *net-world* (get-new-qualifier))
+          (create-menu self *lobby-results-new-qualifier-screen* 0)
+          (let ((s4-1 (-> *task-level-info* (-> *game-info* play-list (-> gp-0 task) task-level) text-id))
+                (s5-1 (-> *net-play-mode-text-ids* (-> gp-0 net-play-mode)))
+                )
+            (let ((s3-0 (clear *temp-string*)))
+              (format s3-0 "~s" (lookup-text! *common-text* s4-1 #f))
+              (charp<-string (-> *lobby-results-new-events-levname-text* 0 text) s3-0)
+              )
+            (let ((s4-2 (clear *temp-string*)))
+              (format s4-2 "~s" (lookup-text! *common-text* s5-1 #f))
+              (charp<-string (-> *lobby-results-new-events-levmode-text* 0 text) s4-2)
+              )
+            )
+          (format (clear *icon-texture-string*) "~s" (-> *net-play-mode-icon-string* (-> gp-0 net-play-mode)))
+          (format
+            (clear *map-texture-string*)
+            "~s-map"
+            (-> *task-level-info* (-> *game-info* play-list (-> gp-0 task) task-level) tex-name)
+            )
+          (kill-by-type fmv-player *active-pool*)
+          (if (-> gp-0 ipu)
+              (fmv-player-run-texture (-> gp-0 ipu) *default-pool*)
+              )
+          (set-action!
+            *gui-control*
+            (gui-action stop)
+            (the-as sound-id 1)
+            (gui-channel citizen)
+            (gui-action none)
+            (the-as string #f)
+            (the-as (function gui-connection symbol) #f)
+            (the-as process #f)
+            )
+          (when (-> gp-0 task-sound-description)
+            (remove-setting! 'music-volume)
+            (add-setting! 'music-volume 'rel 0.25 0)
+            (set! (-> *lobby-menu-manager* voice-id)
+                  (add-process
+                    *gui-control*
+                    *lobby-menu-manager*
+                    (gui-channel citizen)
+                    (gui-action play)
+                    (-> gp-0 task-sound-description)
+                    -99.0
+                    0
+                    )
+                  )
+            (sound-params-set!
+              *gui-control*
+              (-> *lobby-menu-manager* voice-id)
+              #f
+              -1.0
+              -1.0
+              1.0
+              (-> *setting-control* user-current talker-volume)
+              #t
+              )
+            )
+          (if (not (handle->process (-> self vehicle-handle)))
+              (set! (-> self vehicle-selected)
+                    (-> *game-info* player-info (-> self current-local-player) last-selected-vehicle)
+                    )
+              )
+          (set! *lobby-adv-selected-task* 0)
+          (set! (-> *adventure-task-info-array* *lobby-adv-selected-task* extra-int) 1)
+          (let ((v1-79 (the-as string-menu (find-menu self 'awarded-level-desc)))
+                (a0-44 (-> gp-0 task))
+                )
+            (set! (-> v1-79 info-ptr strings-info 0 id) (cond
+                                                          ((= a0-44 (game-task drome-race))
+                                                           (text-id text-id-3847)
+                                                           )
+                                                          ((= a0-44 (game-task kras-race))
+                                                           (text-id text-id-3846)
+                                                           )
+                                                          ((= a0-44 (game-task atoll-artifact))
+                                                           (text-id text-id-3845)
+                                                           )
+                                                          ((= a0-44 (game-task iceberg-race))
+                                                           (text-id text-id-3844)
+                                                           )
+                                                          ((= a0-44 (game-task kras-timebox))
+                                                           (text-id text-id-3843)
+                                                           )
+                                                          ((= a0-44 (game-task icepass-race))
+                                                           (text-id text-id-3879)
+                                                           )
+                                                          ((= a0-44 (game-task canyon-deathrace))
+                                                           (text-id text-id-3880)
+                                                           )
+                                                          ((= a0-44 (game-task snobowl-artifact))
+                                                           (text-id text-id-3881)
+                                                           )
+                                                          (else
+                                                            (the-as text-id (the-as int #f))
+                                                            )
+                                                          )
+                  )
+            )
+          (let ((v1-84 (the-as string-menu (find-menu self 'qualifier-cup-name)))
+                (a0-47 (-> gp-0 task))
+                )
+            (set! (-> v1-84 info-ptr strings-info 0 id)
+                  (cond
+                    ((or (= a0-47 (game-task kras-race)) (= a0-47 (game-task drome-race)))
+                     (text-id text-id-3895)
+                     )
+                    ((or (= a0-47 (game-task atoll-artifact)) (= a0-47 (game-task iceberg-race)))
+                     (text-id text-id-3896)
+                     )
+                    ((or (= a0-47 (game-task kras-timebox)) (= a0-47 (game-task icepass-race)))
+                     (text-id text-id-3893)
+                     )
+                    ((or (= a0-47 (game-task canyon-deathrace)) (= a0-47 (game-task snobowl-artifact)))
+                     (text-id text-id-3894)
+                     )
+                    (else
+                      (the-as text-id (the-as int #f))
+                      )
+                    )
+                  )
+            )
+          (until #f
+            (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+              (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+              (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+              (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+              (if (kill-menu self #f #f)
+                  (goto cfg-60)
+                  )
+              )
+            (suspend)
+            )
+          #f
+          (label cfg-60)
+          (suspend-for (seconds 0.5)
+            )
+          (kill-menu self #t #f)
+          )
+        )
+      )
+    (set! *adv-coming-back-from-game* #t)
+    (if (-> *setting-control* user-current auto-save)
+        (auto-save-command 'auto-save 0 *profile-slot* self #f #f)
+        )
+    (go-virtual adventure-vehicle-select)
+    )
+  :post lobby-default-post
+  )
+
+(define *lobby-results-new-driver-screen*
+  (new 'static 'base-menu-info
+    :menu-type 'base-menu
+    :children (new 'static 'boxed-array :type base-menu-info
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children #f
+        :name-symbol 'menu-banner
+        :3d-menu-type "skel-top-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info
+          (new 'static 'string-info
+            :offset (new 'static 'vector :z -1.0 :w 1.0)
+            :pos-z #xffff010
+            :id (text-id text-id-3292)
+            :font-scale 0.6
+            :width -1.0
+            :height -1.0
+            :string-ptr #f
+            :string-ptr-needs-format #t
+            :font-flags (hud-string-flag shadow kerning middle-vert right large draw-3d ff12)
+            :font-color (font-color font-color-53)
+            :font-color-2 (font-color red)
+            :font-color-3 (font-color green)
+            :offset-dir #x2
+            :offset-from-index -1
+            :is-player-string #f
+            :extra-arg #f
+            )
+          )
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :box-index 2
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-1933)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle middle-vert large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-bottom-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 10 9 12 11 14)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -3727.36 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3293)
+                :font-scale 0.5
+                :width -1.0
+                :height 6144.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-53)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'awarded-driver-name
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -10158.08 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'awarded-driver-flavor
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width #xd800
+            :height #xa000
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -5324.8 :y -16384.0 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning large draw-3d ff12)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-adv-event-panel"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info #f
+        :text-ids #f
+        )
+      (new 'static 'base-menu-info
+        :menu-type 'base-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol 'driver-name
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 8192.0 :y -1228.8 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3416)
+                :font-scale 0.6
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow middle large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2457.6 :y -6963.2 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3416)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2457.6 :y -10240.0 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3417)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2457.6 :y -13516.8 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3418)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2457.6 :y -16793.6 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3419)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x -2457.6 :y -20070.4 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3420)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow large draw-3d ff12 ff13)
+                :font-color (font-color fc64)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-name*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 20480.0 :y -6963.2 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3416)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow right large draw-3d ff12 ff13)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-sex*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 20480.0 :y -10240.0 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3417)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow right large draw-3d ff12 ff13)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-height*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 20480.0 :y -13516.8 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3418)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow right large draw-3d ff12 ff13)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-weight*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 20480.0 :y -16793.6 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3419)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow right large draw-3d ff12 ff13)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-eyes*
+            )
+          (new 'static 'string-menu-info
+            :menu-type 'dynamic-driver-info
+            :children #f
+            :name-symbol #f
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :x 20480.0 :y -20070.4 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3420)
+                :font-scale 0.42
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow right large draw-3d ff12 ff13)
+                :font-color (font-color font-color-52)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids '*driver-age*
+            )
+          )
+        :name-symbol #f
+        :3d-menu-type "skel-character-select"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 4
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :box-index -1
+        :joints (new 'static 'boxed-array :type int8 7 8 9 10)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        )
+      (new 'static 'string-menu-info
+        :menu-type 'string-menu
+        :children (new 'static 'boxed-array :type base-menu-info
+          (new 'static 'string-menu-info
+            :menu-type 'string-menu
+            :children #f
+            :name-symbol 'awarded-driver-name-other
+            :3d-menu-type #f
+            :trans-info #f
+            :joint-index -1
+            :joint-index-2 -1
+            :joints #f
+            :width -1
+            :height -1
+            :scale-y 1.0
+            :scale-x 1.0
+            :sprites-info #f
+            :strings-info (new 'static 'boxed-array :type string-info
+              (new 'static 'string-info
+                :offset (new 'static 'vector :y -1638.4 :z -1.0 :w 1.0)
+                :pos-z #xffff010
+                :id (text-id text-id-3143)
+                :font-scale 0.5
+                :width -1.0
+                :height -1.0
+                :string-ptr #f
+                :string-ptr-needs-format #t
+                :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                :font-color (font-color font-color-60)
+                :font-color-2 (font-color red)
+                :font-color-3 (font-color green)
+                :offset-dir #x2
+                :offset-from-index -1
+                :is-player-string #f
+                :extra-arg #f
+                )
+              )
+            :text-ids #f
+            )
+          )
+        :name-symbol 'awarded-driver-sidebar
+        :3d-menu-type "skel-side-bar"
+        :trans-info (new 'static 'transition-info
+          :enter-anim 3
+          :exit-anim 5
+          :running-anim -1
+          :anim-speed 5.0
+          :3d-offset (new 'static 'vector :y -3358.72 :w 1.0)
+          :enter-alpha 1.0
+          :running-alpha 1.0
+          :exit-alpha 1.0
+          :move-rate 100.0
+          )
+        :joint-index -1
+        :joint-index-2 -1
+        :joints (new 'static 'boxed-array :type int8 7 8)
+        :width -1
+        :height -1
+        :scale-y 1.0
+        :scale-x 1.0
+        :sprites-info #f
+        :strings-info (new 'static 'boxed-array :type string-info (new 'static 'string-info
+                                                      :offset (new 'static 'vector :x -819.2 :y -6635.52 :z -1.0 :w 1.0)
+                                                      :pos-z #xffff010
+                                                      :id (text-id text-id-3296)
+                                                      :font-scale 0.5
+                                                      :width -1.0
+                                                      :height -1.0
+                                                      :string-ptr #f
+                                                      :string-ptr-needs-format #t
+                                                      :font-flags (hud-string-flag shadow kerning middle large draw-3d ff12)
+                                                      :font-color (font-color font-color-52)
+                                                      :font-color-2 (font-color red)
+                                                      :font-color-3 (font-color green)
+                                                      :offset-dir #x2
+                                                      :offset-from-index -1
+                                                      :is-player-string #f
+                                                      :extra-arg #f
+                                                      )
+                                                    )
+        :text-ids #f
+        )
+      )
+    :name-symbol #f
+    :3d-menu-type #f
+    :trans-info #f
+    :joint-index -1
+    :joint-index-2 -1
+    :box-index -1
+    :joints #f
+    :width -1
+    :height -1
+    :scale-y 1.0
+    :scale-x 1.0
+    )
+  )
+
+(defstate lobby-results-new-driver-screen (lobby-menu-manager)
+  :virtual #t
+  :event lobby-menu-manager-default-handler
+  :enter (behavior ()
+    (lobby-awards-handle-driver-awarding)
+    (let ((v1-0 *lobby-awards-new-driver*))
+      (cond
+        ((= v1-0 (driver-type none))
+         (go-virtual lobby-results-new-events-screen)
+         )
+        ((< (the-as uint 23) (the-as uint v1-0))
+         (go-virtual lobby-results-new-events-screen)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (remove-setting! 'bg-a)
+    (create-menu self *lobby-results-new-driver-screen* 0)
+    (let ((gp-0 *lobby-awards-new-driver*))
+      (let* ((s5-0 (get-net-driver-idx-by-type gp-0))
+             (s4-0 (-> *net-drivers* s5-0))
+             )
+        (let ((s1-0 (the-as string-menu (find-menu self 'awarded-driver-name)))
+              (s2-0 (the-as string-menu (find-menu self 'awarded-driver-name-other)))
+              (s3-0 (the-as string-menu (find-menu self 'awarded-driver-flavor)))
+              )
+          (set! (-> s1-0 info-ptr strings-info 0 id) (-> s4-0 id))
+          (set! (-> s2-0 info-ptr strings-info 0 id) (-> s4-0 id))
+          (set! (-> s3-0 info-ptr strings-info 0 id) (get-driver-flavor-text gp-0))
+          )
+        (set-driver-license-info s5-0)
+        (format (clear *icon-texture-string*) (-> s4-0 tex-name))
+        (format #t "icon texture string: ~s~%" *icon-texture-string*)
+        (fmv-player-run-texture (-> s4-0 tex-name) *default-pool*)
+        )
+      (suspend-for (seconds 1)
+        )
+      (cond
+        ((= gp-0 (driver-type d-razer))
+         (talker-spawn-func (-> *talker-speech* 218) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-klever))
+         (talker-spawn-func (-> *talker-speech* 219) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-kiera))
+         (talker-spawn-func (-> *talker-speech* 220) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-taryn))
+         (talker-spawn-func (-> *talker-speech* 221) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-sig))
+         (talker-spawn-func (-> *talker-speech* 222) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-ur-86))
+         (talker-spawn-func (-> *talker-speech* 223) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-kaeden))
+         (talker-spawn-func (-> *talker-speech* 224) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-rayn))
+         (talker-spawn-func (-> *talker-speech* 225) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-ratchet))
+         (talker-spawn-func (-> *talker-speech* 226) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-jakb))
+         (talker-spawn-func (-> *talker-speech* 227) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-jakc))
+         (talker-spawn-func (-> *talker-speech* 228) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-daxter))
+         (talker-spawn-func (-> *talker-speech* 229) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-gtblitz))
+         (talker-spawn-func (-> *talker-speech* 230) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-pecker))
+         (talker-spawn-func (-> *talker-speech* 231) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-ximon))
+         (talker-spawn-func (-> *talker-speech* 232) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= gp-0 (driver-type d-osmo))
+         (talker-spawn-func (-> *talker-speech* 233) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        )
+      )
+    (sleep-code)
+    )
+  :post (behavior ()
+    (when (cpad-or-kbd-pressed-var? (the-as uint 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+      (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+      (cpad-or-kbd-clear-func! (the-as uint 0) (pad-buttons x))
+      (when (kill-menu self #f #f)
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> self voice-id)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        (go-virtual lobby-results-new-driver-screen)
+        )
+      )
+    (lobby-default-post)
+    )
+  )
+
+(defstate lobby-results-movie (lobby-menu-manager)
+  :virtual #t
+  :event lobby-menu-manager-default-handler
+  :code (behavior ()
+    (let* ((gp-0 (-> *game-info* game-movie length))
+           (s5-0 0)
+           (s4-0 (-> *game-info* game-movie s5-0))
+           )
+      (while (< s5-0 gp-0)
+        (when (and (>= (get-task-cup-score (the-as int (-> s4-0 cup))) (the-as int (-> s4-0 score)))
+                   (not (logtest? (-> s4-0 flags) 1))
+                   )
+          (logior! (-> s4-0 flags) 1)
+          (jukebox-onoff #f)
+          (level-get *level* 'fmvlev)
+          (let ((f0-1 (* 128.0 (-> *setting-control* user-current bg-a)))
+                (s3-0 (new-stack-vector0))
+                )
+            (set! (-> s3-0 w) f0-1)
+            (lobby-level-set! 1 'fmvlev #f)
+            (setup
+              *screen-filter*
+              s3-0
+              (new 'static 'vector :w 128.0)
+              (* 2.0 (seconds-per-frame))
+              (bucket-id debug)
+              #x3fffff
+              #x33001
+              (the-as symbol 0)
+              )
+            )
+          (until (= (-> *screen-filter* color w) 128.0)
+            (suspend)
+            )
+          (until #f
+            (let ((v1-23 (level-get *level* 'fmvlev)))
+              (if (and v1-23 (= (-> v1-23 status) 'loaded))
+                  (goto cfg-15)
+                  )
+              )
+            (suspend)
+            )
+          #f
+          (label cfg-15)
+          (fmv-player-run (the-as string (-> s4-0 name)) *target-pool* #f)
+          (while *fmv-player*
+            (suspend)
+            )
+          (suspend-for (seconds 1)
+            )
+          (dma-release 'fmv-player)
+          (until #f
+            (let ((v1-37 (new 'stack-no-clear 'array 'int32 2)))
+              (when (dma-try-alloc #x80040 #x80040 'fmv-player 0 (&-> v1-37 0) (&-> v1-37 1) #f)
+                (suspend)
+                (suspend)
+                (goto cfg-25)
+                )
+              )
+            (suspend)
+            0
+            )
+          #f
+          (label cfg-25)
+          (disable *screen-filter*)
+          (suspend)
+          0
+          )
+        (+! s5-0 1)
+        (set! s4-0 (-> *game-info* game-movie s5-0))
+        )
+      )
+    (lobby-level-set! 1 'menumap #f)
+    (go-virtual lobby-results-new-vehicle-animation)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )

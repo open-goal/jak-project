@@ -5,6 +5,89 @@
 ;; name in dgo: scert-6-h
 ;; dgos: ENGINE, GAME
 
+;; +++medius-world-attributes-type
+(defenum medius-world-attributes-type
+  :type int32
+  (game-world-none 0)
+  (game-world-allow-rebroadcast 1)
+  (game-world-allow-spectator 2)
+  (game-world-internal 4)
+  (game-world-extra #xffffff)
+  )
+;; ---medius-world-attributes-type
+
+;; +++medius-dnas-type
+(defenum medius-dnas-type
+  :type int32
+  (dnas-console-id 0)
+  (dnas-title-id 1)
+  (dnas-disk-id 2)
+  (extra-medius-dnas-type #xffffff)
+  )
+;; ---medius-dnas-type
+
+;; +++medius-player-search-type
+(defenum medius-player-search-type
+  :type int32
+  (player-account-id 0)
+  (player-account-name 1)
+  (extra-medius-player-search-type #xffffff)
+  )
+;; ---medius-player-search-type
+
+;; +++medius-find-world-type
+(defenum medius-find-world-type
+  :type int32
+  (find-game-world 0)
+  (find-lobby-world 1)
+  (find-all-worlds 2)
+  (extra-medius-find-world-type #xffffff)
+  )
+;; ---medius-find-world-type
+
+;; +++medius-world-status
+(defenum medius-world-status
+  :type int32
+  (world-inactive 0)
+  (world-staging 1)
+  (world-active 2)
+  (world-closed 3)
+  (world-pending-creation 4)
+  (world-pending-connect-to-game 5)
+  (extra-medius-world-status #xffffff)
+  )
+;; ---medius-world-status
+
+;; +++medius-connection-type
+(defenum medius-connection-type
+  :type int32
+  (modem 0)
+  (ethernet 1)
+  (wireless 2)
+  (extra-medius-connection-type #xffffff)
+  )
+;; ---medius-connection-type
+
+;; +++medius-clan-message-status
+(defenum medius-clan-message-status
+  :type int32
+  (clan-message-unread 0)
+  (clan-message-modified 1)
+  (clan-message-deleted 2)
+  (clan-message-read 3)
+  (extra-medius-clan-message-status #xffffff)
+  )
+;; ---medius-clan-message-status
+
+;; +++medius-clan-status
+(defenum medius-clan-status
+  :type int32
+  (clan-disbanded -1)
+  (clan-active 0)
+  (extra-medius-clan-status #xffffff)
+  )
+;; ---medius-clan-status
+
 ;; DECOMP BEGINS
 
 (deftype medius-create-game-request0 (structure)
@@ -21,7 +104,7 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (game-host-type      int32)
+   (game-host-type      medius-game-host-type)
    )
   )
 
@@ -41,8 +124,8 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (game-host-type      int32)
-   (attributes          int32)
+   (game-host-type      medius-game-host-type)
+   (attributes          medius-world-attributes-type)
    )
   )
 
@@ -88,7 +171,7 @@
 (deftype medius-dnas-signature-post (structure)
   ((message-id             uint8  21)
    (session-key            uint8  17)
-   (dnas-signature-type    int32)
+   (dnas-signature-type    medius-dnas-type)
    (dnas-signature-length  int8)
    (dnas-signature         uint8  32)
    )
@@ -115,7 +198,7 @@
 (deftype medius-find-player-request (structure)
   ((message-id   uint8  21)
    (session-key  uint8  17)
-   (search-type  int32)
+   (search-type  medius-player-search-type)
    (id           int32)
    (name         uint8  32)
    )
@@ -127,7 +210,7 @@
    (status-code       medius-status-code)
    (application-id    int32)
    (application-name  uint8  32)
-   (application-type  int32)
+   (application-type  medius-application-type)
    (medius-world-id   int32)
    (account-id        int32)
    (account-name      uint8  32)
@@ -140,7 +223,7 @@
   ((message-id   uint8  21)
    (session-key  uint8  17)
    (name         uint8  64)
-   (world-type   int32)
+   (world-type   medius-find-world-type)
    )
   )
 
@@ -150,10 +233,10 @@
    (status-code       medius-status-code)
    (application-id    int32)
    (application-name  uint8  32)
-   (application-type  int32)
+   (application-type  medius-application-type)
    (medius-world-id   int32)
    (world-name        uint8  64)
-   (world-status      int32)
+   (world-status      medius-world-status)
    (end-of-list       int8)
    )
   )
@@ -182,8 +265,8 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (world-status        int32)
-   (game-host-type      int32)
+   (world-status        medius-world-status)
+   (game-host-type      medius-game-host-type)
    )
   )
 
@@ -209,9 +292,9 @@
    (generic-field1      int32)
    (generic-field2      int32)
    (generic-field3      int32)
-   (security-level      int32)
-   (world-status        int32)
-   (game-host-type      int32)
+   (security-level      medius-world-security-level-type)
+   (world-status        medius-world-status)
+   (game-host-type      medius-game-host-type)
    (game-name           uint8  64)
    (game-stats          uint8  256)
    (end-of-list         int8)
@@ -234,8 +317,8 @@
    (status-code      medius-status-code)
    (medius-world-id  int32)
    (game-name        uint8  64)
-   (world-status     int32)
-   (game-host-type   int32)
+   (world-status     medius-world-status)
+   (game-host-type   medius-game-host-type)
    (player-count     int32)
    (end-of-list      int8)
    )
@@ -256,7 +339,7 @@
    (account-id        int32)
    (account-name      uint8  32)
    (stats             uint8  256)
-   (connection-class  int32)
+   (connection-class  medius-connection-type)
    (end-of-list       int8)
    )
   :allow-misaligned
@@ -285,7 +368,7 @@
    (status-code      medius-status-code)
    (clan-message-id  int32)
    (message          uint8  200)
-   (status           int32)
+   (status           medius-clan-message-status)
    (end-of-list      int8)
    )
   )
@@ -320,7 +403,7 @@
    (status-code   medius-status-code)
    (account-id    int32)
    (account-name  uint8  32)
-   (add-type      int32)
+   (add-type      medius-add-type)
    (end-of-list   int8)
    )
   )
@@ -355,7 +438,7 @@
    (status-code    medius-status-code)
    (account-id     int32)
    (account-name   uint8  32)
-   (player-status  int32)
+   (player-status  medius-player-status)
    (end-of-list    int8)
    )
   )
@@ -373,7 +456,7 @@
    (status-code          medius-status-code)
    (ignore-account-id    int32)
    (ignore-account-name  uint8  32)
-   (player-status        int32)
+   (player-status        medius-player-status)
    (end-of-list          int8)
    )
   )
@@ -390,13 +473,13 @@
 
 (deftype medius-get-clan-by-idresponse (structure)
   ((message-id           uint8  21)
-   (status-code          int32)
+   (status-code          medius-status-code)
    (application-id       int32)
    (clan-name            uint8  32)
    (leader-account-id    int32)
    (leader-account-name  uint8  32)
    (stats                uint8  256)
-   (status               int32)
+   (status               medius-clan-status)
    )
   )
 
@@ -417,7 +500,7 @@
    (leader-account-id    int32)
    (leader-account-name  uint8  32)
    (stats                uint8  256)
-   (status               int32)
+   (status               medius-clan-status)
    )
   )
 
@@ -437,7 +520,7 @@
    (account-id       int32)
    (account-name     uint8  32)
    (response-msg     uint8  200)
-   (response-status  int32)
+   (response-status  medius-clan-invitations-response-status)
    (response-time    int32)
    (end-of-list      int8)
    )
@@ -448,7 +531,7 @@
   ((message-id         uint8  21)
    (clan-id            int32)
    (ladder-stat-index  int32)
-   (sort-order         int32)
+   (sort-order         medius-sort-order)
    )
   )
 

@@ -98,6 +98,13 @@ Config make_config_via_json(nlohmann::json& json) {
     config.part_group_table = serialized;
   }
 
+  if (json.contains("sound_info_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({json.at("sound_info_dump_file").get<std::string>()}));
+    std::vector<std::string> serialized = parse_commented_json(json_data, "sound_info_dump_file");
+    config.sound_info_names = serialized;
+  }
+
   if (json.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
   }
@@ -128,6 +135,9 @@ Config make_config_via_json(nlohmann::json& json) {
   config.dump_joint_geo_info = json.at("dump_joint_geo_info").get<bool>();
   config.dump_tex_info = json.at("dump_tex_info").get<bool>();
   config.dump_part_group_table = json.at("dump_part_group_table").get<bool>();
+  if (json.contains("dump_sound_info")) {
+    config.dump_sound_info = json.at("dump_sound_info").get<bool>();
+  }
   config.hexdump_code = json.at("hexdump_code").get<bool>();
   config.hexdump_data = json.at("hexdump_data").get<bool>();
   config.find_functions = json.at("find_functions").get<bool>();

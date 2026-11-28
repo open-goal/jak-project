@@ -5,8 +5,11 @@
 ;; name in dgo: net-powerup-h
 ;; dgos: ENGINE, GAME
 
-(define *powerup-static-hash* (the-as spatial-hash #f))
-(define *powerup-dynamic-hash* (the-as spatial-hash #f))
+(declare-type net-powerup process-nettable)
+(declare-type eco-green eco)
+
+(define-extern powerup-build-static-hash (function object))
+(define-extern powerup-build-dynamic-hash (function object))
 
 ;; DECOMP BEGINS
 
@@ -15,26 +18,26 @@
 (define *powerup-dynamic-hash* (new 'global 'spatial-hash 4096 64))
 
 (deftype net-powerup-motion-info (basic)
-  ((motion-hook      basic)
+  ((motion-hook      (function net-powerup-motion-info net-powerup object))
    (flight-end-time  int32)
    (vel              vector  :inline)
    (rest-pos         vector  :inline)
    )
   (:methods
-    (net-powerup-motion-info-method-9 () none)
-    (net-powerup-motion-info-method-10 () none)
-    (net-powerup-motion-info-method-11 () none)
-    (net-powerup-motion-info-method-12 () none)
+    (setup-parabola! (_type_ vector vector time-frame) none)
+    (eval-position (_type_ int vector) none)
+    (write-to-buffer (_type_ mem-buffer) none)
+    (read-from-buffer (_type_ mem-buffer) none)
     )
   )
 
 
 (deftype net-powerup-spawn-params (structure)
-  ((tp             basic)
+  ((tp             type)
    (pos            vector  :inline)
    (lifetime       int32)
    (initial-owner  int8)
-   (motion-info    basic)
+   (motion-info    net-powerup-motion-info)
    )
   )
 
@@ -47,42 +50,42 @@
    (ignore-frames        int8)
    (hash-id              int16)
    (pos                  vector  :inline)
-   (motion-info          basic)
+   (motion-info          net-powerup-motion-info)
    )
   (:state-methods
-    net-powerup-s1
-    net-powerup-s2
+    idle
+    wait-respawn
+    die
     )
   (:methods
-    (net-powerup-method-44 () none)
-    (net-powerup-method-45 () none)
-    (net-powerup-method-46 (_type_ object object) none)
-    (net-powerup-method-47 (_type_) none)
-    (net-powerup-method-48 (_type_) none)
-    (net-powerup-method-49 (_type_) none)
-    (net-powerup-method-50 (_type_) none)
-    (net-powerup-method-51 (_type_) none)
-    (net-powerup-method-52 (_type_ process) none)
-    (net-powerup-method-53 (_type_) none)
-    (net-powerup-method-54 (_type_) none)
-    (net-powerup-method-55 () none)
+    (init! (_type_ net-powerup-spawn-params) none)
+    (spawn-draw-proc (_type_ vector entity) none)
+    (kill-draw-proc (_type_) none)
+    (on-touched (_type_ process) none)
+    (get-pos! (_type_ vector) none)
+    (get-collision-sphere (_type_ vector entity-actor) none)
+    (visible? (_type_) symbol)
+    (do-pickup (_type_ process) none)
+    (can-pick-up? (_type_) symbol)
+    (on-pickup (_type_) none)
+    (get-respawn-time (_type_ time-frame) time-frame)
     )
   )
 
 
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-powerup-init-remote net-powerup ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
-  (none)
   )
 
-(defmethod process-nettable-method-41 ((this net-powerup) (arg0 mem-buffer))
+(defmethod spawn-remote ((this net-powerup) (arg0 mem-buffer))
   (ppointer->process (process-spawn net-powerup :init net-powerup-init-remote arg0 :name "net-powerup"))
   )
 
-(defmethod process-nettable-method-37 ((this net-powerup) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this net-powerup) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'picked-up)
   (+! (-> arg0 msg-count) 1)
   0
@@ -101,41 +104,39 @@
 
 (net-process-class-register *net-process-class-info-net-powerup*)
 
-(defmethod process-nettable-method-40 ((this net-powerup))
+(defmethod get-class-info ((this net-powerup))
   *net-process-class-info-net-powerup*
   )
 
 (deftype powerup-draw (process-drawable)
   ((parent-proc  handle)
-   (glow-sound   basic)
+   (glow-sound   ambient-sound)
    (part-time    int32)
    )
   (:state-methods
     idle
+    die
     )
   (:methods
-    (powerup-draw-method-51 () none)
-    (powerup-draw-method-52 (_type_ float) none)
-    (powerup-draw-method-53 (_type_ object vector) none)
-    (powerup-draw-method-54 (_type_ process-drawable) none)
-    (powerup-draw-method-55 (_type_) none)
-    (powerup-draw-method-56 (_type_) none)
+    (init-root! (_type_ float) none)
+    (init! (_type_ net-powerup vector) none)
+    (spawn-pickup-effect (_type_ process-drawable) none)
+    (update-draw (_type_) none)
+    (set-pos! (_type_ vector) none)
     )
   )
 
 
-;; WARN: Return type mismatch object vs none.
-(defbehavior powerup-draw-init-by-other powerup-draw ((arg0 process) (arg1 vector) (arg2 process))
+(defbehavior powerup-draw-init-by-other powerup-draw ((arg0 process) (arg1 vector) (arg2 entity))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (if arg2
-        (set! (-> self level) (the-as level (-> arg2 brother 4)))
+        (set! (-> self level) (-> arg2 extra level))
         (art-group-get-by-name *level* (-> arg0 name) (&-> self level))
         )
     (set! (-> s5-0 quad) (-> arg1 quad))
     (set! (-> self parent-proc) (process->handle arg0))
     (stack-size-set! (-> self main-thread) 32)
-    (powerup-draw-method-53 self arg0 s5-0)
+    (init! self (the-as net-powerup arg0) s5-0)
     )
   (go-virtual idle)
-  (none)
   )

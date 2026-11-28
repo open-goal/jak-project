@@ -21,6 +21,7 @@
 #include "decompiler/analysis/find_defpartgroup.h"
 #include "decompiler/analysis/find_defstates.h"
 #include "decompiler/analysis/find_skelgroups.h"
+#include "decompiler/analysis/find_sound_info.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/label_types.h"
@@ -48,7 +49,7 @@ void ObjectFileDB::process_object_file_data(
   ir2_setup_labels(config, data);
   ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
   if (data.linked_data.functions_by_seg.size() == 3) {
-    enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
+    enum { DEFPART, DEFSTATE, DEFSKELGROUP, SOUND_INFO } step = DEFPART;
     try {
       run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(),
                        config.part_group_table);
@@ -56,6 +57,9 @@ void ObjectFileDB::process_object_file_data(
       run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
       step = DEFSKELGROUP;
       run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+      step = SOUND_INFO;
+      run_sound_info(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(),
+                     config.sound_info_names);
 
     } catch (const std::exception& e) {
       switch (step) {
@@ -67,6 +71,9 @@ void ObjectFileDB::process_object_file_data(
           break;
         case DEFSKELGROUP:
           lg::error("Failed to find defskelgroups: {}", e.what());
+          break;
+        case SOUND_INFO:
+          lg::error("Failed to find sound info: {}", e.what());
           break;
       }
     }

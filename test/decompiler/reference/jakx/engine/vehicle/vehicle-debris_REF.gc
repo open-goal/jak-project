@@ -332,12 +332,14 @@
 (defmethod rigid-body-object-method-80 ((this vehicle-debris) (arg0 rigid-body-impact))
   (when (< 20480.0 (-> arg0 impulse))
     (let ((f30-0 (fmin 1.0 (* 0.000048828126 (+ -20480.0 (-> arg0 impulse)))))
-          (v1-8 (make-sound-instance (-> *sound-info* (-> this impact-sound)) (new 'static 'sound-id) #f))
+          (v1-8
+            (make-sound-instance (-> *sound-info* (-> this impact-sound)) (new 'static 'sound-id) (the-as handle #f))
+            )
           )
       (cond
         (v1-8
           (set! (-> v1-8 volume) (the int (* 1024.0 f30-0)))
-          (logior! (-> v1-8 flags) 64)
+          (logior! (-> v1-8 flags) (sound-spec-flag needs-update))
           (-> v1-8 id)
           )
         (else
@@ -482,7 +484,7 @@
 (defstate die (vehicle-debris)
   :virtual #t
   :code (behavior ()
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   )
 
@@ -493,17 +495,14 @@
   (logior! (-> self mask) (process-mask vehicle))
   (init-collision! self arg0)
   (matrix->transformq (the-as transformq (-> self root trans)) (-> arg0 mat))
-  (if (and (-> arg0 has-particles) (let* ((f30-0 0.5)
-                                          (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                                          (v1-10 (the-as number (logior #x3f800000 v1-9)))
-                                          )
-                                     (< f30-0 (+ -1.0 (the-as float v1-10)))
+  (if (and (-> arg0 has-particles) (let ((f30-0 0.5))
+                                     (< f30-0 (rand-float-gen))
                                      )
            )
       (set! (-> self part) (create-launch-control (-> *part-group-id-table* 43) self))
       )
   (set! (-> self level) (-> arg0 level))
-  (process-drawable-method-42 self (-> arg0 skel) 0)
+  (initialize-skeleton self (-> arg0 skel) 0)
   (set! (-> self draw color-mult quad) (-> arg0 color quad))
   (set! (-> self draw lod-set lod 0 dist) 819200.0)
   (let ((f0-6 (fmax

@@ -881,6 +881,11 @@ TEST_F(WithGameTests, StackSingletonType) {
                                           {"#t\n0\n"});
 }
 
+TEST_F(WithGameTests, ScratchAlloc) {
+  shared_compiler->runner.run_static_test(testCategory, "test-scratch-alloc.gc",
+                                          get_test_pass_string("scratch-alloc", 15));
+}
+
 namespace Mips2C::jak1 {
 namespace test_func {
 extern u64 execute(void*);

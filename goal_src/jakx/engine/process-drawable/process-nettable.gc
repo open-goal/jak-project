@@ -7,3 +7,363 @@
 
 ;; DECOMP BEGINS
 
+(defmethod init! ((this proximity-ownership-params))
+  (set! (-> this ownable-radius) 163840.0)
+  (set! (-> this force-local) #f)
+  (set! (-> this last-ownership-req-time) (+ (-> *net-mgr* game-state time) -300))
+  (set! (-> this min-ownership-req-delay) 300)
+  (set! (-> this consider-ai-players) #f)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs process-nettable.
+(defmethod relocate ((this process-nettable) (offset int))
+  (if (registered? this)
+      (relocate-process *net-process-mgr* this offset)
+      )
+  (if (nonzero? (-> this prox))
+      (&+! (-> this prox) offset)
+      )
+  (the-as process-nettable ((method-of-type process relocate) this offset))
+  )
+
+(defmethod deactivate ((this process-nettable))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (registered? this)
+      (unregister this #f (the-as mem-buffer #f))
+      )
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+(defmethod write-create-data ((this process-nettable) (arg0 mem-buffer))
+  0
+  (none)
+  )
+
+(defmethod on-owner-change ((this process-nettable))
+  (update-desired-owner this)
+  0
+  (none)
+  )
+
+(defmethod handle-net-msg ((this process-nettable) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  0
+  (none)
+  )
+
+(defmethod on-destroy-silent ((this process-nettable))
+  (unregister this #f (the-as mem-buffer #f))
+  (deactivate this)
+  0
+  (none)
+  )
+
+(defmethod on-destroy ((this process-nettable))
+  (on-destroy-silent this)
+  0
+  (none)
+  )
+
+(defmethod on-owner-left ((this process-nettable))
+  (unregister-process *net-process-mgr* this #t (the-as mem-buffer #f))
+  (deactivate this)
+  0
+  (none)
+  )
+
+(defmethod owner-is-local? ((this process-nettable))
+  (or (not *net-process-mgr*) (= (-> this owner-idx) (-> *net-process-mgr* local-machine-idx)))
+  )
+
+(defmethod unowned? ((this process-nettable))
+  (= (-> this owner-idx) 8)
+  )
+
+(defmethod has-owner? ((this process-nettable))
+  (and (!= (-> this owner-idx) 8) (!= (-> this owner-idx) 9))
+  )
+
+(defmethod set-desired-owner ((this process-nettable) (arg0 int) (arg1 symbol))
+  (when (or arg1 (!= (-> this desired-owner-idx) arg0))
+    (set! (-> this desired-owner-idx) arg0)
+    (update-desired-owner this)
+    )
+  0
+  (none)
+  )
+
+(defmethod update-desired-owner ((this process-nettable))
+  (when (!= (-> this desired-owner-idx) -1)
+    (if (or (and (owner-is-local? this) (!= (-> this desired-owner-idx) (if *net-mgr*
+                                                                            (-> *net-mgr* game-state local-machine-idx)
+                                                                            0
+                                                                            )
+                                            )
+                 )
+            (and (unowned? this) (= (-> this desired-owner-idx) (if *net-mgr*
+                                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                                    0
+                                                                    )
+                                    )
+                 )
+            (and (= (if *net-mgr*
+                        (-> *net-mgr* game-state local-machine-idx)
+                        0
+                        )
+                    (-> *net-mgr* game-state session-master-idx)
+                    )
+                 (and (has-owner? this)
+                      (= (-> *net-process-mgr* machines (-> this owner-idx) state) (net-process-mgr-machine-state left))
+                      )
+                 )
+            )
+        (request-ownership *net-process-mgr* this (-> this desired-owner-idx))
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod alloc-msg ((this process-nettable) (arg0 symbol))
+  (let ((gp-0 (alloc-msg-buffer)))
+    (let ((s4-1 (msg-map-val->idx this arg0)))
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 0)
+      (write-int8 gp-0 0)
+      (write-int16 gp-0 (the-as int (logior (-> this net-id) (shl s4-1 10))))
+      )
+    gp-0
+    )
+  )
+
+(defmethod free-msg ((this process-nettable) (arg0 mem-buffer))
+  (free-msg-buffer arg0)
+  0
+  (none)
+  )
+
+(defmethod send-msg ((this process-nettable) (arg0 mem-buffer) (arg1 int) (arg2 int))
+  (let ((v1-2 (+ (bytes-used arg0) -2)))
+    (cond
+      ((< v1-2 255)
+       (&+! (-> arg0 base) 2)
+       (set! (-> (the-as (pointer int8) (-> arg0 base))) v1-2)
+       (send-process-msg *net-process-mgr* this arg0 arg1 arg2)
+       (&+! (-> arg0 base) -2)
+       )
+      (else
+        (let ((s2-0 (+ v1-2 2)))
+          (format 0 "sending jumbo msg~%")
+          (set! (-> (the-as (pointer int8) (-> arg0 base))) 255)
+          (set! (-> (the-as (pointer int8) (-> arg0 base)) 1) (logand s2-0 255))
+          (set! (-> (the-as (pointer int8) (-> arg0 base)) 2) (/ s2-0 256))
+          )
+        (send-process-msg *net-process-mgr* this arg0 arg1 arg2)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod unregister ((this process-nettable) (arg0 symbol) (arg1 mem-buffer))
+  (unregister-process *net-process-mgr* this arg0 arg1)
+  0
+  (none)
+  )
+
+(defmethod register ((this process-nettable) (arg0 int) (arg1 int))
+  (when (not (register-process *net-process-mgr* this arg0 arg1))
+    (format 0 "NOT ENOUGH LOCAL NET-PROCESS-IDS!~%")
+    (deactivate this)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-remote ((this process-nettable) (arg0 mem-buffer))
+  0
+  (none)
+  )
+
+(defmethod post-init-remote ((this process-nettable))
+  0
+  (none)
+  )
+
+(defmethod registered? ((this process-nettable))
+  (logtest? (-> this net-flags) (net-flag registered))
+  )
+
+;; WARN: Function (method 31 process-nettable) has a return type of none, but the expression builder found a return statement.
+(defmethod update-proximity-ownership ((this process-nettable) (arg0 vector))
+  (if (not arg0)
+      (set! arg0 (-> (the-as process-drawable this) root trans))
+      )
+  (if (zero? (-> this prox))
+      (return #f)
+      )
+  (let ((s5-0 (-> *net-mgr* game-state time)))
+    (if (< (- s5-0 (-> this prox last-ownership-req-time)) (-> this prox min-ownership-req-delay))
+        (return #f)
+        )
+    (let ((s3-0 8))
+      (let ((f30-0 (square (-> this prox ownable-radius))))
+        0.0
+        (dotimes (s2-0 *active-net-player-count*)
+          (let ((s1-0 (get-vehicle (-> *active-net-players* s2-0))))
+            (when s1-0
+              (when (or (and (>= (-> *active-net-players* s2-0 player-id) 0) (< (-> *active-net-players* s2-0 player-id) 16))
+                        (and (-> this prox consider-ai-players) (has-owner? s1-0))
+                        )
+                (let ((f0-3 (vector-vector-distance-squared arg0 (-> s1-0 root trans))))
+                  (when (< f0-3 f30-0)
+                    (set! f30-0 f0-3)
+                    (set! s3-0 (-> s1-0 owner-idx))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (when (!= (-> this desired-owner-idx) s3-0)
+        (set-desired-owner this s3-0 #f)
+        (set! (-> this prox last-ownership-req-time) s5-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod msg-map-val->idx ((this process-nettable) (arg0 symbol))
+  (let ((v1-1 (get-class-info this)))
+    (dotimes (a0-2 (-> v1-1 msg-count))
+      (if (= arg0 (-> v1-1 msg-map a0-2))
+          (return a0-2)
+          )
+      )
+    )
+  (format 0 "class ~A hasn't registered message ~A~%" this arg0)
+  -1
+  )
+
+(defmethod msg-map-idx->val ((this process-nettable) (arg0 int))
+  (if (>= arg0 (-> (get-class-info this) msg-count))
+      #f
+      (-> (get-class-info this) msg-map arg0)
+      )
+  )
+
+(deftype net-test (process-nettable)
+  ((spoon  int32)
+   )
+  (:state-methods
+    running
+    die
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-test-init-remote net-test ((arg0 mem-buffer))
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
+  0
+  )
+
+(defmethod spawn-remote ((this net-test) (arg0 mem-buffer))
+  (ppointer->process (process-spawn net-test :init net-test-init-remote arg0 :name "net-test"))
+  )
+
+(defmethod write-msg-map ((this net-test) (arg0 net-process-class-info))
+  0
+  (none)
+  )
+
+(define *msg-map-net-test* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-net-test* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-net-test* msg-map) *msg-map-net-test*)
+
+(write-msg-map-rec net-test *net-process-class-info-net-test*)
+
+(set! (-> *net-process-class-info-net-test* owner-type) net-test)
+
+(net-process-class-register *net-process-class-info-net-test*)
+
+(defmethod get-class-info ((this net-test))
+  *net-process-class-info-net-test*
+  )
+
+(defstate running (net-test)
+  :virtual #t
+  :trans (behavior ()
+    (format *stdcon* "running!!! owner is ~D ctr is ~D~%" (-> self owner-idx) (-> self spoon))
+    (+! (-> self spoon) 1)
+    )
+  :code sleep-code
+  )
+
+(defstate die (net-test)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-remote ((this net-test) (arg0 mem-buffer))
+  (set! (-> this spoon) (read-int32 arg0))
+  (go (method-of-object this running))
+  (none)
+  )
+
+(defbehavior net-test-init-by-other net-test ()
+  (set! (-> self spoon) 123)
+  (register
+    self
+    (if *net-mgr*
+        (-> *net-mgr* game-state local-machine-idx)
+        0
+        )
+    #xffff
+    )
+  (go-virtual running)
+  )
+
+;; WARN: Return type mismatch process vs net-test.
+(defun spawn-local ()
+  (the-as net-test (ppointer->process (process-spawn net-test :name "net-test")))
+  )
+
+(defmethod write-create-data ((this net-test) (arg0 mem-buffer))
+  (write-uint32 arg0 (the-as uint (-> this spoon)))
+  0
+  (none)
+  )
+
+(defmethod link-entity-more-perm ((this process-nettable) (arg0 entity-actor))
+  (let ((v1-2 (entity-more-perm-hash-method-11 *entity-more-perm* (-> arg0 extra perm aid))))
+    (if v1-2
+        (set! (-> v1-2 ent) arg0)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod unlink-entity-more-perm ((this process-nettable) (arg0 entity-actor))
+  (let ((v1-2 (entity-more-perm-hash-method-11 *entity-more-perm* (-> arg0 extra perm aid))))
+    (if v1-2
+        (set! (-> v1-2 ent) #f)
+        )
+    )
+  0
+  (none)
+  )

@@ -201,12 +201,12 @@
 (defmethod rigid-body-object-method-80 ((this vehicle-wheel) (arg0 rigid-body-impact))
   (when (< 40960.0 (-> arg0 impulse))
     (let ((f30-0 (* 0.000024414063 (+ -40960.0 (-> arg0 impulse))))
-          (v1-5 (make-sound-instance (-> *sound-info* 625) (new 'static 'sound-id) #f))
+          (v1-5 (make-sound-instance snd-car-tire-bounce (new 'static 'sound-id) (the-as handle #f)))
           )
       (cond
         (v1-5
           (set! (-> v1-5 volume) (the int (* 1024.0 (fmin 1.0 f30-0))))
-          (logior! (-> v1-5 flags) 64)
+          (logior! (-> v1-5 flags) (sound-spec-flag needs-update))
           (-> v1-5 id)
           )
         (else
@@ -216,12 +216,12 @@
       )
     (when (< 81920.0 (-> arg0 impulse))
       (let ((f30-1 (* 0.000024414063 (+ -81920.0 (-> arg0 impulse))))
-            (v1-13 (make-sound-instance (-> *sound-info* 624) (new 'static 'sound-id) #f))
+            (v1-13 (make-sound-instance snd-car-tire-impact (new 'static 'sound-id) (the-as handle #f)))
             )
         (cond
           (v1-13
             (set! (-> v1-13 volume) (the int (* 1024.0 (fmin 1.0 f30-1))))
-            (logior! (-> v1-13 flags) 64)
+            (logior! (-> v1-13 flags) (sound-spec-flag needs-update))
             (-> v1-13 id)
             )
           (else
@@ -302,11 +302,8 @@
     )
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (let* ((f30-0 0.5)
-           (v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-5 (the-as number (logior #x3f800000 v1-4)))
-           )
-      (when (< f30-0 (+ -1.0 (the-as float v1-5)))
+    (let ((f30-0 0.5))
+      (when (< f30-0 (rand-float-gen))
         (set! (-> *launch-matrix* trans quad) (-> *null-vector* quad))
         (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 42))
         (vector-reset! (-> *part-tracker-params-default* local-offset))
@@ -380,7 +377,7 @@
 (defstate die (vehicle-wheel)
   :virtual #t
   :code (behavior ()
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   )
 
@@ -390,7 +387,7 @@
   (quaternion-copy! (-> self root rotation) (-> arg0 rotation))
   (set! (-> self root scale quad) (-> arg0 scale quad))
   (set! (-> self level) (the-as level (-> arg0 level)))
-  (process-drawable-method-42 self (-> arg0 skel) 0)
+  (initialize-skeleton self (-> arg0 skel) 0)
   (let ((v1-10 (-> self draw)))
     (set! (-> v1-10 lod-set lod 0 dist) 4096.0)
     (set! (-> v1-10 lod-set lod 1 dist) 81920.0)

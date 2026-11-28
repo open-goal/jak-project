@@ -1,0 +1,96 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for symbol *sampler-mem*, type pointer
+(define *sampler-mem* (the-as pointer #f))
+
+;; definition for symbol *sampler-compare*, type uint
+(define *sampler-compare* (the-as uint 10))
+
+;; definition for symbol *sampler-count*, type int
+(define *sampler-count* 0)
+
+;; definition for symbol *sampler-above-range-count*, type int
+(define *sampler-above-range-count* 0)
+
+;; definition (debug) for function timer0-handler
+;; INFO: Interrupt handler
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun-debug timer0-handler ((arg0 int) (arg1 int) (arg2 int))
+  (local-vars (v1-7 int))
+  (let ((a0-1 arg2))
+    (cond
+      ((< (the-as uint a0-1) (the-as uint #x2000000))
+       (let ((v1-2 (the-as timer-bank (logior #x20000000 (+ (the-as int *sampler-mem*) (* (shr a0-1 3) 4))))))
+         (+! (-> v1-2 count) 1)
+         )
+       (set! *sampler-count* (+ *sampler-count* 1))
+       )
+      (else
+        (set! *sampler-above-range-count* (+ *sampler-above-range-count* 1))
+        )
+      )
+    )
+  (.mfc0 v1-7 Count)
+  (set! *sampler-compare* (the-as uint (+ (logand v1-7 1) 2)))
+  (let ((v1-10 (the-as timer-bank #x10000000)))
+    (set! (-> v1-10 mode)
+          (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+          )
+    (set! (-> v1-10 count) (the-as uint 0))
+    (set! (-> v1-10 comp) *sampler-compare*)
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+
+;; failed to figure out what this is:
+(install-handler 9 timer0-handler)
+
+;; definition (debug) for function sampler-start
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-start ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (set! (-> (the-as timer-bank #x10000000) count) (the-as uint 0))
+  (set! (-> (the-as timer-bank #x10000000) comp) *sampler-compare*)
+  (if (not *sampler-mem*)
+      (set! *sampler-mem* (malloc 'debug #x1000000))
+      )
+  (when (nonzero? *sampler-mem*)
+    (mem-set32! *sampler-mem* #x400000 0)
+    (set! (-> (the-as timer-bank #x10000000) mode)
+          (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :zret #x1 :cue #x1 :cmpe #x1 :equf #x1)
+          )
+    (set! *sampler-count* 0)
+    (set! *sampler-above-range-count* 0)
+    0
+    )
+  (none)
+  )
+
+;; definition (debug) for function sampler-stop
+;; WARN: Return type mismatch int vs none.
+(defun-debug sampler-stop ()
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  (format
+    0
+    "samples: in-range ~d above-range ~d total ~d~%"
+    *sampler-count*
+    *sampler-above-range-count*
+    (+ *sampler-count* *sampler-above-range-count*)
+    )
+  (set! (-> (the-as timer-bank #x10000000) mode) (new 'static 'timer-mode))
+  0
+  (none)
+  )
+
+
+
+

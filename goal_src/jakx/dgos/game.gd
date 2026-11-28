@@ -560,6 +560,7 @@
   "helmet-e-ag.go"
   "helmet-f-ag.go"
   "menu2-part.o"
+  "menu2.o"
   "intro-part.o"
   "intro-scenes2.o"
   "intro-scenes.o"

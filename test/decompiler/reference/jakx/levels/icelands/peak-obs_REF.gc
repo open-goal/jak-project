@@ -40,21 +40,21 @@
 ;; definition for function peak-snowball-init-remote
 ;; WARN: Return type mismatch int vs none.
 (defbehavior peak-snowball-init-remote peak-snowball ((arg0 mem-buffer))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self arg0)
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self arg0)
+  (post-init-remote self)
   0
   (none)
   )
 
 ;; definition for method 41 of type peak-snowball
-(defmethod process-nettable-method-41 ((this peak-snowball) (arg0 mem-buffer))
+(defmethod spawn-remote ((this peak-snowball) (arg0 mem-buffer))
   (ppointer->process (process-spawn peak-snowball :init peak-snowball-init-remote arg0 :name "peak-snowball"))
   )
 
 ;; definition for method 37 of type peak-snowball
 ;; WARN: Return type mismatch int vs none.
-(defmethod process-nettable-method-37 ((this peak-snowball) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this peak-snowball) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-destruction-time)
   (+! (-> arg0 msg-count) 1)
   0
@@ -80,7 +80,7 @@
 (net-process-class-register *net-process-class-info-peak-snowball*)
 
 ;; definition for method 40 of type peak-snowball
-(defmethod process-nettable-method-40 ((this peak-snowball))
+(defmethod get-class-info ((this peak-snowball))
   *net-process-class-info-peak-snowball*
   )
 
@@ -119,16 +119,13 @@
         (send-event (handle->process (-> s4-0 attacker)) 'you-attacked 'attack (-> arg0 process) s4-0)
         )
     )
-  (let ((s4-1 (process-nettable-method-27 this 'set-destruction-time)))
+  (let ((s4-1 (alloc-msg this 'set-destruction-time)))
     (write-float s4-1 (-> this last-u))
-    (process-nettable-method-29 this s4-1 -2 16)
-    (process-nettable-method-28 this s4-1)
+    (send-msg this s4-1 -2 16)
+    (free-msg this s4-1)
     )
   (vector-float*! (-> this impact-direction) (-> arg0 normal) -1.0)
-  (let ((v1-34
-          (make-sound-instance (-> *sound-info* 603) (new 'static 'sound-id) (the-as symbol (process->handle this)))
-          )
-        )
+  (let ((v1-34 (make-sound-instance snd-snowball-impact (new 'static 'sound-id) (process->handle this))))
     (if v1-34
         (-> v1-34 id)
         0
@@ -201,7 +198,7 @@
 ;; definition for method 17 of type peak-snowball
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod process-nettable-method-17 ((this peak-snowball) (arg0 symbol) (arg1 mem-buffer))
+(defmethod handle-net-msg ((this peak-snowball) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
   (case arg0
     (('explode)
      (when (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
@@ -245,19 +242,15 @@
   (set! (-> this path-length) (total-distance (-> this path)))
   (set! (-> this roll-sound) (the-as uint 0))
   (set! (-> this offset) (res-lump-float (-> this entity) 'offset))
-  (process-drawable-method-42
-    this
-    (art-group-get-by-name *level* "skel-peak-snowball" (the-as (pointer level) #f))
-    0
-    )
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-peak-snowball" (the-as (pointer level) #f)) 0)
   (rigid-body-object-method-64 this *snowball-constants*)
   (logior! (-> this rbody flags) (rigid-body-flag enable-physics enable-penetrate-mode debug-active))
   (set! (-> this root max-iteration-count) (the-as uint 8))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 429) this))
   (set! (-> this peak-snowball-unknown-1 0) (the-as vector (-> *part-id-table* 1424 init-specs 18)))
   (set! (-> this peak-snowball-unknown-1 1) (the-as vector (-> *part-id-table* 1424 init-specs 10)))
-  (if (not (process-nettable-method-25 this))
-      (process-nettable-method-34 this 8 (new 'static 'rgba :r #xff :g #xff))
+  (if (not (registered? this))
+      (register this 8 #xffff)
       )
   0
   (none)
@@ -302,10 +295,7 @@
           )
         )
     (sound-stop (the-as sound-id (-> self roll-sound)) #t)
-    (let ((v1-32
-            (make-sound-instance (-> *sound-info* 604) (new 'static 'sound-id) (the-as symbol (process->handle self)))
-            )
-          )
+    (let ((v1-32 (make-sound-instance snd-snowball-explo (new 'static 'sound-id) (process->handle self))))
       (if v1-32
           (-> v1-32 id)
           0
@@ -408,17 +398,12 @@
           (cond
             ((not (logtest? (-> self draw status) (draw-control-status no-draw)))
              (let ((f24-0 (lerp-scale 0.2 0.7 f30-0 0.0 1024000.0))
-                   (v1-28 (make-sound-instance
-                            (-> *sound-info* 602)
-                            (the-as sound-id (-> self roll-sound))
-                            (the-as symbol (process->handle self))
-                            )
-                          )
+                   (v1-28 (make-sound-instance snd-snowball-roll (the-as sound-id (-> self roll-sound)) (process->handle self)))
                    )
                (set! (-> self roll-sound) (the-as uint (cond
                                                          (v1-28
                                                            (set! (-> v1-28 pitch-mod) (the int (* 1524.0 f24-0)))
-                                                           (logior! (-> v1-28 flags) 64)
+                                                           (logior! (-> v1-28 flags) (sound-spec-flag needs-update))
                                                            (logior! (-> v1-28 mask) 1)
                                                            (the-as int (-> v1-28 id))
                                                            )

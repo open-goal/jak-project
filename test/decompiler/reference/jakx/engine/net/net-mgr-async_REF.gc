@@ -1,0 +1,633 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type medius-simple-response
+(deftype medius-simple-response (structure)
+  ((message-id   uint8  21)
+   (status-code  medius-status-code)
+   )
+  )
+
+;; definition for method 3 of type medius-simple-response
+(defmethod inspect ((this medius-simple-response))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'medius-simple-response)
+  (format #t "~1Tmessage-id[21] @ #x~X~%" (-> this message-id))
+  (format #t "~1Tstatus-code: ~D~%" (-> this status-code))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type mgcl-simple-response
+(deftype mgcl-simple-response (structure)
+  ((message-id    uint8  21)
+   (confirmation  int8)
+   )
+  )
+
+;; definition for method 3 of type mgcl-simple-response
+(defmethod inspect ((this mgcl-simple-response))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mgcl-simple-response)
+  (format #t "~1Tmessage-id[21] @ #x~X~%" (-> this message-id))
+  (format #t "~1Tconfirmation: ~D~%" (-> this confirmation))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *medius-last-response*, type medius-simple-response
+(define *medius-last-response* (new 'static 'medius-simple-response))
+
+;; definition for symbol *mgcl-last-response*, type mgcl-simple-response
+(define *mgcl-last-response* (new 'static 'mgcl-simple-response))
+
+;; definition for symbol *async-request-ct*, type int
+(define *async-request-ct* 0)
+
+;; definition for symbol *medius-session-key-valid*, type symbol
+(define *medius-session-key-valid* #f)
+
+;; definition for symbol *medius-session-key*, type (pointer uint8)
+(define *medius-session-key* (new 'static 'array uint8 32
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               #x0
+                               )
+        )
+
+;; definition for symbol *mgcl-session-key-valid*, type symbol
+(define *mgcl-session-key-valid* #f)
+
+;; definition for symbol *mgcl-session-key*, type (pointer uint8)
+(define *mgcl-session-key* (new 'static 'array uint8 32
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             #x0
+                             )
+        )
+
+;; definition for symbol *mgcl-confirmation-offset*, type int
+(define *mgcl-confirmation-offset* 0)
+
+;; definition for method 53 of type net-mgr
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-lobby-state! ((this net-mgr))
+  (set! (-> this lobby-state last-mgcl-error) 0)
+  (set! (-> this lobby-state last-medius-error) 0)
+  (set! (-> this lobby-state last-dme-error) 0)
+  (set! (-> this lobby-state callback-status) 0)
+  (set! (-> this lobby-state got-error) #f)
+  (set! (-> this lobby-state callback-occurred) #f)
+  (set! (-> this lobby-state timeout) #f)
+  0
+  (none)
+  )
+
+;; definition for method 54 of type net-mgr
+(defmethod check-net-errors ((this net-mgr))
+  (let ((s5-0 (new 'stack-no-clear 'net-update-conn-errors-stack)))
+    (if (and (zero? (-> this lobby-state last-medius-error)) (zero? (-> this lobby-state last-mgcl-error)))
+        (return #f)
+        )
+    (format
+      0
+      "last-medius-error=~D, last-mgcl-error=~D~%"
+      (-> this lobby-state last-medius-error)
+      (-> this lobby-state last-mgcl-error)
+      )
+    (set! (-> this lobby-state got-error) #t)
+    (set! (-> s5-0 errors sizeof-net-update-errors) (the-as uint 40))
+    (if (zero? (-> this lobby-state connect-handle))
+        (format 0 "medius update error ~D, not connected~%" (-> this lobby-state last-medius-error))
+        )
+    (set! *scert-function-id* (scert-function net-get-update-errors))
+    (set! (-> s5-0 result) (knet-scert-function-1-args (-> s5-0 errors)))
+    (if (nonzero? (-> s5-0 result))
+        (format 0 "error retrieving error codes from DME: ~D~%" (-> s5-0 result))
+        )
+    (dotimes (s4-0 4)
+      (let ((s3-0 (-> s5-0 errors a-errors s4-0)))
+        (when (and (= (-> this lobby-state connect-handle) (-> s3-0 connection-handle)) (nonzero? (-> s3-0 net-error)))
+          (format 0 "error on medius connection: ~D~%" (-> s3-0 net-error))
+          (set! (-> this lobby-state last-dme-error) (the-as int (-> s3-0 net-error)))
+          (case (-> s3-0 net-error)
+            (((net-error net-error-connection-lost))
+             (format 0 "connection lost~%")
+             )
+            (((net-error net-error-comm-error))
+             (format 0 "comm-error~%")
+             )
+            (((net-error net-error-bad-packet-received))
+             (format 0 "bad packet~%")
+             )
+            (((net-error net-error-send-failed))
+             (format 0 "send failed~%")
+             )
+            (else
+              )
+            )
+          )
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for function do-net-update
+;; WARN: Return type mismatch int vs object.
+(defbehavior do-net-update net-mgr ()
+  (when (nonzero? (-> self lobby-state connect-handle-mgcl))
+    (set! *scert-function-id* (scert-function mgcl-update))
+    (knet-scert-function-0-args)
+    )
+  (when (nonzero? (-> self lobby-state connect-handle))
+    (set! *scert-function-id* (scert-function medius-update))
+    (knet-scert-function-0-args)
+    )
+  (when (and (-> self next-state)
+             (let ((v1-11 (-> self next-state name)))
+               (or (= v1-11 'connecting-to-muis) (= v1-11 'getting-universe-information) (= v1-11 'disconnecting-from-muis))
+               )
+             )
+    (set! *scert-function-id* (scert-function medius-universe-update))
+    (knet-scert-function-0-args)
+    )
+  (set! *scert-function-id* (scert-function net-update))
+  (knet-scert-function-0-args)
+  )
+
+;; definition for function medius-simple-request-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun medius-simple-request-callback ((arg0 medius-simple-response) (arg1 pointer))
+  (let ((a2-0 (atoi (-> arg0 message-id))))
+    (cond
+      ((= a2-0 *async-request-ct*)
+       (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+       (set! (-> *net-mgr* lobby-state callback-status) (the-as int (-> arg0 status-code)))
+       (set! (-> *net-mgr* lobby-state callback-userdata) arg1)
+       (mem-copy! (the-as pointer *medius-last-response*) (the-as pointer arg0) 1024)
+       (if (< (the-as int (-> arg0 status-code)) 0)
+           (set! (-> *net-mgr* lobby-state got-error) #t)
+           )
+       )
+      (else
+        (format 0 "discarding unexpected message-id ~D~%" a2-0)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function trivial-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun trivial-callback ()
+  (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+  0
+  )
+
+;; definition for function mgcl-simple-request-callback
+;; INFO: Called from C
+;; WARN: Return type mismatch int vs object.
+(defun mgcl-simple-request-callback ((arg0 mgcl-simple-response) (arg1 pointer))
+  (let ((a2-0 (atoi (-> arg0 message-id))))
+    (cond
+      ((= a2-0 *async-request-ct*)
+       (let ((s4-0 (-> (the-as (pointer int8) (&+ arg0 *mgcl-confirmation-offset*)))))
+         (set! (-> *net-mgr* lobby-state callback-occurred) #t)
+         (set! (-> *net-mgr* lobby-state callback-status) s4-0)
+         (set! (-> *net-mgr* lobby-state callback-userdata) arg1)
+         (mem-copy! (the-as pointer *mgcl-last-response*) (the-as pointer arg0) 1024)
+         (if (nonzero? s4-0)
+             (set! (-> *net-mgr* lobby-state got-error) #t)
+             )
+         )
+       )
+      (else
+        (format 0 "discarding unexpected message-id ~D~%" a2-0)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for symbol *net-error-icon*, type hud-sprite
+(define *net-error-icon* (new 'static 'hud-sprite))
+
+;; definition for function display-net-problem-icon
+;; WARN: Return type mismatch int vs object.
+(defun display-net-problem-icon ()
+  (set-vector! (-> *net-error-icon* color) 128 128 128 128)
+  (set! (-> *net-error-icon* pos x) 450)
+  (set! (-> *net-error-icon* pos y) 20)
+  (set! (-> *net-error-icon* pos z) #xffffff)
+  (set! (-> *net-error-icon* pos w) 0)
+  (set! (-> *net-error-icon* scale-x) 1.0)
+  (set! (-> *net-error-icon* scale-y) 1.0)
+  (set! (-> *net-error-icon* angle) 0.0)
+  (set! (-> *net-error-icon* flags) (hud-sprite-flags))
+  (set! (-> *net-error-icon* tex) (get-texture connect-icon level-default-minimap))
+  (when (< (mod (-> *display* real-clock frame-counter) 150) 90)
+    (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id debug-menu)
+                                 )
+      (draw *net-error-icon* s5-0 (the-as level #f))
+      )
+    )
+  0
+  )
+
+;; definition for function lobby-fatal-error
+;; WARN: Return type mismatch int vs object.
+(defbehavior lobby-fatal-error net-mgr ((arg0 symbol))
+  (format 0 "lobby-fatal-error... disconnecting...~%")
+  (format 0 "net-mgr-notify: ~A~%" arg0)
+  (let ((a0-3 (-> *net-mgr* notify alive-list next0)))
+    (-> *net-mgr* notify)
+    (let ((s5-0 (-> a0-3 next0)))
+      (while (!= a0-3 (-> *net-mgr* notify alive-list-end))
+        (if (logtest? (the-as int (-> (the-as connection a0-3) param1)) 1)
+            (send-event ((method-of-type connection get-process) (the-as connection a0-3)) arg0 :from *net-mgr*)
+            )
+        (set! a0-3 s5-0)
+        (-> *net-mgr* notify)
+        (set! s5-0 (-> s5-0 next0))
+        )
+      )
+    )
+  (go-virtual disconnecting #t #t #t 'idle)
+  0
+  )
+
+;; definition for function timeout-lobby-fatal-error
+;; WARN: Return type mismatch int vs object.
+(defun timeout-lobby-fatal-error ()
+  (lobby-fatal-error 'lobby-unexpected-error)
+  0
+  )
+
+;; definition for function net-async-wait
+(defbehavior net-async-wait net-mgr ((arg0 time-frame) (arg1 symbol))
+  (let ((s5-0 (+ (current-time) arg0))
+        (s4-0 (current-time))
+        )
+    (while (not (or (-> self lobby-state callback-occurred) (-> self lobby-state got-error)))
+      (do-net-update)
+      (check-net-errors self)
+      (suspend)
+      (if (< (seconds 2) (- (current-time) s4-0))
+          (display-net-problem-icon)
+          )
+      (when (>= (- (current-time) s5-0) 0)
+        (set! (-> self lobby-state got-error) #t)
+        (set! (-> self lobby-state timeout) #t)
+        (if arg1
+            (timeout-lobby-fatal-error)
+            )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function dme-disconnect
+;; WARN: Return type mismatch int vs object.
+(defbehavior dme-disconnect net-mgr ()
+  (when (nonzero? (-> self game-state connect-handle))
+    (format 0 "disconnecting dme...~%")
+    (let ((gp-0 (new 'stack-no-clear 'net-disconnect-params)))
+      (set! (-> gp-0 connection-handle) (-> self game-state connect-handle))
+      (set! (-> gp-0 reason) (net-disconnect-reason net-disconnect-none))
+      (set! (-> gp-0 pf-local-disconnect-callback) trivial-callback)
+      (set! (-> gp-0 p-user-data) (the-as pointer #f))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function net-disconnect))
+      (let ((gp-1 (knet-scert-function-1-args (&-> gp-0 connection-handle))))
+        (when (nonzero? gp-1)
+          (format 0 "initial function call returned ~D~%" gp-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-dme-error) gp-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 10) #f)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       )
+      (else
+        )
+      )
+    (set! (-> self game-state connect-handle) (the-as pointer 0))
+    0
+    )
+  0
+  )
+
+;; definition for function mgcl-disconnect
+;; WARN: Return type mismatch int vs object.
+(defbehavior mgcl-disconnect net-mgr ((arg0 symbol))
+  (when (and *mgcl-session-key-valid* arg0)
+    (let ((gp-0 (new 'stack 'medius-server-session-end-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> gp-0 message-id))
+      (set! *mgcl-confirmation-offset* 21)
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function mgcl-session-end))
+      (let ((gp-1 (knet-scert-function-3-args gp-0 mgcl-simple-request-callback #f)))
+        (when (nonzero? gp-1)
+          (format 0 "initial function call returned ~D~%" gp-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-mgcl-error) gp-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 10) #t)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *mgcl-last-response*
+       0
+       )
+      (else
+        *mgcl-last-response*
+        0
+        )
+      )
+    (dotimes (gp-2 20)
+      (set! *scert-function-id* (scert-function mgcl-update))
+      (knet-scert-function-0-args)
+      (suspend)
+      )
+    )
+  (set! *mgcl-session-key-valid* #f)
+  (when (nonzero? (-> self lobby-state connect-handle-mgcl))
+    (format 0 "disconnecting mgcl...~%")
+    (let ((gp-3 (new 'stack-no-clear 'medius-disconnect-params)))
+      (set! (-> gp-3 connection-handle) (-> self lobby-state connect-handle-mgcl))
+      (set! (-> gp-3 disconnect-reason) (net-disconnect-reason net-disconnect-normal))
+      (set! (-> gp-3 my-disconnect-callback) (the-as pointer trivial-callback))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function mgcl-disconnect))
+      (let ((gp-4 (knet-scert-function-2-args (&-> gp-3 connection-handle) #f)))
+        (when (nonzero? gp-4)
+          (format 0 "initial function call returned ~D~%" gp-4)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-mgcl-error) gp-4)
+          )
+        )
+      )
+    (net-async-wait (seconds 10) #f)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       )
+      (else
+        )
+      )
+    (dotimes (gp-5 20)
+      (set! *scert-function-id* (scert-function mgcl-update))
+      (knet-scert-function-0-args)
+      (suspend)
+      )
+    (set! (-> self lobby-state connect-handle-mgcl) (the-as pointer 0))
+    0
+    )
+  0
+  )
+
+;; definition for function medius-disconnect
+;; WARN: Return type mismatch int vs object.
+(defbehavior medius-disconnect net-mgr ((arg0 symbol))
+  (when (nonzero? (-> self lobby-state connect-handle-muis))
+    (format 0 "disconnecting from muis~%")
+    (let ((s5-0 (new 'stack-no-clear 'medius-disconnect-params)))
+      (set! (-> s5-0 connection-handle) (-> self lobby-state connect-handle-muis))
+      (set! (-> s5-0 disconnect-reason) (net-disconnect-reason net-disconnect-normal))
+      (set! (-> s5-0 my-disconnect-callback) (the-as pointer trivial-callback))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-disconnect))
+      (let ((s5-1 (knet-scert-function-2-args (&-> s5-0 connection-handle) #f)))
+        (when (nonzero? s5-1)
+          (format 0 "initial function call returned ~D~%" s5-1)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) s5-1)
+          )
+        )
+      )
+    (net-async-wait (seconds 5) #f)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       )
+      (else
+        )
+      )
+    (format 0 "disconnected from muis~%")
+    (set! (-> self lobby-state connect-handle-muis) (the-as pointer 0))
+    0
+    )
+  (set! arg0 (and *medius-session-key-valid* arg0))
+  (when arg0
+    (let ((gp-1 (new 'stack 'medius-session-end-request)))
+      (set! *async-request-ct* (+ *async-request-ct* 1))
+      (itoa *async-request-ct* (-> gp-1 message-id))
+      (mem-copy! (-> gp-1 session-key) *medius-session-key* 17)
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-session-end))
+      (let ((gp-2 (knet-scert-function-3-args gp-1 medius-simple-request-callback #f)))
+        (when (nonzero? gp-2)
+          (format 0 "initial function call returned ~D~%" gp-2)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) gp-2)
+          )
+        )
+      )
+    (net-async-wait (seconds 5) #f)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       *medius-last-response*
+       0
+       )
+      (else
+        *medius-last-response*
+        0
+        )
+      )
+    (set! *medius-session-key-valid* #f)
+    (dotimes (gp-3 20)
+      (set! *scert-function-id* (scert-function medius-update))
+      (knet-scert-function-0-args)
+      (suspend)
+      )
+    )
+  (when (nonzero? (-> self lobby-state connect-handle))
+    (let ((gp-4 (new 'stack-no-clear 'medius-disconnect-params)))
+      (format 0 "disconnecting medius...~%")
+      (set! (-> gp-4 connection-handle) (-> self lobby-state connect-handle))
+      (set! (-> gp-4 disconnect-reason) (net-disconnect-reason net-disconnect-normal))
+      (set! (-> gp-4 my-disconnect-callback) (the-as pointer trivial-callback))
+      (reset-lobby-state! self)
+      (set! *scert-function-id* (scert-function medius-disconnect))
+      (let ((gp-5 (knet-scert-function-2-args (&-> gp-4 connection-handle) #f)))
+        (when (nonzero? gp-5)
+          (format 0 "initial function call returned ~D~%" gp-5)
+          (set! (-> self lobby-state got-error) #t)
+          (set! (-> self lobby-state last-medius-error) gp-5)
+          )
+        )
+      )
+    (net-async-wait (seconds 5) #f)
+    (cond
+      ((or (-> self lobby-state got-error)
+           (-> self lobby-state timeout)
+           (nonzero? (-> self lobby-state last-medius-error))
+           (nonzero? (-> self lobby-state last-mgcl-error))
+           (nonzero? (-> self lobby-state last-dme-error))
+           (nonzero? (-> self lobby-state callback-status))
+           )
+       )
+      (else
+        )
+      )
+    (dotimes (gp-6 20)
+      (set! *scert-function-id* (scert-function medius-update))
+      (knet-scert-function-0-args)
+      (suspend)
+      )
+    (set! (-> self lobby-state connect-handle) (the-as pointer 0))
+    0
+    )
+  0
+  )
+
+;; definition for function do-disconnect
+;; WARN: Return type mismatch int vs object.
+(defun do-disconnect ((arg0 symbol) (arg1 symbol) (arg2 symbol))
+  (if arg0
+      (dme-disconnect)
+      )
+  (if arg1
+      (mgcl-disconnect #t)
+      )
+  (if arg2
+      (medius-disconnect #t)
+      )
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate disconnecting (net-mgr)
+  :virtual #t
+  :code (behavior ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol))
+    (do-disconnect arg0 arg1 arg2)
+    (cond
+      ((= arg3 'idle)
+       (go-virtual idle)
+       )
+      ((= arg3 'lobby-idle)
+       (go-virtual lobby-idle)
+       )
+      )
+    )
+  )
+
+;; definition for symbol *net-mgr-pending-behavior-result*, type object
+(define *net-mgr-pending-behavior-result* (the-as object #f))
+
+;; definition for symbol *net-mgr-pending-behavior-result-extra*, type object
+(define *net-mgr-pending-behavior-result-extra* (the-as object #f))
+
+;; failed to figure out what this is:
+0

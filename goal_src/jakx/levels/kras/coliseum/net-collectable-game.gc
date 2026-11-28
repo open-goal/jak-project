@@ -41,19 +41,19 @@
 
 ;; WARN: Return type mismatch int vs collectoid-draw.
 (defbehavior collectoid-draw-init-remote collectoid-draw ((arg0 int))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self (the-as mem-buffer arg0))
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self (the-as mem-buffer arg0))
+  (post-init-remote self)
   (the-as collectoid-draw 0)
   )
 
-(defmethod process-nettable-method-41 ((this collectoid-draw) (arg0 mem-buffer))
+(defmethod spawn-remote ((this collectoid-draw) (arg0 mem-buffer))
   (ppointer->process
     (process-spawn collectoid-draw :init collectoid-draw-init-remote arg0 :name "collectoid-draw")
     )
   )
 
-(defmethod process-nettable-method-37 ((this collectoid-draw) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this collectoid-draw) (arg0 net-process-class-info))
   0
   (none)
   )
@@ -70,54 +70,53 @@
 
 (net-process-class-register *net-process-class-info-collectoid-draw*)
 
-(defmethod process-nettable-method-40 ((this collectoid-draw))
+(defmethod get-class-info ((this collectoid-draw))
   *net-process-class-info-collectoid-draw*
   )
 
 (define *steal-mode* #f)
 
-(defmethod net-game-mgr-method-56 ((this net-game-mgr-collectable))
+(defmethod init-local ((this net-game-mgr-collectable))
   (set! (-> this steal-mode) *steal-mode*)
-  ((method-of-type net-game-mgr-deathmatch net-game-mgr-method-56) this)
+  ((method-of-type net-game-mgr-deathmatch init-local) this)
   (none)
   )
 
-(defmethod process-nettable-method-15 ((this net-game-mgr-collectable) (arg0 mem-buffer))
+(defmethod write-create-data ((this net-game-mgr-collectable) (arg0 mem-buffer))
   (write-bool arg0 (-> this steal-mode))
-  ((method-of-type net-game-mgr-deathmatch process-nettable-method-15) this arg0)
+  ((method-of-type net-game-mgr-deathmatch write-create-data) this arg0)
   0
   (none)
   )
 
-(defmethod process-nettable-method-35 ((this net-game-mgr-collectable) (arg0 mem-buffer))
+(defmethod init-remote ((this net-game-mgr-collectable) (arg0 mem-buffer))
   (set! (-> this steal-mode) (read-bool arg0))
-  ((method-of-type net-game-mgr-deathmatch process-nettable-method-35) this arg0)
+  ((method-of-type net-game-mgr-deathmatch init-remote) this arg0)
   0
   (none)
   )
 
-;; WARN: Return type mismatch process vs none.
-(defmethod net-game-mgr-method-52 ((this net-game-mgr-collectable) (arg0 object))
-  (let ((v1-1 (process-spawn net-player-collectable :init net-player-init-local arg0 :name "net-player-collectable"))
-        )
-    (if v1-1
-        (-> v1-1 0 self)
-        )
+;; WARN: Return type mismatch process vs net-player.
+(defmethod spawn-net-player ((this net-game-mgr-collectable) (arg0 int))
+  (the-as
+    net-player
+    (ppointer->process
+      (process-spawn net-player-collectable :init net-player-init-local arg0 :name "net-player-collectable")
+      )
     )
-  (none)
   )
 
-(defun drop-collectoids ((arg0 object) (arg1 int) (arg2 int))
-  (let ((s3-0 (new 'stack-no-clear 'net-powerup-spawn-params)))
-    (set! (-> s3-0 pos quad) (-> (the-as vector #f) quad))
-    (set! (-> s3-0 tp) collectoid)
-    (set! (-> s3-0 motion-info) #f)
-    (set! (-> s3-0 lifetime) 3000)
-    (set! (-> s3-0 initial-owner) 8)
-    (set! (-> s3-0 motion-info) #f)
+(defun drop-collectoids ((arg0 object) (arg1 int) (arg2 float))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'net-powerup-spawn-params 1)))
+    (set! (-> s3-0 0 pos quad) (-> (the-as vector #f) quad))
+    (set! (-> s3-0 0 tp) collectoid)
+    (set! (-> s3-0 0 motion-info) #f)
+    (set! (-> s3-0 0 lifetime) 3000)
+    (set! (-> s3-0 0 initial-owner) 8)
+    (set! (-> s3-0 0 motion-info) #f)
     (let ((f30-0 0.0))
       (dotimes (s2-0 arg1)
-        (eject-powerup (the-as vector (&-> s3-0 tp)) arg0 arg2 f30-0)
+        (eject-powerup (-> s3-0 0) (the-as vector arg0) arg2 f30-0)
         (+! f30-0 (/ 65536.0 (the float arg1)))
         )
       )
@@ -126,12 +125,12 @@
   (none)
   )
 
-(defmethod net-player-method-96 ((this net-player-collectable))
+(defmethod score-kill ((this net-player-collectable) (arg0 int))
   0
   (none)
   )
 
-(defmethod net-player-method-48 ((this net-player-collectable) (arg0 object) (arg1 object) (arg2 symbol) (arg3 event-message-block))
+(defmethod handle-events ((this net-player-collectable) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('collectoid-pickup)
      (when (or (= (/ (-> this player-id) 2) (if *net-mgr*
@@ -150,22 +149,22 @@
                )
        (when (not (current-finish-mode))
          (+! (-> this score) 1)
-         ((method-of-object this net-player-method-63))
+         (write-score-change this)
          )
        )
      )
     (('add-to-score)
      (+! (-> this score) (-> arg3 param 0))
-     (if (or (process-nettable-method-22 this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
-                                                    (= (if *net-mgr*
-                                                           (-> *net-mgr* game-state local-machine-idx)
-                                                           0
-                                                           )
-                                                       (-> *net-mgr* game-state session-master-idx)
-                                                       )
-                                                    )
+     (if (or (owner-is-local? this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                         (= (if *net-mgr*
+                                                (-> *net-mgr* game-state local-machine-idx)
+                                                0
+                                                )
+                                            (-> *net-mgr* game-state session-master-idx)
+                                            )
+                                         )
              )
-         ((method-of-object this net-player-method-63))
+         (write-score-change this)
          )
      )
     (('vehicle-died)
@@ -185,33 +184,30 @@
                       )
                  )
          (let ((s4-0 (-> arg3 param 0))
-               (v1-37 (net-player-method-49 this))
+               (v1-37 (get-vehicle this))
                (s5-1 (min 3 (-> this score)))
                )
            (when (and v1-37 (>= (the-as int s4-0) 0) (!= s4-0 (-> this player-id)) (> s5-1 0))
-             (drop-collectoids (-> v1-37 root trans) s5-1 #x47200000)
+             (drop-collectoids (-> v1-37 root trans) s5-1 40960.0)
              (set! (-> this score) (- (-> this score) s5-1))
-             ((method-of-object this net-player-method-63))
+             (write-score-change this)
              )
            )
          )
        )
      )
     (else
-      ((method-of-type net-player-deathmatch net-player-method-48) this arg0 arg1 arg2 arg3)
+      ((method-of-type net-player-deathmatch handle-events) this arg0 arg1 arg2 arg3)
       )
     )
-  (none)
   )
 
-;; WARN: Return type mismatch texture vs none.
-(defmethod net-game-mgr-method-71 ((this net-game-mgr-collectable))
+(defmethod get-counter-texture ((this net-game-mgr-collectable))
   (get-texture hud-collectable-counter-01 level-default-minimap)
-  (none)
   )
 
-(defmethod process-nettable-method-17 ((this net-player-collectable) (arg0 symbol) (arg1 mem-buffer))
-  ((method-of-type net-player-deathmatch process-nettable-method-17) this arg0 arg1)
+(defmethod handle-net-msg ((this net-player-collectable) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  ((method-of-type net-player-deathmatch handle-net-msg) this arg0 arg1 arg2)
   0
   (none)
   )
@@ -280,17 +276,17 @@
 
 ;; WARN: Return type mismatch int vs collectoid.
 (defbehavior collectoid-init-remote collectoid ((arg0 int))
-  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
-  (process-nettable-method-35 self (the-as mem-buffer arg0))
-  (process-nettable-method-36 self)
+  (register self -1 #xffff)
+  (init-remote self (the-as mem-buffer arg0))
+  (post-init-remote self)
   (the-as collectoid 0)
   )
 
-(defmethod process-nettable-method-41 ((this collectoid) (arg0 mem-buffer))
+(defmethod spawn-remote ((this collectoid) (arg0 mem-buffer))
   (ppointer->process (process-spawn collectoid :init collectoid-init-remote arg0 :name "collectoid"))
   )
 
-(defmethod process-nettable-method-37 ((this collectoid) (arg0 net-process-class-info))
+(defmethod write-msg-map ((this collectoid) (arg0 net-process-class-info))
   (set! (-> arg0 msg-map (-> arg0 msg-count)) 'converted)
   (+! (-> arg0 msg-count) 1)
   0
@@ -309,19 +305,19 @@
 
 (net-process-class-register *net-process-class-info-collectoid*)
 
-(defmethod process-nettable-method-40 ((this collectoid))
+(defmethod get-class-info ((this collectoid))
   *net-process-class-info-collectoid*
   )
 
-(defmethod process-nettable-method-15 ((this collectoid) (arg0 mem-buffer))
+(defmethod write-create-data ((this collectoid) (arg0 mem-buffer))
   (write-int8 arg0 (-> this controlled-by))
-  ((method-of-type net-powerup process-nettable-method-15) this arg0)
+  ((method-of-type net-powerup write-create-data) this arg0)
   (none)
   )
 
-(defmethod process-nettable-method-35 ((this collectoid) (arg0 mem-buffer))
+(defmethod init-remote ((this collectoid) (arg0 mem-buffer))
   (set! (-> this controlled-by) (read-int8 arg0))
-  ((method-of-type net-powerup process-nettable-method-35) this arg0)
+  ((method-of-type net-powerup init-remote) this arg0)
   (none)
   )
 
@@ -331,7 +327,7 @@
   ((method-of-type net-powerup init-from-entity!) this arg0)
   )
 
-(defmethod net-powerup-method-46 ((this collectoid) (arg0 object) (arg1 object))
+(defmethod spawn-draw-proc ((this collectoid) (arg0 vector) (arg1 entity))
   (set! (-> this child-proc) (process->handle (ppointer->process (process-spawn
                                                                    collectoid-draw
                                                                    :init powerup-draw-init-by-other
@@ -347,7 +343,7 @@
   (none)
   )
 
-(defmethod net-powerup-method-52 ((this collectoid) (arg0 process))
+(defmethod do-pickup ((this collectoid) (arg0 process))
   (let ((v1-0 (as-type arg0 vehicle)))
     (when v1-0
       (let ((a0-4 (-> *net-players* (-> (the-as vehicle v1-0) player-id))))
@@ -360,18 +356,14 @@
   (none)
   )
 
-(defmethod powerup-draw-method-53 ((this collectoid-draw) (arg0 object) (arg1 vector))
+(defmethod init! ((this collectoid-draw) (arg0 net-powerup) (arg1 vector))
   (+! (-> arg1 y) 24576.0)
-  (powerup-draw-method-52 this 4.0)
-  (let ((t9-1 (method-of-type powerup-draw powerup-draw-method-53)))
+  (init-root! this 4.0)
+  (let ((t9-1 (method-of-type powerup-draw init!)))
     (t9-1 this arg0 arg1)
     )
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
-  (process-drawable-method-42
-    this
-    (art-group-get-by-name *level* "skel-collectoid" (the-as (pointer level) #f))
-    0
-    )
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-collectoid" (the-as (pointer level) #f)) 0)
   (set! (-> this base-y) (-> this root trans y))
   (vector-float*! (-> this root scale) (-> this root scale) 0.65)
   (if (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
@@ -381,7 +373,7 @@
   (none)
   )
 
-(defmethod powerup-draw-method-54 ((this collectoid-draw) (arg0 process-drawable))
+(defmethod spawn-pickup-effect ((this collectoid-draw) (arg0 process-drawable))
   (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
     (let ((v1-0 arg0))
       (cond
@@ -479,11 +471,11 @@
   (if (type? (-> this root) collide-shape)
       (transform-post)
       )
-  (let ((v1-69 (make-sound-instance (-> *sound-info* 310) (new 'static 'sound-id) #f)))
+  (let ((v1-69 (make-sound-instance snd-collectible1 (new 'static 'sound-id) (the-as handle #f))))
     (cond
       (v1-69
         (set! (-> v1-69 trans quad) (-> this root trans quad))
-        (logior! (-> v1-69 flags) 96)
+        (logior! (-> v1-69 flags) (sound-spec-flag no-track needs-update))
         (-> v1-69 id)
         )
       (else
@@ -512,9 +504,9 @@
     '()
     )
   :trans (behavior ()
-    (powerup-draw-method-55 self)
+    (update-draw self)
     (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
-      (let ((v1-5 (handle->process (-> self parent-proc))))
+      (let ((v1-5 (the-as net-powerup (handle->process (-> self parent-proc)))))
         (when v1-5
           (let ((v1-7 (-> (the-as collectoid v1-5) controlled-by)))
             (if (>= v1-7 0)
@@ -558,8 +550,8 @@
   :post ja-post
   )
 
-(defmethod powerup-draw-method-55 ((this collectoid-draw))
-  (let ((v1-1 (handle->process (-> this parent-proc))))
+(defmethod update-draw ((this collectoid-draw))
+  (let ((v1-1 (the-as net-powerup (handle->process (-> this parent-proc)))))
     (set! (-> this root trans quad) (-> (the-as collectoid v1-1) pos quad))
     )
   (let ((f30-0 (the float (logand (+ (- (- (if *net-mgr*
@@ -598,7 +590,7 @@
       (send-event (-> *net-game-mgr* net-players arg1) 'add-to-score 1)
       )
   (set! (-> this controlled-by) arg1)
-  (send-event (handle->process (-> this child-proc)) 'go-die)
+  (send-event (the-as powerup-draw (handle->process (-> this child-proc))) 'go-die)
   (let ((v1-23 (-> *net-players* (* (if *net-mgr*
                                         (-> *net-mgr* game-state local-machine-idx)
                                         0
@@ -613,11 +605,11 @@
     (when arg1
       (cond
         ((= (-> v1-23 team) (-> a0-20 team))
-         (let ((v1-26 (make-sound-instance (-> *sound-info* 564) (new 'static 'sound-id) #f)))
+         (let ((v1-26 (make-sound-instance snd-player-turn-on (new 'static 'sound-id) (the-as handle #f))))
            (cond
              (v1-26
                (set! (-> v1-26 trans quad) (-> this pos quad))
-               (logior! (-> v1-26 flags) 96)
+               (logior! (-> v1-26 flags) (sound-spec-flag no-track needs-update))
                (-> v1-26 id)
                )
              (else
@@ -627,11 +619,11 @@
            )
          )
         (else
-          (let ((v1-28 (make-sound-instance (-> *sound-info* 566) (new 'static 'sound-id) #f)))
+          (let ((v1-28 (make-sound-instance snd-enemy-turn-on (new 'static 'sound-id) (the-as handle #f))))
             (cond
               (v1-28
                 (set! (-> v1-28 trans quad) (-> this pos quad))
-                (logior! (-> v1-28 flags) 96)
+                (logior! (-> v1-28 flags) (sound-spec-flag no-track needs-update))
                 (-> v1-28 id)
                 )
               (else
@@ -647,7 +639,7 @@
   (none)
   )
 
-(defmethod process-nettable-method-17 ((this collectoid) (arg0 symbol) (arg1 mem-buffer))
+(defmethod handle-net-msg ((this collectoid) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
   (cond
     ((= arg0 'converted)
      (let ((s4-0 (read-int8 arg1))
@@ -657,7 +649,7 @@
        )
      )
     (else
-      ((method-of-type net-powerup process-nettable-method-17) this arg0 arg1)
+      ((method-of-type net-powerup handle-net-msg) this arg0 arg1 arg2)
       )
     )
   0
@@ -665,25 +657,25 @@
   )
 
 ;; WARN: Function (method 54 collectoid) has a return type of none, but the expression builder found a return statement.
-(defmethod net-powerup-method-54 ((this collectoid))
+(defmethod on-pickup ((this collectoid))
   (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
     (when (!= (-> this touched-by) (-> this controlled-by))
-      (let ((s5-0 (process-nettable-method-27 this 'converted)))
+      (let ((s5-0 (alloc-msg this 'converted)))
         (write-int8 s5-0 (-> this controlled-by))
         (write-int8 s5-0 (-> this touched-by))
-        (process-nettable-method-29 this s5-0 -2 80)
-        (process-nettable-method-28 this s5-0)
+        (send-msg this s5-0 -2 80)
+        (free-msg this s5-0)
         )
       (collectoid-method-56 this (-> this controlled-by) (-> this touched-by))
-      (let ((v1-17 (handle->process (-> this child-proc))))
-        (when v1-17
-          (set! (-> *launch-matrix* trans quad) (-> (the-as process-drawable v1-17) root trans quad))
+      (let ((v1-17 (the-as powerup-draw (handle->process (-> this child-proc)))))
+        (when (the-as powerup-draw v1-17)
+          (set! (-> *launch-matrix* trans quad) (-> v1-17 root trans quad))
           (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
           (vector-reset! (-> *part-tracker-params-default* local-offset))
           (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
           (set! (-> *part-tracker-params-default* callback) #f)
           (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-          (set! (-> *part-tracker-params-default* target) (the-as process-drawable v1-17))
+          (set! (-> *part-tracker-params-default* target) (the-as powerup-draw v1-17))
           (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
           (set! (-> *part-tracker-params-default* local-space-param) 0)
           (set! (-> *part-tracker-params-default* local-space-callback) #f)
@@ -714,20 +706,20 @@
     (return #f)
     )
   (set! (-> this die-or-respawn-time) -1)
-  (let ((s5-3 (process-nettable-method-27 this 'picked-up)))
+  (let ((s5-3 (alloc-msg this 'picked-up)))
     (write-int32 s5-3 (-> this die-or-respawn-time))
     (write-int8 s5-3 (-> this touched-by))
-    (process-nettable-method-29 this s5-3 -2 80)
-    (process-nettable-method-28 this s5-3)
+    (send-msg this s5-3 -2 80)
+    (free-msg this s5-3)
     )
   (set! (-> this touched-time) -1)
-  (go (method-of-object this net-powerup-s2))
+  (go (method-of-object this wait-respawn))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch trsqv vs none.
-(defmethod powerup-draw-method-52 ((this collectoid-draw) (arg0 float))
+(defmethod init-root! ((this collectoid-draw) (arg0 float))
   (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   (none)
   )

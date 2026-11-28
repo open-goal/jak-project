@@ -9,3 +9,3655 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch int vs object.
+(defun verify-drivers ()
+  (dotimes (gp-0 (length *net-drivers*))
+    (dotimes (s5-0 (length (-> *net-drivers* gp-0 ai-car-levels)))
+      (let ((s4-0 (-> *net-drivers* gp-0 ai-car-levels s5-0)))
+        (if (not (find-prebuilt-ai-vehicle s4-0))
+            (format 0 "can't find vehicle ~A~%" s4-0)
+            )
+        )
+      )
+    )
+  0
+  )
+
+(define *net-world-load-levels* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 18))
+
+(define *net-world-display-levels* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 18))
+
+(define *net-world-load-levels2* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 18))
+
+(define *net-task-mask* (task-mask))
+
+(define *waiting-for-lock* #f)
+
+(define *net-world-entity-hash* 0)
+
+;; WARN: Return type mismatch int vs object.
+(defun set-net-task-mask ((arg0 task-mask))
+  (set! *net-task-mask*
+        (logior (-> *game-info* sub-task-list (-> *net-world* task-node) task-mask) (task-mask never))
+        )
+  0
+  )
+
+(defun convert-load-parts-to-car-info ((arg0 vehicle-load-parts) (arg1 car-info-full))
+  (set! (-> arg1 current-parts 0) (the-as int (-> arg0 f-fender)))
+  (set! (-> arg1 current-parts 1) (the-as int (-> arg0 r-fender)))
+  (set! (-> arg1 current-parts 2) (the-as int (-> arg0 door)))
+  (set! (-> arg1 current-parts 3) (the-as int (-> arg0 f-bumper)))
+  (set! (-> arg1 current-parts 4) (the-as int (-> arg0 r-bumper)))
+  (set! (-> arg1 current-parts 5) (the-as int (-> arg0 hood)))
+  (set! (-> arg1 current-parts 6) (the-as int (-> arg0 trunk)))
+  (set! (-> arg1 current-parts 7) (the-as int (-> arg0 roof)))
+  (set! (-> arg1 current-parts 8) (the-as int (-> arg0 wheel)))
+  (set! (-> arg1 current-parts 9) (the-as int (-> arg0 antenna)))
+  (set! (-> arg1 current-parts 10) (the-as int (-> arg0 helmet)))
+  0
+  (none)
+  )
+
+(defun convert-car-info-to-load-parts ((arg0 car-info-full))
+  (copy-and-set-field
+    (the-as
+      vehicle-load-parts
+      (copy-and-set-field
+        (the-as
+          vehicle-load-parts
+          (copy-and-set-field
+            (the-as
+              vehicle-load-parts
+              (copy-and-set-field
+                (the-as
+                  vehicle-load-parts
+                  (copy-and-set-field
+                    (the-as
+                      vehicle-load-parts
+                      (copy-and-set-field
+                        (the-as
+                          vehicle-load-parts
+                          (copy-and-set-field
+                            (the-as
+                              vehicle-load-parts
+                              (copy-and-set-field
+                                (the-as
+                                  vehicle-load-parts
+                                  (copy-and-set-field
+                                    (the-as
+                                      vehicle-load-parts
+                                      (copy-and-set-field
+                                        (the-as
+                                          vehicle-load-parts
+                                          (copy-and-set-field (new 'static 'vehicle-load-parts) f-fender (-> arg0 current-parts 0))
+                                          )
+                                        r-fender
+                                        (-> arg0 current-parts 1)
+                                        )
+                                      )
+                                    door
+                                    (-> arg0 current-parts 2)
+                                    )
+                                  )
+                                f-bumper
+                                (-> arg0 current-parts 3)
+                                )
+                              )
+                            r-bumper
+                            (-> arg0 current-parts 4)
+                            )
+                          )
+                        hood
+                        (-> arg0 current-parts 5)
+                        )
+                      )
+                    trunk
+                    (-> arg0 current-parts 6)
+                    )
+                  )
+                roof
+                (-> arg0 current-parts 7)
+                )
+              )
+            wheel
+            (-> arg0 current-parts 8)
+            )
+          )
+        antenna
+        (-> arg0 current-parts 9)
+        )
+      )
+    helmet
+    (-> arg0 current-parts 10)
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun cleanup-at-game-end ((arg0 net-world))
+  (when (and (= *game-mode* 'adventure) (not (-> *game-info* playing-grand-prix?)))
+    (let ((v1-5 (get-open-task-node-info)))
+      (when v1-5
+        (+! (-> *game-info* total-trys) 1)
+        (+! (-> v1-5 play-count) 1)
+        )
+      )
+    )
+  (kill-by-type explosion *active-pool*)
+  (kill-by-type oil-slick *active-pool*)
+  (kill-by-type slip-object *active-pool*)
+  (kill-by-type smoke-system *active-pool*)
+  (kill-by-type slip-object *active-pool*)
+  (kill-by-type lightning-sphere *active-pool*)
+  (kill-by-type oil-trail *active-pool*)
+  (when *in-game-menu-process*
+    (deactivate (-> *in-game-menu-process* 0))
+    (set! *in-game-menu-process* (the-as (pointer hud) #f))
+    )
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id 1)
+    (gui-channel speech)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (sound-group-pause (sound-group sfx))
+  (set-master-mode 'game)
+  (sound-group-pause (sound-group sfx))
+  (set! (-> *game-info* turbo-disabled) -1)
+  (set! (-> *game-info* turbo-last-disabled) 0)
+  (disable (-> *screen-filter-array* 0))
+  (disable (-> *screen-filter-array* 1))
+  (disable (-> *screen-filter-array* 2))
+  (check-particles)
+  0
+  )
+
+;; WARN: Return type mismatch process-nettable vs net-world.
+(defmethod relocate ((this net-world) (offset int))
+  (set! *net-world* this)
+  (if *net-world*
+      (set! *net-world* (&+ *net-world* offset))
+      )
+  (the-as net-world ((method-of-type process-nettable relocate) this offset))
+  )
+
+(defmethod deactivate ((this net-world))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *net-world* #f)
+  (dma-release 'title-control)
+  ((method-of-type process-nettable deactivate) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior check-start-load net-world ()
+  (when (-> self need-start-load)
+    (want-levels *load-state* (-> *net-world-load-levels* data))
+    (dotimes (gp-0 6)
+      (if (-> *net-world-load-levels2* gp-0)
+          (want-display-level *load-state* (-> *net-world-load-levels2* gp-0) (-> *net-world-display-levels* gp-0))
+          )
+      )
+    (set! (-> self need-start-load) #f)
+    )
+  0
+  )
+
+(define *font-context-loading* (new
+                                 'global
+                                 'font-context
+                                 *font-default-matrix*
+                                 0
+                                 0
+                                 8396850.0
+                                 (font-color default)
+                                 (font-flags shadow kerning)
+                                 )
+        )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior do-loading-text net-world ()
+  (let ((gp-0 *font-context-loading*))
+    (set-origin! gp-0 0 200)
+    (set-scale! gp-0 1.0)
+    (set-width! gp-0 512)
+    (set-height! gp-0 100)
+    (let ((a0-4 gp-0))
+      (set! (-> a0-4 effect) (the-as uint 19))
+      )
+    (let ((v1-5 gp-0)
+          (f0-10 (* 0.0033333334 (the float (current-time))))
+          )
+      (set! (-> v1-5 effect-time) (- f0-10 (* (the float (the int (/ f0-10 14400.0))) 14400.0)))
+      )
+    (set! (-> gp-0 flags) (font-flags kerning middle large ff12))
+    (let ((a0-10 gp-0))
+      (set! (-> a0-10 color) (font-color font-color-62))
+      )
+    (let ((a0-12 (lookup-text! *common-text* (text-id text-id-2632) #f)))
+      (print-game-text a0-12 gp-0 #f 44 (bucket-id hud-draw-hud-alpha) (the-as string #f) (the-as dma-buffer #f))
+      )
+    )
+  0
+  )
+
+(define *movie-string* (the-as string 0))
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior do-movie net-world ((arg0 string))
+  (set! *movie-string* arg0)
+  (lobby-level-set! 1 'fmvlev #f)
+  (check-start-load)
+  (until #f
+    (let ((v1-2 (level-get *level* 'fmvlev)))
+      (if (and v1-2 (= (-> v1-2 status) 'loaded))
+          (goto cfg-8)
+          )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-8)
+  (let ((a0-4 *movie-string*))
+    (fmv-player-run a0-4 *target-pool* #f)
+    )
+  (while *fmv-player*
+    (suspend)
+    )
+  (suspend)
+  (lobby-level-set! 1 #f #f)
+  (if (not (demo?))
+      (check-start-load)
+      )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defun wait-target-load ()
+  (format 0 "waiting for loading to cease~%")
+  (while (and (view-get-active-target)
+              (-> (view-get-active-target) next-state)
+              (= (-> (view-get-active-target) next-state name) 'target-continue)
+              )
+    (suspend)
+    )
+  (until #f
+    (let ((v1-5 #f))
+      (dotimes (a0-2 6)
+        (when (-> *level* level a0-2 name)
+          (if (not (or (= (-> *level* level a0-2 status) 'loaded)
+                       (= (-> *level* level a0-2 status) 'alive)
+                       (= (-> *level* level a0-2 status) 'active)
+                       (= (-> *level* level a0-2 status) 'inactive)
+                       )
+                   )
+              (set! v1-5 #t)
+              )
+          )
+        )
+      (if (not v1-5)
+          (goto cfg-26)
+          )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-26)
+  (format 0 "waiting for loading to cease - done~%")
+  0
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior load-sound-banks net-world ()
+  (let ((v1-0 (get-open-task-node-info)))
+    (dotimes (a0-0 1)
+      (set! (-> *load-state* want-sound a0-0 name) (-> self cont want-sound a0-0))
+      (set! (-> *load-state* want-sound a0-0 mode) (sound-bank-mode full))
+      )
+    (if (and v1-0 (and (-> v1-0 sound-bank) (!= (if *net-world*
+                                                    (the-as int (-> *net-world* task-node-info net-play-mode))
+                                                    18
+                                                    )
+                                                18
+                                                )
+                       )
+             )
+        (set! (-> *load-state* want-sound 0 name) (-> v1-0 sound-bank))
+        )
+    )
+  (none)
+  )
+
+(defbehavior do-late-join net-world ()
+  (set! (-> *net-process-mgr*
+            machines
+            (if *net-mgr*
+                (-> *net-mgr* game-state local-machine-idx)
+                0
+                )
+            state
+            )
+        (net-process-mgr-machine-state staging)
+        )
+  (format 0 "we are a late joiner...~%")
+  (while (logtest? (-> self net-state flags) 1)
+    (check-start-load)
+    (suspend)
+    )
+  (set! (-> self is-late-join) #f)
+  (format 0 "we're not anymore...~%")
+  (set! (-> *net-mgr* game-state sm-eligible) (not (-> self is-late-join)))
+  (send-event *lobby-menu-manager* 'green-room-game-start)
+  (go-virtual running #f)
+  )
+
+(define *tmp-reset-string* (new 'global 'string 128 (the-as string #f)))
+
+(define *last-flash* #f)
+
+;; WARN: Return type mismatch int vs object.
+(defun check-host-timeout ()
+  (when (and *lobby-menu-manager*
+             (= (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                (-> *net-mgr* game-state session-master-idx)
+                )
+             (= *ready-room-host-id* (if *net-mgr*
+                                         (-> *net-mgr* game-state local-machine-idx)
+                                         0
+                                         )
+                )
+             (nonzero? (-> *net-mgr* lobby-state connect-handle))
+             )
+    (let ((s5-0 (- (-> *display* real-clock frame-counter) (the-as int (-> *cpad-list* cpads 0 real-change-time)))))
+      (when (< (seconds 180) s5-0)
+        (let ((v1-14 (make-sound-instance snd-mine-explode (new 'static 'sound-id) (the-as handle #f))))
+          (cond
+            (v1-14
+              (set! (-> v1-14 volume) 3072)
+              (logior! (-> v1-14 flags) (sound-spec-flag needs-update non-positional))
+              (-> v1-14 id)
+              )
+            (else
+              0
+              )
+            )
+          )
+        (send-event *net-mgr* 'leave-game)
+        (send-event *lobby-menu-manager* 'lobby-host-activity-timeout)
+        (kick-machines
+          (logclear
+            (-> *net-mgr* game-state connected-bitfield)
+            (ash 1 (if *net-mgr*
+                       (-> *net-mgr* game-state local-machine-idx)
+                       0
+                       )
+                 )
+            )
+          'host-activity-timeout
+          )
+        )
+      (when (< (seconds 150) s5-0)
+        (let ((gp-0 (- (seconds 180) s5-0)))
+          (cond
+            ((when (and (< 50 (mod s5-0 300)) (< (mod s5-0 300) 250))
+               (when (not *last-flash*)
+                 (let ((v1-37 (make-sound-instance snd-chooser (new 'static 'sound-id) (the-as handle #f))))
+                   (cond
+                     (v1-37
+                       (set! (-> v1-37 volume) 3072)
+                       (logior! (-> v1-37 flags) (sound-spec-flag needs-update non-positional))
+                       (-> v1-37 id)
+                       )
+                     (else
+                       0
+                       )
+                     )
+                   )
+                 )
+               (set! *last-flash* #t)
+               (let ((s5-1 (new
+                             'stack
+                             'font-context
+                             *font-default-matrix*
+                             0
+                             0
+                             8396850.0
+                             (font-color default)
+                             (font-flags shadow kerning)
+                             )
+                           )
+                     )
+                 (set-width! s5-1 384)
+                 (set-height! s5-1 416)
+                 (set! (-> s5-1 scale) 1.0)
+                 (set! (-> s5-1 flags) (font-flags kerning middle middle-vert large ff12))
+                 (set! (-> s5-1 color) (if (< gp-0 (seconds 11))
+                                           (font-color red)
+                                           (font-color font-color-60)
+                                           )
+                       )
+                 (set! (-> s5-1 effect) (the-as uint 8))
+                 (let ((v1-48 s5-1))
+                   (set! (-> v1-48 effect-time) 0.0)
+                   )
+                 (logior! (-> s5-1 flags) (font-flags ff8))
+                 (set! (-> s5-1 alpha) 1.0)
+                 (set-vector! (-> s5-1 origin) 64.0 0.0 65535.0 1.0)
+                 (format *stdcon* " ")
+                 (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                              (bucket-id debug-menu)
+                                              )
+                   (format
+                     (clear *tmp-reset-string*)
+                     (lookup-text! *common-text* (text-id text-id-3483) #f)
+                     (the int (* 0.0033333334 (the float gp-0)))
+                     )
+                   (print-game-text *tmp-reset-string* s5-1 #f 44 (bucket-id hud-draw-hud-alpha) (the-as string #f) s3-0)
+                   )
+                 )
+               )
+             )
+            (else
+              (set! *last-flash* #f)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun do-encode-net-world-state ((arg0 net-world-state) (arg1 mem-buffer))
+  (let ((s4-0 0))
+    (encode-net-world-state arg0 arg1)
+    (dotimes (s3-0 24)
+      (when (and (< s4-0 6) (player-connected? s3-0))
+        (write-int8 arg1 s3-0)
+        (write-bytes arg1 (the-as pointer (-> arg0 players s3-0)) 32)
+        (write-int8 arg1 (-> arg0 assigned-drivers-s8 s3-0))
+        (write-string arg1 (-> *net-player-names* s3-0 name))
+        (+! s4-0 1)
+        )
+      )
+    )
+  (write-int8 arg1 -1)
+  0
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior wait-for-lock net-world ()
+  (set! *waiting-for-lock* #t)
+  (let ((gp-0 (-> *display* real-clock frame-counter)))
+    (until (logtest? (-> self net-state flags) 1)
+      (check-start-load)
+      (suspend)
+      (check-host-timeout)
+      (when (and (and *net-mgr*
+                      *net-world*
+                      (nonzero? (-> *net-mgr* lobby-state connect-handle))
+                      (= (if *net-world*
+                             (the-as int (-> *net-world* task-node-info net-play-mode))
+                             18
+                             )
+                         3
+                         )
+                      *ghosts-enabled*
+                      )
+                 (not *ghost-info-ptr*)
+                 )
+        (set! *ghost-info-ptr* (the-as pointer (get-best-ghost-info (the-as int (-> self task-info task-level)))))
+        (if (not *ghost-info-ptr*)
+            (set! *ghost-info-ptr* (the-as pointer 'error))
+            )
+        (update-ai-players self)
+        )
+      (when (and (< (seconds 5) (- (-> *display* real-clock frame-counter) gp-0))
+                 (= (if *net-mgr*
+                        (-> *net-mgr* game-state local-machine-idx)
+                        0
+                        )
+                    (-> *net-mgr* game-state session-master-idx)
+                    )
+                 )
+        (set! gp-0 (-> *display* real-clock frame-counter))
+        (format 0 "sending state~%")
+        (let ((s5-0 (alloc-msg self 'state)))
+          (do-encode-net-world-state (-> self net-state) s5-0)
+          (send-msg self s5-0 -2 80)
+          (free-msg self s5-0)
+          )
+        )
+      (when (nonzero? (-> *net-mgr* lobby-state connect-handle))
+        (dotimes (s5-1 8)
+          (let ((v1-40 (-> *net-process-mgr* machines s5-1)))
+            (if (and (nonzero? (-> v1-40 state)) (> (-> v1-40 acct-id) 0))
+                (lookup *medius-player-cache* (-> v1-40 acct-id) #x4650 #f #f)
+                )
+            )
+          )
+        )
+      )
+    )
+  (set! *waiting-for-lock* #f)
+  (set! *ghost-info-ptr* (the-as pointer #f))
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior wait-for-ghost-download net-world ()
+  (format 0 "waiting for any ghost downloads to finish~%")
+  (while (handle->process (-> *ghost-download-proc* handle))
+    (suspend)
+    )
+  (format 0 "done...~%")
+  (when *ghosts-enabled*
+    (logand! (-> self net-state flags) -2)
+    (update-ai-players self)
+    (let ((gp-0 -1))
+      (dotimes (s5-0 24)
+        (set! (-> self net-state players s5-0 player-num) (cond
+                                                            ((player-idx-vehicle-selected? self s5-0)
+                                                             (+! gp-0 1)
+                                                             gp-0
+                                                             )
+                                                            (else
+                                                              -1
+                                                              )
+                                                            )
+              )
+        )
+      )
+    (logior! (-> self net-state flags) 1)
+    )
+  0
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defun save-vehicle-camera-inside-state ()
+  (dotimes (gp-0 *active-net-player-count*)
+    (let ((s5-0 (-> *active-net-players* gp-0)))
+      (when s5-0
+        (when (if (= (/ (-> s5-0 player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  #t
+                  #f
+                  )
+          (let ((a0-4 (get-vehicle s5-0)))
+            (if a0-4
+                (set! (-> *game-info* player-info (-> s5-0 view index) camera-inside-view)
+                      (the-as symbol (send-event a0-4 'query 'camera-inside-view))
+                      )
+                )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun set-net-world-time-of-day ((arg0 net-world))
+  (cond
+    ((and (!= *game-mode* 'adventure) (!= (-> *net-world* net-state time-of-day) -1))
+     (send-event (ppointer->process *time-of-day*) 'change 'ratio 0.0)
+     (send-event (ppointer->process *time-of-day*) 'change 'hour (-> *net-world* net-state time-of-day))
+     (send-event (ppointer->process *time-of-day*) 'change 'minutes 0)
+     (send-event (ppointer->process *time-of-day*) 'change 'seconds 0)
+     (send-event (ppointer->process *time-of-day*) 'change 'frames 0)
+     )
+    (else
+      (when (and arg0 (!= (-> arg0 pid) -1))
+        (send-event (ppointer->process *time-of-day*) 'change 'ratio 0.0)
+        (send-event (ppointer->process *time-of-day*) 'change 'hour (-> arg0 pid))
+        (send-event (ppointer->process *time-of-day*) 'change 'minutes 0)
+        (send-event (ppointer->process *time-of-day*) 'change 'seconds 0)
+        (send-event (ppointer->process *time-of-day*) 'change 'frames 0)
+        )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun wait-for-lobby-to-die ()
+  (while (!= (-> *setting-control* user-current bg-a) 1.0)
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (apply-settings! *setting-control*)
+    (suspend)
+    )
+  (while *lobby-menu-manager*
+    (suspend)
+    )
+  (lobby-level-set! 0 (-> *lobby-levels* 0) #f)
+  (want-display-level *load-state* 'menu2 #f)
+  (suspend)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior check-grand-prix-restart net-world ()
+  (when (= *net-mgr-finish-mode* 'restart)
+    (let ((v1-2 (-> *game-info* playing-grand-prix?)))
+      (when v1-2
+        (when (< (-> *game-info* grand-prix-index) (the-as uint 3))
+          (dotimes (a0-3 23)
+            (set! (-> *game-info* cumulative-grand-prix-score a0-3) (the-as uint 0))
+            )
+          (set! (-> *game-info* grand-prix-index) (the-as uint 0))
+          (set-task-node self (the-as game-task-node (-> v1-2 task1)))
+          (update-load-levels self #f)
+          (check-start-load)
+          (suspend)
+          0
+          )
+        )
+      )
+    )
+  )
+
+(defbehavior wait-for-levels net-world ((arg0 symbol))
+  (until (and (levels-loaded? self) (ocean-levels-loaded? self))
+    (check-start-load)
+    (if arg0
+        (do-loading-text)
+        )
+    (suspend)
+    )
+  #f
+  )
+
+(defstate running (net-world)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('level-loaded)
+       (if *waiting-for-lock*
+           (update-load-levels self #f)
+           )
+       )
+      (('headset-changed)
+       (format 0 "net-world: headset status changed ~D~%" (if (-> block param 0)
+                                                              1
+                                                              0
+                                                              )
+               )
+       (let ((a1-3 (-> self
+                       net-state
+                       players
+                       (* (if *net-mgr*
+                              (-> *net-mgr* game-state local-machine-idx)
+                              0
+                              )
+                          2
+                          )
+                       flags
+                       )
+                   )
+             )
+         (set-player-flags self (the-as int a1-3) (* (if *net-mgr*
+                                                         (-> *net-mgr* game-state local-machine-idx)
+                                                         0
+                                                         )
+                                                     2
+                                                     )
+                           )
+         )
+       (let ((s5-0 (alloc-msg self 'headset-flag)))
+         (write-bool s5-0 (the-as symbol (-> block param 0)))
+         (send-msg self s5-0 -2 80)
+         (free-msg self s5-0)
+         )
+       )
+      (('green-room-stats-update)
+       (let ((gp-1 0))
+         (dotimes (v1-21 8)
+           (if (= (-> *net-process-mgr* machines v1-21 state) (net-process-mgr-machine-state late-join))
+               (set! gp-1 (logior gp-1 (ash 1 v1-21)))
+               )
+           )
+         (let ((s5-1 (alloc-msg self 'green-room-stats)))
+           (encode-green-room-stats (-> self net-state green-room-stats) s5-1)
+           (send-msg self s5-1 gp-1 80)
+           (free-msg self s5-1)
+           )
+         )
+       )
+      (('green-room-player-stats-update)
+       (let ((s5-2 0)
+             (gp-2 (-> block param 0))
+             )
+         (dotimes (v1-28 8)
+           (if (= (-> *net-process-mgr* machines v1-28 state) (net-process-mgr-machine-state late-join))
+               (set! s5-2 (logior s5-2 (ash 1 v1-28)))
+               )
+           )
+         (let ((s4-0 (alloc-msg self 'green-room-player-stats)))
+           (write-int8 s4-0 (the-as int gp-2))
+           (write-int16 s4-0 (-> self net-state green-room-stats scores-s16 gp-2))
+           (write-int8 s4-0 (-> self net-state green-room-stats laps-s8 gp-2))
+           (send-msg self s4-0 s5-2 80)
+           (free-msg self s4-0)
+           )
+         )
+       )
+      (('update-ai-players)
+       (update-ai-players self)
+       )
+      (('return-to-staging)
+       (reset-sparks *sparks-work*)
+       (set! *net-mgr-finish-mode* (the-as symbol (-> block param 0)))
+       (jukebox-onoff #f)
+       (save-vehicle-camera-inside-state)
+       (reset-actors-by-game-type 'game)
+       (destroy-all-processes *net-process-mgr* #t)
+       (cleanup-at-game-end self)
+       (set! (-> *net-mgr* game-state locked) #f)
+       (set! (-> self is-late-join) #f)
+       (logand! (-> self net-state flags) -4)
+       (set! (-> self net-state player-ready-flags) (the-as uint 0))
+       (set! (-> self net-state game-start-time) 0)
+       (set! (-> self net-state total-pause-time) 0)
+       (send-event *net-process-mgr* 'go-staging)
+       (set! *lobby-reset-mode* 'results)
+       (set-setting! 'allow-in-game-menu #f 0.0 0)
+       (cond
+         ((-> *game-info* playing-grand-prix?)
+          (cond
+            ((< (-> *game-info* grand-prix-index) (the-as uint 2))
+             (+! (-> *game-info* grand-prix-index) 1)
+             (set-task-node
+               *net-world*
+               (the-as game-task-node (-> *game-info* playing-grand-prix? task (-> *game-info* grand-prix-index)))
+               )
+             (mem-copy!
+               (the-as pointer (-> *net-world* net-state options))
+               (the-as pointer (-> (get-open-task-node-info) default-advanced-options-adventure))
+               8
+               )
+             (go-virtual running #t)
+             )
+            ((= (-> *game-info* grand-prix-index) 2)
+             (set-blackout-frames (seconds 3.335))
+             (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+             (go-virtual running #f)
+             )
+            ((and (= *net-mgr-finish-mode* 'finish) (= (-> *game-info* grand-prix-index) 3))
+             (go-virtual play-movie)
+             )
+            (else
+              (set-blackout-frames (seconds 3.335))
+              (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+              (go-virtual running #f)
+              )
+            )
+          )
+         ((demo?)
+          (go-virtual demo-screen)
+          )
+         (else
+           (set-blackout-frames (seconds 3.335))
+           (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+           (go-virtual running #f)
+           )
+         )
+       )
+      (('restart-game)
+       (reset-sparks *sparks-work*)
+       (set! *net-mgr-finish-mode* 'restart)
+       (jukebox-onoff #f)
+       (save-vehicle-camera-inside-state)
+       (when (not (and *net-mgr* (or (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-sp-game))
+                                     (and (and (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-game))
+                                          (= (if *net-world*
+                                                 (the-as int (-> *net-world* task-node-info net-play-mode))
+                                                 18
+                                                 )
+                                             3
+                                             )
+                                          )
+                                     )
+                       )
+                  )
+         (format 0 "can't reset game in non-SP mode~%")
+         (return #f)
+         )
+       (reset-actors-by-game-type 'game)
+       (kill-by-type-inherited hud *active-pool*)
+       (destroy-all-processes *net-process-mgr* #t)
+       (cleanup-at-game-end self)
+       (set! (-> *net-mgr* game-state locked) #f)
+       (set! (-> self is-late-join) #f)
+       (logand! (-> self net-state flags) -4)
+       (set! (-> self net-state player-ready-flags) (the-as uint 0))
+       (set! (-> self net-state game-start-time) 0)
+       (set! (-> self net-state total-pause-time) 0)
+       (send-event *net-process-mgr* 'go-staging)
+       (set! *lobby-reset-mode* 'results)
+       (set-setting! 'allow-in-game-menu #f 0.0 0)
+       (set-blackout-frames (seconds 3.335))
+       (go-virtual running #t)
+       )
+      )
+    )
+  :code (behavior ((arg0 symbol))
+    (local-vars (v0-47 object))
+    (set! (-> *cpad-list* cpads 0 real-change-time) (the-as uint (-> *display* real-clock frame-counter)))
+    (set! *in-end-of-race-preload* #f)
+    (when (not (is-late-join?))
+      (mem-clear! (the-as pointer (-> self net-state green-room-stats)) 26)
+      (set! (-> self net-state green-room-stats intro-end-time) -1)
+      (set! (-> self net-state green-room-stats scheduled-finish-time) -1)
+      )
+    (set! *medius-enemy-clan-id* (if (= (-> self net-state clan-ids-s32 0) (-> *medius-my-clan* medius-id))
+                                     (-> self net-state clan-ids-s32 1)
+                                     (-> *net-world* net-state clan-ids-s32 0)
+                                     )
+          )
+    (let ((gp-0 (-> *net-mgr* game-state session-master-idx)))
+      (when (= (if *net-mgr*
+                   (-> *net-mgr* game-state local-machine-idx)
+                   0
+                   )
+               (-> *net-mgr* game-state session-master-idx)
+               )
+        (let ((s4-0 (alloc-msg self 'late-join-continue)))
+          (send-msg self s4-0 -1 80)
+          (free-msg self s4-0)
+          )
+        )
+      (entity-more-perm-hash-method-9 *entity-more-perm*)
+      (set-player-name
+        self
+        (* (if *net-mgr*
+               (-> *net-mgr* game-state local-machine-idx)
+               0
+               )
+           2
+           )
+        (-> (get-player-name 0) data)
+        )
+      (set-player-name
+        self
+        (+ (* (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              2
+              )
+           1
+           )
+        (-> (get-player-name 1) data)
+        )
+      (set-player-flags
+        self
+        (the-as int (-> self
+                        net-state
+                        players
+                        (* (if *net-mgr*
+                               (-> *net-mgr* game-state local-machine-idx)
+                               0
+                               )
+                           2
+                           )
+                        flags
+                        )
+                )
+        (* (if *net-mgr*
+               (-> *net-mgr* game-state local-machine-idx)
+               0
+               )
+           2
+           )
+        )
+      (wait-target-load)
+      (format 0 "waiting for any ghost uploads to finish~%")
+      (while (handle->process (-> *ghost-upload-proc* handle))
+        (suspend)
+        )
+      (format 0 "done~%")
+      (set! (-> *net-mgr* game-state sm-eligible) (not (-> self is-late-join)))
+      (if arg0
+          (check-grand-prix-restart)
+          )
+      (apply-task self)
+      (update-load-levels self #f)
+      (if arg0
+          (lock-game self)
+          )
+      (set! *medius-world-status* 1)
+      (set! (-> *net-mgr* lobby-state last-report-time)
+            (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30)))
+            )
+      (if (-> self is-late-join)
+          (do-late-join)
+          )
+      (wait-for-lock)
+      (set! *medius-world-status* 2)
+      (let ((v1-62 (+ (-> *display* real-clock frame-counter) (seconds -30)))
+            (a0-28 *net-mgr*)
+            )
+        (set! (-> a0-28 lobby-state last-report-time) (the-as int v1-62))
+        (pre-game-clan-stats-adjust (the-as symbol a0-28))
+        )
+      (wait-for-lobby-to-die)
+      (load-sound-banks)
+      (let ((s4-3 (get-open-task-node-info)))
+        (set-net-world-time-of-day (the-as net-world s4-3))
+        (when (not (logtest? (-> s4-3 flags) (game-task-node-flag intro-b)))
+          (lobby-level-set! 0 #f #f)
+          (lobby-level-set! 1 #f #f)
+          (update-load-levels self #f)
+          (check-start-load)
+          )
+        (when (not arg0)
+          (set! v0-47
+                (cond
+                  ((demo?)
+                   (if (and (not arg0) (-> s4-3 outro-scene))
+                       (do-movie (-> s4-3 outro-scene))
+                       )
+                   (dma-dump)
+                   (lobby-level-set! 0 (-> *lobby-levels* 0) #f)
+                   (lobby-level-set! 1 (-> *lobby-levels* 1) #f)
+                   (until #f
+                     (let ((v1-72 (new 'stack-no-clear 'array 'int32 2)))
+                       (when (dma-try-alloc #xd2800 #xd2800 'title-control 0 (&-> v1-72 0) (&-> v1-72 1) #f)
+                         (suspend)
+                         (suspend)
+                         (goto cfg-52)
+                         )
+                       )
+                     (suspend)
+                     0
+                     )
+                   #f
+                   (label cfg-52)
+                   (suspend)
+                   (suspend)
+                   (while (dma-get-named-buffer 'car-load 0 0)
+                     (suspend)
+                     )
+                   (title-control-spawn #f)
+                   (while (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) title-control)))
+                     (suspend)
+                     )
+                   (dma-release 'title-control)
+                   (check-start-load)
+                   v0-47
+                   )
+                  (else
+                    (when (and (not arg0) (= (-> *net-mgr* game-type) 4) (= *game-mode* 'adventure))
+                      (cond
+                        ((-> *game-info* playing-grand-prix?)
+                         (if (zero? (-> *game-info* grand-prix-index))
+                             (do-movie (the-as string (-> (the-as (array game-movie) (-> *game-info* playing-grand-prix?)) 4)))
+                             )
+                         )
+                        (else
+                          (if (and (zero? (-> s4-3 play-count)) (-> s4-3 intro-scene))
+                              (do-movie (-> s4-3 intro-scene))
+                              )
+                          )
+                        )
+                      )
+                    (cond
+                      ((logtest? (-> s4-3 flags) (game-task-node-flag intro-b))
+                       (+! (-> *game-info* total-trys) 1)
+                       (set! *lobby-reset-mode* 'quit)
+                       (send-event *net-process-mgr* 'go-staging)
+                       (remove-setting! 'bg-a)
+                       (logand! (-> self net-state flags) -4)
+                       (set-blackout-frames (seconds 3.335))
+                       (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+                       (go-virtual running #f)
+                       )
+                      (else
+                        (set-blackout-frames (seconds 0.035))
+                        )
+                      )
+                    )
+                  )
+                )
+          (remove-setting! 'bg-a)
+          (when (demo?)
+            (while (not (cpad-pressed? 0 x))
+              (suspend)
+              )
+            (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons x))
+            (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+            (while (search-process-tree *active-pool* (lambda ((arg0 process)) (= (-> arg0 type) title-control)))
+              (suspend)
+              )
+            (set-setting! 'bg-a 'abs 1.0 0)
+            (apply-settings! *setting-control*)
+            (while (!= (-> *setting-control* user-current bg-a) 1.0)
+              (suspend)
+              )
+            (kill-persister *setting-control* 'title-control-scene 'render)
+            (remove-setting! 'render)
+            (apply-settings! *setting-control*)
+            )
+          )
+        )
+      (set-blackout-frames 0)
+      (set-blackout-frames (seconds 0.5))
+      (remove-setting! 'bg-a)
+      (lobby-level-set! 0 (-> *lobby-levels* 0) #f)
+      (lobby-level-set! 1 (-> *lobby-levels* 1) #f)
+      (update-load-levels self #f)
+      (format 0 "net-world::running - waiting for pre-load to complete...~%")
+      (wait-for-levels #t)
+      (wait-for-ghost-download)
+      (lobby-level-set! 0 #f #f)
+      (lobby-level-set! 1 #f #f)
+      (update-load-levels self #f)
+      (wait-for-levels #t)
+      (format 0 "net-world: tweaking net entities ~%")
+      (tweak-local-net-entities)
+      (set-setting! 'bg-a 'abs 1.0 0)
+      (apply-settings! *setting-control*)
+      (while (!= (-> *setting-control* user-current bg-a) 1.0)
+        (suspend)
+        )
+      (update-load-levels self #t)
+      (wait-for-levels #f)
+      (let ((s5-2 0))
+        (let ((s4-5 0))
+          0
+          (let ((v0-75 (get-shared-level)))
+            (when v0-75
+              (let* ((s3-2 (-> v0-75 entity))
+                     (s2-2 (-> s3-2 length))
+                     )
+                (dotimes (s1-0 s2-2)
+                  (let* ((s0-0 (-> s3-2 data s1-0))
+                         (v1-149 (and (logtest? (-> s0-0 kill-mask) (task-mask network))
+                                      (let ((v1-151 (as-type (-> s0-0 entity) entity-actor)))
+                                        (cond
+                                          (v1-151
+                                            (let ((sv-128 (-> (the-as entity-actor v1-151) etype)))
+                                              (and (nonzero? sv-128)
+                                                   (= (-> sv-128 type symbol) 'type)
+                                                   (type-type? sv-128 process-nettable)
+                                                   (nonzero? (-> sv-128 method-table 40))
+                                                   )
+                                              )
+                                            )
+                                          (else
+                                            #f
+                                            )
+                                          )
+                                        )
+                                      )
+                                 )
+                         )
+                    (when v1-149
+                      (let ((v1-159 (the-as int (-> s0-0 perm aid))))
+                        (set! s5-2 (logxor s5-2 (logior (ash v1-159 (- 32 s4-5)) (ash v1-159 s4-5))))
+                        )
+                      (set! s4-5 (logand (+ s4-5 1) 31))
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (let ((v0-78 (get-event-level)))
+            (when v0-78
+              (let* ((s3-3 (-> v0-78 entity))
+                     (s2-3 (-> s3-3 length))
+                     )
+                (dotimes (s1-1 s2-3)
+                  (let* ((s0-1 (-> s3-3 data s1-1))
+                         (v1-171 (and (logtest? (-> s0-1 kill-mask) (task-mask network))
+                                      (let ((v1-173 (as-type (-> s0-1 entity) entity-actor)))
+                                        (cond
+                                          (v1-173
+                                            (let ((sv-160 (-> (the-as entity-actor v1-173) etype)))
+                                              (and (nonzero? sv-160)
+                                                   (= (-> sv-160 type symbol) 'type)
+                                                   (type-type? sv-160 process-nettable)
+                                                   (nonzero? (-> sv-160 method-table 40))
+                                                   )
+                                              )
+                                            )
+                                          (else
+                                            #f
+                                            )
+                                          )
+                                        )
+                                      )
+                                 )
+                         )
+                    (when v1-171
+                      (let ((v1-181 (the-as int (-> s0-1 perm aid))))
+                        (set! s5-2 (logxor s5-2 (logior (ash v1-181 (- 32 s4-5)) (ash v1-181 s4-5))))
+                        )
+                      (set! s4-5 (logand (+ s4-5 1) 31))
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (set! *net-world-entity-hash* s5-2)
+        )
+      (format 0 "entity-hash returns ~X~%" *net-world-entity-hash*)
+      (when (not (-> *setting-control* user-current render))
+        (set-setting! 'bg-a 'abs 1.0 0)
+        (apply-settings! *setting-control*)
+        (while (!= (-> *setting-control* user-current bg-a) 1.0)
+          (suspend)
+          )
+        (kill-persister *setting-control* 'title-control-scene 'render)
+        (remove-setting! 'render)
+        (apply-settings! *setting-control*)
+        (set-blackout-frames (seconds 100000))
+        )
+      (set-blackout-frames (seconds 100000))
+      (remove-setting! 'bg-a)
+      (let ((s5-3 (alloc-msg self 'ready)))
+        (send-msg self s5-3 -1 80)
+        (free-msg self s5-3)
+        )
+      (set-setting! 'allow-in-game-menu #t 0.0 0)
+      (dma-release 'title-control)
+      (cond
+        ((logtest? (-> self net-state flags) 2)
+         (send-event *net-process-mgr* 'go-recv-objects)
+         )
+        (else
+          (when (= (if *net-mgr*
+                       (-> *net-mgr* game-state local-machine-idx)
+                       0
+                       )
+                   (-> *net-mgr* game-state session-master-idx)
+                   )
+            (until (all-players-ready? self)
+              (suspend)
+              )
+            (when (and (all-players-ready? self) (= (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    (-> *net-mgr* game-state session-master-idx)
+                                                    )
+                       )
+              (let ((s5-4 (alloc-msg self 'start-game)))
+                (write-int32 s5-4 (-> *net-mgr* game-state time))
+                (send-msg self s5-4 -1 80)
+                (free-msg self s5-4)
+                )
+              )
+            (let ((s5-5 (alloc-msg self 'entity-hash)))
+              (write-uint32 s5-5 (the-as uint *net-world-entity-hash*))
+              (send-msg self s5-5 -1 80)
+              (free-msg self s5-5)
+              )
+            )
+          )
+        )
+      (dotimes (v1-232 24)
+        (logclear! (-> self net-state players v1-232 flags) (net-world-staging-player-flag nwspf1))
+        )
+      (set! (-> *cpad-list* cpads 0 real-change-time) (the-as uint (get-real-current-time)))
+      (jukebox-onoff #t)
+      (let ((s5-6 (-> *net-mgr* game-state time))
+            (s4-6 #f)
+            )
+        (until #f
+          (suspend)
+          (when (and (kiosk?) (= *game-mode* 'adventure))
+            (when (>= (- (-> *display* real-clock frame-counter) (the-as int (-> *cpad-list* cpads 0 real-change-time)))
+                      (seconds 60)
+                      )
+              (set! *in-game-menu-process* (the-as (pointer hud) #f))
+              (set-master-mode 'game)
+              (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+                (let ((v1-252 (-> *event-queue* data (-> *event-queue* length))))
+                  (+! (-> *event-queue* length) 1)
+                  (set! (-> v1-252 from-handle) (process->handle self))
+                  (set! (-> v1-252 to-handle) (process->handle self))
+                  (set! (-> v1-252 num-params) 1)
+                  (set! (-> v1-252 message) 'return-to-staging)
+                  (set! (-> v1-252 param 0) (the-as uint 'finished))
+                  )
+                )
+              )
+            )
+          (if *net-game-mgr*
+              (set! s4-6 #t)
+              )
+          (when (not s4-6)
+            (if (< 3000 (- (-> *net-mgr* game-state time) s5-6))
+                (display-net-problem-icon)
+                )
+            (when (or (< 7500 (- (-> *net-mgr* game-state time) s5-6)) (!= (-> *net-mgr* game-state session-master-idx) gp-0))
+              (set-blackout-frames 0)
+              (when (and (zero? *net-error*) (-> *net-mgr* next-state) (= (-> *net-mgr* next-state name) 'playing-game))
+                (set! (-> *net-mgr* game-state kicked) 'game-timeout)
+                (until #f
+                  (suspend)
+                  )
+                #f
+                )
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+(defstate demo-screen (net-world)
+  :virtual #t
+  :exit (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (viewport-array-method-9 *viewport-array* 0)
+    (set-blackout-frames (seconds 0.015))
+    (let ((a1-1 (new 'stack-no-clear 'array 'symbol 18)))
+      (set! (-> a1-1 17) #f)
+      (set! (-> a1-1 16) #f)
+      (set! (-> a1-1 15) #f)
+      (set! (-> a1-1 14) #f)
+      (set! (-> a1-1 13) #f)
+      (set! (-> a1-1 12) #f)
+      (set! (-> a1-1 11) #f)
+      (set! (-> a1-1 10) #f)
+      (set! (-> a1-1 9) #f)
+      (set! (-> a1-1 8) #f)
+      (set! (-> a1-1 7) #f)
+      (set! (-> a1-1 6) #f)
+      (set! (-> a1-1 5) #f)
+      (set! (-> a1-1 4) #f)
+      (set! (-> a1-1 3) #f)
+      (set! (-> a1-1 2) #f)
+      (set! (-> a1-1 1) #f)
+      (set! (-> a1-1 0) 'menu2)
+      (want-levels *load-state* a1-1)
+      )
+    (until #f
+      (let ((v1-5 (new 'stack-no-clear 'array 'int32 2)))
+        (when (dma-try-alloc #xd2800 #xd2800 'title-control 0 (&-> v1-5 0) (&-> v1-5 1) #f)
+          (suspend)
+          (suspend)
+          (goto cfg-5)
+          )
+        )
+      (suspend)
+      0
+      )
+    #f
+    (label cfg-5)
+    (title-control-spawn #t)
+    (suspend-for (seconds 10)
+      )
+    (when (not (-> *setting-control* user-current render))
+      (set-setting! 'bg-a 'abs 1.0 0)
+      (apply-settings! *setting-control*)
+      (while (!= (-> *setting-control* user-current bg-a) 1.0)
+        (suspend)
+        )
+      (kill-persister *setting-control* 'title-control-scene 'render)
+      (remove-setting! 'render)
+      (apply-settings! *setting-control*)
+      (set-blackout-frames (seconds 100000))
+      )
+    (set-blackout-frames (seconds 100000))
+    (remove-setting! 'bg-a)
+    (dma-release 'title-control)
+    (set-blackout-frames (seconds 3.335))
+    (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+    (go-virtual running #f)
+    )
+  )
+
+(defstate play-movie (net-world)
+  :virtual #t
+  :code (behavior ()
+    (level-get *level* 'fmvlev)
+    (let ((f0-1 (* 128.0 (-> *setting-control* user-current bg-a)))
+          (gp-0 (new-stack-vector0))
+          )
+      (set! (-> gp-0 w) f0-1)
+      (lobby-level-set! 1 'fmvlev #f)
+      (setup
+        *screen-filter*
+        gp-0
+        (new 'static 'vector :w 128.0)
+        (* 2.0 (seconds-per-frame))
+        (bucket-id debug)
+        #x3fffff
+        #x33001
+        (the-as symbol 0)
+        )
+      )
+    (until (= (-> *screen-filter* color w) 128.0)
+      (suspend)
+      )
+    (check-start-load)
+    (until #f
+      (let ((v1-13 (level-get *level* 'fmvlev)))
+        (if (and v1-13 (= (-> v1-13 status) 'loaded))
+            (goto cfg-10)
+            )
+        )
+      (suspend)
+      )
+    #f
+    (label cfg-10)
+    (fmv-player-run "166-outro-b" *target-pool* #f)
+    (while *fmv-player*
+      (suspend)
+      )
+    (fmv-player-run "166-outro-c" *target-pool* #f)
+    (while *fmv-player*
+      (suspend)
+      )
+    (until #f
+      (let ((v1-24 (new 'stack-no-clear 'array 'int32 2)))
+        (when (dma-try-alloc #x80040 #x80040 'fmv-player 0 (&-> v1-24 0) (&-> v1-24 1) #f)
+          (suspend)
+          (suspend)
+          (goto cfg-21)
+          )
+        )
+      (suspend)
+      0
+      )
+    #f
+    (label cfg-21)
+    (dma-release 'fmv-player)
+    (disable *screen-filter*)
+    (set-blackout-frames (seconds 3.335))
+    (start 'play (get-continue-by-name *game-info* "menu2-start") 0)
+    (go-virtual running #f)
+    )
+  )
+
+(defun get-ai-vehicle-cup-idx ()
+  (case *game-mode*
+    (('adventure)
+     (cond
+       ((= *lobby-adv-cup* (game-task-node-flag cup1))
+        0
+        )
+       ((= *lobby-adv-cup* (game-task-node-flag cup2))
+        1
+        )
+       ((= *lobby-adv-cup* (game-task-node-flag cup3))
+        2
+        )
+       (else
+         3
+         )
+       )
+     )
+    (else
+      3
+      )
+    )
+  )
+
+(define *tmp-string* "0123456789012345678901234567890123456789")
+
+;; WARN: Return type mismatch int vs object.
+(defun set-continue-point-from-task ((arg0 net-world))
+  (set! (-> arg0 task-node) (the-as uint -1))
+  (copy-charp<-charp (-> *tmp-string* data) (-> arg0 net-state task-node-name))
+  (dotimes (s5-0 (-> *game-info* sub-task-list length))
+    (if (string= *tmp-string* (-> *game-info* sub-task-list s5-0 name))
+        (set! (-> arg0 task-node) (the-as uint s5-0))
+        )
+    )
+  (if (= (-> arg0 task-node) -1)
+      (format 0 "THAT'S NOT RIGHT!~%")
+      )
+  (set! (-> arg0 task-node-info) (-> *game-info* sub-task-list (-> arg0 task-node)))
+  (set! (-> arg0 task) (the-as uint (-> arg0 task-node-info task)))
+  (set! (-> arg0 task-info) (-> *game-info* play-list (-> arg0 task)))
+  (if (and (player-idx-vehicle-selected? arg0 (+ (* (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    2
+                                                    )
+                                                 1
+                                                 )
+                                         )
+           (-> arg0 task-info split-continue)
+           )
+      (set! (-> arg0 cont) (get-continue-by-name *game-info* (the-as string (-> arg0 task-info split-continue))))
+      (set! (-> arg0 cont) (get-continue-by-name *game-info* (the-as string (-> arg0 task-info play-continue))))
+      )
+  (when (not (-> arg0 cont))
+    (format 0 "can't find continue pt~%")
+    (break!)
+    0
+    )
+  0
+  )
+
+(defmethod apply-task ((this net-world))
+  (set-continue-point-from-task this)
+  (let ((v1-0 18)
+        (a0-5 (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              )
+        )
+    (when (!= a0-5 v1-0)
+      (let ((t9-1 task-node-open!))
+        (set! a0-5 (the-as int (-> this task-node)))
+        (t9-1 (the-as game-task-node a0-5) 'event)
+        )
+      )
+    (set-net-task-mask (the-as task-mask a0-5))
+    )
+  (assign-teams this)
+  0
+  (none)
+  )
+
+(define *place-players*
+  (new 'static 'boxed-array :type net-process-mgr-machine :length 0 :allocated-length 16)
+  )
+
+(define *place-player-ct* 0)
+
+(defun allow-machine-to-join ((arg0 int) (arg1 int) (arg2 int))
+  (set! *place-player-ct* 0)
+  (dotimes (v1-0 8)
+    (let ((a3-2 (-> *net-process-mgr* machines v1-0)))
+      (dotimes (t0-1 (-> a3-2 local-player-ct))
+        (set! (-> *place-players* *place-player-ct*) a3-2)
+        (set! *place-player-ct* (+ *place-player-ct* 1))
+        )
+      )
+    )
+  (allow-machine-to-join-rec 0 arg0 arg1 arg2)
+  )
+
+(defun allow-machine-to-join-rec ((arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (if (= arg0 *place-player-ct*)
+      (return #t)
+      )
+  (let ((s2-0 (-> *place-players* arg0)))
+    (when (nonzero? (-> *net-mgr* lobby-state connect-handle))
+      (if (and (> arg2 0)
+               (contains? *medius-buddies* (-> s2-0 acct-id))
+               (allow-machine-to-join-rec (+ arg0 1) arg1 (+ arg2 -1) arg3)
+               )
+          (return #t)
+          )
+      (if (and (> arg1 0)
+               (!= (-> s2-0 acct-id) (-> *net-process-mgr*
+                                         machines
+                                         (if *net-mgr*
+                                             (-> *net-mgr* game-state local-machine-idx)
+                                             0
+                                             )
+                                         acct-id
+                                         )
+                   )
+               (= (-> s2-0 clan-id) (-> *net-process-mgr*
+                                        machines
+                                        (if *net-mgr*
+                                            (-> *net-mgr* game-state local-machine-idx)
+                                            0
+                                            )
+                                        clan-id
+                                        )
+                  )
+               (contains? (-> *medius-my-clan* members) (-> s2-0 acct-id))
+               (allow-machine-to-join-rec (+ arg0 1) (+ arg1 -1) arg2 arg3)
+               )
+          (return #t)
+          )
+      )
+    )
+  (if (and (> arg3 0) (allow-machine-to-join-rec (+ arg0 1) arg1 arg2 (+ arg3 -1)))
+      (return #t)
+      )
+  #f
+  )
+
+(defmethod assign-teams ((this net-world))
+  (let ((s5-0 #f))
+    (cond
+      ((or (= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              2
+              )
+           (= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              14
+              )
+           )
+       )
+      ((or (is-clan-challenge)
+           (= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              7
+              )
+           (= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              9
+              )
+           )
+       (set! s5-0 #t)
+       )
+      ((= (if *net-world*
+              (the-as int (-> *net-world* task-node-info net-play-mode))
+              18
+              )
+          1
+          )
+       )
+      ((logtest? (-> this net-state options advanced-options flags) (game-task-advanced-options-flag team-game))
+       (set! s5-0 #t)
+       )
+      )
+    (if s5-0
+        (logior! (-> this net-state flags) 4)
+        (logand! (-> this net-state flags) -5)
+        )
+    (cond
+      (s5-0
+        (let ((s5-1 0)
+              (s4-0 0)
+              )
+          (dotimes (s3-0 16)
+            (when (player-idx-vehicle-selected? this s3-0)
+              (cond
+                ((or (< (the-as uint 1) (-> this net-state players s3-0 team-id))
+                     (< (-> this net-state players s3-0 team-id) 0)
+                     )
+                 (cond
+                   ((!= (get-player-clan-info s3-0) -1)
+                    (format 0 "putting clan member on team ~D~%" (get-player-clan-info s3-0))
+                    (set! (-> this net-state players s3-0 team-id) (the-as uint (get-player-clan-info s3-0)))
+                    )
+                   ((>= s4-0 s5-1)
+                    (set! (-> this net-state players s3-0 team-id) (the-as uint 0))
+                    (+! s5-1 1)
+                    )
+                   (else
+                     (set! (-> this net-state players s3-0 team-id) (the-as uint 1))
+                     (+! s4-0 1)
+                     )
+                   )
+                 )
+                ((zero? (-> this net-state players s3-0 team-id))
+                 (+! s5-1 1)
+                 )
+                (else
+                  (+! s4-0 1)
+                  )
+                )
+              )
+            )
+          (dotimes (s3-1 8)
+            (when (player-idx-vehicle-selected? this (+ s3-1 16))
+              (cond
+                ((= (if *net-world*
+                        (the-as int (-> *net-world* task-node-info net-play-mode))
+                        18
+                        )
+                    1
+                    )
+                 (set! (-> this net-state players (+ s3-1 16) team-id) (the-as uint 2))
+                 )
+                ((>= s4-0 s5-1)
+                 (set! (-> this net-state players (+ s3-1 16) team-id) (the-as uint 0))
+                 (+! s5-1 1)
+                 )
+                (else
+                  (set! (-> this net-state players (+ s3-1 16) team-id) (the-as uint 1))
+                  (+! s4-0 1)
+                  )
+                )
+              )
+            )
+          )
+        )
+      (else
+        (let ((s5-2 0))
+          (dotimes (s4-1 24)
+            (when (player-idx-vehicle-selected? this s4-1)
+              (set! (-> this net-state players s4-1 team-id) (the-as uint s5-2))
+              (+! s5-2 1)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod reset! ((this net-world-staging-player))
+  (mem-clear! (the-as pointer this) 32)
+  (set! (-> this vehicle-selection) -1)
+  (set! (-> this desired-driver-selection) -1)
+  0
+  (none)
+  )
+
+(define *bkp-cols* (new 'static 'array uint32 4 #x0 #x0 #x0 #x0))
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defun do-decode-net-world-state ((arg0 net-world-state) (arg1 mem-buffer))
+  (dotimes (v1-0 2)
+    (set! (-> *bkp-cols* (* v1-0 2)) (-> *net-world*
+                                         net-state
+                                         players
+                                         (+ v1-0 (* (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    2
+                                                    )
+                                            )
+                                         base-color
+                                         )
+          )
+    (set! (-> *bkp-cols* (+ (* v1-0 2) 1)) (-> *net-world*
+                                               net-state
+                                               players
+                                               (+ v1-0 (* (if *net-mgr*
+                                                              (-> *net-mgr* game-state local-machine-idx)
+                                                              0
+                                                              )
+                                                          2
+                                                          )
+                                                  )
+                                               stripe-color
+                                               )
+          )
+    )
+  (decode-net-world-state arg0 arg1)
+  (dotimes (s4-0 24)
+    (reset! (-> arg0 players s4-0))
+    (set! (-> arg0 assigned-drivers s4-0) (the-as uint -1))
+    (set! (-> *net-player-names* s4-0 name 0) (the-as uint 0))
+    )
+  (until #f
+    (let ((s4-1 (read-int8 arg1)))
+      (if (= s4-1 -1)
+          (goto cfg-17)
+          )
+      (read-bytes arg1 (the-as pointer (-> arg0 players s4-1)) 32)
+      (set! (-> arg0 assigned-drivers s4-1) (the-as uint (read-int8 arg1)))
+      (read-string arg1 (-> *net-player-names* s4-1 name))
+      (net-player-name-method-9 (-> *net-player-names* s4-1))
+      )
+    )
+  #f
+  (label cfg-17)
+  (dotimes (v1-32 2)
+    (set! (-> *net-world*
+              net-state
+              players
+              (+ v1-32 (* (if *net-mgr*
+                              (-> *net-mgr* game-state local-machine-idx)
+                              0
+                              )
+                          2
+                          )
+                 )
+              base-color
+              )
+          (-> *bkp-cols* (* v1-32 2))
+          )
+    (set! (-> *net-world*
+              net-state
+              players
+              (+ v1-32 (* (if *net-mgr*
+                              (-> *net-mgr* game-state local-machine-idx)
+                              0
+                              )
+                          2
+                          )
+                 )
+              stripe-color
+              )
+          (-> *bkp-cols* (+ (* v1-32 2) 1))
+          )
+    )
+  0
+  )
+
+(defun player-connected? ((arg0 int))
+  (if (not (and *net-process-mgr* *net-world*))
+      (return #f)
+      )
+  (if (>= arg0 16)
+      (return (player-idx-vehicle-selected? *net-world* arg0))
+      )
+  (if (player-idx-vehicle-selected? *net-world* arg0)
+      (return #t)
+      )
+  (let ((v1-16 (-> *net-process-mgr* machines (/ arg0 2))))
+    (if (= (-> v1-16 state) (net-process-mgr-machine-state none))
+        (return #f)
+        )
+    (if (or (not (logtest? arg0 1)) (< 1 (-> v1-16 local-player-ct)))
+        (return #t)
+        )
+    )
+  #f
+  )
+
+(defmethod init-remote ((this net-world) (arg0 mem-buffer))
+  (logclear! (-> this mask) (process-mask pause menu))
+  (stack-size-set! (-> this main-thread) 1600)
+  (set! *net-world* this)
+  (if *net-log-write*
+      (net-log-world-ident)
+      )
+  (do-decode-net-world-state (-> this net-state) arg0)
+  (format 0 "i am on team ~D~%" (-> this
+                                    net-state
+                                    players
+                                    (* (if *net-mgr*
+                                           (-> *net-mgr* game-state local-machine-idx)
+                                           0
+                                           )
+                                       2
+                                       )
+                                    team-id
+                                    )
+          )
+  (apply-task this)
+  (dotimes (s5-1 24)
+    (net-player-name-method-9 (-> *net-player-names* s5-1))
+    )
+  (set! (-> this is-late-join) #f)
+  (if (logtest? (-> this net-state flags) 1)
+      (set! (-> this is-late-join) #t)
+      )
+  (dotimes (v1-24 6)
+    (set! (-> this vehicle-slot-to-player-map v1-24) (the-as uint -1))
+    )
+  (dotimes (v1-27 24)
+    (set! (-> this player-to-vehicle-slot-map v1-27) (the-as uint -1))
+    )
+  (set! (-> this current-garage-player) -1)
+  (set! (-> this current-garage-spare-slot) -1)
+  (go (method-of-object this running) #f)
+  0
+  (none)
+  )
+
+(defmethod net-player-name-method-9 ((this net-player-name))
+  (expand-text-to-charp! *common-text* (-> this format-name) (-> this name))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior net-world-init-local net-world ()
+  (logclear! (-> self mask) (process-mask pause menu))
+  (stack-size-set! (-> self main-thread) 1600)
+  (set! *net-world* self)
+  (set! (-> self is-late-join) #f)
+  (dotimes (v1-4 24)
+    (set! (-> self player-to-vehicle-slot-map v1-4) (the-as uint -1))
+    (set! (-> self net-state players v1-4 vehicle-selection) -1)
+    (set! (-> self net-state players v1-4 desired-driver-selection) -1)
+    (set! (-> self net-state players v1-4 player-num) -1)
+    (set! (-> self net-state assigned-drivers v1-4) (the-as uint -1))
+    (set! (-> self net-state players v1-4 team-id) (the-as uint -1))
+    )
+  (set! (-> self net-state clan-ids 0) (the-as uint -1))
+  (set! (-> self net-state clan-ids 1) (the-as uint -1))
+  (when (and *net-mgr* (nonzero? (-> *net-mgr* lobby-state connect-handle)))
+    (let ((gp-0 (new 'stack-no-clear 'inline-array 'mem-buffer 1)))
+      (set-buffer! (-> gp-0 0) (-> *medius-joined-game-info* game-stats) 256)
+      (read-int32 (-> gp-0 0))
+      (set! (-> self net-state clan-ids 0) (the-as uint (read-int32 (-> gp-0 0))))
+      (set! (-> self net-state clan-ids 1) (the-as uint (read-int32 (-> gp-0 0))))
+      )
+    )
+  (dotimes (v1-22 6)
+    (set! (-> self vehicle-slot-to-player-map v1-22) (the-as uint -1))
+    )
+  (set! (-> self current-garage-player) -1)
+  (set! (-> self current-garage-spare-slot) -1)
+  (let ((gp-1 (new 'stack-no-clear 'inline-array 'sce-cd-clock 1)))
+    (knet-get-local-rtc (-> gp-1 0))
+    (set! (-> self net-state game-creator-ip) (net-get-local-ip))
+    (set! (-> self net-state game-creation-time) (the-as uint (rtclock-to-secs (-> gp-1 0))))
+    )
+  (copy-charp<-charp
+    (-> self net-state task-node-name)
+    (-> *game-info* sub-task-list (game-task-node kras-race-task) name data)
+    )
+  (if (not (beta?))
+      (copy-charp<-charp
+        (-> self net-state task-node-name)
+        (-> *game-info* sub-task-list (game-task-node snow-race-task) name data)
+        )
+      )
+  (apply-task self)
+  (set! (-> self net-state player-ready-flags) (the-as uint 0))
+  (set! (-> self net-state flags) 0)
+  (set! (-> self net-state ai-slots) -1)
+  (set! (-> self net-state max-humans) 6)
+  (register self 8 998)
+  (if *net-log-write*
+      (net-log-world-ident)
+      )
+  (go-virtual running #f)
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun init-local-world ()
+  (process-spawn net-world :init net-world-init-local :name "net-world")
+  0
+  )
+
+(defmethod write-create-data ((this net-world) (arg0 mem-buffer))
+  (do-encode-net-world-state (-> this net-state) arg0)
+  0
+  (none)
+  )
+
+(defmethod handle-net-msg ((this net-world) (arg0 symbol) (arg1 mem-buffer) (arg2 int))
+  (let ((a0-2 (-> *net-process-mgr* machines arg2 acct-id)))
+    (if (> a0-2 0)
+        (add-recent-opponent a0-2)
+        )
+    )
+  (let* ((a1-1 (-> *net-process-mgr* machines arg2 clan-id))
+         (a0-4 (the-as object (> a1-1 0)))
+         )
+    (when (and (the-as symbol a0-4) (!= a1-1 (-> *medius-my-clan* medius-id)))
+      (set! a0-4 *medius-recent-clans*)
+      (move-to-front! (the-as medius-clan-index-array a0-4) (the-as medius-cache a1-1))
+      )
+    (let ((s5-0 #f))
+      (cond
+        ((= arg0 'state)
+         (when (not (logtest? (-> this net-state flags) 1))
+           (do-decode-net-world-state (-> this net-state) arg1)
+           (apply-task this)
+           )
+         )
+        ((= arg0 'assigned-drivers)
+         (read-bytes arg1 (-> this net-state assigned-drivers) 24)
+         )
+        ((= arg0 'set-task)
+         (when (not (logtest? (-> this net-state flags) 1))
+           (read-bytes arg1 (-> this net-state task-node-name) 32)
+           (set! (-> this net-state player-ready-flags) (the-as uint 0))
+           (apply-task this)
+           (update-load-levels this #f)
+           )
+         (set! s5-0 'task)
+         )
+        ((= arg0 'set-options)
+         (if (not (logtest? (-> this net-state flags) 1))
+             (read-bytes arg1 (the-as pointer (-> this net-state options)) 8)
+             )
+         )
+        ((= arg0 'green-room-stats)
+         (decode-green-room-stats (-> this net-state green-room-stats) arg1)
+         )
+        ((= arg0 'green-room-player-stats)
+         (let ((s4-1 (read-uint8 arg1)))
+           (when (and (>= s4-1 0) (< s4-1 (the-as uint 6)))
+             (set! (-> this net-state green-room-stats scores s4-1) (the-as uint (read-int16 arg1)))
+             (set! (-> this net-state green-room-stats laps s4-1) (read-uint8 arg1))
+             )
+           )
+         )
+        ((= arg0 'set-player-info)
+         (when (not (logtest? (-> this net-state flags) 1))
+           (let ((s4-2 (read-int8 arg1)))
+             (format 0 "   player-id=~D~%" s4-2)
+             (read-bytes arg1 (the-as pointer (-> this net-state players s4-2)) 32)
+             (format 0 "     flags=~D~%" (-> this net-state players s4-2 flags))
+             (assign-drivers this)
+             (if (and (>= s4-2 0) (< s4-2 16))
+                 (update-ai-players this)
+                 )
+             )
+           (update-load-levels this #f)
+           )
+         )
+        ((= arg0 'set-player-flags)
+         (when (not (logtest? (-> this net-state flags) 1))
+           (let ((s4-3 (read-int8 arg1)))
+             (set! (-> this net-state players s4-3 flags) (the-as net-world-staging-player-flag (read-int8 arg1)))
+             )
+           )
+         )
+        ((= arg0 'set-player-name)
+         (let ((s4-4 (read-int8 arg1)))
+           (read-string arg1 (-> *net-player-names* s4-4 name))
+           (net-player-name-method-9 (-> *net-player-names* s4-4))
+           )
+         )
+        ((= arg0 'ready)
+         (logior! (-> this net-state player-ready-flags) (ash 1 arg2))
+         (if (not (and (-> *net-process-mgr* next-state) (= (-> *net-process-mgr* next-state name) 'staging)))
+             (start-sending-objects *net-process-mgr* arg2)
+             )
+         )
+        ((= arg0 'lock)
+         (set! (-> *net-mgr* game-state locked) #t)
+         (do-decode-net-world-state (-> this net-state) arg1)
+         (if (and (nonzero? flash-game-started) *lobby-menu-manager*)
+             (flash-game-started)
+             )
+         (apply-task this)
+         (update-load-levels this #f)
+         )
+        ((= arg0 'start-game)
+         (set-net-task-mask (the-as task-mask a0-4))
+         (set! (-> this net-state total-pause-time) 0)
+         (set! (-> this net-state game-start-time) (read-int32 arg1))
+         (logior! (-> this net-state flags) 2)
+         (send-event *net-process-mgr* 'start-game (-> this net-state game-start-time))
+         (set! (-> *net-mgr* game-state locked) #f)
+         )
+        ((= arg0 'entity-hash)
+         (let ((s4-5 (read-uint32 arg1)))
+           (format 0 "received entity-hash ~X ~X!!!~%" s4-5 *net-world-entity-hash*)
+           (if (!= (logand (the-as uint #xffffffff) s4-5) (logand (the-as uint #xffffffff) *net-world-entity-hash*))
+               (set! (-> *net-mgr* game-state kicked) 'entity-panic)
+               )
+           )
+         )
+        ((= arg0 'late-join-continue)
+         (set! (-> this is-late-join) #f)
+         (logand! (-> this net-state flags) -2)
+         (dotimes (v1-142 8)
+           (if (= (-> *net-process-mgr* machines v1-142 state) (net-process-mgr-machine-state late-join))
+               (set! (-> *net-process-mgr* machines v1-142 state) (net-process-mgr-machine-state running))
+               )
+           )
+         )
+        ((= arg0 'headset-flag)
+         (let ((v1-148 (read-bool arg1)))
+           (dotimes (a0-60 2)
+             (if v1-148
+                 (logior! (-> this net-state players (+ a0-60 (* arg2 2)) flags) (net-world-staging-player-flag nwspf0))
+                 (logclear! (-> this net-state players (+ a0-60 (* arg2 2)) flags) (net-world-staging-player-flag nwspf0))
+                 )
+             )
+           )
+         )
+        )
+      (if (not (-> *net-mgr* game-state locked))
+          (assign-teams this)
+          )
+      (send-event *lobby-menu-manager* 'net-world-changed s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod assign-drivers ((this net-world))
+  (if (!= (if *net-mgr*
+              (-> *net-mgr* game-state local-machine-idx)
+              0
+              )
+          (-> *net-mgr* game-state session-master-idx)
+          )
+      (return (the-as object #f))
+      )
+  (let ((v1-4 #f))
+    -1
+    (dotimes (a0-5 16)
+      (when (!= (-> this net-state players a0-5 desired-driver-selection) (-> this net-state assigned-drivers-s8 a0-5))
+        (if (!= (-> this net-state assigned-drivers-s8 a0-5) -1)
+            (set! v1-4 #t)
+            )
+        (set! (-> this net-state assigned-drivers a0-5) (the-as uint -1))
+        )
+      )
+    (dotimes (a0-8 16)
+      (let ((a1-9 (-> this net-state players a0-8 desired-driver-selection)))
+        (when (!= a1-9 -1)
+          (let ((a2-8 -1))
+            (dotimes (a3-0 16)
+              (if (= (-> this net-state assigned-drivers-s8 a3-0) a1-9)
+                  (set! a2-8 a3-0)
+                  )
+              )
+            (if (= (if *net-world*
+                       (the-as int (-> *net-world* task-node-info net-play-mode))
+                       18
+                       )
+                   3
+                   )
+                (set! a2-8 -1)
+                )
+            (when (= a2-8 -1)
+              (set! (-> this net-state assigned-drivers a0-8) (the-as uint a1-9))
+              (set! v1-4 #t)
+              )
+            )
+          )
+        )
+      )
+    (when v1-4
+      (let ((s5-0 (alloc-msg this 'assigned-drivers)))
+        (write-bytes s5-0 (-> this net-state assigned-drivers) 24)
+        (send-msg this s5-0 -2 80)
+        (free-msg this s5-0)
+        )
+      )
+    )
+  0
+  )
+
+(defmethod net-world-method-66 ((this net-world) (arg0 int))
+  (dotimes (v1-0 16)
+    (if (= (-> this net-state assigned-drivers-s8 v1-0) arg0)
+        (return v1-0)
+        )
+    )
+  -1
+  )
+
+(defmethod net-world-method-86 ((this net-world) (arg0 int))
+  (dotimes (v1-0 24)
+    (if (= (-> this net-state assigned-drivers-s8 v1-0) arg0)
+        (return v1-0)
+        )
+    )
+  -1
+  )
+
+(defmethod get-assigned-driver ((this net-world) (arg0 int))
+  (-> this net-state assigned-drivers-s8 arg0)
+  )
+
+(defmethod set-assigned-driver ((this net-world) (arg0 int) (arg1 int))
+  (set! (-> this net-state assigned-drivers arg1) (the-as uint arg0))
+  0
+  (none)
+  )
+
+(defmethod levels-loaded? ((this net-world))
+  (let ((gp-0 #t))
+    (dotimes (s5-0 6)
+      (let ((s4-0 (-> *load-state* want s5-0 name))
+            (s3-0 (-> *load-state* want s5-0 display?))
+            )
+        (when (and s4-0 (nonzero? s4-0))
+          (let ((v1-8 (level-status? *level* s4-0 #f)))
+            (cond
+              ((or (= v1-8 'display) (= v1-8 'active))
+               )
+              (else
+                (set! gp-0 (cond
+                             ((= v1-8 'loaded)
+                              (when s3-0
+                                (want-display-level *load-state* s4-0 'display)
+                                (set! gp-0 #f)
+                                )
+                              gp-0
+                              )
+                             ((= v1-8 'loading)
+                              (if s3-0
+                                  (set! gp-0 #f)
+                                  )
+                              gp-0
+                              )
+                             (else
+                               #f
+                               )
+                             )
+                      )
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((v1-19 6)
+          (a0-10 17)
+          )
+      (while (>= a0-10 v1-19)
+        (when (-> *load-state* target v1-19 name)
+          (if (not (and (not (-> *load-state* target v1-19 force-reload))
+                        (= (-> *load-state* target v1-19 name) (-> *level* level v1-19 name))
+                        (= (-> *level* level v1-19 status) 'active)
+                        )
+                   )
+              (set! gp-0 #f)
+              )
+          )
+        (+! v1-19 1)
+        )
+      )
+    (if (not (string-charp= (-> *sound-bank-string* 0) (the-as (pointer uint8) (-> *sound-iop-info* sound-banks 1))))
+        (set! gp-0 #f)
+        )
+    gp-0
+    )
+  )
+
+(defmethod ocean-levels-loaded? ((this net-world))
+  (let ((gp-0 (-> this cont))
+        (s4-0 #t)
+        )
+    (dotimes (s5-0 (-> gp-0 want-count))
+      (let ((a0-3 (lookup-level-info (-> gp-0 want s5-0 name))))
+        (when (logtest? (level-flags ocean-all) (-> a0-3 level-flags))
+          (dotimes (v1-5 6)
+            (if (and (= (-> *level* level v1-5 name) (-> gp-0 want s5-0 name))
+                     (or (= (-> *level* level v1-5 status) 'loaded) (= (-> *level* level v1-5 status) 'active))
+                     )
+                (goto cfg-14)
+                )
+            )
+          (set! s4-0 #f)
+          )
+        )
+      (label cfg-14)
+      )
+    s4-0
+    )
+  )
+
+(defmethod update-load-levels ((this net-world) (arg0 symbol))
+  (local-vars (a0-36 int))
+  (let ((sv-16 (not (or (-> *lobby-levels* 0) (-> *lobby-levels* 1))))
+        (sv-24 0)
+        )
+    (let ((sv-48 (new 'stack-no-clear 'array 'int32 18))
+          (sv-56 0)
+          )
+      (let ((sv-64 (-> this cont))
+            (sv-68 (ocean-levels-loaded? this))
+            )
+        (dotimes (v1-9 18)
+          (set! (-> *net-world-load-levels* v1-9) #f)
+          (set! (-> *net-world-display-levels* v1-9) #f)
+          )
+        (dotimes (s4-0 (-> sv-64 want-count))
+          (let* ((s3-0 (-> sv-64 want s4-0))
+                 (s2-0 (-> s3-0 name))
+                 )
+            (case (-> (lookup-level-info s2-0) memory-mode)
+              (((level-memory-mode huge) (level-memory-mode superhuge))
+               (when sv-16
+                 (set! (-> *net-world-load-levels* sv-24) s2-0)
+                 (set! (-> *net-world-display-levels* sv-24) (if arg0
+                                                                 (-> s3-0 display?)
+                                                                 #f
+                                                                 )
+                       )
+                 (+! sv-24 1)
+                 )
+               )
+              (((level-memory-mode tiny))
+               (set! (-> *net-world-load-levels* sv-24) s2-0)
+               (set! (-> *net-world-display-levels* sv-24) (if arg0
+                                                               (-> s3-0 display?)
+                                                               #f
+                                                               )
+                     )
+               (+! sv-24 1)
+               )
+              (((level-memory-mode medium))
+               (when sv-68
+                 (set! (-> sv-48 sv-56) sv-24)
+                 (+! sv-56 1)
+                 (set! (-> *net-world-load-levels* sv-24) s2-0)
+                 (set! (-> *net-world-display-levels* sv-24) (if arg0
+                                                                 (-> s3-0 display?)
+                                                                 #f
+                                                                 )
+                       )
+                 (+! sv-24 1)
+                 )
+               )
+              )
+            )
+          )
+        )
+      (dotimes (v1-46 2)
+        0
+        (when (-> *lobby-levels* v1-46)
+          (cond
+            ((> sv-56 0)
+             (+! sv-56 -1)
+             (set! a0-36 (-> sv-48 sv-56))
+             )
+            (else
+              (set! a0-36 sv-24)
+              (+! sv-24 1)
+              )
+            )
+          (set! (-> *net-world-load-levels* a0-36) (-> *lobby-levels* v1-46))
+          (set! (-> *net-world-display-levels* a0-36) (-> *lobby-levels-display* v1-46))
+          )
+        )
+      )
+    (while (< sv-24 18)
+      (set! (-> *net-world-load-levels* sv-24) #f)
+      (set! (-> *net-world-display-levels* sv-24) #f)
+      (+! sv-24 1)
+      )
+    )
+  (dotimes (s5-1 24)
+    (when (not (player-idx-vehicle-selected? this s5-1))
+      (let ((a1-23 (-> this player-to-vehicle-slot-map-s8 s5-1)))
+        (when (>= a1-23 0)
+          (set! (-> this vehicle-slot-to-player-map a1-23) (the-as uint -1))
+          (set! (-> this player-to-vehicle-slot-map s5-1) (the-as uint -1))
+          (load-state-method-23 *load-state* a1-23 #f #f)
+          )
+        )
+      )
+    )
+  (dotimes (s5-2 24)
+    (when (player-idx-vehicle-selected? this s5-2)
+      (let ((s4-1 (-> this player-to-vehicle-slot-map-s8 s5-2)))
+        (when (< s4-1 0)
+          (cond
+            ((= (/ s5-2 2) (if *net-mgr*
+                               (-> *net-mgr* game-state local-machine-idx)
+                               0
+                               )
+                )
+             (set! s4-1 (logand s5-2 1))
+             (let ((v1-79 (-> this vehicle-slot-to-player-map-s8 s4-1)))
+               (if (and (>= v1-79 0) (!= v1-79 s5-2))
+                   (set! s4-1 -1)
+                   )
+               )
+             )
+            (else
+              (countdown (v1-83 6)
+                (when (= (-> this vehicle-slot-to-player-map-s8 v1-83) -1)
+                  (set! s4-1 v1-83)
+                  (goto cfg-68)
+                  )
+                )
+              (set! s4-1 -1)
+              (label cfg-68)
+              (if (>= (+ *lobby-local-players* -1) s4-1)
+                  (set! s4-1 -1)
+                  )
+              )
+            )
+          )
+        (when (>= s4-1 0)
+          (set! (-> this player-to-vehicle-slot-map s5-2) (the-as uint s4-1))
+          (set! (-> this vehicle-slot-to-player-map s4-1) (the-as uint s5-2))
+          (let ((s3-1 (-> this net-state players s5-2)))
+            (when (not (and *protect-vehicle-slot-1* (= s4-1 1)))
+              (set! (-> *car-level-array* data s4-1 car-type) (-> *net-vehicles* (-> s3-1 vehicle-selection) ct))
+              (convert-load-parts-to-car-info (-> s3-1 vehicle-load-parts) (-> *car-level-array* data s4-1))
+              (set! (-> *car-level-array* data s4-1 tuning) (the-as tuning-info (-> s3-1 vehicle-tuning-info)))
+              )
+            (when (nonzero? (-> this net-state players s5-2 vehicle-load-parts))
+              (when (not (and *protect-vehicle-slot-1* (= s4-1 1)))
+                (cond
+                  ((and (!= (if *net-world*
+                                (the-as int (-> *net-world* task-node-info net-play-mode))
+                                18
+                                )
+                            3
+                            )
+                        (not (and (>= s5-2 0) (< s5-2 16)))
+                        )
+                   (when (>= (-> this net-state assigned-drivers-s8 s5-2) 0)
+                     (let ((v1-123 (get-ai-vehicle-cup-idx)))
+                       (load-state-method-23
+                         *load-state*
+                         s4-1
+                         (-> *net-drivers* (-> this net-state assigned-drivers-s8 s5-2) ai-car-levels v1-123)
+                         #f
+                         )
+                       )
+                     )
+                   )
+                  (else
+                    (load-state-method-23 *load-state* s4-1 (-> *net-vehicles* (-> s3-1 vehicle-selection) levname) #f)
+                    )
+                  )
+                (load-state-method-26
+                  *load-state*
+                  s4-1
+                  (-> *net-vehicles* (-> s3-1 vehicle-selection) sound-bank)
+                  (and (= (/ s5-2 2) (if *net-mgr*
+                                         (-> *net-mgr* game-state local-machine-idx)
+                                         0
+                                         )
+                          )
+                       (and (>= s5-2 0) (< s5-2 16))
+                       )
+                  )
+                )
+              )
+            )
+          (if (>= (-> this net-state assigned-drivers-s8 s5-2) 0)
+              (load-state-method-24
+                *load-state*
+                s4-1
+                (-> *net-drivers* (-> this net-state assigned-drivers-s8 s5-2) levname)
+                )
+              )
+          )
+        )
+      )
+    )
+  (let ((v1-152 6)
+        (a0-63 17)
+        )
+    (while (>= a0-63 v1-152)
+      (set! (-> *net-world-load-levels* v1-152) (-> *load-state* want v1-152 name))
+      (+! v1-152 1)
+      )
+    )
+  (mem-copy! (the-as pointer *net-world-load-levels2*) (the-as pointer *net-world-load-levels*) 72)
+  (set! (-> this need-start-load) #t)
+  0
+  (none)
+  )
+
+(defmethod all-players-ready? ((this net-world))
+  (format *stdebug* "waiting for all players...~%")
+  (= (logand (-> *net-mgr* game-state connected-bitfield) (-> this net-state player-ready-flags))
+     (-> *net-mgr* game-state connected-bitfield)
+     )
+  )
+
+(defmethod try-add-machine ((this net-world) (arg0 int))
+  (local-vars (v0-5 int))
+  (if (= (if *net-world*
+             (the-as int (-> *net-world* task-node-info net-play-mode))
+             18
+             )
+         3
+         )
+      (return #f)
+      )
+  (if (and (nonzero? (-> *net-mgr* lobby-state connect-handle))
+           (logtest? (shl #x8000 16) (-> *medius-joined-game-info* generic-field1))
+           )
+      (return #f)
+      )
+  (if (and (nonzero? (-> *net-mgr* lobby-state connect-handle))
+           (contains? *medius-ignores* (-> *net-process-mgr* machines arg0 acct-id))
+           )
+      (return #f)
+      )
+  (let ((a2-0 (- (- (-> this net-state max-humans) (-> this net-state clan-slots)) (-> this net-state buddy-slots))))
+    (if (not (allow-machine-to-join (-> this net-state clan-slots) (-> this net-state buddy-slots) a2-0))
+        (return #f)
+        )
+    )
+  (logclear! (-> this net-state player-ready-flags) (ash 1 arg0))
+  (logclear! (-> this net-state players (* arg0 2) flags) (net-world-staging-player-flag nwspf1))
+  (logclear! (-> this net-state players (+ (* arg0 2) 1) flags) (net-world-staging-player-flag nwspf1))
+  (when (logtest? (-> this net-state options advanced-options flags) (game-task-advanced-options-flag team-game))
+    (let ((s4-0 0)
+          (s3-0 0)
+          )
+      (dotimes (s2-0 16)
+        (when (and (!= (/ s2-0 2) arg0) (player-idx-vehicle-selected? this s2-0))
+          (cond
+            ((zero? (-> this net-state players s2-0 team-id))
+             (+! s4-0 1)
+             )
+            ((= (-> this net-state players s2-0 team-id) 1)
+             (+! s3-0 1)
+             )
+            )
+          )
+        )
+      (dotimes (s2-1 (-> *net-process-mgr* machines arg0 local-player-ct))
+        (let ((s1-0 (+ s2-1 (* arg0 2))))
+          (set! v0-5 (cond
+                       ((= (get-player-clan-info s1-0) -1)
+                        (cond
+                          ((>= s3-0 s4-0)
+                           (set! (-> this net-state players s1-0 team-id) (the-as uint 0))
+                           (+! s4-0 1)
+                           s4-0
+                           )
+                          (else
+                            (set! (-> this net-state players s1-0 team-id) (the-as uint 1))
+                            (+! s3-0 1)
+                            s3-0
+                            )
+                          )
+                        )
+                       (else
+                         (format 0 "placing new player ~D on team ~D~%" s1-0 (get-player-clan-info s1-0))
+                         (set! v0-5 (get-player-clan-info s1-0))
+                         (set! (-> this net-state players s1-0 team-id) (the-as uint v0-5))
+                         v0-5
+                         )
+                       )
+                )
+          )
+        )
+      (dotimes (s5-1 8)
+        (when (player-idx-vehicle-selected? this (+ s5-1 16))
+          (cond
+            ((= (if *net-world*
+                    (the-as int (-> *net-world* task-node-info net-play-mode))
+                    18
+                    )
+                1
+                )
+             (set! (-> this net-state players (+ s5-1 16) team-id) (the-as uint 2))
+             )
+            ((>= s3-0 s4-0)
+             (set! (-> this net-state players (+ s5-1 16) team-id) (the-as uint 0))
+             (+! s4-0 1)
+             )
+            (else
+              (set! (-> this net-state players (+ s5-1 16) team-id) (the-as uint 1))
+              (+! s3-0 1)
+              )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> *net-mgr* lobby-state last-report-time)
+        (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30)))
+        )
+  #t
+  )
+
+(defmethod remove-machine ((this net-world) (arg0 int))
+  (logclear! (-> this net-state player-ready-flags) (ash 1 arg0))
+  (dotimes (v1-2 2)
+    (let ((a2-7 (-> this net-state players (+ v1-2 (* arg0 2)))))
+      (set! (-> a2-7 vehicle-selection) -1)
+      (set! (-> a2-7 desired-driver-selection) -1)
+      (set! (-> a2-7 flags) (net-world-staging-player-flag))
+      )
+    0
+    (set! (-> this net-state assigned-drivers (+ v1-2 (* arg0 2))) (the-as uint -1))
+    )
+  (update-ai-players this)
+  (set! (-> *net-mgr* lobby-state last-report-time)
+        (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30)))
+        )
+  0
+  (none)
+  )
+
+;; WARN: Swapped fp-relative label and field offsets for "CPU"
+(defmethod lock-game ((this net-world))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (assign-teams this)
+    (update-ai-players this)
+    (let ((s5-0 -1))
+      (dotimes (s4-0 24)
+        (set! (-> this net-state players s4-0 player-num) (cond
+                                                            ((player-idx-vehicle-selected? this s4-0)
+                                                             (+! s5-0 1)
+                                                             s5-0
+                                                             )
+                                                            (else
+                                                              -1
+                                                              )
+                                                            )
+              )
+        )
+      )
+    (when (!= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              3
+              )
+      (dotimes (s5-1 8)
+        (if (player-idx-vehicle-selected? this (+ s5-1 16))
+            (set-player-name this (+ s5-1 16) (-> "CPU" data))
+            )
+        )
+      )
+    (logior! (-> this net-state flags) 1)
+    (let ((s5-2 (alloc-msg this 'lock)))
+      (do-encode-net-world-state (-> this net-state) s5-2)
+      (send-msg this s5-2 -1 80)
+      (free-msg this s5-2)
+      )
+    (set! (-> *net-mgr* game-state locked) #t)
+    (when (and (= (if *net-world*
+                      (the-as int (-> *net-world* task-node-info net-play-mode))
+                      18
+                      )
+                  3
+                  )
+               *ghosts-enabled*
+               )
+      (format 0 "start downloading ghost~%")
+      (set! (-> *ghost-download-proc* handle)
+            (process->handle
+              (ppointer->process (process-spawn-function process get-best-ghost (-> this task-info task-level) -1))
+              )
+            )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun do-ghost-ai-setup ((arg0 net-world))
+  (let ((a0-1 (-> arg0 net-state players 16)))
+    (dotimes (v1-0 8)
+      (set! (-> arg0 net-state players (+ v1-0 16) vehicle-selection) -1)
+      )
+    (cond
+      ((and (> (-> *ghost-rec* total-snaps) 0)
+            (and *net-world* *ghosts-enabled* (= (-> *ghost-rec* task-node) (-> *net-world* task-node)))
+            )
+       (mem-copy! (the-as pointer a0-1) (the-as pointer (-> *ghost-rec* player-info)) 32)
+       (set-player-name arg0 16 (-> *ghost-rec* player-name))
+       (set-assigned-driver arg0 (-> arg0 net-state players 16 desired-driver-selection) 16)
+       (update-load-levels arg0 #f)
+       (return (the-as object #f))
+       )
+      ((and (and *net-mgr*
+                 *net-world*
+                 (nonzero? (-> *net-mgr* lobby-state connect-handle))
+                 (= (if *net-world*
+                        (the-as int (-> *net-world* task-node-info net-play-mode))
+                        18
+                        )
+                    3
+                    )
+                 *ghosts-enabled*
+                 )
+            (and *ghost-info-ptr* (!= *ghost-info-ptr* 'error))
+            )
+       (set! (-> a0-1 vehicle-selection) (-> (the-as ghost-info *ghost-info-ptr*) vehicle-selection))
+       (set! (-> a0-1 desired-driver-selection) (-> (the-as ghost-info *ghost-info-ptr*) driver-selection))
+       (set! (-> a0-1 vehicle-load-parts) (-> (the-as ghost-info *ghost-info-ptr*) load-parts))
+       (set-player-name arg0 16 (-> (the-as ghost-info *ghost-info-ptr*) acct-name))
+       (set-assigned-driver arg0 (-> arg0 net-state players 16 desired-driver-selection) 16)
+       (update-load-levels arg0 #f)
+       (return (the-as object #f))
+       )
+      )
+    )
+  (set-player-vehicle arg0 -1 16 (new 'static 'vehicle-load-parts) (new 'static 'tuning-info))
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defun get-non-conflicting-driver ((arg0 net-world) (arg1 int) (arg2 int))
+  (local-vars (v1-0 symbol))
+  (let ((s3-0 #f))
+    (until #f
+      (set! v1-0 (and (>= arg1 0)
+                      (ai-driver-allowed arg1 s3-0)
+                      (begin
+                        (dotimes (s3-1 24)
+                          (when (and (player-idx-vehicle-selected? arg0 s3-1)
+                                     (!= s3-1 arg2)
+                                     (= (-> arg0 net-state assigned-drivers-s8 s3-1) arg1)
+                                     )
+                            (set! v1-0 #f)
+                            (goto cfg-18)
+                            )
+                          )
+                        (goto cfg-21)
+                        v1-0
+                        )
+                      )
+            )
+      (label cfg-18)
+      (when v1-0
+        )
+      (set! s3-0 #t)
+      (set! arg1 (rand-vu-int-count (length *net-drivers*)))
+      )
+    )
+  #f
+  (label cfg-21)
+  arg1
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun set-ai-vehicle ((arg0 net-world) (arg1 int))
+  (let ((s4-0 (-> *net-drivers* (-> arg0 net-state assigned-drivers-s8 arg1))))
+    (let* ((s1-0 (get-ai-vehicle-cup-idx))
+           (s0-0 (-> s4-0 ai-car-levels s1-0))
+           (s3-0 (vehicle-idx-from-level-name s0-0))
+           (s2-0 (-> arg0 net-state players arg1 vehicle-selection))
+           )
+      (when (not s3-0)
+        (format 0 "!!!!!! can't find vehicle level ~A !!!!!!!!~%" s0-0)
+        (set! s3-0 0)
+        )
+      (let ((v1-10 (find-prebuilt-ai-vehicle s0-0)))
+        (when (not v1-10)
+          (break!)
+          0
+          )
+        (let ((a3-0 (-> v1-10 load-parts))
+              (v1-13 (-> arg0 net-state players arg1 vehicle-load-parts))
+              (a0-10 (-> arg0 net-state players arg1 vehicle-tuning-info))
+              (a1-8 (-> *car-upgrade-info* data (-> *net-vehicles* s3-0 ct)))
+              (t0-0 0)
+              )
+          (cond
+            ((= *game-mode* 'adventure)
+             (set! t0-0
+                   (logior (logand (logior (logand (logior (logand (logior (logand t0-0 -256) (shr (shl (* s1-0 2) 56) 56)) -65281) (shr (shl (* s1-0 2) 56) 48))
+                                                   -16711681
+                                                   )
+                                           (shr (shl (* s1-0 2) 56) 40)
+                                           )
+                                   (the-as uint #xffffffff00ffffff)
+                                   )
+                           (shr (shl (* s1-0 2) 56) 32)
+                           )
+                   )
+             )
+            ((zero? (-> *net-world* net-state vehicle-class))
+             (set! t0-0
+                   (logior (logand (logior (logand (logior (logand (logior (logand t0-0 -256) (shr (shl (-> a1-8 data 0 rookie) 56) 56)) -65281)
+                                                           (shr (shl (-> a1-8 data 1 rookie) 56) 48)
+                                                           )
+                                                   -16711681
+                                                   )
+                                           (shr (shl (-> a1-8 data 2 rookie) 56) 40)
+                                           )
+                                   (the-as uint #xffffffff00ffffff)
+                                   )
+                           (shr (shl (-> a1-8 data 3 rookie) 56) 32)
+                           )
+                   )
+             )
+            ((= (-> *net-world* net-state vehicle-class) 1)
+             (set! t0-0
+                   (logior (logand (logior (logand (logior (logand (logior (logand t0-0 -256) (shr (shl (-> a1-8 data 0 pro) 56) 56)) -65281)
+                                                           (shr (shl (-> a1-8 data 1 pro) 56) 48)
+                                                           )
+                                                   -16711681
+                                                   )
+                                           (shr (shl (-> a1-8 data 2 pro) 56) 40)
+                                           )
+                                   (the-as uint #xffffffff00ffffff)
+                                   )
+                           (shr (shl (-> a1-8 data 3 pro) 56) 32)
+                           )
+                   )
+             )
+            ((= (-> *net-world* net-state vehicle-class) 2)
+             (set! t0-0
+                   (logior (logand (logior (logand (logior (logand (logior (logand t0-0 -256) (shr (shl (-> a1-8 data 0 max) 56) 56)) -65281)
+                                                           (shr (shl (-> a1-8 data 1 max) 56) 48)
+                                                           )
+                                                   -16711681
+                                                   )
+                                           (shr (shl (-> a1-8 data 2 max) 56) 40)
+                                           )
+                                   (the-as uint #xffffffff00ffffff)
+                                   )
+                           (shr (shl (-> a1-8 data 3 max) 56) 32)
+                           )
+                   )
+             )
+            )
+          (if (or (!= s2-0 s3-0) (!= v1-13 a3-0) (!= a0-10 t0-0))
+              (set-player-vehicle arg0 s3-0 arg1 a3-0 (the-as tuning-info t0-0))
+              )
+          )
+        )
+      )
+    (set-player-colors arg0 (the-as int (-> s4-0 base-color)) (the-as int (-> s4-0 stripe-color)) arg1)
+    )
+  0
+  )
+
+;; WARN: Function (method 71 net-world) has a return type of none, but the expression builder found a return statement.
+(defmethod update-ai-players ((this net-world))
+  (format 0 "updating AI players...~%")
+  (let ((s5-0 0))
+    (dotimes (s4-0 16)
+      (if (player-idx-vehicle-selected? this s4-0)
+          (+! s5-0 1)
+          )
+      )
+    (if (!= (if *net-mgr*
+                (-> *net-mgr* game-state local-machine-idx)
+                0
+                )
+            (-> *net-mgr* game-state session-master-idx)
+            )
+        (return #f)
+        )
+    (when (and (= (if *net-world*
+                      (the-as int (-> *net-world* task-node-info net-play-mode))
+                      18
+                      )
+                  3
+                  )
+               (= s5-0 1)
+               )
+      (do-ghost-ai-setup this)
+      (return #f)
+      )
+    (let* ((v1-21 (if *net-world*
+                      (the-as int (-> *net-world* task-node-info net-play-mode))
+                      18
+                      )
+                  )
+           (s3-0
+             (cond
+               ((or (zero? v1-21)
+                    (or (= v1-21 4) (= v1-21 7) (= v1-21 9) (= v1-21 10) (= v1-21 12) (= v1-21 11) (= v1-21 5) (= v1-21 14))
+                    )
+                (cond
+                  ((and (is-clan-challenge) #f)
+                   0
+                   )
+                  ((= (-> this net-state ai-slots) -1)
+                   (max 0 (+ (- 1 s5-0) (-> (get-open-task-node-info) max-cpu)))
+                   )
+                  (else
+                    (-> this net-state ai-slots)
+                    )
+                  )
+                )
+               ((or (= v1-21 1) (= v1-21 13) (= v1-21 15) (= v1-21 16))
+                4
+                )
+               ((= v1-21 17)
+                1
+                )
+               (else
+                 0
+                 )
+               )
+             )
+           (s4-3 (max 0 (min s3-0 (- 6 s5-0))))
+           )
+      (dotimes (s3-2 (- 8 s4-3))
+        (when (player-idx-vehicle-selected? this (+ s4-3 16 s3-2))
+          (set-player-vehicle this -1 (+ s4-3 16 s3-2) (new 'static 'vehicle-load-parts) (new 'static 'tuning-info))
+          (set-assigned-driver this -1 (+ s4-3 16 s3-2))
+          )
+        )
+      (cond
+        ((demo?)
+         (dotimes (s3-3 s4-3)
+           (let ((s2-0 (+ s3-3 16)))
+             (let* ((v1-43 s3-3)
+                    (v1-44 (cond
+                             ((zero? v1-43)
+                              10
+                              )
+                             ((= v1-43 1)
+                              (if (= s5-0 1)
+                                  1
+                                  6
+                                  )
+                              )
+                             ((= v1-43 2)
+                              4
+                              )
+                             ((= v1-43 3)
+                              2
+                              )
+                             ((= v1-43 4)
+                              5
+                              )
+                             (else
+                               5
+                               )
+                             )
+                           )
+                    (a1-17 0)
+                    )
+               (dotimes (a0-32 (-> *net-drivers* length))
+                 (if (= v1-44 (-> *net-drivers* a0-32 dt))
+                     (set! a1-17 a0-32)
+                     )
+                 )
+               (set-assigned-driver this a1-17 s2-0)
+               )
+             (set-ai-vehicle this s2-0)
+             )
+           )
+         )
+        (else
+          (when (= *game-mode* 'adventure)
+            (let ((v1-56 (-> *net-world* task-node-info adventure-drivers)))
+              (when (-> *game-info* playing-grand-prix?)
+                (if (< (-> *game-info* grand-prix-index) (the-as uint 3))
+                    (set! v1-56 (-> *game-info* playing-grand-prix? drivers))
+                    (set! v1-56 (-> *game-info* playing-grand-prix? boss-drivers))
+                    )
+                )
+              (when v1-56
+                (let ((s5-1 (the-as (array uint8) (-> v1-56 value)))
+                      (s3-4 16)
+                      )
+                  (dotimes (s2-1 (min s4-3 (length s5-1)))
+                    (let ((v1-64 (-> s5-1 s2-1))
+                          (s1-0 0)
+                          )
+                      (dotimes (a0-43 (-> *net-drivers* length))
+                        (if (= v1-64 (-> *net-drivers* a0-43 dt))
+                            (set! s1-0 a0-43)
+                            )
+                        )
+                      (when (ai-driver-allowed s1-0 #f)
+                        (format 0 "assigning player ~D driver ~D~%" s3-4 s1-0)
+                        (set-assigned-driver this s1-0 s3-4)
+                        (set-ai-vehicle this s3-4)
+                        (+! s3-4 1)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (dotimes (s5-2 s4-3)
+        (let ((s3-5 (+ s5-2 16)))
+          (let ((a1-32 (get-non-conflicting-driver this (-> this net-state assigned-drivers-s8 s3-5) s3-5)))
+            (set-assigned-driver this (the-as int a1-32) s3-5)
+            )
+          (set-ai-vehicle this s3-5)
+          )
+        )
+      )
+    )
+  (if (not (-> *net-mgr* game-state locked))
+      (assign-teams this)
+      )
+  0
+  (none)
+  )
+
+(defmethod net-world-method-55 ((this net-world) (arg0 int) (arg1 int) (arg2 int))
+  (allow-machine-to-join arg2 arg1 (- (- arg0 arg2) arg1))
+  )
+
+(defmethod set-slot-counts ((this net-world) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (when (and (= (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                (-> *net-mgr* game-state session-master-idx)
+                )
+             (not (logtest? (-> this net-state flags) 1))
+             )
+    (if (<= arg0 0)
+        (format 0 "bad!~%")
+        )
+    (set! (-> this net-state max-humans) arg0)
+    (set! (-> this net-state buddy-slots) arg1)
+    (set! (-> this net-state clan-slots) arg2)
+    (set! (-> this net-state ai-slots) arg3)
+    (update-ai-players this)
+    (let ((s5-1 (alloc-msg this 'state)))
+      (do-encode-net-world-state (-> this net-state) s5-1)
+      (send-msg this s5-1 -2 80)
+      (free-msg this s5-1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-ai-counts ((this net-world) (arg0 int))
+  (set-slot-counts
+    this
+    (-> this net-state max-humans)
+    (-> this net-state buddy-slots)
+    (-> this net-state clan-slots)
+    arg0
+    )
+  0
+  (none)
+  )
+
+(defmethod set-vehicle-class ((this net-world) (arg0 int))
+  (when (and (= (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                (-> *net-mgr* game-state session-master-idx)
+                )
+             (not (logtest? (-> this net-state flags) 1))
+             )
+    (set! (-> this net-state vehicle-class) arg0)
+    (let ((s5-0 (alloc-msg this 'state)))
+      (do-encode-net-world-state (-> this net-state) s5-0)
+      (send-msg this s5-0 -2 80)
+      (free-msg this s5-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod net-world-method-59 ((this net-world) (arg0 symbol))
+  (if arg0
+      (logior! (-> this net-state flags) 8)
+      (logand! (-> this net-state flags) -9)
+      )
+  (let ((s5-0 (alloc-msg this 'state)))
+    (do-encode-net-world-state (-> this net-state) s5-0)
+    (send-msg this s5-0 -2 80)
+    (free-msg this s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod set-time-of-day ((this net-world) (arg0 int))
+  (if (and (= (if *net-mgr*
+                  (-> *net-mgr* game-state local-machine-idx)
+                  0
+                  )
+              (-> *net-mgr* game-state session-master-idx)
+              )
+           (not (logtest? (-> this net-state flags) 1))
+           )
+      (set! (-> this net-state time-of-day) arg0)
+      )
+  0
+  (none)
+  )
+
+(defmethod set-task-node ((this net-world) (arg0 game-task-node))
+  (if (and *net-mgr*
+           *net-world*
+           (nonzero? (-> *net-mgr* lobby-state connect-handle))
+           (= (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              3
+              )
+           *ghosts-enabled*
+           )
+      (set! *ghost-info-ptr* (the-as pointer #f))
+      )
+  (let ((v1-14 (-> *game-info* sub-task-list arg0)))
+    (copy-charp<-charp (-> this net-state task-node-name) (-> v1-14 name data))
+    )
+  (apply-task this)
+  (let ((s5-0 (alloc-msg this 'set-task)))
+    (write-bytes s5-0 (-> this net-state task-node-name) 32)
+    (send-msg this s5-0 -2 80)
+    (free-msg this s5-0)
+    )
+  (update-load-levels this #f)
+  (update-ai-players this)
+  (send-options this)
+  (set! (-> *net-mgr* lobby-state last-report-time)
+        (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30)))
+        )
+  (if (= (if *net-world*
+             (the-as int (-> *net-world* task-node-info net-play-mode))
+             18
+             )
+         3
+         )
+      (set! *ghosts-enabled*
+            (logtest? (-> *net-world* net-state options advanced-options flags) (game-task-advanced-options-flag ghosts))
+            )
+      )
+  0
+  (none)
+  )
+
+(defmethod set-artist-continue ((this net-world) (arg0 continue-point))
+  (when (and (= (if *net-mgr*
+                    (-> *net-mgr* game-state local-machine-idx)
+                    0
+                    )
+                (-> *net-mgr* game-state session-master-idx)
+                )
+             (not (logtest? (-> this net-state flags) 1))
+             )
+    (let ((s5-0 (-> *game-info* play-list 180)))
+      (let ((s4-0 (-> *game-info* sub-task-list (-> s5-0 play-node))))
+        (set! (-> s5-0 play-continue) (-> arg0 name))
+        (set! (-> s5-0 split-continue) (-> arg0 name))
+        (copy-charp<-charp
+          (-> this net-state task-node-name)
+          (-> *game-info* sub-task-list (-> s5-0 play-node) name data)
+          )
+        (set! (-> s4-0 net-play-mode) (net-play-mode artist))
+        )
+      (set-task-node this (-> s5-0 play-node))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod send-player-info ((this net-world) (arg0 int))
+  (if (= (/ arg0 2) (if *net-mgr*
+                        (-> *net-mgr* game-state local-machine-idx)
+                        0
+                        )
+         )
+      (set! (-> this net-state players arg0 skill-level) (get-skill-level (-> *medius-my-player* ladder-stats)))
+      )
+  (let ((s4-0 (alloc-msg this 'set-player-info)))
+    (write-int8 s4-0 arg0)
+    (write-bytes s4-0 (the-as pointer (-> this net-state players arg0)) 32)
+    (send-msg this s4-0 -2 80)
+    (free-msg this s4-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod set-player-vehicle ((this net-world) (arg0 int) (arg1 int) (arg2 vehicle-load-parts) (arg3 tuning-info))
+  (if (>= arg0 (-> *net-vehicles* length))
+      (set! arg0 (+ (-> *net-vehicles* length) -1))
+      )
+  (when (not (logtest? (-> this net-state flags) 1))
+    (set! (-> this net-state players arg1 vehicle-selection) arg0)
+    (if (nonzero? arg2)
+        (set! (-> this net-state players arg1 vehicle-load-parts) arg2)
+        )
+    (if (nonzero? arg3)
+        (set! (-> this net-state players arg1 vehicle-tuning-info) (the-as uint arg3))
+        )
+    (if (and (>= arg1 0) (< arg1 16))
+        (update-ai-players this)
+        )
+    (send-player-info this arg1)
+    (update-load-levels this #f)
+    )
+  (if (not (-> *net-mgr* game-state locked))
+      (assign-teams this)
+      )
+  0
+  (none)
+  )
+
+(defmethod set-player-team ((this net-world) (arg0 uint) (arg1 int))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (set! (-> this net-state players arg1 team-id) arg0)
+    (send-player-info this arg1)
+    )
+  (if (not (-> *net-mgr* game-state locked))
+      (assign-teams this)
+      )
+  0
+  (none)
+  )
+
+(defmethod set-player-load-parts ((this net-world) (arg0 vehicle-load-parts) (arg1 int))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (set! (-> this net-state players arg1 vehicle-load-parts) arg0)
+    (send-player-info this arg1)
+    (update-load-levels this #f)
+    )
+  0
+  (none)
+  )
+
+(defmethod set-player-tuning ((this net-world) (arg0 int) (arg1 int))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (set! (-> this net-state players arg1 vehicle-tuning-info) (the-as uint arg0))
+    (send-player-info this arg1)
+    )
+  0
+  (none)
+  )
+
+(defmethod set-player-desired-driver ((this net-world) (arg0 int) (arg1 int))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (set! (-> this net-state players arg1 desired-driver-selection) arg0)
+    (send-player-info this arg1)
+    (when (= (if *net-mgr*
+                 (-> *net-mgr* game-state local-machine-idx)
+                 0
+                 )
+             (-> *net-mgr* game-state session-master-idx)
+             )
+      (assign-drivers this)
+      (if (and (>= arg1 0) (< arg1 16))
+          (update-ai-players this)
+          )
+      (update-load-levels this #f)
+      (assign-teams this)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-player-colors ((this net-world) (arg0 int) (arg1 int) (arg2 int))
+  (when (not (logtest? (-> this net-state flags) 1))
+    (let ((v1-4 (-> this net-state players arg2)))
+      (set! (-> v1-4 base-color) (the-as uint arg0))
+      (set! (-> v1-4 stripe-color) (the-as uint arg1))
+      )
+    )
+  (none)
+  )
+
+(defmethod set-player-flags ((this net-world) (arg0 int) (arg1 int))
+  (format 0 "set-player-flags: ~D ~D~%" arg1 arg0)
+  (let ((v1-1 (logand -2 arg0)))
+    (if (and *headset* (logtest? (-> *headset* flags) (headset-flag connected)))
+        (set! v1-1 (logior v1-1 1))
+        )
+    (when (not (logtest? (-> this net-state flags) 1))
+      (set! (-> this net-state players arg1 flags) (the-as net-world-staging-player-flag v1-1))
+      (send-player-info this arg1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod get-staging-player-flag ((this net-world) (arg0 int))
+  (-> this net-state players arg0 flags)
+  )
+
+(defmethod set-player-name ((this net-world) (arg0 int) (arg1 (pointer uint8)))
+  (copy-charp<-charp (-> *net-player-names* arg0 name) arg1)
+  (net-player-name-method-9 (-> *net-player-names* arg0))
+  (let ((s3-0 (alloc-msg this 'set-player-name)))
+    (write-uint8 s3-0 (the-as uint arg0))
+    (write-string s3-0 arg1)
+    (send-msg this s3-0 -1 80)
+    (free-msg this s3-0)
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun request-game-start ()
+  (if *net-world*
+      (lock-game *net-world*)
+      )
+  0
+  )
+
+;; WARN: Return type mismatch object vs symbol.
+(defun is-late-join? ()
+  (the-as symbol (and *net-world* (-> *net-world* is-late-join)))
+  )
+
+(defmethod player-idx-vehicle-selected? ((this net-world) (arg0 int))
+  (>= (-> this net-state players arg0 vehicle-selection) 0)
+  )
+
+(defmethod send-options ((this net-world))
+  (mem-copy!
+    (the-as pointer (-> *net-world* net-state options))
+    (the-as pointer (-> (get-open-task-node-info) user-advanced-options))
+    8
+    )
+  (if (is-clan-challenge)
+      (logior!
+        (-> *net-world* net-state options advanced-options flags)
+        (game-task-advanced-options-flag team-game)
+        )
+      )
+  (let ((s5-1 (alloc-msg this 'set-options)))
+    (write-bytes s5-1 (the-as pointer (-> this net-state options)) 8)
+    (send-msg this s5-1 -2 80)
+    (free-msg this s5-1)
+    )
+  (none)
+  )
+
+(defmethod player-vehicle-loaded? ((this net-world) (arg0 int))
+  (let ((a2-0 (-> this player-to-vehicle-slot-map-s8 arg0))
+        (v1-3 (-> this net-state players arg0 vehicle-selection))
+        )
+    (if (< a2-0 0)
+        (return #f)
+        )
+    (if (< v1-3 0)
+        (return #f)
+        )
+    (let ((a0-3 (+ a2-0 6)))
+      (and (= (-> *level* level a0-3 status) 'active)
+           (= (-> *level* level a0-3 name) (-> *net-vehicles* v1-3 levname))
+           )
+      )
+    )
+  )
+
+(defmethod player-driver-loaded? ((this net-world) (arg0 int))
+  (let ((a2-0 (-> this player-to-vehicle-slot-map-s8 arg0))
+        (v1-2 (-> this net-state assigned-drivers-s8 arg0))
+        )
+    (if (< a2-0 0)
+        (return #f)
+        )
+    (if (< v1-2 0)
+        (return #f)
+        )
+    (let ((a0-3 (+ a2-0 12)))
+      (and (= (-> *level* level a0-3 status) 'active)
+           (= (-> *level* level a0-3 name) (-> *net-drivers* v1-2 levname))
+           )
+      )
+    )
+  )
+
+(defun driver-allowed ((arg0 int))
+  (logtest? (-> *game-info* driver-unlock) (ash 1 (-> *net-drivers* arg0 dt)))
+  )
+
+(defun ai-driver-allowed ((arg0 int) (arg1 symbol))
+  (let ((v1-3 (if *net-world*
+                  (the-as int (-> *net-world* task-node-info net-play-mode))
+                  18
+                  )
+              )
+        )
+    (if (or (= v1-3 15) (or (= v1-3 16) (= v1-3 17)))
+        #t
+        (and (driver-allowed arg0) (or (not arg1) (not (-> *net-drivers* arg0 no-ai))))
+        )
+    )
+  )
+
+(defun get-total-humans ()
+  (local-vars (gp-0 int))
+  (when (not *net-world*)
+    (set! gp-0 0)
+    (goto cfg-9)
+    )
+  (set! gp-0 0)
+  (dotimes (s5-0 16)
+    (if (player-idx-vehicle-selected? *net-world* s5-0)
+        (+! gp-0 1)
+        )
+    )
+  (label cfg-9)
+  gp-0
+  )
+
+(defun get-total-skill-level ()
+  (local-vars (gp-0 int))
+  (when (not *net-world*)
+    (set! gp-0 0)
+    (goto cfg-9)
+    )
+  (set! gp-0 0)
+  (dotimes (s5-0 16)
+    (if (player-idx-vehicle-selected? *net-world* s5-0)
+        (+! gp-0 (-> *net-world* net-state players s5-0 skill-level))
+        )
+    )
+  (label cfg-9)
+  gp-0
+  )
+
+(defun get-player-clan-info ((arg0 int))
+  (if (zero? (-> *net-mgr* lobby-state connect-handle))
+      (return -1)
+      )
+  (if (or (<= (-> *net-active-game* info clan-1) 0) (<= (-> *net-active-game* info clan-2) 0))
+      (return -1)
+      )
+  (if (not (and (>= arg0 0) (< arg0 16)))
+      (return -1)
+      )
+  (let ((v1-16 (-> *net-process-mgr* machines (/ arg0 2) clan-id)))
+    (cond
+      ((= (-> *net-active-game* info clan-1) v1-16)
+       (return 0)
+       )
+      ((= (-> *net-active-game* info clan-2) v1-16)
+       (return 1)
+       )
+      )
+    )
+  -2
+  )
+
+(defmethod net-world-method-80 ((this net-world))
+  (dotimes (s5-0 16)
+    (when (player-connected? s5-0)
+      (if (not (or (= (-> *net-mgr* game-state session-master-idx) (/ s5-0 2))
+                   (logtest? (-> this net-state players s5-0 flags) (net-world-staging-player-flag nwspf1))
+                   )
+               )
+          (goto cfg-12)
+          )
+      )
+    )
+  (return #t)
+  (label cfg-12)
+  #f
+  )
+
+(defmethod set-garage-player ((this net-world) (arg0 int))
+  (update-load-levels this #f)
+  (when (= (-> this player-to-vehicle-slot-map-s8 (+ arg0 (* (if *net-mgr*
+                                                                 (-> *net-mgr* game-state local-machine-idx)
+                                                                 0
+                                                                 )
+                                                             2
+                                                             )
+                                                     )
+               )
+           -1
+           )
+    (break!)
+    0
+    )
+  (when (!= (-> this current-garage-player) -1)
+    (break!)
+    0
+    )
+  (set! (-> this current-garage-spare-slot) -1)
+  (set! (-> this current-garage-player) arg0)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs integer.
+(defmethod get-spare-garage-slot ((this net-world) (arg0 int))
+  (when (= (-> this current-garage-player) -1)
+    (break!)
+    0
+    )
+  (let ((v1-4 (+ (-> this current-garage-player) (* (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    2
+                                                    )
+                 )
+              )
+        )
+    (if (zero? arg0)
+        (return (the-as integer (-> this player-to-vehicle-slot-map-s8 v1-4)))
+        )
+    )
+  (if (!= (-> this current-garage-spare-slot) -1)
+      (return (the-as integer (-> this current-garage-spare-slot)))
+      )
+  (dotimes (v1-12 6)
+    (let ((a1-4 (-> this vehicle-slot-to-player-map-s8 v1-12)))
+      (when (= a1-4 -1)
+        (set! (-> this current-garage-spare-slot) v1-12)
+        (goto cfg-29)
+        )
+      (if (not (and (and (>= a1-4 0) (< a1-4 16)) (= (/ a1-4 2) (if *net-mgr*
+                                                                    (-> *net-mgr* game-state local-machine-idx)
+                                                                    0
+                                                                    )
+                                                     )
+                    )
+               )
+          (set! (-> this current-garage-spare-slot) v1-12)
+          )
+      )
+    )
+  (label cfg-29)
+  (when (= (-> this current-garage-spare-slot) -1)
+    (break!)
+    0
+    )
+  (let ((v1-21 (-> this vehicle-slot-to-player-map-s8 (-> this current-garage-spare-slot))))
+    (when (!= v1-21 -1)
+      (set! (-> this player-to-vehicle-slot-map v1-21) (the-as uint -1))
+      (set! (-> this vehicle-slot-to-player-map (-> this current-garage-spare-slot)) (the-as uint -1))
+      )
+    )
+  (-> this current-garage-spare-slot)
+  )
+
+(defmethod swap-garage-slots ((this net-world) (arg0 int))
+  (let ((v1-1 (+ (-> this current-garage-player) (* (if *net-mgr*
+                                                        (-> *net-mgr* game-state local-machine-idx)
+                                                        0
+                                                        )
+                                                    2
+                                                    )
+                 )
+              )
+        )
+    (when (= arg0 1)
+      (when (= (-> this current-garage-spare-slot) -1)
+        (break!)
+        0
+        )
+      (let ((a1-6 (-> this player-to-vehicle-slot-map-s8 v1-1)))
+        (when (= a1-6 -1)
+          (break!)
+          0
+          )
+        (set! (-> this vehicle-slot-to-player-map a1-6) (the-as uint -1))
+        )
+      (set! (-> this vehicle-slot-to-player-map (-> this current-garage-spare-slot)) (the-as uint v1-1))
+      (set! (-> this player-to-vehicle-slot-map v1-1) (the-as uint (-> this current-garage-spare-slot)))
+      )
+    )
+  (set! (-> this current-garage-player) -1)
+  (set! (-> this current-garage-spare-slot) -1)
+  (update-load-levels this #f)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun lobby-level-set! ((arg0 int) (arg1 object) (arg2 symbol))
+  (set! (-> *lobby-levels* arg0) (the-as symbol arg1))
+  (set! (-> *lobby-levels-display* arg0) arg2)
+  (cond
+    (*net-world*
+      (update-load-levels *net-world* #f)
+      )
+    (else
+      (dotimes (v1-7 2)
+        (set! (-> *lobby-levels-tmp* v1-7) (-> *lobby-levels* v1-7))
+        )
+      (want-levels *load-state* (-> *lobby-levels-tmp* data))
+      (if arg1
+          (want-display-level *load-state* (the-as symbol arg1) arg2)
+          )
+      )
+    )
+  0
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defun set-player-car-from-level-array ((arg0 int))
+  (local-vars (s4-1 int))
+  (if (not *net-world*)
+      (return (the-as object #f))
+      )
+  (let ((s5-0 (-> *car-level-array* data arg0)))
+    (let ((s4-0 (-> s5-0 level)))
+      -1
+      (dotimes (s3-0 (length *net-vehicles*))
+        (when (= (-> *net-vehicles* s3-0 levname) (-> s4-0 name))
+          (set! s4-1 s3-0)
+          (goto cfg-10)
+          )
+        )
+      )
+    (set! s4-1 -1)
+    (label cfg-10)
+    (if (= s4-1 -1)
+        (return (the-as object #f))
+        )
+    (let ((s3-1 (convert-car-info-to-load-parts s5-0)))
+      (let ((s2-0 (to-rgba (-> s5-0 base-color)))
+            (a2-0 (to-rgba (-> s5-0 stripe-color)))
+            )
+        (set-player-colors
+          *net-world*
+          (the-as int s2-0)
+          (the-as int a2-0)
+          (+ arg0 (* (if *net-mgr*
+                         (-> *net-mgr* game-state local-machine-idx)
+                         0
+                         )
+                     2
+                     )
+             )
+          )
+        )
+      (set-player-vehicle
+        *net-world*
+        s4-1
+        (+ arg0 (* (if *net-mgr*
+                       (-> *net-mgr* game-state local-machine-idx)
+                       0
+                       )
+                   2
+                   )
+           )
+        s3-1
+        (-> s5-0 tuning)
+        )
+      )
+    )
+  0
+  )
+
+(define *in-end-of-race-preload* #f)
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior end-of-race-start-preload process ()
+  (if *in-end-of-race-preload*
+      (return (the-as object #f))
+      )
+  (if (not (type? *net-game-mgr* net-game-mgr-race))
+      (return (the-as object #f))
+      )
+  (set! *race-end-camera-pos-valid* #f)
+  (if (!= *view-count* 1)
+      (return (the-as object #f))
+      )
+  (let ((gp-0 (the-as entity-actor #f)))
+    (let ((f30-0 0.0))
+      (dotimes (s5-0 (-> *level* length))
+        (let ((v1-11 (-> *level* level s5-0)))
+          (when (= (-> v1-11 status) 'active)
+            (let* ((s4-0 (-> v1-11 entity))
+                   (s3-0 (-> s4-0 length))
+                   )
+              (dotimes (s2-0 s3-0)
+                (let ((s1-0 (as-type (-> s4-0 data s2-0 entity) entity-actor)))
+                  (when s1-0
+                    (when (= (-> (the-as entity-actor s1-0) etype symbol) 'race-end-cam)
+                      (let ((f0-0 (vector-vector-distance-squared (-> (view-get-active-math-camera) trans) (-> s1-0 trans))))
+                        (when (or (not gp-0) (< f0-0 f30-0))
+                          (set! gp-0 (the-as entity-actor s1-0))
+                          (set! f30-0 f0-0)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (send-event
+      (get-vehicle (-> *net-players* (* (if *net-mgr*
+                                            (-> *net-mgr* game-state local-machine-idx)
+                                            0
+                                            )
+                                        2
+                                        )
+                       )
+                   )
+      'set
+      'camera
+      #f
+      )
+    (when (not gp-0)
+      (cam-reconnect *setting-control* (view-get-active-index) self 'interp-time 'abs 0 0.0)
+      (cam-reconnect *setting-control* (view-get-active-index) self 'mode-name 'cam-race-end 0 0.0)
+      (return (the-as object #f))
+      )
+    (set! (-> *race-end-camera-pos* quad) (-> gp-0 trans quad))
+    (set! *race-end-camera-pos-valid* #t)
+    (let ((s5-4 self))
+      (set! self *net-game-mgr*)
+      (view-push-context 0)
+      (cam-reconnect *setting-control* (view-get-active-index) (the-as net-game-mgr self) 'interp-time 'abs 0 0.0)
+      (cam-reconnect
+        *setting-control*
+        (view-get-active-index)
+        (the-as net-game-mgr self)
+        'mode-name
+        'cam-race-end
+        0
+        0.0
+        )
+      (view-pop-context)
+      (set! self s5-4)
+      )
+    (set-continue-point-from-task *net-world*)
+    (lobby-level-set! 0 'menu2 #f)
+    (lobby-level-set! 1 (-> gp-0 extra level name) 'display)
+    )
+  (update-load-levels *net-world* #t)
+  (let ((gp-3 self))
+    (set! self *net-world*)
+    (check-start-load)
+    (set! self gp-3)
+    )
+  (set! *in-end-of-race-preload* #t)
+  (lobby-level-set! 1 #f #f)
+  0
+  )
