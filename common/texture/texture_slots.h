@@ -5,3 +5,4 @@
 
 const std::vector<std::string>& jak2_animated_texture_slots();
 const std::vector<std::string>& jak3_animated_texture_slots();
+const std::vector<std::string>& jakx_animated_texture_slots();

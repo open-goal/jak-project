@@ -768,7 +768,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
       animated_slots = jak3_animated_texture_slots();
       break;
     case GameVersion::JakX:
-      // TODO jakx - Implement animation
+      animated_slots = jakx_animated_texture_slots();
       break;
     default:
       ASSERT_NOT_REACHED();
