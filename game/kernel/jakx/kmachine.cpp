@@ -209,12 +209,6 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: no kernel mode\n");
       MasterUseKernel = false;
     }
-
-    // an added mode to allow booting without sound for testing
-    if (arg == "-nosound") {
-      Msg(6, "dkernel: no sound mode\n");
-      masterConfig.disable_sound = true;
-    }
   }
 }
 
@@ -245,10 +239,6 @@ void InitIOP() {
     kstrcpy(cmd, "SCREEN1.USA");
   }
   cmd = cmd + strlen(cmd) + 1;
-  if (masterConfig.disable_sound) {
-    kstrcpy(cmd, "-nosound");
-    cmd = cmd + strlen(cmd) + 1;
-  }
 
   int total_len = cmd - overlord_boot_command;
 
