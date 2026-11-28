@@ -1,0 +1,1498 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *debug-hud*, type symbol
+(define *debug-hud* #f)
+
+;; definition for symbol *display-boxes*, type symbol
+(define *display-boxes* #f)
+
+;; definition of type in-game-hud
+(deftype in-game-hud (hud)
+  ((real-items            basic)
+   (items                 (array hud-item))
+   (manager               basic-manager)
+   (inited-strings-count  int32)
+   )
+  (:methods
+    (in-game-hud-method-30 (_type_) none)
+    (in-game-hud-method-31 (_type_) none)
+    (in-game-hud-method-32 (_type_ hud-item vector) none)
+    )
+  )
+
+;; definition for method 3 of type in-game-hud
+(defmethod inspect ((this in-game-hud))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Treal-items: ~A~%" (-> this real-items))
+  (format #t "~2Titems: ~A~%" (-> this items))
+  (format #t "~2Tmanager: ~A~%" (-> this manager))
+  (format #t "~2Tinited-strings-count: ~D~%" (-> this inited-strings-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *current-hud*, type in-game-hud
+(define *current-hud* (the-as in-game-hud #f))
+
+;; definition of type hud-item
+(deftype hud-item (basic)
+  ((alpha            uint8)
+   (real-alpha       uint8)
+   (position-x       int16)
+   (position-y       int16)
+   (real-position-x  int16)
+   (real-position-y  int16)
+   (width            int16)
+   (height           int16)
+   (real-width       int16)
+   (real-height      int16)
+   (zval             uint16)
+   (real-scale       int16)
+   (scale            int16)
+   (flags            hud-item-flag)
+   (effect           hud-effect)
+   (parent           hud-item)
+   )
+  (:methods
+    (init (_type_) symbol)
+    (set-fullscreen (_type_) none)
+    (cleanup (_type_) none)
+    (mark-position-dirty (_type_) none)
+    (mark-draw-dirty (_type_) none)
+    (mark-size-dirty (_type_) none)
+    (set-parent! (_type_ object) none)
+    (hud-item-method-16 (_type_) none)
+    (update-size (_type_ float) none)
+    (update-position (_type_ hud-item vector float) symbol)
+    (update (_type_) none)
+    (set-real-alpha! (_type_ float) none)
+    (hide (_type_) none)
+    (show (_type_) none)
+    (hud-item-method-23 (_type_ process int symbol event-message-block) object)
+    )
+  )
+
+;; definition for method 3 of type hud-item
+(defmethod inspect ((this hud-item))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hud-effect
+(deftype hud-effect (basic)
+  ((message       symbol)
+   (active        symbol)
+   (pending       symbol)
+   (delay         int32)
+   (receive-time  int32)
+   (item          hud-item)
+   )
+  (:methods
+    (apply-size (_type_) none)
+    (apply-position (_type_) none)
+    (update (_type_) none)
+    (init (_type_ hud-item) none)
+    (hud-effect-event-handler (_type_ process int symbol event-message-block) object)
+    (trigger (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type hud-effect
+(defmethod inspect ((this hud-effect))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tmessage: ~A~%" (-> this message))
+  (format #t "~1Tactive: ~A~%" (-> this active))
+  (format #t "~1Tpending: ~A~%" (-> this pending))
+  (format #t "~1Tdelay: ~D~%" (-> this delay))
+  (format #t "~1Treceive-time: ~D~%" (-> this receive-time))
+  (format #t "~1Titem: ~A~%" (-> this item))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-effect
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-size ((this hud-effect))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type hud-effect
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-position ((this hud-effect))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type hud-effect
+;; WARN: Return type mismatch int vs none.
+(defmethod update ((this hud-effect))
+  (let ((s5-0 (- (- (if *net-mgr*
+                        (-> *net-mgr* game-state time)
+                        0
+                        )
+                    (if *net-world*
+                        (-> *net-world* net-state game-start-time)
+                        0
+                        )
+                    )
+                 (if *net-world*
+                     (-> *net-world* net-state total-pause-time)
+                     0
+                     )
+                 )
+              )
+        )
+    (when (and (not (-> this active)) (!= -1 (-> this receive-time)))
+      (if (-> this pending)
+          (mark-draw-dirty (-> this item))
+          )
+      (when (>= s5-0 (+ (-> this receive-time) (-> this delay)))
+        (set! (-> this active) #t)
+        (set! (-> this receive-time) -1)
+        (trigger this)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type hud-effect
+;; WARN: Return type mismatch hud-item vs none.
+(defmethod init ((this hud-effect) (arg0 hud-item))
+  (set! (-> this active) #f)
+  (set! (-> this pending) #f)
+  (set! (-> this receive-time) -1)
+  (set! (-> this item) arg0)
+  (none)
+  )
+
+;; definition for method 10 of type hud-item
+;; WARN: Return type mismatch int vs none.
+(defmethod set-fullscreen ((this hud-item))
+  (logior! (-> this flags) (hud-item-flag fullscreen))
+  0
+  (none)
+  )
+
+;; definition for method 14 of type hud-effect
+;; WARN: Return type mismatch symbol vs none.
+(defmethod trigger ((this hud-effect))
+  (let ((s5-0 (-> this item)))
+    (mark-position-dirty s5-0)
+    (mark-size-dirty s5-0)
+    (mark-draw-dirty s5-0)
+    )
+  (set! (-> this pending) #f)
+  (none)
+  )
+
+;; definition for method 13 of type hud-effect
+;; WARN: Return type mismatch none vs object.
+(defmethod hud-effect-event-handler ((this hud-effect) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (when (and (not (-> this active)) (= arg2 (-> this message)))
+    (set! (-> this receive-time) (- (- (if *net-mgr*
+                                           (-> *net-mgr* game-state time)
+                                           0
+                                           )
+                                       (if *net-world*
+                                           (-> *net-world* net-state game-start-time)
+                                           0
+                                           )
+                                       )
+                                    (if *net-world*
+                                        (-> *net-world* net-state total-pause-time)
+                                        0
+                                        )
+                                    )
+          )
+    (set! (-> this active) #f)
+    (set! (-> this pending) #t)
+    (mark-draw-dirty (-> this item))
+    )
+  )
+
+;; definition of type hud-manager
+(deftype hud-manager (basic)
+  ()
+  (:methods
+    (init (_type_) none)
+    (update (_type_) none)
+    (hud-mgr-event-handler (_type_ process int symbol event-message-block) object)
+    )
+  )
+
+;; definition for method 3 of type hud-manager
+(defmethod inspect ((this hud-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hud-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this hud-manager))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type hud-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod update ((this hud-manager))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type hud-manager
+;; WARN: Return type mismatch symbol vs object.
+(defmethod hud-mgr-event-handler ((this hud-manager) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  #t
+  )
+
+;; definition of type basic-manager
+(deftype basic-manager (hud-manager)
+  ((exit-start-time  int32)
+   (exit-time        int32)
+   (previous-time    int32)
+   )
+  )
+
+;; definition for method 3 of type basic-manager
+(defmethod inspect ((this basic-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Texit-start-time: ~D~%" (-> this exit-start-time))
+  (format #t "~1Texit-time: ~D~%" (-> this exit-time))
+  (format #t "~1Tprevious-time: ~D~%" (-> this previous-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type basic-manager
+;; WARN: Return type mismatch object vs none.
+(defmethod init ((this basic-manager))
+  (set! (-> this exit-start-time) -1)
+  (let ((a1-0 *current-hud*))
+    (hud-event-handler a1-0 a1-0 0 'enter (the-as event-message-block #f))
+    )
+  (none)
+  )
+
+;; definition for method 10 of type basic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod update ((this basic-manager))
+  (when (!= (-> this exit-start-time) -1)
+    (let ((s5-0 (+ (-> this exit-start-time) (-> this exit-time))))
+      (if (and (>= (- (- (if *net-mgr*
+                             (-> *net-mgr* game-state time)
+                             0
+                             )
+                         (if *net-world*
+                             (-> *net-world* net-state game-start-time)
+                             0
+                             )
+                         )
+                      (if *net-world*
+                          (-> *net-world* net-state total-pause-time)
+                          0
+                          )
+                      )
+                   s5-0
+                   )
+               (>= s5-0 (-> this previous-time))
+               )
+          (send-event *current-hud* 'exit)
+          )
+      (let ((v1-14 (+ s5-0 600)))
+        (if (>= (- (- (if *net-mgr*
+                          (-> *net-mgr* game-state time)
+                          0
+                          )
+                      (if *net-world*
+                          (-> *net-world* net-state game-start-time)
+                          0
+                          )
+                      )
+                   (if *net-world*
+                       (-> *net-world* net-state total-pause-time)
+                       0
+                       )
+                   )
+                v1-14
+                )
+            (send-event *current-hud* 'hide-and-die)
+            )
+        )
+      )
+    (set! (-> this previous-time) (- (- (if *net-mgr*
+                                            (-> *net-mgr* game-state time)
+                                            0
+                                            )
+                                        (if *net-world*
+                                            (-> *net-world* net-state game-start-time)
+                                            0
+                                            )
+                                        )
+                                     (if *net-world*
+                                         (-> *net-world* net-state total-pause-time)
+                                         0
+                                         )
+                                     )
+          )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type basic-manager
+(defmethod hud-mgr-event-handler ((this basic-manager) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('kill-hud)
+     (cond
+       ((= (-> this exit-start-time) -1)
+        (set! (-> this exit-start-time) (- (- (if *net-mgr*
+                                                  (-> *net-mgr* game-state time)
+                                                  0
+                                                  )
+                                              (if *net-world*
+                                                  (-> *net-world* net-state game-start-time)
+                                                  0
+                                                  )
+                                              )
+                                           (if *net-world*
+                                               (-> *net-world* net-state total-pause-time)
+                                               0
+                                               )
+                                           )
+              )
+        (set! (-> this exit-time) (the-as int (-> arg3 param 0)))
+        (set! (-> this previous-time) (- (- (if *net-mgr*
+                                                (-> *net-mgr* game-state time)
+                                                0
+                                                )
+                                            (if *net-world*
+                                                (-> *net-world* net-state game-start-time)
+                                                0
+                                                )
+                                            )
+                                         (if *net-world*
+                                             (-> *net-world* net-state total-pause-time)
+                                             0
+                                             )
+                                         )
+              )
+        )
+       (else
+         (set! (-> this exit-time) (min (-> this exit-time) (the-as int (-> arg3 param 0))))
+         )
+       )
+     #t
+     )
+    (('kill-hud-instant)
+     (set! (-> this exit-start-time) (+ (- (- -3000 (if *net-world*
+                                                        (-> *net-world* net-state total-pause-time)
+                                                        0
+                                                        )
+                                              )
+                                           (if *net-world*
+                                               (-> *net-world* net-state game-start-time)
+                                               0
+                                               )
+                                           )
+                                        (if *net-mgr*
+                                            (-> *net-mgr* game-state time)
+                                            0
+                                            )
+                                        )
+           )
+     (set! (-> this exit-time) 0)
+     (set! (-> this previous-time) (-> this exit-start-time))
+     (deactivate *current-hud*)
+     (send-event *current-hud* 'hide-and-die)
+     )
+    (('revive-hud)
+     (cond
+       ((and (!= -1 (-> this exit-start-time))
+             (< (+ (-> this exit-start-time) (-> this exit-time)) (- (- (if *net-mgr*
+                                                                            (-> *net-mgr* game-state time)
+                                                                            0
+                                                                            )
+                                                                        (if *net-world*
+                                                                            (-> *net-world* net-state game-start-time)
+                                                                            0
+                                                                            )
+                                                                        )
+                                                                     (if *net-world*
+                                                                         (-> *net-world* net-state total-pause-time)
+                                                                         0
+                                                                         )
+                                                                     )
+                )
+             )
+        #f
+        )
+       ((!= (-> this exit-start-time) -1)
+        (set! (-> this exit-start-time) -1)
+        #t
+        )
+       (else
+         #t
+         )
+       )
+     )
+    )
+  )
+
+;; definition of type hud-region
+(deftype hud-region (structure)
+  ((offset-x  float)
+   (offset-y  float)
+   (width     float)
+   (height    float)
+   )
+  )
+
+;; definition for method 3 of type hud-region
+(defmethod inspect ((this hud-region))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hud-region)
+  (format #t "~1Toffset-x: ~f~%" (-> this offset-x))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Twidth: ~f~%" (-> this width))
+  (format #t "~1Theight: ~f~%" (-> this height))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *default-box*, type hud-region
+(define *default-box* (new 'static 'hud-region))
+
+;; definition for method 15 of type hud-item
+;; WARN: Return type mismatch object vs none.
+(defmethod set-parent! ((this hud-item) (arg0 object))
+  (set! (-> this parent) (the-as hud-item arg0))
+  (none)
+  )
+
+;; definition for method 12 of type hud-item
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-position-dirty ((this hud-item))
+  (let ((gp-0 this))
+    (if (and gp-0 (not (logtest? (-> gp-0 flags) (hud-item-flag draw-dirty))))
+        (mark-draw-dirty this)
+        )
+    (while (and gp-0 (not (logtest? (-> gp-0 flags) (hud-item-flag position-dirty))))
+      (logior! (-> gp-0 flags) (hud-item-flag position-dirty))
+      (set! gp-0 (-> gp-0 parent))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 13 of type hud-item
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-draw-dirty ((this hud-item))
+  (let ((v1-0 this))
+    (while (and v1-0 (not (logtest? (-> v1-0 flags) (hud-item-flag draw-dirty))))
+      (logior! (-> v1-0 flags) (hud-item-flag draw-dirty))
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 14 of type hud-item
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-size-dirty ((this hud-item))
+  (let ((v1-0 this))
+    (while (and v1-0 (not (logtest? (-> v1-0 flags) (hud-item-flag size-dirty))))
+      (logior! (-> v1-0 flags) (hud-item-flag size-dirty))
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 18 of type hud-item
+;; WARN: Return type mismatch none vs symbol.
+(defmethod update-position ((this hud-item) (arg0 hud-item) (arg1 vector) (arg2 float))
+  (logclear! (-> this flags) (hud-item-flag position-dirty))
+  (set! (-> this real-position-x)
+        (the int (* (-> *video-params* relative-x-scale) (the float (-> this position-x)) arg2))
+        )
+  (set! (-> this real-position-y) (the int (* (the float (-> this position-y)) arg2)))
+  (cond
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag right-of-prev)))
+     (+! (-> this real-position-x) (-> arg0 real-position-x) (-> arg0 real-width))
+     )
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag left-of-prev)))
+     (+! (-> this real-position-x) (- (-> arg0 real-position-x) (-> this real-width)))
+     )
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag at-prev)))
+     (+! (-> this real-position-x) (-> arg0 real-position-x))
+     )
+    ((logtest? (-> this flags) (hud-item-flag center-x))
+     (+! (-> this real-position-x)
+         (the int (+ (-> arg1 x) (* 0.5 (- (-> arg1 z) (the float (-> this real-width))))))
+         )
+     )
+    ((logtest? (-> this flags) (hud-item-flag align-right))
+     (+! (-> this real-position-x) (the int (+ (-> arg1 x) (- (-> arg1 z) (the float (-> this real-width))))))
+     )
+    (else
+      (+! (-> this real-position-x) (the int (-> arg1 x)))
+      )
+    )
+  (cond
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag below-prev)))
+     (+! (-> this real-position-y) (-> arg0 real-position-y) (-> arg0 real-height))
+     )
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag above-prev)))
+     (+! (-> this real-position-y) (- (-> arg0 real-position-y) (-> this real-height)))
+     )
+    ((and arg0 (logtest? (-> this flags) (hud-item-flag at-prev)))
+     (+! (-> this real-position-y) (-> arg0 real-position-y))
+     )
+    ((logtest? (-> this flags) (hud-item-flag center-y))
+     (+! (-> this real-position-y)
+         (the int (+ (-> arg1 y) (* 0.5 (- (-> arg1 w) (the float (-> this real-height))))))
+         )
+     )
+    ((logtest? (-> this flags) (hud-item-flag align-bottom))
+     (+! (-> this real-position-y) (the int (+ (-> arg1 y) (- (-> arg1 w) (the float (-> this real-height))))))
+     )
+    (else
+      (+! (-> this real-position-y) (the int (-> arg1 y)))
+      )
+    )
+  (the-as symbol (if (-> this effect)
+                     (apply-position (-> this effect))
+                     )
+          )
+  )
+
+;; definition for method 20 of type hud-item
+;; WARN: Return type mismatch int vs none.
+(defmethod set-real-alpha! ((this hud-item) (arg0 float))
+  (set! (-> this real-alpha) (the-as uint (the int (* 255.0 arg0))))
+  (none)
+  )
+
+;; definition for method 17 of type hud-item
+(defmethod update-size ((this hud-item) (arg0 float))
+  (logclear! (-> this flags) (hud-item-flag size-dirty))
+  (let ((f30-0 (* 0.00390625 (the float (-> this scale)) arg0)))
+    (set! (-> this real-scale) (the int (* 256.0 f30-0)))
+    (set! (-> this real-width)
+          (the int (ceil (* (-> *video-params* relative-x-scale) (the float (-> this width)) f30-0)))
+          )
+    (set! (-> this real-height) (the int (ceil (* (the float (-> this height)) f30-0))))
+    )
+  (if (-> this effect)
+      (apply-size (-> this effect))
+      )
+  (none)
+  )
+
+;; definition for method 11 of type hud-item
+;; WARN: Return type mismatch int vs none.
+(defmethod cleanup ((this hud-item))
+  0
+  (none)
+  )
+
+;; definition for method 19 of type hud-item
+(defmethod update ((this hud-item))
+  (logclear! (-> this flags) (hud-item-flag draw-dirty))
+  (if (-> this effect)
+      (update (-> this effect))
+      )
+  (none)
+  )
+
+;; definition for method 23 of type hud-item
+;; WARN: Return type mismatch int vs object.
+(defmethod hud-item-method-23 ((this hud-item) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (if (-> this effect)
+      (hud-effect-event-handler (-> this effect) arg0 arg1 arg2 arg3)
+      )
+  0
+  )
+
+;; definition for method 9 of type hud-item
+;; WARN: Return type mismatch none vs symbol.
+(defmethod init ((this hud-item))
+  (logior! (-> this flags) (hud-item-flag position-dirty size-dirty draw-dirty))
+  (set! (-> this real-alpha) (-> this alpha))
+  (if (zero? (-> this effect))
+      (set! (-> this effect) #f)
+      )
+  (logior! (-> this flags) (hud-item-flag visible))
+  (the-as symbol (if (-> this effect)
+                     (init (-> this effect) this)
+                     )
+          )
+  )
+
+;; definition for method 21 of type hud-item
+;; WARN: Return type mismatch hud-item-flag vs none.
+(defmethod hide ((this hud-item))
+  (logclear! (-> this flags) (hud-item-flag visible))
+  (none)
+  )
+
+;; definition for method 22 of type hud-item
+;; WARN: Return type mismatch hud-item-flag vs none.
+(defmethod show ((this hud-item))
+  (logior! (-> this flags) (hud-item-flag visible))
+  (none)
+  )
+
+;; definition for method 10 of type in-game-hud
+(defmethod deactivate ((this in-game-hud))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (dotimes (s5-0 (-> this items length))
+    (cleanup (-> this items s5-0))
+    )
+  ((method-of-type hud deactivate) this)
+  (none)
+  )
+
+;; definition for method 26 of type in-game-hud
+;; WARN: Return type mismatch in-game-hud vs none.
+(defmethod init-callback ((this in-game-hud))
+  (let ((sv-16 *current-hud*))
+    (set! *current-hud* this)
+    (set! (-> this gui-id)
+          (add-process *gui-control* this (gui-channel hud-upper-right) (gui-action hidden) (-> this name) 81920.0 0)
+          )
+    (logior! (-> this flags) (hud-flags show))
+    (set! (-> this num-strings) 0)
+    (set! (-> this num-sprites) 0)
+    (dotimes (s5-0 (-> this items length))
+      (if (logtest? (-> this items s5-0 flags) (hud-item-flag fullscreen))
+          (set-fullscreen (-> this items s5-0))
+          )
+      (init (-> this items s5-0))
+      (set-parent! (-> this items s5-0) #f)
+      )
+    (set! (-> this inited-strings-count) (max (-> this inited-strings-count) (-> this num-strings)))
+    (init (-> this manager))
+    (in-game-hud-method-31 this)
+    (set! *current-hud* sv-16)
+    )
+  (none)
+  )
+
+;; definition for method 27 of type in-game-hud
+(defmethod hud-event-handler ((this in-game-hud) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((gp-0 *current-hud*))
+    (set! *current-hud* this)
+    (dotimes (s0-0 (-> this items length))
+      (let ((a0-2 (-> this items s0-0)))
+        (if (logtest? (-> a0-2 flags) (hud-item-flag visible))
+            (hud-item-method-23 a0-2 arg0 arg1 arg2 arg3)
+            )
+        )
+      )
+    (let ((v0-1 (hud-mgr-event-handler (-> this manager) arg0 arg1 arg2 arg3)))
+      (set! *current-hud* gp-0)
+      v0-1
+      )
+    )
+  )
+
+;; definition for method 7 of type in-game-hud
+;; WARN: Return type mismatch hud vs in-game-hud.
+(defmethod relocate ((this in-game-hud) (offset int))
+  (dotimes (s4-0 (-> this items length))
+    (relocate (-> this items s4-0) offset)
+    )
+  (the-as in-game-hud ((method-of-type hud relocate) this offset))
+  )
+
+;; definition for method 24 of type in-game-hud
+;; WARN: Return type mismatch in-game-hud vs none.
+(defmethod draw ((this in-game-hud))
+  (let ((s5-0 *current-hud*))
+    (-> *perf-stats* data 56)
+    0
+    (set! *current-hud* this)
+    (update (-> this manager))
+    (in-game-hud-method-31 this)
+    (-> *perf-stats* data 56)
+    0
+    ((method-of-type hud draw) this)
+    (set! *current-hud* s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 32 of type in-game-hud
+;; WARN: Return type mismatch int vs none.
+(defmethod in-game-hud-method-32 ((this in-game-hud) (arg0 hud-item) (arg1 vector))
+  (cond
+    ((or (zero? (-> *viewport-array* mode)) (logtest? (-> arg0 flags) (hud-item-flag fullscreen)))
+     (let ((v1-6 (-> *viewport-array* mode)))
+       (cond
+         ((or (zero? v1-6) (= v1-6 2))
+          (set! (-> arg1 x) 15.0)
+          (set! (-> arg1 y) 15.0)
+          (set! (-> arg1 z) 482.0)
+          (set! (-> arg1 w) 386.0)
+          )
+         (else
+           (set! (-> arg1 x) 15.0)
+           (set! (-> arg1 y) 15.0)
+           (set! (-> arg1 z) 482.0)
+           (set! (-> arg1 w) 354.0)
+           )
+         )
+       )
+     )
+    ((= (-> *viewport-array* mode) 1)
+     (cond
+       ((zero? (view-get-active-index))
+        (set! (-> arg1 x) 15.0)
+        (set! (-> arg1 y) 15.0)
+        (set! (-> arg1 z) 482.0)
+        (set! (-> arg1 w) 162.0)
+        )
+       (else
+         (set! (-> arg1 x) 15.0)
+         (set! (-> arg1 y) 207.0)
+         (set! (-> arg1 z) 482.0)
+         (set! (-> arg1 w) 162.0)
+         )
+       )
+     )
+    ((= (-> *viewport-array* mode) 2)
+     (let ((v1-33 (view-get-active-index)))
+       (cond
+         ((zero? v1-33)
+          (set! (-> arg1 x) 15.0)
+          (set! (-> arg1 y) 15.0)
+          (set! (-> arg1 z) 226.0)
+          (set! (-> arg1 w) 386.0)
+          )
+         ((= v1-33 1)
+          (set! (-> arg1 x) 271.0)
+          (set! (-> arg1 y) 15.0)
+          (set! (-> arg1 z) 226.0)
+          (set! (-> arg1 w) 386.0)
+          )
+         )
+       )
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 31 of type in-game-hud
+;; WARN: Return type mismatch symbol vs none.
+(defmethod in-game-hud-method-31 ((this in-game-hud))
+  (let ((s5-0 (-> this items))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s1-0 (the-as hud-item #f))
+        )
+    (dotimes (s3-0 (-> s5-0 length))
+      (let ((s2-0 (-> s5-0 s3-0)))
+        (let ((f30-0 1.0))
+          (in-game-hud-method-32 this s2-0 s4-0)
+          (if (and (not (logtest? (-> s2-0 flags) (hud-item-flag fullscreen))) (= (-> *viewport-array* mode) 1))
+              (set! f30-0 0.75)
+              )
+          (if (logtest? (hud-item-flag size-dirty bit18) (-> s2-0 flags))
+              (update-size s2-0 f30-0)
+              )
+          (if (logtest? (hud-item-flag position-dirty bit16) (-> s2-0 flags))
+              (update-position s2-0 s1-0 s4-0 f30-0)
+              )
+          )
+        (if (logtest? (hud-item-flag draw-dirty bit17) (-> s2-0 flags))
+            (update s2-0)
+            )
+        (set! s1-0 s2-0)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type hud-item-string
+(deftype hud-item-string (hud-item)
+  ((string             hud-string)
+   (text-id            text-id)
+   (font-effect        uint8)
+   (font-effect-color  uint8)
+   (color              uint8)
+   (font-flags         hud-string-flag)
+   (has-outline        symbol)
+   )
+  (:methods
+    (set-string! (_type_ string) none)
+    (set-text-id! (_type_ text-id) none)
+    (set-int! (_type_ int) none)
+    (set-color! (_type_ font-color) none)
+    (alloc-string (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type hud-item-string
+(defmethod inspect ((this hud-item-string))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tstring: #<hud-string @ #x~X>~%" (-> this string))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tfont-effect: ~D~%" (-> this font-effect))
+  (format #t "~1Tfont-effect-color: ~D~%" (-> this font-effect-color))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tfont-flags: ~D~%" (-> this font-flags))
+  (format #t "~1Thas-outline: ~A~%" (-> this has-outline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-item-string
+;; WARN: Return type mismatch hud-string vs hud-item-string.
+(defmethod relocate ((this hud-item-string) (offset int))
+  (the-as hud-item-string (when (-> this string)
+                            (when (nonzero? (-> this string))
+                              (let ((v0-0 (&+ (-> this string) offset)))
+                                (set! (-> this string) v0-0)
+                                v0-0
+                                )
+                              )
+                            )
+          )
+  )
+
+;; definition for method 28 of type hud-item-string
+(defmethod alloc-string ((this hud-item-string))
+  (alloc-string-if-needed *current-hud* (-> *current-hud* num-strings) 128)
+  (none)
+  )
+
+;; definition for method 9 of type hud-item-string
+;; WARN: Return type mismatch string vs symbol.
+(defmethod init ((this hud-item-string))
+  (let ((t9-0 (method-of-type hud-item init)))
+    (t9-0 this)
+    )
+  (set! (-> this string) #f)
+  (the-as symbol (when (logtest? (-> this flags) (hud-item-flag visible))
+                   (let ((s5-0 *current-hud*))
+                     (alloc-string this)
+                     (set! (-> this string) (-> s5-0 strings (-> s5-0 num-strings)))
+                     (+! (-> s5-0 num-strings) 1)
+                     (when (>= (-> s5-0 num-strings) 45)
+                       (break!)
+                       0
+                       )
+                     )
+                   (let ((s5-1 (-> this string)))
+                     (if (not (-> this has-outline))
+                         (set! (-> s5-1 flags) (hud-string-flag kerning large))
+                         (set! (-> s5-1 flags) (hud-string-flag kerning large ff12))
+                         )
+                     (logior! (-> s5-1 flags) (-> this font-flags))
+                     (set! (-> s5-1 effect) (-> this font-effect))
+                     (set! (-> s5-1 effect-color) (-> this font-effect-color))
+                     (let ((s4-0 (the-as string #f)))
+                       64
+                       (when (nonzero? (-> this text-id))
+                         (set! s4-0 (lookup-text! *common-text* (-> this text-id) #f))
+                         (+ (strlen (-> s4-0 data)) 1)
+                         )
+                       (if (nonzero? (-> this text-id))
+                           (copy-string<-string (-> s5-1 text) s4-0)
+                           )
+                       )
+                     )
+                   )
+          )
+  )
+
+;; definition for method 21 of type hud-item-string
+(defmethod hide ((this hud-item-string))
+  (set! (-> this string scale) 0.0)
+  ((method-of-type hud-item hide) this)
+  (none)
+  )
+
+;; definition for method 27 of type hud-item-string
+;; WARN: Return type mismatch font-color vs none.
+(defmethod set-color! ((this hud-item-string) (arg0 font-color))
+  (when (!= (-> this color) arg0)
+    (set! (-> this color) (the-as uint arg0))
+    (let ((v1-1 (-> this string)))
+      (if v1-1
+          (set! (-> v1-1 color) arg0)
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 26 of type hud-item-string
+;; WARN: Return type mismatch int vs none.
+(defmethod set-int! ((this hud-item-string) (arg0 int))
+  (let ((v1-0 (-> this string)))
+    (if v1-0
+        (itoa arg0 (-> v1-0 text data))
+        )
+    )
+  (none)
+  )
+
+;; definition for method 24 of type hud-item-string
+;; WARN: Return type mismatch string vs none.
+(defmethod set-string! ((this hud-item-string) (arg0 string))
+  (let ((v1-0 (-> this string)))
+    (if v1-0
+        (copy-string<-string (-> v1-0 text) arg0)
+        )
+    )
+  (none)
+  )
+
+;; definition for method 25 of type hud-item-string
+;; WARN: Return type mismatch string vs none.
+(defmethod set-text-id! ((this hud-item-string) (arg0 text-id))
+  (let ((v1-0 (-> this string)))
+    (when v1-0
+      (set! (-> this text-id) arg0)
+      (copy-string<-string (-> v1-0 text) (lookup-text! *common-text* arg0 #f))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 19 of type hud-item-string
+;; WARN: Return type mismatch float vs none.
+(defmethod update ((this hud-item-string))
+  (let ((t9-0 (method-of-type hud-item update)))
+    (t9-0 this)
+    )
+  (let ((v1-1 (-> this string)))
+    (when v1-1
+      (let ((a0-2 (-> v1-1 pos)))
+        (set! (-> a0-2 x) (-> this real-position-x))
+        (set! (-> a0-2 y) (-> this real-position-y))
+        (set! (-> a0-2 z) (the-as int (logior #xff0000 (-> this zval))))
+        )
+      (set! (-> v1-1 alpha) (* 0.003921569 (the float (-> this real-alpha))))
+      (set! (-> v1-1 color) (the-as font-color (-> this color)))
+      (set! (-> v1-1 width) (the float (-> this real-width)))
+      (set! (-> v1-1 height) (the float (-> this real-height)))
+      (set! (-> v1-1 scale) (* 0.00390625 (the float (-> this real-scale))))
+      )
+    )
+  (none)
+  )
+
+;; definition of type hud-item-sprite
+(deftype hud-item-sprite (hud-item)
+  ((scale-x       int16     :overlay-at scale)
+   (real-scale-x  int16     :overlay-at real-scale)
+   (sprite        hud-sprite)
+   (real-scale-y  int16)
+   (scale-y       int16)
+   (color         vector4w  :inline)
+   (tex-id        texture-id)
+   (sprite-flags  hud-sprite-flags)
+   (angle         float)
+   )
+  (:methods
+    (set-texture! (_type_ texture) none)
+    )
+  )
+
+;; definition for method 3 of type hud-item-sprite
+(defmethod inspect ((this hud-item-sprite))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Tscale-x: ~D~%" (-> this scale))
+  (format #t "~1Treal-scale-x: ~D~%" (-> this real-scale))
+  (format #t "~1Tsprite: #<hud-sprite @ #x~X>~%" (-> this sprite))
+  (format #t "~1Treal-scale-y: ~D~%" (-> this real-scale-y))
+  (format #t "~1Tscale-y: ~D~%" (-> this scale-y))
+  (format #t "~1Tcolor: #<vector4w @ #x~X>~%" (-> this color))
+  (format #t "~1Ttex-id: ~D~%" (-> this tex-id))
+  (format #t "~1Tsprite-flags: ~D~%" (-> this sprite-flags))
+  (format #t "~1Tangle: ~f~%" (-> this angle))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-item-sprite
+;; WARN: Return type mismatch hud-sprite vs hud-item-sprite.
+(defmethod relocate ((this hud-item-sprite) (offset int))
+  (the-as hud-item-sprite (when (-> this sprite)
+                            (when (nonzero? (-> this sprite))
+                              (let ((v0-0 (&+ (-> this sprite) offset)))
+                                (set! (-> this sprite) v0-0)
+                                v0-0
+                                )
+                              )
+                            )
+          )
+  )
+
+;; definition for method 24 of type hud-item-sprite
+;; WARN: Return type mismatch texture vs none.
+(defmethod set-texture! ((this hud-item-sprite) (arg0 texture))
+  (let ((v1-0 (-> this sprite)))
+    (if v1-0
+        (set! (-> v1-0 tex) arg0)
+        )
+    )
+  (none)
+  )
+
+;; definition for method 9 of type hud-item-sprite
+;; WARN: Return type mismatch int vs symbol.
+(defmethod init ((this hud-item-sprite))
+  (let ((t9-0 (method-of-type hud-item init)))
+    (t9-0 this)
+    )
+  (set! (-> this sprite) #f)
+  (the-as symbol (when (logtest? (-> this flags) (hud-item-flag visible))
+                   (let ((s5-0 *current-hud*))
+                     (set! (-> this sprite) (-> s5-0 sprites (-> s5-0 num-sprites)))
+                     (let ((s4-0 (-> this sprite)))
+                       (mem-copy! (the-as pointer (-> s4-0 color)) (the-as pointer (-> this color)) 16)
+                       (if (logtest? (-> this flags) (hud-item-flag fullscreen))
+                           (logior! (-> this sprite-flags) (hud-sprite-flags fullscreen))
+                           )
+                       (logior! (-> s4-0 flags) (-> this sprite-flags))
+                       )
+                     (set-texture! this (lookup-texture-by-id (-> this tex-id)))
+                     (+! (-> s5-0 num-sprites) 1)
+                     (when (>= (-> s5-0 num-sprites) 50)
+                       (break!)
+                       0
+                       )
+                     )
+                   )
+          )
+  )
+
+;; definition for method 21 of type hud-item-sprite
+(defmethod hide ((this hud-item-sprite))
+  (if (-> this sprite)
+      (set! (-> this sprite scale-x) 0.0)
+      )
+  ((method-of-type hud-item hide) this)
+  (none)
+  )
+
+;; definition for method 17 of type hud-item-sprite
+(defmethod update-size ((this hud-item-sprite) (arg0 float))
+  (set! (-> this real-scale) (the int (* arg0 (the float (-> this scale)))))
+  (set! (-> this real-scale-y) (the int (* arg0 (the float (-> this scale-y)))))
+  (set! (-> this real-scale) (the int (* arg0 (the float (-> this scale)))))
+  (set! (-> this real-width)
+        (the int
+             (ceil
+               (* 0.00390625
+                  (the float (-> this real-scale))
+                  (the float (-> this width))
+                  (-> *video-params* relative-x-scale)
+                  )
+               )
+             )
+        )
+  (set! (-> this real-height)
+        (the int (ceil (* 0.00390625 (the float (-> this real-scale-y)) (the float (-> this height)))))
+        )
+  (logclear! (-> this flags) (hud-item-flag size-dirty))
+  (if (-> this effect)
+      (apply-size (-> this effect))
+      )
+  (none)
+  )
+
+;; definition for method 19 of type hud-item-sprite
+;; WARN: Return type mismatch float vs none.
+(defmethod update ((this hud-item-sprite))
+  (let ((t9-0 (method-of-type hud-item update)))
+    (t9-0 this)
+    )
+  (let ((gp-0 (-> this sprite)))
+    (when gp-0
+      (let ((s4-0 (-> gp-0 pos)))
+        (mem-copy! (the-as pointer (-> gp-0 color)) (the-as pointer (-> this color)) 16)
+        (set! (-> gp-0 color w) (the int (* 0.5 (the float (-> this real-alpha)))))
+        (set! (-> gp-0 angle) (-> this angle))
+        (set! (-> s4-0 x) (-> this real-position-x))
+        (set! (-> s4-0 y) (-> this real-position-y))
+        (set! (-> s4-0 z) (the-as int (logior #xff0000 (-> this zval))))
+        )
+      (set! (-> gp-0 scale-x) (* 0.00390625 (the float (-> this real-scale))))
+      (set! (-> gp-0 scale-y) (* 0.00390625 (the float (-> this real-scale-y))))
+      )
+    )
+  (none)
+  )
+
+;; definition of type hud-item-group
+(deftype hud-item-group (hud-item)
+  ((items  (array hud-item))
+   )
+  )
+
+;; definition for method 3 of type hud-item-group
+(defmethod inspect ((this hud-item-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talpha: ~D~%" (-> this alpha))
+  (format #t "~1Treal-alpha: ~D~%" (-> this real-alpha))
+  (format #t "~1Tposition-x: ~D~%" (-> this position-x))
+  (format #t "~1Tposition-y: ~D~%" (-> this position-y))
+  (format #t "~1Treal-position-x: ~D~%" (-> this real-position-x))
+  (format #t "~1Treal-position-y: ~D~%" (-> this real-position-y))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Treal-width: ~D~%" (-> this real-width))
+  (format #t "~1Treal-height: ~D~%" (-> this real-height))
+  (format #t "~1Tzval: ~D~%" (-> this zval))
+  (format #t "~1Treal-scale: ~D~%" (-> this real-scale))
+  (format #t "~1Tscale: ~D~%" (-> this scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Teffect: ~A~%" (-> this effect))
+  (format #t "~1Tparent: ~A~%" (-> this parent))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type hud-item-group
+(defmethod relocate ((this hud-item-group) (offset int))
+  (dotimes (s4-0 (-> this items length))
+    (relocate (-> this items s4-0) offset)
+    )
+  this
+  )
+
+;; definition for method 17 of type hud-item-group
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 17 hud-item-group) has a return type of none, but the expression builder found a return statement.
+(defmethod update-size ((this hud-item-group) (arg0 float))
+  (if (not (logtest? (-> this flags) (hud-item-flag visible)))
+      (return #f)
+      )
+  (let ((t9-0 (method-of-type hud-item update-size)))
+    (t9-0 this arg0)
+    )
+  (let ((f30-0 (* 0.00390625 (the float (-> this scale)))))
+    (let ((f28-0 (* arg0 f30-0 (-> *video-params* relative-x-scale) (the float (-> this width)))))
+      (let ((f26-0 (* arg0 f30-0 (the float (-> this height)))))
+        (dotimes (s4-0 (-> this items length))
+          (let ((s3-0 (-> this items s4-0)))
+            (when (logtest? (-> s3-0 flags) (hud-item-flag visible))
+              (if (logtest? (hud-item-flag size-dirty bit18) (-> s3-0 flags))
+                  (update-size s3-0 (* 0.00390625 (the float (-> this real-scale))))
+                  )
+              (if (logtest? (hud-item-flag size-dirty bit18) (-> s3-0 flags))
+                  (logior! (-> this flags) (hud-item-flag size-dirty))
+                  )
+              (let ((v1-28 (-> s3-0 flags))
+                    (f0-9 (fmax 0.0 (+ (* arg0 (the float (-> s3-0 position-x))) (the float (-> s3-0 real-width)))))
+                    (f1-13 (fmax 0.0 (+ (* arg0 (the float (-> s3-0 position-y))) (the float (-> s3-0 real-height)))))
+                    )
+                (when (logtest? (-> s3-0 flags) (hud-item-flag visible))
+                  (set! f28-0 (cond
+                                ((logtest? v1-28 (hud-item-flag right-of-prev left-of-prev))
+                                 (+! f28-0 f0-9)
+                                 f28-0
+                                 )
+                                (else
+                                  (fmax f28-0 f0-9)
+                                  )
+                                )
+                        )
+                  (set! f26-0 (cond
+                                ((logtest? v1-28 (hud-item-flag above-prev below-prev))
+                                 (+! f26-0 f1-13)
+                                 f26-0
+                                 )
+                                (else
+                                  (fmax f26-0 f1-13)
+                                  )
+                                )
+                        )
+                  )
+                )
+              )
+            )
+          )
+        (set! (-> this real-height) (the int f26-0))
+        )
+      (set! (-> this real-width) (the int f28-0))
+      )
+    (if (> (-> this height) 0)
+        (set! (-> this real-height) (the int (* arg0 f30-0 (the float (-> this height)))))
+        )
+    (if (> (-> this width) 0)
+        (set! (-> this real-width) (the int (* arg0 f30-0 (the float (-> this width)))))
+        )
+    )
+  (none)
+  )
+
+;; definition for method 20 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-real-alpha! ((this hud-item-group) (arg0 float))
+  (dotimes (s4-0 (-> this items length))
+    (set-real-alpha! (-> this items s4-0) arg0)
+    )
+  (none)
+  )
+
+;; definition for method 23 of type hud-item-group
+(defmethod hud-item-method-23 ((this hud-item-group) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (dotimes (s1-0 (-> this items length))
+    (hud-item-method-23 (-> this items s1-0) arg0 arg1 arg2 arg3)
+    )
+  ((method-of-type hud-item hud-item-method-23) this arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 9 of type hud-item-group
+(defmethod init ((this hud-item-group))
+  (let ((t9-0 (method-of-type hud-item init)))
+    (t9-0 this)
+    )
+  (when (zero? (-> this items length))
+    (hide this)
+    (return #f)
+    )
+  (dotimes (s5-0 (-> this items length))
+    (init (-> this items s5-0))
+    )
+  #f
+  )
+
+;; definition for method 18 of type hud-item-group
+(defmethod update-position ((this hud-item-group) (arg0 hud-item) (arg1 vector) (arg2 float))
+  (let ((t9-0 (method-of-type hud-item update-position)))
+    (t9-0 this arg0 arg1 arg2)
+    )
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+    (set! (-> s5-0 0 x) (the float (-> this real-position-x)))
+    (set! (-> s5-0 0 y) (the float (-> this real-position-y)))
+    (set! (-> s5-0 0 z) (the float (-> this real-width)))
+    (set! (-> s5-0 0 w) (the float (-> this real-height)))
+    (let ((a1-1 (the-as hud-item #f)))
+      (dotimes (s4-0 (-> this items length))
+        (let ((s3-0 (-> this items s4-0)))
+          (when (logtest? (-> s3-0 flags) (hud-item-flag visible))
+            (if (logtest? (hud-item-flag position-dirty bit16) (-> s3-0 flags))
+                (update-position s3-0 a1-1 (-> s5-0 0) (* 0.00390625 (the float (-> this real-scale))))
+                )
+            (set! a1-1 s3-0)
+            )
+          (if (logtest? (hud-item-flag position-dirty bit16) (-> s3-0 flags))
+              (logior! (-> this flags) (hud-item-flag position-dirty))
+              )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 22 of type hud-item-group
+(defmethod show ((this hud-item-group))
+  (dotimes (s5-0 (-> this items length))
+    (show (-> this items s5-0))
+    )
+  ((method-of-type hud-item show) this)
+  (none)
+  )
+
+;; definition for method 11 of type hud-item-group
+(defmethod cleanup ((this hud-item-group))
+  (dotimes (s5-0 (-> this items length))
+    (cleanup (-> this items s5-0))
+    )
+  ((method-of-type hud-item cleanup) this)
+  (none)
+  )
+
+;; definition for method 21 of type hud-item-group
+(defmethod hide ((this hud-item-group))
+  (dotimes (s5-0 (-> this items length))
+    (hide (-> this items s5-0))
+    )
+  ((method-of-type hud-item hide) this)
+  (none)
+  )
+
+;; definition for method 15 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-parent! ((this hud-item-group) (arg0 object))
+  (let ((t9-0 (method-of-type hud-item set-parent!)))
+    (t9-0 this arg0)
+    )
+  (dotimes (s5-0 (-> this items length))
+    (set-parent! (-> this items s5-0) this)
+    )
+  (none)
+  )
+
+;; definition for method 12 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-position-dirty ((this hud-item-group))
+  (let ((t9-0 (method-of-type hud-item mark-position-dirty)))
+    (t9-0 this)
+    )
+  (dotimes (s5-0 (-> this items length))
+    (mark-position-dirty (-> this items s5-0))
+    )
+  (none)
+  )
+
+;; definition for method 13 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-draw-dirty ((this hud-item-group))
+  (let ((t9-0 (method-of-type hud-item mark-draw-dirty)))
+    (t9-0 this)
+    )
+  (dotimes (s5-0 (-> this items length))
+    (mark-draw-dirty (-> this items s5-0))
+    )
+  (none)
+  )
+
+;; definition for method 14 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-size-dirty ((this hud-item-group))
+  (let ((t9-0 (method-of-type hud-item mark-size-dirty)))
+    (t9-0 this)
+    )
+  (dotimes (s5-0 (-> this items length))
+    (mark-size-dirty (-> this items s5-0))
+    )
+  (none)
+  )
+
+;; definition for method 10 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-fullscreen ((this hud-item-group))
+  (dotimes (s5-0 (-> this items length))
+    (set-fullscreen (-> this items s5-0))
+    )
+  (none)
+  )
+
+;; definition for method 19 of type hud-item-group
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update ((this hud-item-group))
+  (let ((t9-0 (method-of-type hud-item update)))
+    (t9-0 this)
+    )
+  (when (logtest? (-> this flags) (hud-item-flag visible))
+    (dotimes (s5-0 (-> this items length))
+      (let ((s4-0 (-> this items s5-0)))
+        (when (logtest? (-> s4-0 flags) (hud-item-flag visible))
+          (if (logtest? (hud-item-flag draw-dirty bit17) (-> s4-0 flags))
+              (update s4-0)
+              )
+          )
+        (if (logtest? (hud-item-flag draw-dirty bit17) (-> s4-0 flags))
+            (logior! (-> this flags) (hud-item-flag draw-dirty))
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

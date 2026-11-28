@@ -99,9 +99,9 @@
 (define *steal-mode* #f)
 
 ;; definition for method 56 of type net-game-mgr-collectable
-(defmethod net-game-mgr-method-56 ((this net-game-mgr-collectable))
+(defmethod init-local ((this net-game-mgr-collectable))
   (set! (-> this steal-mode) *steal-mode*)
-  ((method-of-type net-game-mgr-deathmatch net-game-mgr-method-56) this)
+  ((method-of-type net-game-mgr-deathmatch init-local) this)
   (none)
   )
 
@@ -124,31 +124,30 @@
   )
 
 ;; definition for method 52 of type net-game-mgr-collectable
-;; WARN: Return type mismatch process vs none.
-(defmethod net-game-mgr-method-52 ((this net-game-mgr-collectable) (arg0 object))
-  (let ((v1-1 (process-spawn net-player-collectable :init net-player-init-local arg0 :name "net-player-collectable"))
-        )
-    (if v1-1
-        (-> v1-1 0 self)
-        )
+;; WARN: Return type mismatch process vs net-player.
+(defmethod spawn-net-player ((this net-game-mgr-collectable) (arg0 int))
+  (the-as
+    net-player
+    (ppointer->process
+      (process-spawn net-player-collectable :init net-player-init-local arg0 :name "net-player-collectable")
+      )
     )
-  (none)
   )
 
 ;; definition for function drop-collectoids
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun drop-collectoids ((arg0 object) (arg1 int) (arg2 float))
-  (let ((s3-0 (new 'stack-no-clear 'net-powerup-spawn-params)))
-    (set! (-> s3-0 pos quad) (-> (the-as vector #f) quad))
-    (set! (-> s3-0 tp) collectoid)
-    (set! (-> s3-0 motion-info) #f)
-    (set! (-> s3-0 lifetime) 3000)
-    (set! (-> s3-0 initial-owner) 8)
-    (set! (-> s3-0 motion-info) #f)
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'net-powerup-spawn-params 1)))
+    (set! (-> s3-0 0 pos quad) (-> (the-as vector #f) quad))
+    (set! (-> s3-0 0 tp) collectoid)
+    (set! (-> s3-0 0 motion-info) #f)
+    (set! (-> s3-0 0 lifetime) 3000)
+    (set! (-> s3-0 0 initial-owner) 8)
+    (set! (-> s3-0 0 motion-info) #f)
     (let ((f30-0 0.0))
       (dotimes (s2-0 arg1)
-        (eject-powerup (the-as vector (&-> s3-0 tp)) arg0 (the-as int arg2) f30-0)
+        (eject-powerup (-> s3-0 0) (the-as vector arg0) arg2 f30-0)
         (+! f30-0 (/ 65536.0 (the float arg1)))
         )
       )
@@ -159,7 +158,7 @@
 
 ;; definition for method 96 of type net-player-collectable
 ;; WARN: Return type mismatch int vs none.
-(defmethod net-player-method-96 ((this net-player-collectable))
+(defmethod score-kill ((this net-player-collectable) (arg0 int))
   0
   (none)
   )
@@ -238,10 +237,8 @@
   )
 
 ;; definition for method 71 of type net-game-mgr-collectable
-;; WARN: Return type mismatch texture vs none.
-(defmethod net-game-mgr-method-71 ((this net-game-mgr-collectable))
+(defmethod get-counter-texture ((this net-game-mgr-collectable))
   (get-texture hud-collectable-counter-01 level-default-minimap)
-  (none)
   )
 
 ;; definition for method 17 of type net-player-collectable
@@ -404,7 +401,7 @@
 
 ;; definition for method 46 of type collectoid
 ;; WARN: Return type mismatch int vs none.
-(defmethod net-powerup-method-46 ((this collectoid) (arg0 object) (arg1 object))
+(defmethod spawn-draw-proc ((this collectoid) (arg0 vector) (arg1 entity))
   (set! (-> this child-proc) (process->handle (ppointer->process (process-spawn
                                                                    collectoid-draw
                                                                    :init powerup-draw-init-by-other
@@ -422,7 +419,7 @@
 
 ;; definition for method 52 of type collectoid
 ;; WARN: Return type mismatch int vs none.
-(defmethod net-powerup-method-52 ((this collectoid) (arg0 process))
+(defmethod do-pickup ((this collectoid) (arg0 process))
   (let ((v1-0 (as-type arg0 vehicle)))
     (when v1-0
       (let ((a0-4 (-> *net-players* (-> (the-as vehicle v1-0) player-id))))
@@ -437,18 +434,14 @@
 
 ;; definition for method 53 of type collectoid-draw
 ;; WARN: Return type mismatch int vs none.
-(defmethod powerup-draw-method-53 ((this collectoid-draw) (arg0 object) (arg1 vector))
+(defmethod init! ((this collectoid-draw) (arg0 net-powerup) (arg1 vector))
   (+! (-> arg1 y) 24576.0)
-  (powerup-draw-method-52 this 4.0)
-  (let ((t9-1 (method-of-type powerup-draw powerup-draw-method-53)))
+  (init-root! this 4.0)
+  (let ((t9-1 (method-of-type powerup-draw init!)))
     (t9-1 this arg0 arg1)
     )
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
-  (process-drawable-method-42
-    this
-    (art-group-get-by-name *level* "skel-collectoid" (the-as (pointer level) #f))
-    0
-    )
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-collectoid" (the-as (pointer level) #f)) 0)
   (set! (-> this base-y) (-> this root trans y))
   (vector-float*! (-> this root scale) (-> this root scale) 0.65)
   (if (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
@@ -461,7 +454,7 @@
 ;; definition for method 54 of type collectoid-draw
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod powerup-draw-method-54 ((this collectoid-draw) (arg0 process-drawable))
+(defmethod spawn-pickup-effect ((this collectoid-draw) (arg0 process-drawable))
   (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 2)))
     (let ((v1-0 arg0))
       (cond
@@ -593,9 +586,9 @@
     '()
     )
   :trans (behavior ()
-    (powerup-draw-method-55 self)
+    (update-draw self)
     (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
-      (let ((v1-5 (handle->process (-> self parent-proc))))
+      (let ((v1-5 (the-as net-powerup (handle->process (-> self parent-proc)))))
         (when v1-5
           (let ((v1-7 (-> (the-as collectoid v1-5) controlled-by)))
             (if (>= v1-7 0)
@@ -642,8 +635,8 @@
 ;; definition for method 55 of type collectoid-draw
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod powerup-draw-method-55 ((this collectoid-draw))
-  (let ((v1-1 (handle->process (-> this parent-proc))))
+(defmethod update-draw ((this collectoid-draw))
+  (let ((v1-1 (the-as net-powerup (handle->process (-> this parent-proc)))))
     (set! (-> this root trans quad) (-> (the-as collectoid v1-1) pos quad))
     )
   (let ((f30-0 (the float (logand (+ (- (- (if *net-mgr*
@@ -685,7 +678,7 @@
       (send-event (-> *net-game-mgr* net-players arg1) 'add-to-score 1)
       )
   (set! (-> this controlled-by) arg1)
-  (send-event (handle->process (-> this child-proc)) 'go-die)
+  (send-event (the-as powerup-draw (handle->process (-> this child-proc))) 'go-die)
   (let ((v1-23 (-> *net-players* (* (if *net-mgr*
                                         (-> *net-mgr* game-state local-machine-idx)
                                         0
@@ -757,7 +750,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 54 collectoid) has a return type of none, but the expression builder found a return statement.
-(defmethod net-powerup-method-54 ((this collectoid))
+(defmethod on-pickup ((this collectoid))
   (when (-> (the-as net-game-mgr-collectable *net-game-mgr*) steal-mode)
     (when (!= (-> this touched-by) (-> this controlled-by))
       (let ((s5-0 (alloc-msg this 'converted)))
@@ -767,15 +760,15 @@
         (free-msg this s5-0)
         )
       (collectoid-method-56 this (-> this controlled-by) (-> this touched-by))
-      (let ((v1-17 (handle->process (-> this child-proc))))
-        (when v1-17
-          (set! (-> *launch-matrix* trans quad) (-> (the-as process-drawable v1-17) root trans quad))
+      (let ((v1-17 (the-as powerup-draw (handle->process (-> this child-proc)))))
+        (when (the-as powerup-draw v1-17)
+          (set! (-> *launch-matrix* trans quad) (-> v1-17 root trans quad))
           (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 215))
           (vector-reset! (-> *part-tracker-params-default* local-offset))
           (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
           (set! (-> *part-tracker-params-default* callback) #f)
           (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-          (set! (-> *part-tracker-params-default* target) (the-as process-drawable v1-17))
+          (set! (-> *part-tracker-params-default* target) (the-as powerup-draw v1-17))
           (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
           (set! (-> *part-tracker-params-default* local-space-param) 0)
           (set! (-> *part-tracker-params-default* local-space-callback) #f)
@@ -813,14 +806,14 @@
     (free-msg this s5-3)
     )
   (set! (-> this touched-time) -1)
-  (go (method-of-object this net-powerup-s2))
+  (go (method-of-object this wait-respawn))
   0
   (none)
   )
 
 ;; definition for method 52 of type collectoid-draw
 ;; WARN: Return type mismatch trsqv vs none.
-(defmethod powerup-draw-method-52 ((this collectoid-draw) (arg0 float))
+(defmethod init-root! ((this collectoid-draw) (arg0 float))
   (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   (none)
   )

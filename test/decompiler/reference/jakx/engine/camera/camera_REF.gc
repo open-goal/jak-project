@@ -489,7 +489,7 @@
     (vector-! s5-0 arg0 (-> this vec 0))
     (cond
       ((logtest? (-> this flags) (cam-index-options RADIAL))
-       (vector-flatten! s5-0 s5-0 (the-as vector (&-> (view-get-active-camera) stack 160)))
+       (vector-flatten! s5-0 s5-0 (-> (the-as camera-master (view-get-active-camera)) local-down))
        (/ (- (vector-length s5-0) (-> this vec 1 x)) (-> this vec 1 w))
        )
       ((logtest? (-> this flags) (cam-index-options SPHERICAL))
@@ -1132,11 +1132,12 @@
       ((not (-> self spline-exists))
        )
       ((= (-> self spline-follow-dist) 0.0)
-       (let ((f0-18 (if arg3
-                        (cam-index-method-10 (-> self index) (-> self tracking follow-pt))
-                        (cam-index-method-10 (-> self index) (the-as vector (&-> (view-get-active-camera) stack 400)))
-                        )
-                    )
+       (let ((f0-18
+               (if arg3
+                   (cam-index-method-10 (-> self index) (-> self tracking follow-pt))
+                   (cam-index-method-10 (-> self index) (-> (the-as camera-master (view-get-active-camera)) tpos-curr-adj))
+                   )
+               )
              )
          (if (logtest? (cam-slave-options-u32 EASE_SPLINE_IDX) (-> self options))
              (set! f0-18 (parameter-ease-sin-clamp f0-18))
@@ -1514,7 +1515,7 @@
                         (vector-length arg2)
                         )
                        (else
-                         (vector-flatten! s1-0 arg2 (the-as vector (&-> (view-get-active-camera) stack 160)))
+                         (vector-flatten! s1-0 arg2 (-> (the-as camera-master (view-get-active-camera)) local-down))
                          (vector-length s1-0)
                          )
                        )
@@ -2079,7 +2080,3 @@
     )
   arg0
   )
-
-
-
-

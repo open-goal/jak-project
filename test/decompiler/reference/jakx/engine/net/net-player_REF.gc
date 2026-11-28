@@ -139,13 +139,13 @@
   )
 
 ;; definition for method 70 of type net-player
-(defmethod net-player-method-70 ((this net-player))
+(defmethod finish-scheduled? ((this net-player))
   (!= -1 (-> this mgr scheduled-finish-time))
   )
 
 ;; definition for method 65 of type net-player
 (defmethod update-best-hang-time ((this net-player) (arg0 int))
-  (when (and (not (net-player-method-70 this)) (< (-> this best-hang-time) arg0))
+  (when (and (not (finish-scheduled? this)) (< (-> this best-hang-time) arg0))
     (set! (-> this best-hang-time) arg0)
     (write-stats-change this)
     )
@@ -154,7 +154,7 @@
 
 ;; definition for method 66 of type net-player
 (defmethod update-best-power-slide ((this net-player) (arg0 float))
-  (when (and (not (net-player-method-70 this)) (< (-> this best-power-slide) arg0))
+  (when (and (not (finish-scheduled? this)) (< (-> this best-power-slide) arg0))
     (set! (-> this best-power-slide) arg0)
     (write-stats-change this)
     )
@@ -163,7 +163,7 @@
 
 ;; definition for method 67 of type net-player
 (defmethod add-death ((this net-player))
-  (when (not (net-player-method-70 this))
+  (when (not (finish-scheduled? this))
     (+! (-> this deaths) 1)
     (write-stats-change this)
     )
@@ -172,7 +172,7 @@
 
 ;; definition for method 68 of type net-player
 (defmethod add-kill ((this net-player))
-  (when (not (net-player-method-70 this))
+  (when (not (finish-scheduled? this))
     (+! (-> this kills) 1)
     (write-stats-change this)
     )
@@ -285,7 +285,7 @@
             )
           )
         )
-      (set! (-> this turbo-qty) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 unk-float0)))))))
+      (set! (-> this turbo-qty) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 turbo-supply)))))))
       (set! (-> this dark-eco) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 unk-float1)))))))
       (set! (-> this health) (the-as uint (the int (* 255.0 (fmax 0.0 (fmin 1.0 (-> a0-2 health)))))))
       (set! (-> *game-info* player-info (view-get-active-index) camera-inside-view)
@@ -338,7 +338,7 @@
 
 ;; definition for method 96 of type net-player
 ;; WARN: Return type mismatch int vs none.
-(defmethod net-player-method-96 ((this net-player))
+(defmethod score-kill ((this net-player) (arg0 int))
   0
   (none)
   )
@@ -347,7 +347,7 @@
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 95 net-player) has a return type of none, but the expression builder found a return statement.
 (defmethod net-player-method-95 ((this net-player) (arg0 process) (arg1 event-message-block))
-  (if (net-player-method-70 this)
+  (if (finish-scheduled? this)
       (return #f)
       )
   (let ((s5-0 (-> arg1 param 0))
@@ -355,7 +355,7 @@
         (s3-1 (-> arg1 param 2))
         )
     (let ((s2-0 (get-vehicle this)))
-      (net-player-method-96 this)
+      (score-kill this (the-as int s5-0))
       (if (and s2-0 (owner-is-local? s2-0) (!= s5-0 (-> this player-id)))
           (add-kill this)
           )
@@ -551,7 +551,7 @@
          )
        (let ((a0-90 (get-vehicle this)))
          (when (and a0-90 (owner-is-local? a0-90))
-           (if (not (net-player-method-70 this))
+           (if (not (finish-scheduled? this))
                (net-player-method-55 this)
                )
            (add-death this)
@@ -590,7 +590,7 @@
                                                    )
                      )
                   )
-         (when (not (net-player-method-70 this))
+         (when (not (finish-scheduled? this))
            (vehicle-method-202 (get-vehicle this) 0)
            (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs 0 0.0)
            (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-vehicle-crash 0 0.0)
@@ -625,8 +625,8 @@
                  'hostile
                  )
              )
-           (set! v0-0 (logand -83 (-> gp-4 ai flags)))
-           (set! (-> gp-4 ai flags) (the-as uint v0-0))
+           (set! v0-0 (logclear (-> gp-4 ai flags) (wvehicle-ai-state-flag bit1 bit4 bit6)))
+           (set! (-> gp-4 ai flags) (the-as wvehicle-ai-state-flag v0-0))
            v0-0
            )
          )
@@ -641,12 +641,12 @@
            (cond
              ((or (< arg1 1) (-> arg3 param 0))
               (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
-              (if (not (net-player-method-70 this))
+              (if (not (finish-scheduled? this))
                   (send-event s3-5 'go 'player-control)
                   )
               )
              (s3-5
-               (when (not (net-player-method-70 this))
+               (when (not (finish-scheduled? this))
                  (let ((gp-5 pp))
                    (set! pp s3-5)
                    (vehicle-method-125 s3-5)
@@ -882,24 +882,18 @@
                       )
                  )
           )
-      (let* ((f28-0 (lerp-scale 0.0 200.0 f30-0 4500.0 72000.0))
-             (v1-14 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-15 (the-as number (logior #x3f800000 v1-14)))
-             )
+      (let ((f28-0 (lerp-scale 0.0 200.0 f30-0 4500.0 72000.0)))
         (set! (-> this best-power-slide)
-              (+ f28-0 (* (+ -1.0 (the-as float v1-15))
+              (+ f28-0 (* (rand-float-gen)
                           (- (lerp-scale 0.0 800.0 f30-0 4500.0 72000.0) (lerp-scale 0.0 200.0 f30-0 4500.0 72000.0))
                           )
                  )
               )
         )
-      (let* ((f28-1 (lerp-scale 0.0 450.0 f30-0 4500.0 72000.0))
-             (v1-18 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-19 (the-as number (logior #x3f800000 v1-18)))
-             )
+      (let ((f28-1 (lerp-scale 0.0 450.0 f30-0 4500.0 72000.0)))
         (set! (-> this best-hang-time)
               (the int
-                   (+ f28-1 (* (+ -1.0 (the-as float v1-19))
+                   (+ f28-1 (* (rand-float-gen)
                                (- (lerp-scale 0.0 1050.0 f30-0 4500.0 72000.0) (lerp-scale 0.0 450.0 f30-0 4500.0 72000.0))
                                )
                       )
@@ -1144,11 +1138,11 @@
        )
       (#t
         (let ((s5-0 (-> *net-world* net-state players (-> this player-id))))
-          ((method-of-type car-rgb-color car-rgb-color-method-11)
+          ((method-of-type car-rgb-color from-rgba!)
            (-> *car-level-array* data gp-0 base-color)
            (the-as rgba (-> s5-0 base-color))
            )
-          (car-rgb-color-method-11 (-> *car-level-array* data gp-0 stripe-color) (the-as rgba (-> s5-0 stripe-color)))
+          (from-rgba! (-> *car-level-array* data gp-0 stripe-color) (the-as rgba (-> s5-0 stripe-color)))
           )
         )
       (else
@@ -1204,7 +1198,7 @@
 
 ;; definition for method 60 of type net-player
 ;; WARN: Return type mismatch int vs none.
-(defmethod on-vehicle-spawn ((this net-player) (arg0 process))
+(defmethod on-vehicle-spawn ((this net-player) (arg0 wvehicle))
   (with-pp
     (set! (-> this vehicle) (process->handle arg0))
     (set! (-> this last-spawn-time) (the-as time-frame (- (- (if *net-mgr*
@@ -1295,7 +1289,7 @@
 ;; definition for method 56 of type net-player
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-update ((this net-player) (arg0 process-drawable))
+(defmethod vehicle-update ((this net-player) (arg0 wvehicle))
   (when (-> arg0 nav)
     (let ((s5-0 (-> arg0 root trans)))
       (if (and (-> this last-known-pos-valid)
@@ -1448,7 +1442,7 @@
 ;; definition for method 52 of type net-player
 (defmethod can-spawn-vehicle? ((this net-player))
   (and (< (-> this next-spawn-time) (current-time))
-       (not (net-player-method-70 this))
+       (not (finish-scheduled? this))
        (and (or (= (/ (-> this player-id) 2) (if *net-mgr*
                                                  (-> *net-mgr* game-state local-machine-idx)
                                                  0
@@ -1537,7 +1531,7 @@
     (net-player-method-77 this (the-as net-player-respawn-info arg0) s5-0)
     (let ((s5-1 (vehicle-spawn (the-as vehicle-type (-> *net-vehicles* s4-0 vt)) s5-0)))
       (the-as symbol (when s5-1
-                       (on-vehicle-spawn this s5-1)
+                       (on-vehicle-spawn this (the-as wvehicle s5-1))
                        s5-1
                        )
               )
@@ -2055,7 +2049,3 @@
     (the-as vehicle-rev-manager gp-0)
     )
   )
-
-
-
-
