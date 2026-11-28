@@ -38,4 +38,20 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
                                                            const bool mono,
                                                            const u32 version);
 
+/*!
+ * Encode 16-bit samples as PS-ADPCM. The output is a sequence of 16-byte blocks (28 samples each,
+ * the last block is zero padded) with all flag bytes set to 0. The filter and shift of every block
+ * are chosen to minimize the squared error against the input.
+ */
 std::vector<u8> encode_adpcm(const std::vector<s16>& samples);
+
+struct WaveData {
+  std::vector<s16> left_samples;
+  std::vector<s16> right_samples;  // empty for mono
+  s32 sample_rate = 0;
+};
+
+/*!
+ * Read a 16-bit PCM wave file (mono or stereo). Returns false and sets error on failure.
+ */
+bool read_wave_file(const fs::path& name, WaveData* out, std::string* error);
