@@ -7,3 +7,242 @@
 
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(deftype drive-data (structure)
+  ((angles  euler-angles  :inline)
+   (pos     vector        :inline)
+   )
+  )
+
+
+(define *drift-file-stream* (new 'static 'file-stream))
+
+(deftype drift-editor (process)
+  ((angles                        euler-angles               :inline)
+   (counter                       int32)
+   (editor-start-time             uint32)
+   (all-data-array                (inline-array drive-data)  5)
+   (drive-data-array              (inline-array drive-data)  :overlay-at (-> all-data-array 0))
+   (wheel-front-left-data-array   (inline-array drive-data)  :overlay-at (-> all-data-array 1))
+   (wheel-front-right-data-array  (inline-array drive-data)  :overlay-at (-> all-data-array 2))
+   (wheel-rear-left-data-array    (inline-array drive-data)  :overlay-at (-> all-data-array 3))
+   (wheel-rear-right-data-array   (inline-array drive-data)  :overlay-at (-> all-data-array 4))
+   (release-start-trigger         symbol)
+   (odd-even                      int8)
+   )
+  (:state-methods
+    init-state
+    run-state
+    write-file
+    )
+  (:methods
+    (write-drift-file (_type_ string int) none)
+    )
+  )
+
+
+(define-perm *drift-editor* (pointer drift-editor) #f)
+
+(defbehavior drift-editor-init-by-other drift-editor ()
+  (set! *drift-editor* (the-as (pointer drift-editor) (process->ppointer self)))
+  (set! (-> self counter) 0)
+  (set! (-> self release-start-trigger) #f)
+  (set! (-> self odd-even) 0)
+  (set! (-> self drive-data-array) (the-as (inline-array drive-data) (malloc 'debug #x9600)))
+  (set! (-> self wheel-front-left-data-array) (the-as (inline-array drive-data) (malloc 'debug #x9600)))
+  (set! (-> self wheel-front-right-data-array) (the-as (inline-array drive-data) (malloc 'debug #x9600)))
+  (set! (-> self wheel-rear-left-data-array) (the-as (inline-array drive-data) (malloc 'debug #x9600)))
+  (set! (-> self wheel-rear-right-data-array) (the-as (inline-array drive-data) (malloc 'debug #x9600)))
+  (go-virtual init-state)
+  )
+
+(defstate init-state (drift-editor)
+  :virtual #t
+  :trans (behavior ()
+    (if (cpad-pressed? 0 l3)
+        (go-virtual run-state)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate run-state (drift-editor)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (format #t "received die signal")
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self editor-start-time) (the-as uint (current-time)))
+    )
+  :trans (behavior ()
+    (if (= (-> self counter) 1200)
+        (go-virtual write-file)
+        )
+    (cond
+      ((not (logtest? (-> self odd-even) 1))
+       (set! (-> self odd-even) 1)
+       (if (and (cpad-pressed? 0 l3) (-> self release-start-trigger))
+           (go-virtual write-file)
+           (set! (-> self release-start-trigger) #t)
+           )
+       )
+      (else
+        (set! (-> self odd-even) 0)
+        (let ((v1-16 (get-vehicle (-> *net-players* 0))))
+          (when v1-16
+            (let ((s0-0 (-> v1-16 node-list data 3 bone transform))
+                  (s1-0
+                    (-> (the-as process-drawable (handle->process (-> v1-16 wheel 0 handle))) node-list data 3 bone transform)
+                    )
+                  (sv-352 (-> v1-16 node-list data 3 bone transform trans))
+                  (gp-0 (- (current-time) (the-as int (-> self editor-start-time))))
+                  )
+              (let ((s2-0 (-> v1-16 wheel))
+                    (s3-0 (-> v1-16 wheel 1))
+                    (s4-0 (-> v1-16 wheel 2))
+                    (s5-0 (-> v1-16 wheel 3))
+                    )
+                (let ((v1-17 (new 'stack-no-clear 'inline-array 'euler-angles 1)))
+                  (matrix->eul (-> v1-17 0) s0-0 0)
+                  )
+                (matrix->eul (-> self drive-data-array (-> self counter) angles) s0-0 20)
+                (set! (-> self drive-data-array (-> self counter) pos quad) (-> sv-352 quad))
+                (set! (-> self wheel-front-left-data-array (-> self counter) pos quad) (-> s2-0 0 trans quad))
+                (matrix->eul (-> self wheel-front-left-data-array (-> self counter) angles) s1-0 20)
+                (let ((s1-1 (new 'stack-no-clear 'matrix)))
+                  (eul->matrix s1-1 (-> self wheel-front-left-data-array (-> self counter) angles))
+                  (set! (-> s1-1 trans quad) (-> self wheel-front-left-data-array (-> self counter) pos quad))
+                  (add-debug-matrix #t (bucket-id debug-no-zbuf1) s1-1 (meters 2))
+                  )
+                (add-debug-sphere #t (bucket-id debug) (-> s2-0 0 trans) (meters 1) *color-red*)
+                (set! (-> self wheel-front-right-data-array (-> self counter) pos quad) (-> s3-0 trans quad))
+                (matrix->eul
+                  (-> self wheel-front-right-data-array (-> self counter) angles)
+                  (quaternion->matrix (new 'stack-no-clear 'matrix) (-> s3-0 quat))
+                  20
+                  )
+                (set! (-> self wheel-rear-left-data-array (-> self counter) pos quad) (-> s4-0 trans quad))
+                (matrix->eul
+                  (-> self wheel-rear-left-data-array (-> self counter) angles)
+                  (quaternion->matrix (new 'stack-no-clear 'matrix) (-> s4-0 quat))
+                  20
+                  )
+                (set! (-> self wheel-rear-right-data-array (-> self counter) pos quad) (-> s5-0 trans quad))
+                (matrix->eul
+                  (-> self wheel-rear-right-data-array (-> self counter) angles)
+                  (quaternion->matrix (new 'stack-no-clear 'matrix) (-> s5-0 quat))
+                  20
+                  )
+                )
+              (let ((s5-1 (new 'stack-no-clear 'matrix)))
+                (eul->matrix s5-1 (-> self drive-data-array (-> self counter) angles))
+                (set! (-> s5-1 trans quad) (-> self drive-data-array (-> self counter) pos quad))
+                (add-debug-matrix #t (bucket-id debug-no-zbuf1) s5-1 (meters 2))
+                )
+              (format
+                *stdcon*
+                "X = ~f~%Y = ~f~%Z = ~f~%"
+                (/ (-> self wheel-front-left-data-array (-> self counter) pos x) METER_LENGTH)
+                (/ (-> self wheel-front-left-data-array (-> self counter) pos y) METER_LENGTH)
+                (/ (-> self wheel-front-left-data-array (-> self counter) pos z) METER_LENGTH)
+                )
+              (format
+                *stdcon*
+                "X = ~f~%Y = ~f~%Z = ~f~%"
+                (/ (-> self drive-data-array (-> self counter) pos x) METER_LENGTH)
+                (/ (-> self drive-data-array (-> self counter) pos y) METER_LENGTH)
+                (/ (-> self drive-data-array (-> self counter) pos z) METER_LENGTH)
+                )
+              (format *stdcon* "Counter: ~D~%" (-> self counter))
+              (format *stdcon* "time: ~f" (* 0.0033333334 (the float gp-0)))
+              )
+            (if (and (cpad-pressed? 0 l3) (-> self release-start-trigger))
+                (go-virtual write-file)
+                (set! (-> self release-start-trigger) #t)
+                )
+            (+! (-> self counter) 1)
+            )
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; WARN: Return type mismatch file-stream vs none.
+(defmethod write-drift-file ((this drift-editor) (arg0 string) (arg1 int))
+  (file-stream-open *drift-file-stream* arg0 'write)
+  (dotimes (s4-0 (-> this counter))
+    (format
+      *drift-file-stream*
+      "~d ~f ~f ~f"
+      s4-0
+      (/ (-> this all-data-array arg1 s4-0 pos x) METER_LENGTH)
+      (/ (-> this all-data-array arg1 s4-0 pos y) METER_LENGTH)
+      (/ (-> this all-data-array arg1 s4-0 pos z) METER_LENGTH)
+      )
+    (format
+      *drift-file-stream*
+      " ~f ~f ~f~%"
+      (* -0.005493164 (-> this all-data-array arg1 s4-0 angles z))
+      (* -0.005493164 (-> this all-data-array arg1 s4-0 angles y))
+      (* -0.005493164 (-> this all-data-array arg1 s4-0 angles x))
+      )
+    )
+  (file-stream-close *drift-file-stream*)
+  (none)
+  )
+
+(defstate write-file (drift-editor)
+  :virtual #t
+  :code (behavior ()
+    (write-drift-file self "main-temp.mel" 0)
+    (write-drift-file self "wheel-fl.mel" 1)
+    (write-drift-file self "wheel-fr.mel" 2)
+    (write-drift-file self "wheel-rl.mel" 3)
+    (write-drift-file self "wheel-rr.mel" 4)
+    (file-stream-open *drift-file-stream* "wheel-fl.mel" 'write)
+    (dotimes (gp-0 (-> self counter))
+      (format
+        *drift-file-stream*
+        "~d ~f ~f ~f"
+        gp-0
+        (/ (-> self wheel-front-left-data-array gp-0 pos x) METER_LENGTH)
+        (/ (-> self wheel-front-left-data-array gp-0 pos y) METER_LENGTH)
+        (/ (-> self wheel-front-left-data-array gp-0 pos z) METER_LENGTH)
+        )
+      (format
+        *drift-file-stream*
+        " ~f ~f ~f~%"
+        (* -0.005493164 (-> self wheel-front-left-data-array gp-0 angles z))
+        (* -0.005493164 (-> self wheel-front-left-data-array gp-0 angles y))
+        (* -0.005493164 (-> self wheel-front-left-data-array gp-0 angles x))
+        )
+      )
+    (file-stream-close *drift-file-stream*)
+    )
+  )
+
+(defmethod relocate ((this drift-editor) (offset int))
+  (call-parent-method this offset)
+  )
+
+(defmethod deactivate ((this drift-editor))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *drift-editor* (the-as (pointer drift-editor) #f))
+  (call-parent-method this)
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defun start-drift ()
+  (process-spawn drift-editor :name "drift-editor" :stack *kernel-dram-stack* :stack-size #x10000)
+  #f
+  )

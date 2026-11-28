@@ -7,3 +7,1435 @@
 
 ;; DECOMP BEGINS
 
+(deftype hud-hunt-indicators (hud-item-group)
+  ((last-position  vector  :inline)
+   )
+  )
+
+
+(defmethod update ((this hud-hunt-indicators))
+  (local-vars (v1-49 symbol))
+  (let ((a0-2 (-> *net-players* (+ (view-get-active-index) (* (if *net-mgr*
+                                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                                  0
+                                                                  )
+                                                              2
+                                                              )
+                                   )
+                  )
+              )
+        )
+    (when a0-2
+      (let ((a0-3 (get-vehicle a0-2)))
+        (if a0-3
+            (set! (-> this last-position quad) (-> a0-3 root trans quad))
+            )
+        )
+      )
+    )
+  (let ((s5-0 (-> this last-position)))
+    (dotimes (s4-0 5)
+      (let* ((s3-0 (the-as hud-indicator (-> this items s4-0)))
+             (s2-0 (the-as net-enemy (handle->process (-> s3-0 target))))
+             )
+        (when s2-0
+          (let ((s1-1 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 root trans) s5-0)))
+            (vector-normalize! s1-1 1.0)
+            (if (< (vector-dot s1-1 (-> (camera-matrix) fvec)) 0.0)
+                (set! s2-0 (the-as net-enemy #f))
+                )
+            )
+          (if (!= (-> s2-0 killed-by) -1)
+              (set! s2-0 (the-as net-enemy #f))
+              )
+          )
+        (cond
+          (s2-0
+            (set! (-> s3-0 enemy-distance) (vector-vector-distance-squared (-> s2-0 root trans) s5-0))
+            (if (!= (-> s3-0 id) -1)
+                (+! (-> s3-0 indicator-alpha) (* 0.05 (- 1.0 (-> s3-0 indicator-alpha))))
+                )
+            (set! (-> s3-0 id) 0)
+            0
+            )
+          (else
+            (hud-indicator-method-24 s3-0)
+            (set! (-> s3-0 enemy-distance) (square 40960000.0))
+            (set! (-> s3-0 target) (the-as handle #f))
+            )
+          )
+        )
+      )
+    (let ((v1-41 (the-as object (-> *net-enemy-list* head))))
+      (while (the-as list-link v1-41)
+        (let ((s4-1 (-> (the-as list-link v1-41) next)))
+          (let* ((s3-1 (if (the-as list-link v1-41)
+                           (&+ (the-as pointer v1-41) -860)
+                           #f
+                           )
+                       )
+                 (s2-2 (vector-! (new 'stack-no-clear 'vector) (-> (the-as net-enemy s3-1) root trans) s5-0))
+                 )
+            (vector-normalize! s2-2 1.0)
+            (when (< 0.0 (vector-dot s2-2 (-> (camera-matrix) fvec)))
+              (let ((f0-10 (vector-vector-distance-squared (-> (the-as net-enemy s3-1) root trans) s5-0))
+                    (a0-21 -1)
+                    )
+                (let ((f1-3 0.0))
+                  (dotimes (v1-47 5)
+                    (let* ((a1-7 (the-as hud-indicator (-> this items v1-47)))
+                           (f2-2 (-> a1-7 enemy-distance))
+                           )
+                      (let ((a1-9 (the-as net-enemy (handle->process (-> a1-7 target)))))
+                        (when (and a1-9 (= a1-9 (the-as net-enemy s3-1)))
+                          (set! v1-49 #t)
+                          (goto cfg-52)
+                          )
+                        )
+                      (when (and (< f0-10 f2-2) (>= f2-2 f1-3))
+                        (set! a0-21 v1-47)
+                        (set! f1-3 f2-2)
+                        )
+                      )
+                    )
+                  )
+                (set! v1-49 #f)
+                (label cfg-52)
+                (if v1-49
+                    (set! a0-21 -1)
+                    )
+                (let ((v1-56 (the-as hud-indicator (-> this items a0-21))))
+                  (when (!= a0-21 -1)
+                    (set! (-> v1-56 id) -1)
+                    (+! (-> v1-56 indicator-alpha) (* 0.1 (- (-> v1-56 indicator-alpha))))
+                    (when (or (< (-> v1-56 indicator-alpha) 0.05) (not (the-as net-enemy (handle->process (-> v1-56 target)))))
+                      (set! (-> v1-56 indicator-alpha) 0.0)
+                      (set! (-> v1-56 enemy-distance) f0-10)
+                      (set! (-> (the-as hud-health (-> v1-56 items 1)) health) -1.0)
+                      (set! (-> v1-56 target) (process->handle (the-as net-enemy s3-1)))
+                      (set! (-> v1-56 id) 0)
+                      0
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (set! v1-41 s4-1)
+          )
+        )
+      )
+    )
+  (dotimes (s5-1 5)
+    (let* ((s4-2 (the-as hud-indicator (-> this items s5-1)))
+           (s3-2 (the-as net-enemy (handle->process (-> s4-2 target))))
+           )
+      (when s3-2
+        (hud-health-method-24 (the-as hud-health (-> s4-2 items 1)) (/ (-> s3-2 health) (-> s3-2 info max-health)) #f)
+        (set! (-> s4-2 target-position quad) (-> (get-trans s3-2 0) quad))
+        (set-string! (the-as hud-item-string (-> s4-2 items 0)) "")
+        (hud-indicator-method-25 s4-2 (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x80) 4)
+        )
+      )
+    )
+  ((method-of-type hud-item-group update) this)
+  (none)
+  )
+
+(define *hud-hunt-indicators-view0* (new 'static 'boxed-array :type hud-item
+                                      (new 'static 'hud-hunt-indicators
+                                        :scale #x100
+                                        :flags (hud-item-flag bit17)
+                                        :effect #f
+                                        :items (new 'static 'boxed-array :type hud-item
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          )
+                                        )
+                                      )
+        )
+
+(define *hud-hunt-indicators-view0-proc* (the-as hud-hunt-indicators-view0 #f))
+
+(deftype hud-hunt-indicators-view0 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-hunt-indicators-view0.
+(defmethod relocate ((this hud-hunt-indicators-view0) (offset int))
+  (set! *hud-hunt-indicators-view0-proc* this)
+  (if (nonzero? *hud-hunt-indicators-view0-proc*)
+      (set! *hud-hunt-indicators-view0-proc* (&+ *hud-hunt-indicators-view0-proc* offset))
+      )
+  (the-as hud-hunt-indicators-view0 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-hunt-indicators-view0))
+  (set! (-> this items) *hud-hunt-indicators-view0*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-hunt-indicators-view0-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-hunt-indicators-view0))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-hunt-indicators-view0-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-hunt-indicators-view0))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-hunt-indicators-view0*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-hunt-indicators-view0.
+(defun spawn-hud-hunt-indicators-view0 ()
+  (the-as
+    hud-hunt-indicators-view0
+    (cond
+      (*hud-hunt-indicators-view0-proc*
+        *hud-hunt-indicators-view0-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-hunt-indicators-view0
+                                         :init hud-init-by-other
+                                         :name "hud-hunt-indicators-view0"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-hunt-indicators-view0 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(define *hud-hunt-indicators-view1* (new 'static 'boxed-array :type hud-item
+                                      (new 'static 'hud-hunt-indicators
+                                        :scale #x100
+                                        :flags (hud-item-flag bit17)
+                                        :effect #f
+                                        :items (new 'static 'boxed-array :type hud-item
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          (new 'static 'hud-indicator
+                                            :scale #x100
+                                            :effect #f
+                                            :items (new 'static 'boxed-array :type hud-item
+                                              (new 'static 'hud-item-string
+                                                :alpha #xff
+                                                :position-x 4
+                                                :width #xc8
+                                                :height 32
+                                                :zval #xfff0
+                                                :scale #x99
+                                                :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :font-effect #x8
+                                                :color #x5
+                                                :font-flags (hud-string-flag middle ff8 italic)
+                                                :has-outline #t
+                                                )
+                                              (new 'static 'hud-health
+                                                :height 6
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :items (new 'static 'boxed-array :type hud-item
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :width 35
+                                                    :height 32
+                                                    :zval #xfff0
+                                                    :scale #x100
+                                                    :flags (hud-item-flag center-x bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x100
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x172 :page #x9)
+                                                    :sprite-flags (hud-sprite-flags alpha-test)
+                                                    )
+                                                  (new 'static 'hud-item-sprite
+                                                    :alpha #xff
+                                                    :position-x 1
+                                                    :position-y 2
+                                                    :width 8
+                                                    :height 8
+                                                    :zval #xfff0
+                                                    :scale #x466
+                                                    :flags (hud-item-flag at-prev bit16 bit17 bit18)
+                                                    :effect #f
+                                                    :scale-y #x80
+                                                    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                    :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                    )
+                                                  )
+                                                )
+                                              (new 'static 'hud-item-sprite
+                                                :alpha #xff
+                                                :position-x 64
+                                                :position-y 16
+                                                :width 64
+                                                :height 16
+                                                :zval #xfff0
+                                                :scale #x100
+                                                :flags (hud-item-flag below-prev center-x bit16 bit17 bit18)
+                                                :effect #f
+                                                :scale-y #x100
+                                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+                                                :tex-id (new 'static 'texture-id :index #x3 :page #x1)
+                                                :sprite-flags (hud-sprite-flags alpha-test)
+                                                :angle 32768.0
+                                                )
+                                              )
+                                            :only-direction-arrows #f
+                                            :fade-at-distance #f
+                                            :no-direction-indicator #t
+                                            )
+                                          )
+                                        )
+                                      )
+        )
+
+(define *hud-hunt-indicators-view1-proc* (the-as hud-hunt-indicators-view1 #f))
+
+(deftype hud-hunt-indicators-view1 (in-game-hud)
+  ()
+  )
+
+
+;; WARN: Return type mismatch in-game-hud vs hud-hunt-indicators-view1.
+(defmethod relocate ((this hud-hunt-indicators-view1) (offset int))
+  (set! *hud-hunt-indicators-view1-proc* this)
+  (if (nonzero? *hud-hunt-indicators-view1-proc*)
+      (set! *hud-hunt-indicators-view1-proc* (&+ *hud-hunt-indicators-view1-proc* offset))
+      )
+  (the-as hud-hunt-indicators-view1 ((method-of-type in-game-hud relocate) this offset))
+  )
+
+(defmethod init-callback ((this hud-hunt-indicators-view1))
+  (set! (-> this items) *hud-hunt-indicators-view1*)
+  (set! (-> this manager) (new 'static 'basic-manager))
+  (set! *hud-hunt-indicators-view1-proc* this)
+  ((method-of-type in-game-hud init-callback) this)
+  (none)
+  )
+
+(defmethod deactivate ((this hud-hunt-indicators-view1))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *hud-hunt-indicators-view1-proc* #f)
+  ((method-of-type in-game-hud deactivate) this)
+  (none)
+  )
+
+(defmethod draw ((this hud-hunt-indicators-view1))
+  (when *debug-hud*
+    (set! (-> this real-items) *hud-hunt-indicators-view1*)
+    (init-callback this)
+    )
+  ((method-of-type in-game-hud draw) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-hunt-indicators-view1.
+(defun spawn-hud-hunt-indicators-view1 ()
+  (the-as
+    hud-hunt-indicators-view1
+    (cond
+      (*hud-hunt-indicators-view1-proc*
+        *hud-hunt-indicators-view1-proc*
+        )
+      (*net-game-mgr*
+        (let ((v0-0 (ppointer->process (process-spawn
+                                         hud-hunt-indicators-view1
+                                         :init hud-init-by-other
+                                         :name "hud-hunt-indicators-view1"
+                                         :to *net-game-mgr*
+                                         )
+                                       )
+                    )
+              )
+          (when v0-0
+            (set! (-> (the-as hud-hunt-indicators-view1 v0-0) inited-strings-count) 0)
+            0
+            )
+          v0-0
+          )
+        )
+      (else
+        (the-as process #f)
+        )
+      )
+    )
+  )
+
+(defun spawn-unused-hud-hunt-indicators-view ()
+  (cond
+    ((not *hud-hunt-indicators-view0-proc*)
+     (spawn-hud-hunt-indicators-view0)
+     )
+    ((not *hud-hunt-indicators-view1-proc*)
+     (spawn-hud-hunt-indicators-view1)
+     )
+    (else
+      (the-as in-game-hud #f)
+      )
+    )
+  )
+
+;; WARN: Return type mismatch process vs net-player.
+(defmethod spawn-net-player ((this net-game-mgr-beasthunt) (arg0 int))
+  (the-as
+    net-player
+    (ppointer->process
+      (process-spawn net-player-beasthunt :init net-player-init-local arg0 :name "net-player-beasthunt")
+      )
+    )
+  )
+
+(defmethod init! ((this net-player-beasthunt) (arg0 int))
+  (set! (-> this prev-send-score) 0)
+  (set! (-> this last-score-send-time) (the-as int (+ (-> *display* real-clock frame-counter) (seconds -30))))
+  (set! (-> this big-air-launch-time) -1)
+  (set! (-> this in-big-air) #f)
+  (call-parent-method this arg0)
+  (none)
+  )
+
+(defmethod write-score-change ((this net-player-beasthunt))
+  (set! (-> this last-score-send-time) (the-as int (-> *display* real-clock frame-counter)))
+  (set! (-> this prev-send-score) (-> this score))
+  (call-parent-method this)
+  (none)
+  )
+
+(defstate running (net-player-beasthunt)
+  :virtual #t
+  :trans (behavior ()
+    (call-parent-state-handler trans)
+    (if (and (!= (-> self prev-send-score) (-> self score))
+             (< (seconds 1) (- (-> *display* real-clock frame-counter) (the-as time-frame (-> self last-score-send-time))))
+             )
+        (write-score-change self)
+        )
+    (when (-> self in-big-air)
+      (let ((v1-10 (get-vehicle self))
+            (a0-14 (- (- (- (if *net-mgr*
+                                (-> *net-mgr* game-state time)
+                                0
+                                )
+                            (if *net-world*
+                                (-> *net-world* net-state game-start-time)
+                                0
+                                )
+                            )
+                         (if *net-world*
+                             (-> *net-world* net-state total-pause-time)
+                             0
+                             )
+                         )
+                      (-> self big-air-launch-time)
+                      )
+                   )
+            )
+        (if (< a0-14 600)
+            (set! (-> self last-fly-time) (- (- (if *net-mgr*
+                                                    (-> *net-mgr* game-state time)
+                                                    0
+                                                    )
+                                                (if *net-world*
+                                                    (-> *net-world* net-state game-start-time)
+                                                    0
+                                                    )
+                                                )
+                                             (if *net-world*
+                                                 (-> *net-world* net-state total-pause-time)
+                                                 0
+                                                 )
+                                             )
+                  )
+            )
+        (if (and v1-10 (logtest? (-> v1-10 v-flags) (vehicle-flag in-air)))
+            (set! (-> self last-fly-time) (- (- (if *net-mgr*
+                                                    (-> *net-mgr* game-state time)
+                                                    0
+                                                    )
+                                                (if *net-world*
+                                                    (-> *net-world* net-state game-start-time)
+                                                    0
+                                                    )
+                                                )
+                                             (if *net-world*
+                                                 (-> *net-world* net-state total-pause-time)
+                                                 0
+                                                 )
+                                             )
+                  )
+            )
+        (cond
+          ((and v1-10 (logtest? (-> v1-10 v-flags) (vehicle-flag dead)))
+           (set! (-> self in-big-air) #f)
+           )
+          ((not v1-10)
+           (set! (-> self in-big-air) #f)
+           )
+          ((or (< 1500 a0-14) (< 150 (- (- (- (if *net-mgr*
+                                                  (-> *net-mgr* game-state time)
+                                                  0
+                                                  )
+                                              (if *net-world*
+                                                  (-> *net-world* net-state game-start-time)
+                                                  0
+                                                  )
+                                              )
+                                           (if *net-world*
+                                               (-> *net-world* net-state total-pause-time)
+                                               0
+                                               )
+                                           )
+                                        (-> self last-fly-time)
+                                        )
+                                 )
+               )
+           (send-event self 'big-air-exit)
+           )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod score-kill ((this net-player-beasthunt) (arg0 int))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod on-vehicle-spawn ((this net-player-beasthunt) (arg0 wvehicle))
+  ((method-of-type net-player-deathmatch on-vehicle-spawn) this arg0)
+  (set! (-> arg0 ai weapon-aggression) 1.0)
+  (none)
+  )
+
+;; WARN: disable def twice: 155. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod handle-events ((this net-player-beasthunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (with-pp
+    (case arg2
+      (('you-killed-beast)
+       (let ((a0-3 (get-vehicle this)))
+         (if (and a0-3 (owner-is-local? a0-3))
+             (add-kill this)
+             )
+         )
+       (when (and (or (owner-is-local? this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                                  (= (if *net-mgr*
+                                                         (-> *net-mgr* game-state local-machine-idx)
+                                                         0
+                                                         )
+                                                     (-> *net-mgr* game-state session-master-idx)
+                                                     )
+                                                  )
+                      )
+                  (< (-> *net-game-mgr* scheduled-finish-time) 0)
+                  )
+         (cond
+           ((and (> (the-as int (-> arg3 param 1)) 0)
+                 (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                 (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                  (-> *net-mgr* game-state local-machine-idx)
+                                                  0
+                                                  )
+                    )
+                 )
+            (let ((s3-0 (as-type arg0 process-drawable)))
+              (when s3-0
+                (let ((t9-5 view-push-context)
+                      (v1-27 (-> this view))
+                      )
+                  (t9-5 (if v1-27
+                            (-> v1-27 index)
+                            -1
+                            )
+                        )
+                  )
+                (create-points-icon (the-as process-drawable s3-0) (-> arg3 param 1) #f)
+                (view-pop-context)
+                (format 0 "show score ~D~%" (-> arg3 param 1))
+                )
+              )
+            )
+           (else
+             (+! (-> this score) (-> arg3 param 0))
+             (let ((v1-32 (make-sound-instance snd-kill-counter (new 'static 'sound-id) (the-as handle #f))))
+               (if v1-32
+                   (-> v1-32 id)
+                   0
+                   )
+               )
+             )
+           )
+         (write-score-change this)
+         )
+       )
+      (('you-hurt-beast)
+       (when (and (or (owner-is-local? this) (and (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                                  (= (if *net-mgr*
+                                                         (-> *net-mgr* game-state local-machine-idx)
+                                                         0
+                                                         )
+                                                     (-> *net-mgr* game-state session-master-idx)
+                                                     )
+                                                  )
+                      )
+                  (< (-> *net-game-mgr* scheduled-finish-time) 0)
+                  )
+         (let ((v0-4 (the-as object (+ (-> this score) (-> arg3 param 0)))))
+           (set! (-> this score) (the-as int v0-4))
+           v0-4
+           )
+         )
+       )
+      (('waiting-game-start)
+       (go (method-of-object this waiting))
+       )
+      (('begin-game)
+       (let ((v1-51 (-> this vehicle)))
+         (send-event (the-as wvehicle (handle->process v1-51)) 'begin-race)
+         )
+       (go (method-of-object this running))
+       )
+      (('big-air-exit)
+       (send-event (get-vehicle this) 'set 'force-lod -1)
+       (send-event
+         (get-vehicle this)
+         'set
+         'camera-inside-view
+         (-> *game-info* player-info (view-get-active-index) camera-inside-view)
+         )
+       (cam-disconnect *setting-control* (view-get-active-index) pp 'interp-time)
+       (cam-disconnect *setting-control* (view-get-active-index) pp 'mode-name)
+       (set! (-> this in-big-air) #f)
+       #f
+       )
+      (('big-air-launch)
+       (when (and (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                  (= (/ (-> this player-id) 2) (if *net-mgr*
+                                                   (-> *net-mgr* game-state local-machine-idx)
+                                                   0
+                                                   )
+                     )
+                  )
+         (send-event (get-vehicle this) 'set 'force-lod 0)
+         (set! (-> this big-air-launch-time) (- (- (if *net-mgr*
+                                                       (-> *net-mgr* game-state time)
+                                                       0
+                                                       )
+                                                   (if *net-world*
+                                                       (-> *net-world* net-state game-start-time)
+                                                       0
+                                                       )
+                                                   )
+                                                (if *net-world*
+                                                    (-> *net-world* net-state total-pause-time)
+                                                    0
+                                                    )
+                                                )
+               )
+         (set! (-> *game-info* player-info (view-get-active-index) camera-inside-view)
+               (the-as symbol (send-event (get-vehicle this) 'query 'camera-inside-view))
+               )
+         (send-event (get-vehicle this) 'set 'camera-inside-view #f)
+         (set! (-> this in-big-air) #t)
+         (when (not (finish-scheduled? this))
+           (cam-reconnect *setting-control* (view-get-active-index) pp 'interp-time 'abs 0 0.0)
+           (cam-reconnect *setting-control* (view-get-active-index) pp 'mode-name 'cam-vehicle-crash 0 0.0)
+           )
+         )
+       )
+      (else
+        ((method-of-type net-player-deathmatch handle-events) this arg0 arg1 arg2 arg3)
+        )
+      )
+    )
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+(defmethod vehicle-update ((this net-player-beasthunt) (arg0 wvehicle))
+  (local-vars (f0-14 float))
+  (let ((sv-16 arg0))
+    (cond
+      ((and (owner-is-local? sv-16) (and (or (not (and (>= (-> this player-id) 0) (< (-> this player-id) 16)))
+                                             (and (>= (-> this player-id) 0) (< (-> this player-id) 16))
+                                             (>= (-> this mgr scheduled-finish-time) 0)
+                                             )
+                                         (-> this last-known-pos-valid)
+                                         )
+            )
+       (let ((sv-80 (the-as process-focusable #f)))
+         (let ((sv-84 0.0)
+               (sv-88 (new 'stack-no-clear 'vector))
+               (s4-0 (new 'stack-no-clear 'vector))
+               )
+           (set! (-> s4-0 quad) (-> (get-trans sv-16 0) quad))
+           (let ((sv-92 s4-0))
+             (let ((s4-1 (new 'stack-no-clear 'vector)))
+               (set! (-> s4-1 quad) (-> (get-vel sv-16) quad))
+               (let ((sv-96 s4-1))
+                 )
+               )
+             (let* ((f30-0 0.5)
+                    (f28-0 (* 0.75 (-> sv-16 max-speed)))
+                    (v1-22 (get-vel sv-16))
+                    (sv-100 (* f30-0 (- f28-0 (sqrtf (+ (* (-> v1-22 x) (-> v1-22 x)) (* (-> v1-22 z) (-> v1-22 z)))))))
+                    (sv-104 (the-as vehicle (handle->process (-> this target-vehicle))))
+                    (v1-28 (the-as object (-> *net-enemy-list* head)))
+                    )
+               (while (the-as list-link v1-28)
+                 (let ((s4-2 (-> (the-as list-link v1-28) next)))
+                   (let ((s3-0 (if (the-as list-link v1-28)
+                                   (&+ (the-as pointer v1-28) -860)
+                                   #f
+                                   )
+                               )
+                         )
+                     (when (not (focus-test? (the-as process-focusable s3-0) disable dead ignore inactive))
+                       (set! (-> sv-88 quad) (-> (get-trans (the-as process-focusable s3-0) 0) quad))
+                       (vector+float*!
+                         sv-88
+                         sv-88
+                         (get-vel (the-as process-focusable s3-0))
+                         (fmax 0.0 (fmin 4.0 (/ sv-100 (vector-vector-xz-distance sv-92 sv-88))))
+                         )
+                       (let ((f30-2 (vector-vector-xz-distance-squared sv-92 sv-88))
+                             (s2-3 lerp-scale)
+                             (s1-1 1.5)
+                             (s0-1 0.5)
+                             )
+                         (let* ((sv-224 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) sv-88 sv-92) 1.0))
+                                (v0-10 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat sv-16 0)))
+                                )
+                           (set! f0-14 (vector-dot sv-224 v0-10))
+                           )
+                         (let ((f0-16 (* f30-2 (s2-3 s1-1 s0-1 f0-14 -1.0 1.0))))
+                           (if (= (the-as pointer s3-0) sv-104)
+                               (set! f0-16 (/ f0-16 2))
+                               )
+                           (when (or (not sv-80) (< f0-16 (the-as float sv-84)))
+                             (set! sv-84 f0-16)
+                             (set! sv-80 (the-as process-focusable s3-0))
+                             )
+                           )
+                         )
+                       )
+                     )
+                   (set! v1-28 s4-2)
+                   )
+                 )
+               )
+             )
+           )
+         (cond
+           (sv-80
+             (set! (-> this target-vehicle) (process->handle sv-80))
+             (send-event (get-vehicle this) 'set 'ai-target-process sv-80)
+             ((method-of-type net-player vehicle-update) this arg0)
+             )
+           (else
+             ((method-of-type net-player-deathmatch vehicle-update) this arg0)
+             )
+           )
+         )
+       )
+      (else
+        ((method-of-type net-player-deathmatch vehicle-update) this arg0)
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defmethod use-target-cam? ((this net-player-beasthunt) (arg0 wvehicle))
+  #f
+  )

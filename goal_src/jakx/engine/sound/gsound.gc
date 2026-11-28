@@ -52,7 +52,7 @@
 
 (defmethod kill-callback ((this engine-sound-pers) (arg0 connection-pers))
   "Called when a connection is removed."
-  (let ((v1-0 (find-sound-instance (-> arg0 param-int64 0) #t)))
+  (let ((v1-0 (find-sound-instance (the-as sound-id (-> arg0 param-int64 0)) #t)))
     (cond
       (v1-0
         (set! (-> v1-0 volume) -4)
@@ -149,7 +149,7 @@
 
 (defun check-irx-version ()
   (let ((gp-0 (the-as sound-rpc-get-irx-version (add-element *sound-loader-rpc*))))
-    (set! (-> gp-0 command) (the-as uint 13))
+    (set! (-> gp-0 command) (sound-command pause-group))
     (set! (-> gp-0 ee-addr) (&-> *sound-iop-info* freemem))
     (call *sound-loader-rpc* (the-as uint 0) (the-as pointer gp-0) (the-as uint 48))
     (sync *sound-loader-rpc* #f)
@@ -167,7 +167,7 @@
 (defun sound-bank-load ((arg0 sound-name) (arg1 int) (arg2 int))
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-load-bank (add-element *sound-loader-rpc*))))
-      (set! (-> v1-1 command) (the-as uint 0))
+      (set! (-> v1-1 command) (sound-command iop-store))
       (set! (-> v1-1 bank-name) arg0)
       (set! (-> v1-1 mode) (the-as uint arg1))
       (set! (-> v1-1 priority) (the-as uint arg2))
@@ -179,7 +179,7 @@
 
 (defun sound-bank-unload ((arg0 sound-name))
   (let ((v1-1 (the-as sound-rpc-unload-bank (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 1))
+    (set! (-> v1-1 command) (sound-command iop-free))
     (set! (-> v1-1 mode) (the-as uint arg0))
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
@@ -188,7 +188,7 @@
 
 (defun sound-music-load ((arg0 sound-name))
   (let ((v1-1 (the-as sound-rpc-load-music (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 2))
+    (set! (-> v1-1 command) (sound-command load-bank))
     (set! (-> v1-1 bank-name) arg0)
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
@@ -197,7 +197,7 @@
 
 (defun sound-music-unload ()
   (let ((v1-1 (the-as sound-rpc-unload-music (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 3))
+    (set! (-> v1-1 command) (sound-command load-bank-from-iop))
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0
@@ -205,7 +205,7 @@
 
 (defun set-language ((arg0 language-enum))
   (let ((v1-1 (the-as sound-rpc-set-language (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 14))
+    (set! (-> v1-1 command) (sound-command stop-group))
     (set! (-> v1-1 lang) (the-as uint arg0))
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
@@ -214,7 +214,7 @@
 
 (defun sound-set-stereo-mode ((arg0 int))
   (let ((v1-1 (the-as sound-rpc-set-stereo-mode (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 21))
+    (set! (-> v1-1 command) (sound-command set-flava))
     (set! (-> v1-1 mode) arg0)
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
@@ -224,7 +224,7 @@
 
 (defun list-sounds ()
   (let ((v1-1 (the-as sound-rpc-list-sounds (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) (the-as uint 17))
+    (set! (-> v1-1 command) (sound-command set-falloff-curve))
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   (syncv 0)
@@ -315,10 +315,10 @@
         )
     (dotimes (s4-0 (the-as int gp-0))
       (let* ((s3-0 (the-as sound-rpc-play (&+ (-> *sound-player-rpc* current base) (* s5-0 (the-as uint s4-0)))))
-             (a3-0 (sound-command->string (the-as sound-command (-> s3-0 command))))
+             (a3-0 (sound-command->string (-> s3-0 command)))
              )
         (case (-> s3-0 command)
-          ((4)
+          (((sound-command load-bank-from-ee))
            (format #t "~D ~A ~G~%" s4-0 a3-0 (&-> s3-0 name))
            )
           (else
@@ -338,7 +338,7 @@
   (when (-> arg0 info)
     (when *sound-player-enable*
       (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
-        (set! (-> s5-0 command) (the-as uint 4))
+        (set! (-> s5-0 command) (sound-command load-bank-from-ee))
         (set! (-> s5-0 id) (-> arg0 id))
         (set! (-> s5-0 name) (-> arg0 info name))
         (set! (-> arg0 group) (-> arg0 info group))
@@ -356,7 +356,7 @@
 (defun sound-instance-update ((arg0 sound-instance))
   (when (or *sound-player-enable* (logtest? (-> arg0 flags) (sound-spec-flag stopping)))
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-      (set! (-> s5-0 command) (the-as uint 8))
+      (set! (-> s5-0 command) (sound-command pause-sound))
       (set! (-> s5-0 id) (-> arg0 id))
       (set! (-> arg0 group) (-> arg0 info group))
       (quad-copy! (the-as pointer (-> s5-0 params)) (the-as pointer arg0) 3)
@@ -506,7 +506,7 @@
   (set! (-> *sound-instances* gp-2) (new 'global 'sound-instance))
   )
 
-(defun find-sound-instance ((arg0 object) (arg1 symbol))
+(defun find-sound-instance ((arg0 sound-id) (arg1 symbol))
   (let ((v1-1 (if arg1
                   (-> *sound-instances* length)
                   128
@@ -1239,7 +1239,7 @@
 
 (defun sound-set-volume ((arg0 sound-group) (arg1 float))
   (let ((v1-0 (the-as sound-rpc-set-master-volume (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 9))
+    (set! (-> v1-0 command) (sound-command stop-sound))
     (set! (-> v1-0 group) (the-as uint arg0))
     (set! (-> v1-0 volume) (the int (* 1024.0 arg1)))
     )
@@ -1248,7 +1248,7 @@
 
 (defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
   (let ((v1-0 (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 15))
+    (set! (-> v1-0 command) (sound-command continue-group))
     (set! (-> v1-0 core) arg3)
     (set! (-> v1-0 reverb) arg0)
     (set! (-> v1-0 left) (the-as uint (the int (* 32767.0 arg1))))
@@ -1259,7 +1259,7 @@
 
 (defun sound-set-globals ()
   (let ((gp-0 (the-as sound-rpc-set-globals (get-sound-buffer-entry))))
-    (set! (-> gp-0 command) (the-as uint 22))
+    (set! (-> gp-0 command) (sound-command set-midi-reg))
     (set! (-> gp-0 cam-inverted)
           (the-as uint (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
                            1
@@ -1289,7 +1289,7 @@
 (defun sound-pause ((arg0 sound-id))
   (when (nonzero? arg0)
     (let ((v1-1 (the-as sound-rpc-pause-sound (get-sound-buffer-entry))))
-      (set! (-> v1-1 command) (the-as uint 5))
+      (set! (-> v1-1 command) (sound-command load-music))
       (set! (-> v1-1 id) arg0)
       )
     )
@@ -1299,7 +1299,7 @@
 (defun sound-stop ((arg0 sound-id) (arg1 symbol))
   (when (nonzero? arg0)
     (let ((v1-1 (the-as sound-rpc-stop-sound (get-sound-buffer-entry))))
-      (set! (-> v1-1 command) (the-as uint 6))
+      (set! (-> v1-1 command) (sound-command unload-bank))
       (set! (-> v1-1 id) arg0)
       )
     (if arg1
@@ -1312,7 +1312,7 @@
 (defun sound-continue ((arg0 sound-id))
   (when (nonzero? arg0)
     (let ((v1-1 (the-as sound-rpc-continue-sound (get-sound-buffer-entry))))
-      (set! (-> v1-1 command) (the-as uint 7))
+      (set! (-> v1-1 command) (sound-command play))
       (set! (-> v1-1 id) arg0)
       )
     )
@@ -1321,7 +1321,7 @@
 
 (defun sound-group-pause ((arg0 sound-group))
   (let ((v1-0 (the-as sound-rpc-pause-group (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 10))
+    (set! (-> v1-0 command) (sound-command continue-sound))
     (set! (-> v1-0 group) (the-as uint arg0))
     )
   0
@@ -1329,7 +1329,7 @@
 
 (defun sound-group-stop ((arg0 sound-group))
   (let ((v1-0 (the-as sound-rpc-stop-group (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 11))
+    (set! (-> v1-0 command) (sound-command set-param))
     (set! (-> v1-0 group) (the-as uint arg0))
     )
   0
@@ -1337,7 +1337,7 @@
 
 (defun sound-group-continue ((arg0 sound-group))
   (let ((v1-0 (the-as sound-rpc-continue-group (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 12))
+    (set! (-> v1-0 command) (sound-command set-master-volume))
     (set! (-> v1-0 group) (the-as uint arg0))
     )
   0
@@ -1345,7 +1345,7 @@
 
 (defun sound-set-fps ((arg0 int))
   (let ((v1-0 (the-as sound-rpc-set-fps (get-sound-buffer-entry))))
-    (set! (-> v1-0 command) (the-as uint 18))
+    (set! (-> v1-0 command) (sound-command set-sound-falloff))
     (set! (-> v1-0 fps) (the-as uint arg0))
     )
   0

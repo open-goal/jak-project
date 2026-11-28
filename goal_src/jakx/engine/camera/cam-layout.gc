@@ -664,7 +664,7 @@
         )
       )
     )
-  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time 1.0))
+  (let ((s2-3 (res-lump-data arg0 'campoints (inline-array vector) :time 1.0))
         (v1-73 (res-lump-struct arg0 'campoints-offset vector))
         (s4-3 (new 'stack-no-clear 'vector))
         (s3-3 (new 'stack-no-clear 'vector))
@@ -675,12 +675,12 @@
                )
       (cond
         (v1-73
-          (vector+! s4-3 (the-as vector (&+ s2-3 0)) v1-73)
-          (vector+! s3-3 (the-as vector (&+ s2-3 16)) v1-73)
+          (vector+! s4-3 (-> s2-3 0) v1-73)
+          (vector+! s3-3 (-> s2-3 1) v1-73)
           )
         (else
-          (set! (-> s4-3 quad) (-> (the-as (pointer uint128) (&+ s2-3 0))))
-          (set! (-> s3-3 quad) (-> (the-as (pointer uint128) (&+ s2-3 16))))
+          (set! (-> s4-3 quad) (-> s2-3 0 quad))
+          (set! (-> s3-3 quad) (-> s2-3 1 quad))
           )
         )
       (camera-line s4-3 s3-3 (new 'static 'vector4w :y #x80 :w #x80))
@@ -694,23 +694,14 @@
         )
       )
     )
-  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time 1.0))
+  (let ((s4-4 (res-lump-data arg0 'focalpull (inline-array vector) :time 1.0))
         (s5-7 (new 'static 'vector))
         )
     (when (and s4-4
                (or (!= *camera-layout-blink* 'focalpull) (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
                )
-      (camera-line
-        (the-as vector (&+ s4-4 0))
-        (the-as vector (&+ s4-4 16))
-        (new 'static 'vector4w :y #xff :z #xff :w #x80)
-        )
-      (vector-lerp-clamp!
-        s5-7
-        (the-as vector (&+ s4-4 0))
-        (the-as vector (&+ s4-4 16))
-        (-> *CAM_LAYOUT-bank* spline-t)
-        )
+      (camera-line (-> s4-4 0) (-> s4-4 1) (new 'static 'vector4w :y #xff :z #xff :w #x80))
+      (vector-lerp-clamp! s5-7 (-> s4-4 0) (-> s4-4 1) (-> *CAM_LAYOUT-bank* spline-t))
       (camera-cross
         (new 'static 'vector :y 1024.0)
         (new 'static 'vector :z 1024.0)
@@ -754,7 +745,7 @@
       (set! (-> s5-8 disp) "si3")
       (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :z #xff :w #x80))
       (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) s5-8)
-      (set! (-> s5-8 axis) (the-as vector (&-> (view-get-active-camera) stack 160)))
+      (set! (-> s5-8 axis) (-> (the-as camera-master (view-get-active-camera)) local-down))
       (set! (-> s5-8 disp) "si2d")
       (set! (-> s5-8 color) (new 'static 'vector4w :y #xff :z #xff :w #x80))
       (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) s5-8)

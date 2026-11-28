@@ -5,12 +5,43 @@
 ;; name in dgo: net-enemy-h
 ;; dgos: COMMON, GAME
 
+;; +++net-enemy-info-flag
+(defenum net-enemy-info-flag
+  :type uint64
+  :bitfield #t
+  (use-nav 0)
+  )
+;; ---net-enemy-info-flag
+
+;; +++net-enemy-snap-flag
+(defenum net-enemy-snap-flag
+  :type uint64
+  :bitfield #t
+  (snap-quat 0)
+  (snap-trans 1)
+  )
+;; ---net-enemy-snap-flag
+
+;; +++net-enemy-flag
+(defenum net-enemy-flag
+  :type uint64
+  :bitfield #t
+  (bit0 0)
+  (proximity-ownership 1)
+  (snap-to-ground 2)
+  (keep-ground-offset 3)
+  (attackable 4)
+  (impactable 5)
+  (check-overlaps 6)
+  )
+;; ---net-enemy-flag
+
 ;; DECOMP BEGINS
 
 (deftype net-enemy-transition (structure)
   ((timestamp  int32)
-   (name       basic)
-   (preempt    basic)
+   (name       symbol)
+   (preempt    symbol)
    (data-len   int32)
    (buf-data   uint8  64)
    )
@@ -20,7 +51,7 @@
 (define *tmp-construct-transition* (new 'static 'net-enemy-transition))
 
 (deftype net-enemy-anim-info (structure)
-  ((name         basic)
+  ((name         symbol)
    (anim-idx     int32)
    (forward-vel  vector)
    )
@@ -28,7 +59,7 @@
 
 
 (deftype net-enemy-info (structure)
-  ((flags                       uint64)
+  ((flags                       net-enemy-info-flag)
    (inverse-mass                float)
    (ragdoll-info                ragdoll-setup)
    (max-health                  float)
@@ -40,10 +71,10 @@
    (min-fatal-impact-enemy-vel  float)
    (time-before-evaporate       int32)
    (time-before-respawn         int32)
-   (anim-info                   basic)
+   (anim-info                   (array net-enemy-anim-info))
    (kill-score                  int32)
    (wound-score-scale           float)
-   (allow-vehicle-penetrate     basic)
+   (allow-vehicle-penetrate     symbol)
    (min-ground-offset           float)
    (ground-probe-lod-dist       float)
    (show-kill-score             int32)
@@ -52,9 +83,9 @@
 
 
 (deftype net-enemy (process-focusable)
-  ((flags                   uint64)
+  ((flags                   net-enemy-flag)
    (info                    net-enemy-info)
-   (ragdoll-proc            uint64)
+   (ragdoll-proc            handle)
    (health                  float)
    (local-damage            float)
    (killed-by               int8)
@@ -65,57 +96,59 @@
    (transition-ct           int32)
    (last-attack-time        int32)
    (vehicle-penetrate-time  int32)
-   (paths                   basic)
-   (pending-impulse-valid   basic)
+   (paths                   (array path-control))
+   (pending-impulse-valid   symbol)
    (pending-impulse         rigid-body-impact     :inline)
    (last-transition-time    int32)
    (last-attack-id          int32)
    (vel-for-ragdoll         vector                :inline)
    (nav-poly                nav-poly)
-   (snap-flags              uint64)
+   (snap-flags              net-enemy-snap-flag)
    (prev-pos                vector                :inline)
    (forward-path-vector     vector                :inline)
-   (enemy-link              list-link             :inline)
+   (enemy-link              linked-list           :inline)
    )
+  (:state-methods
+    startup
+    in-ragdoll
+    waiting-respawn
+    )
   (:methods
-    (net-enemy-method-59 () none)
-    (net-enemy-method-60 () none)
-    (net-enemy-method-61 () none)
-    (net-enemy-method-62 () none)
-    (net-enemy-method-63 () none)
-    (net-enemy-method-64 () none)
-    (net-enemy-method-65 () none)
-    (net-enemy-method-66 () none)
-    (net-enemy-method-67 () none)
-    (net-enemy-method-68 () none)
-    (net-enemy-method-69 () none)
-    (net-enemy-method-70 () none)
-    (net-enemy-method-71 () none)
-    (net-enemy-method-72 () none)
-    (net-enemy-method-73 () none)
-    (net-enemy-method-74 () none)
-    (net-enemy-method-75 () none)
-    (net-enemy-method-76 () none)
-    (net-enemy-method-77 () none)
-    (net-enemy-method-78 () none)
-    (net-enemy-method-79 () none)
-    (net-enemy-method-80 () none)
-    (net-enemy-method-81 () none)
-    (net-enemy-method-82 () none)
-    (net-enemy-method-83 () none)
-    (net-enemy-method-84 () none)
-    (net-enemy-method-85 () none)
-    (net-enemy-method-86 () none)
+    (init! (_type_) none)
+    (net-enemy-method-63 (_type_) none)
+    (send-local-damage (_type_) none)
+    (on-attack (_type_ attack-info) none)
+    (on-fatal-attack (_type_ int int) none)
+    (on-impact (_type_ rigid-body-impact) none)
+    (on-fatal-impact (_type_ rigid-body-impact int) none)
+    (update-transitions (_type_) none)
+    (do-transition (_type_ mem-buffer int symbol) none)
+    (transition-pending? (_type_) symbol)
+    (queue-transition (_type_ net-enemy-transition) none)
+    (clear-transitions (_type_) none)
+    (update-trans (_type_ vector quaternion) none)
+    (init-collision! (_type_) none)
+    (init-skeleton! (_type_) none)
+    (init-paths! (_type_) none)
+    (init-info! (_type_) none)
+    (impulse->attack-velocity (_type_ vector vector float) vector)
+    (send-impact-attack (_type_ process-focusable rigid-body-impact) none)
+    (common-post (_type_) none)
+    (reset! (_type_) none)
+    (init-nav! (_type_) none)
+    (face-nav-heading (_type_ nav-control) none)
+    (integrate-nav-vel (_type_ nav-control) none)
+    (get-anim-end-time (_type_ int int) int)
     )
   )
 
 
+;; WARN: Return type mismatch int vs object.
 (defbehavior net-enemy-init-remote process-focusable ((arg0 mem-buffer))
   (register self -1 #xffff)
   (init-remote self arg0)
   (post-init-remote self)
   0
-  (none)
   )
 
 (defmethod spawn-remote ((this net-enemy) (arg0 mem-buffer))

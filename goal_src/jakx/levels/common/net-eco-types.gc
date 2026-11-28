@@ -7,3 +7,1109 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-eco-blue-debris-a eco-blue-debris eco-blue-debris-a-lod0-jg -1
+              ((eco-blue-debris-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(defskelgroup skel-eco-blue-debris-b eco-blue-debris eco-blue-debris-b-lod0-jg -1
+              ((eco-blue-debris-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(defskelgroup skel-eco-blue-debris-c eco-blue-debris eco-blue-debris-c-lod0-jg -1
+              ((eco-blue-debris-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(defskelgroup skel-eco-blue-debris-d eco-blue-debris eco-blue-debris-d-lod0-jg -1
+              ((eco-blue-debris-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(define *eco-blue-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-a")
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-b")
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-c")
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-d")
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-a")
+      (new 'static 'debris-static-joint-params :group "skel-eco-blue-debris-c")
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+(deftype eco-blue (eco)
+  ((launcher     sparticle-launcher  5)
+   (birth-accum  float               5)
+   )
+  )
+
+
+(define *eco-blue-base-quat* (new 'static 'quaternion))
+
+(quaternion-axis-angle! *eco-blue-base-quat* 1.0 0.0 0.0 4000.0)
+
+(defskelgroup skel-eco-blue eco-blue eco-blue-lod0-jg eco-blue-idle-ja
+              ((eco-blue-lod0-mg (meters 20)) (eco-blue-lod1-mg (meters 40)) (eco-blue-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(defmethod init! ((this eco-blue))
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-eco-blue" (the-as (pointer level) #f)) 0)
+  (set! (-> this launcher 0) (-> *part-id-table* 710))
+  (set! (-> this launcher 1) (-> *part-id-table* 711))
+  (set! (-> this launcher 2) (-> *part-id-table* 712))
+  (set! (-> this launcher 3) (-> *part-id-table* 713))
+  (set! (-> this launcher 4) (-> *part-id-table* 714))
+  (dotimes (v1-13 5)
+    (set! (-> this birth-accum v1-13) 0.0)
+    )
+  (go (method-of-object this running))
+  0
+  (none)
+  )
+
+(defmethod on-collected ((this eco-blue) (arg0 entity-actor) (arg1 int))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 1))
+        (s2-0 (if (-> *net-players* arg1)
+                  (get-vehicle (-> *net-players* arg1))
+                  (the-as wvehicle #f)
+                  )
+              )
+        )
+    (when s2-0
+      (send-event s2-0 'pickup 'blue #x3f000000)
+      (when this
+        (let ((v1-17 (make-sound-instance snd-pickup-burst (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-17
+              (-> v1-17 id)
+              0
+              )
+          )
+        (let ((v1-23 (make-sound-instance snd-pu-turbo (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-23
+              (-> v1-23 id)
+              0
+              )
+          )
+        (vector-float*! (-> s3-0 0) (-> s2-0 root transv) 0.9)
+        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 213))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) s2-0)
+        (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 213 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        (let ((a1-12 (new 'stack 'debris-tuning (the-as uint 0))))
+          (set! (-> a1-12 scale-rand-lo) 0.35)
+          (set! (-> a1-12 scale-rand-hi) 0.5)
+          (set-vector! (-> a1-12 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-lo) (-> a1-12 fountain-rand-transv-lo) (-> s3-0 0))
+          (set-vector! (-> a1-12 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-hi) (-> a1-12 fountain-rand-transv-hi) (-> s3-0 0))
+          (set! (-> a1-12 fountain-rand-transv-hi w) 16384.0)
+          (set! (-> a1-12 duration) (the-as uint 1200))
+          (debris-spawn s2-0 a1-12 *eco-blue-debris-params* this)
+          )
+        )
+      )
+    )
+  ((method-of-type eco on-collected) this arg0 arg1)
+  (none)
+  )
+
+(defstate running (eco-blue)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (let ((v1-7 (new 'stack-no-clear 'vector)))
+          (set! (-> v1-7 quad) (-> self entity trans quad))
+          (+! (-> v1-7 y) 24576.0)
+          (set! (-> *launch-matrix* trans quad) (-> v1-7 quad))
+          )
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 180))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) #f)
+        (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 180 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        )
+      )
+    (let ((t9-6 (-> (method-of-type eco running) enter)))
+      (if t9-6
+          (t9-6)
+          )
+      )
+    )
+  :trans (behavior ()
+    (set! (-> self root trans quad) (-> self entity extra trans quad))
+    (+! (-> self root trans y) 24576.0)
+    (let ((f30-0 (the float (+ (mod (* 3797 (-> self pid)) 900) (current-time)))))
+      (+! (-> self root trans y) (* 2457.6 (cos (* 94.24777 f30-0))))
+      (let ((gp-0 (new 'stack-no-clear 'inline-array 'quaternion 1)))
+        (quaternion-axis-angle! (-> gp-0 0) 0.0 1.0 0.0 (* 94.24777 f30-0))
+        (quaternion*! (-> self root rotation) (-> gp-0 0) *eco-blue-base-quat*)
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-9 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-9 prim-core collide-as) (collide-spec))
+            (set! (-> v1-9 prim-core collide-with) (collide-spec))
+            )
+          0
+          )
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        (suspend-for (seconds 0.667)
+          )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-23 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-23 prim-core collide-as) (-> (the-as collide-shape (-> self root)) backup-collide-as))
+            (set! (-> v1-23 prim-core collide-with) (-> (the-as collide-shape (-> self root)) backup-collide-with))
+            )
+          )
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        )
+      )
+    (until #f
+      (when (< (-> self draw cur-lod) 1)
+        (dotimes (gp-1 5)
+          (set! (-> self launcher gp-1 birthaccum) (-> self birth-accum gp-1))
+          (launch-particles (-> self launcher gp-1) (-> self node-list data 0 bone transform) :origin-is-matrix #t)
+          (set! (-> self birth-accum gp-1) (-> self launcher gp-1 birthaccum))
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+(deftype eco-yellow (eco)
+  ((launcher     sparticle-launcher)
+   (birth-accum  float)
+   )
+  )
+
+
+(defskelgroup skel-eco-yellow eco-yellow eco-yellow-lod0-jg eco-yellow-idle-ja
+              ((eco-yellow-lod0-mg (meters 20)) (eco-yellow-lod1-mg (meters 40)) (eco-yellow-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :texture-level 18
+              )
+
+(defmethod on-collected ((this eco-yellow) (arg0 entity-actor) (arg1 int))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 1))
+        (s2-0 (if (-> *net-players* arg1)
+                  (get-vehicle (-> *net-players* arg1))
+                  (the-as wvehicle #f)
+                  )
+              )
+        )
+    (when s2-0
+      (send-event s2-0 'pickup 'yellow)
+      (when this
+        (let ((v1-16 (make-sound-instance snd-pickup-burst (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-16
+              (-> v1-16 id)
+              0
+              )
+          )
+        (let ((v1-22 (make-sound-instance snd-yellow-pickup (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-22
+              (-> v1-22 id)
+              0
+              )
+          )
+        (vector-float*! (-> s3-0 0) (-> s2-0 root transv) 0.9)
+        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 209))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) s2-0)
+        (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 209 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        (let ((a1-12 (new 'stack 'debris-tuning (the-as uint 0))))
+          (set! (-> a1-12 scale-rand-lo) 0.35)
+          (set! (-> a1-12 scale-rand-hi) 0.5)
+          (set-vector! (-> a1-12 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-lo) (-> a1-12 fountain-rand-transv-lo) (-> s3-0 0))
+          (set-vector! (-> a1-12 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-hi) (-> a1-12 fountain-rand-transv-hi) (-> s3-0 0))
+          (set! (-> a1-12 fountain-rand-transv-hi w) 16384.0)
+          (set! (-> a1-12 duration) (the-as uint 1200))
+          (debris-spawn s2-0 a1-12 *eco-blue-debris-params* this)
+          )
+        )
+      )
+    )
+  ((method-of-type eco on-collected) this arg0 arg1)
+  (none)
+  )
+
+(defmethod init! ((this eco-yellow))
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-eco-yellow" (the-as (pointer level) #f)) 0)
+  (set! (-> this launcher) (-> *part-id-table* 722))
+  (set! (-> this birth-accum) 0.0)
+  (go (method-of-object this running))
+  0
+  (none)
+  )
+
+(defstate running (eco-yellow)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (let ((v1-7 (new 'stack-no-clear 'vector)))
+          (set! (-> v1-7 quad) (-> self entity trans quad))
+          (+! (-> v1-7 y) 24576.0)
+          (set! (-> *launch-matrix* trans quad) (-> v1-7 quad))
+          )
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 181))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) #f)
+        (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 181 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        )
+      )
+    (let ((t9-6 (-> (method-of-type eco running) enter)))
+      (if t9-6
+          (t9-6)
+          )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-9 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-9 prim-core collide-as) (collide-spec))
+            (set! (-> v1-9 prim-core collide-with) (collide-spec))
+            )
+          0
+          )
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        (suspend-for (seconds 0.667)
+          )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-23 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-23 prim-core collide-as) (-> (the-as collide-shape (-> self root)) backup-collide-as))
+            (set! (-> v1-23 prim-core collide-with) (-> (the-as collide-shape (-> self root)) backup-collide-with))
+            )
+          )
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        )
+      )
+    (until #f
+      (when (< (-> self draw cur-lod) 1)
+        (set! (-> self root trans quad) (-> self entity extra trans quad))
+        (+! (-> self root trans y) 24576.0)
+        (set! (-> self launcher birthaccum) (-> self birth-accum))
+        (let ((t9-6 sp-launch-particles-var)
+              (a0-22 *sp-particle-system-2d*)
+              (a1-16 (-> self launcher))
+              (a2-6 *launch-matrix*)
+              )
+          (set! (-> a2-6 trans quad) (-> self root trans quad))
+          (t9-6 a0-22 a1-16 a2-6 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        (set! (-> self birth-accum) (-> self launcher birthaccum))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (set! (-> self root trans quad) (-> self entity extra trans quad))
+    (+! (-> self root trans y) 24576.0)
+    (let ((f30-0 (the float (+ (mod (* 3797 (-> self pid)) 900) (current-time)))))
+      (+! (-> self root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
+      (quaternion-axis-angle! (-> self root rotation) 0.0 1.0 0.0 (* 50.0 f30-0))
+      )
+    (ja-post)
+    )
+  )
+
+(deftype eco-red (eco)
+  ((launcher     sparticle-launcher)
+   (birth-accum  float)
+   )
+  )
+
+
+(defskelgroup skel-eco-red eco-red eco-red-lod0-jg eco-red-idle-ja
+              ((eco-red-lod0-mg (meters 20)) (eco-red-lod1-mg (meters 40)) (eco-red-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.6)
+              :texture-level 18
+              )
+
+(defmethod on-collected ((this eco-red) (arg0 entity-actor) (arg1 int))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 1))
+        (s2-0 (if (-> *net-players* arg1)
+                  (get-vehicle (-> *net-players* arg1))
+                  (the-as wvehicle #f)
+                  )
+              )
+        )
+    (when s2-0
+      (send-event s2-0 'pickup 'red)
+      (when this
+        (let ((v1-16 (make-sound-instance snd-pickup-burst (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-16
+              (-> v1-16 id)
+              0
+              )
+          )
+        (let ((v1-22 (make-sound-instance snd-red-pickup (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-22
+              (-> v1-22 id)
+              0
+              )
+          )
+        (vector-float*! (-> s3-0 0) (-> s2-0 root transv) 0.9)
+        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 210))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) s2-0)
+        (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 210 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        (let ((a1-12 (new 'stack 'debris-tuning (the-as uint 0))))
+          (set! (-> a1-12 scale-rand-lo) 0.35)
+          (set! (-> a1-12 scale-rand-hi) 0.5)
+          (set-vector! (-> a1-12 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-lo) (-> a1-12 fountain-rand-transv-lo) (-> s3-0 0))
+          (set-vector! (-> a1-12 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-hi) (-> a1-12 fountain-rand-transv-hi) (-> s3-0 0))
+          (set! (-> a1-12 fountain-rand-transv-hi w) 16384.0)
+          (set! (-> a1-12 duration) (the-as uint 1200))
+          (debris-spawn s2-0 a1-12 *eco-blue-debris-params* this)
+          )
+        )
+      )
+    )
+  ((method-of-type eco on-collected) this arg0 arg1)
+  (none)
+  )
+
+(defmethod init! ((this eco-red))
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-eco-red" (the-as (pointer level) #f)) 0)
+  (set! (-> this launcher) (-> *part-id-table* 724))
+  (set! (-> this birth-accum) 0.0)
+  (go (method-of-object this running))
+  0
+  (none)
+  )
+
+(defstate running (eco-red)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (let ((v1-7 (new 'stack-no-clear 'vector)))
+          (set! (-> v1-7 quad) (-> self entity trans quad))
+          (+! (-> v1-7 y) 24576.0)
+          (set! (-> *launch-matrix* trans quad) (-> v1-7 quad))
+          )
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 179))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) #f)
+        (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 179 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        )
+      )
+    (let ((t9-6 (-> (method-of-type eco running) enter)))
+      (if t9-6
+          (t9-6)
+          )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-9 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-9 prim-core collide-as) (collide-spec))
+            (set! (-> v1-9 prim-core collide-with) (collide-spec))
+            )
+          0
+          )
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        (suspend-for (seconds 0.667)
+          )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-23 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-23 prim-core collide-as) (-> (the-as collide-shape (-> self root)) backup-collide-as))
+            (set! (-> v1-23 prim-core collide-with) (-> (the-as collide-shape (-> self root)) backup-collide-with))
+            )
+          )
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        )
+      )
+    (until #f
+      (when (< (-> self draw cur-lod) 1)
+        (set! (-> self root trans quad) (-> self entity extra trans quad))
+        (+! (-> self root trans y) 24576.0)
+        (set! (-> self launcher birthaccum) (-> self birth-accum))
+        (let ((t9-6 sp-launch-particles-var)
+              (a0-22 *sp-particle-system-2d*)
+              (a1-16 (-> self launcher))
+              (a2-6 *launch-matrix*)
+              )
+          (set! (-> a2-6 trans quad) (-> self root trans quad))
+          (t9-6 a0-22 a1-16 a2-6 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        (set! (-> self birth-accum) (-> self launcher birthaccum))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (set! (-> self root trans quad) (-> self entity extra trans quad))
+    (+! (-> self root trans y) 24576.0)
+    (let ((f30-0 (the float (+ (mod (* 3797 (-> self pid)) 900) (current-time)))))
+      (+! (-> self root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
+      (quaternion-axis-angle! (-> self root rotation) 0.0 1.0 0.0 (* 50.0 f30-0))
+      )
+    (ja-post)
+    )
+  )
+
+(deftype eco-green (eco)
+  ((launcher     sparticle-launcher)
+   (birth-accum  float)
+   )
+  )
+
+
+(defskelgroup skel-eco-green eco-green eco-green-lod0-jg eco-green-idle-ja
+              ((eco-green-lod0-mg (meters 20)) (eco-green-lod1-mg (meters 40)) (eco-green-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.3)
+              :texture-level 18
+              )
+
+(defmethod init! ((this eco-green))
+  (initialize-skeleton this (art-group-get-by-name *level* "skel-eco-green" (the-as (pointer level) #f)) 0)
+  (setup-masks (-> this draw) 0 0)
+  (set! (-> this launcher) (-> *part-id-table* 708))
+  (set! (-> this birth-accum) 0.0)
+  (go (method-of-object this running))
+  0
+  (none)
+  )
+
+(defmethod on-collected ((this eco-green) (arg0 entity-actor) (arg1 int))
+  (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 1))
+        (s2-0 (if (-> *net-players* arg1)
+                  (get-vehicle (-> *net-players* arg1))
+                  (the-as wvehicle #f)
+                  )
+              )
+        )
+    (when s2-0
+      (send-event s2-0 'pickup 'green 0.7)
+      (when this
+        (let ((v1-17 (make-sound-instance snd-pickup-burst (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-17
+              (-> v1-17 id)
+              0
+              )
+          )
+        (let ((v1-23 (make-sound-instance snd-pu-health (new 'static 'sound-id) (process->handle s2-0))))
+          (if v1-23
+              (-> v1-23 id)
+              0
+              )
+          )
+        (vector-float*! (-> s3-0 0) (-> s2-0 root transv) 0.9)
+        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 212))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 300))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) s2-0)
+        (set! (-> *part-tracker-params-default* mat-joint) (the-as object 0))
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 212 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        (let ((a1-12 (new 'stack 'debris-tuning (the-as uint 0))))
+          (set! (-> a1-12 scale-rand-lo) 0.35)
+          (set! (-> a1-12 scale-rand-hi) 0.5)
+          (set-vector! (-> a1-12 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-lo) (-> a1-12 fountain-rand-transv-lo) (-> s3-0 0))
+          (set-vector! (-> a1-12 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+          (vector+! (-> a1-12 fountain-rand-transv-hi) (-> a1-12 fountain-rand-transv-hi) (-> s3-0 0))
+          (set! (-> a1-12 fountain-rand-transv-hi w) 16384.0)
+          (set! (-> a1-12 duration) (the-as uint 1200))
+          (debris-spawn s2-0 a1-12 *eco-blue-debris-params* this)
+          )
+        )
+      )
+    )
+  ((method-of-type eco on-collected) this arg0 arg1)
+  (none)
+  )
+
+(defstate running (eco-green)
+  :virtual #t
+  :enter (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (let ((v1-7 (new 'stack-no-clear 'vector)))
+          (set! (-> v1-7 quad) (-> self entity trans quad))
+          (+! (-> v1-7 y) 24576.0)
+          (set! (-> *launch-matrix* trans quad) (-> v1-7 quad))
+          )
+        (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 182))
+        (vector-reset! (-> *part-tracker-params-default* local-offset))
+        (set! (-> *part-tracker-params-default* duration) (the-as uint 1500))
+        (set! (-> *part-tracker-params-default* callback) #f)
+        (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+        (set! (-> *part-tracker-params-default* target) #f)
+        (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+        (set! (-> *part-tracker-params-default* local-space-param) 0)
+        (set! (-> *part-tracker-params-default* local-space-callback) #f)
+        (set! (-> *part-tracker-params-default* subsampler-num) 1.0)
+        *part-tracker-params-default*
+        (if (logtest? (-> *part-group-id-table* 182 flags) (sp-group-flag sp13))
+            (process-spawn
+              part-tracker-subsampler
+              :init part-tracker-subsampler-init
+              *part-tracker-params-default*
+              :name "part-tracker-subsampler"
+              :to *entity-pool*
+              :unk 0
+              )
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              *part-tracker-params-default*
+              :name "part-tracker"
+              :to *entity-pool*
+              :unk 0
+              )
+            )
+        )
+      )
+    (let ((t9-6 (-> (method-of-type eco running) enter)))
+      (if t9-6
+          (t9-6)
+          )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (the-as structure (-> self entity extra perm))))
+      (when (and (< 1500 (- (- (if *net-mgr*
+                                   (-> *net-mgr* game-state time)
+                                   0
+                                   )
+                               (if *net-world*
+                                   (-> *net-world* net-state game-start-time)
+                                   0
+                                   )
+                               )
+                            (if *net-world*
+                                (-> *net-world* net-state total-pause-time)
+                                0
+                                )
+                            )
+                    )
+                 (< (- (- (- (if *net-mgr*
+                                 (-> *net-mgr* game-state time)
+                                 0
+                                 )
+                             (if *net-world*
+                                 (-> *net-world* net-state game-start-time)
+                                 0
+                                 )
+                             )
+                          (if *net-world*
+                              (-> *net-world* net-state total-pause-time)
+                              0
+                              )
+                          )
+                       (-> (the-as eco-perm v1-2) time)
+                       )
+                    150
+                    )
+                 )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-9 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-9 prim-core collide-as) (collide-spec))
+            (set! (-> v1-9 prim-core collide-with) (collide-spec))
+            )
+          0
+          )
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        (suspend-for (seconds 0.667)
+          )
+        (when (type? (-> self root) collide-shape)
+          (let ((v1-23 (-> (the-as collide-shape (-> self root)) root-prim)))
+            (set! (-> v1-23 prim-core collide-as) (-> (the-as collide-shape (-> self root)) backup-collide-as))
+            (set! (-> v1-23 prim-core collide-with) (-> (the-as collide-shape (-> self root)) backup-collide-with))
+            )
+          )
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        (if (type? (-> self root) collide-shape)
+            (transform-post)
+            )
+        )
+      )
+    (until #f
+      (when (< (-> self draw cur-lod) 1)
+        (set! (-> self root trans quad) (-> self entity extra trans quad))
+        (+! (-> self root trans y) 24576.0)
+        (set! (-> self launcher birthaccum) (-> self birth-accum))
+        (let ((t9-6 sp-launch-particles-var)
+              (a0-22 *sp-particle-system-2d*)
+              (a1-16 (-> self launcher))
+              (a2-6 *launch-matrix*)
+              )
+          (set! (-> a2-6 trans quad) (-> self root trans quad))
+          (t9-6 a0-22 a1-16 a2-6 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        (set! (-> self birth-accum) (-> self launcher birthaccum))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (set! (-> self root trans quad) (-> self entity extra trans quad))
+    (+! (-> self root trans y) 24576.0)
+    (let ((f30-0 (the float (+ (mod (* 3797 (-> self pid)) 900) (current-time)))))
+      (+! (-> self root trans y) (* 2457.6 (cos (* 100.0 f30-0))))
+      (quaternion-axis-angle! (-> self root rotation) 0.0 1.0 0.0 (* 50.0 f30-0))
+      )
+    (ja-post)
+    )
+  )

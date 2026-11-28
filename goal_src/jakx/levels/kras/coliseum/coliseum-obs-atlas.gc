@@ -419,7 +419,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue" (the-as (pointer level) #f))
     0
@@ -466,7 +466,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-a" (the-as (pointer level) #f))
     0
@@ -624,7 +624,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-b" (the-as (pointer level) #f))
     0
@@ -726,7 +726,7 @@
     (set! (-> this root) s5-0)
     )
   (set! (-> this hit-points) 33.0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-c" (the-as (pointer level) #f))
     0
@@ -878,7 +878,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-ball-collision" (the-as (pointer level) #f))
     0
@@ -904,7 +904,7 @@
    (orientation            quaternion  :inline)
    (blend-position         vector      :inline)
    (last-position          vector      :inline)
-   (rolling-sound          uint32)
+   (rolling-sound          sound-id)
    (rolling-speed          float)
    (last-bounce-time       int32)
    (last-sync-time         int32)
@@ -1006,7 +1006,7 @@
     (set! (-> self set-angular-velocity) #f)
     (set! (-> self send-update) #f)
     (set! (-> self rolling-speed) 0.0)
-    (set! (-> self rolling-sound) (the-as uint 0))
+    (set! (-> self rolling-sound) (new 'static 'sound-id))
     (set! (-> self last-bounce-time) (the-as int (+ (current-time) (seconds -10))))
     (set! (-> self last-position quad) (-> self root trans quad))
     (set! (-> self blend-position quad) (-> self root trans quad))
@@ -1473,19 +1473,19 @@
          (else
            (let ((v1-34 (make-sound-instance snd-big-ball-roll (new 'static 'sound-id) (the-as handle #f))))
              (set! (-> this rolling-sound)
-                   (the-as uint (cond
-                                  (v1-34
-                                    (set! (-> v1-34 volume) (the int (* 1024.0 (-> this volume-modulate))))
-                                    (set! (-> v1-34 pitch-mod) (the int (* 1524.0 f30-0)))
-                                    (set! (-> v1-34 trans quad) (-> this root trans quad))
-                                    (logior! (-> v1-34 flags) (sound-spec-flag no-track needs-update))
-                                    (logior! (-> v1-34 mask) 9)
-                                    (the-as int (-> v1-34 id))
-                                    )
-                                  (else
-                                    0
-                                    )
-                                  )
+                   (the-as sound-id (cond
+                                      (v1-34
+                                        (set! (-> v1-34 volume) (the int (* 1024.0 (-> this volume-modulate))))
+                                        (set! (-> v1-34 pitch-mod) (the int (* 1524.0 f30-0)))
+                                        (set! (-> v1-34 trans quad) (-> this root trans quad))
+                                        (logior! (-> v1-34 flags) (sound-spec-flag no-track needs-update))
+                                        (logior! (-> v1-34 mask) 9)
+                                        (the-as int (-> v1-34 id))
+                                        )
+                                      (else
+                                        0
+                                        )
+                                      )
                            )
                    )
              )
@@ -1497,8 +1497,8 @@
      )
     (else
       (when (nonzero? (-> this rolling-sound))
-        (sound-stop (the-as sound-id (-> this rolling-sound)) #t)
-        (set! (-> this rolling-sound) (the-as uint 0))
+        (sound-stop (-> this rolling-sound) #t)
+        (set! (-> this rolling-sound) (new 'static 'sound-id))
         0
         )
       )
@@ -1566,7 +1566,7 @@
 (defmethod rigid-body-object-method-66 ((this coli-atlas-globe))
   (set! (-> this roll-sound-stop-time) (the-as int (current-time)))
   (rigid-body-object-method-64 this *coli-atlas-ball-constants*)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-globe" (the-as (pointer level) #f))
     0
@@ -1618,7 +1618,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1656,7 +1656,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue-break-a" (the-as (pointer level) #f))
     0
@@ -1718,7 +1718,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1757,7 +1757,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-statue-break-b" (the-as (pointer level) #f))
     0
@@ -1854,7 +1854,7 @@
     (while (-> self child)
       (suspend)
       )
-    (process-drawable-method-44 self)
+    (cleanup-for-death self)
     )
   :post ja-post
   )
@@ -1870,7 +1870,7 @@
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root) (the-as collide-shape (new 'process 'trsqv)))
   (process-drawable-from-entity! this arg0)
-  (process-drawable-method-42
+  (initialize-skeleton
     this
     (art-group-get-by-name *level* "skel-coli-atlas-base-break" (the-as (pointer level) #f))
     0

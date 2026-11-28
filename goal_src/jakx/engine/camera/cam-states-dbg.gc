@@ -69,13 +69,13 @@
             (let ((s3-0 (new-stack-matrix0)))
               (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
               (vector-matrix*! s4-4 (-> self tracking inv-mat fvec) s3-0)
-              (matrix-axis-angle! s3-0 (the-as vector (&-> (view-get-active-camera) stack 160)) (- (-> s5-0 y)))
+              (matrix-axis-angle! s3-0 (-> (the-as camera-master (view-get-active-camera)) local-down) (- (-> s5-0 y)))
               (vector-matrix*! s4-4 s4-4 s3-0)
               )
             (forward-down->inv-matrix
               (-> self tracking inv-mat)
               s4-4
-              (the-as vector (&-> (view-get-active-camera) stack 160))
+              (-> (the-as camera-master (view-get-active-camera)) local-down)
               )
             )
           (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
@@ -371,9 +371,9 @@
     )
   :code (behavior ()
     (until #f
-      (let ((gp-0 (&-> (view-get-active-camera) stack 160)))
+      (let ((gp-0 (-> (the-as camera-master (view-get-active-camera)) local-down)))
         (if (logtest? (-> self options) (cam-slave-options-u32 ALLOW_Z_ROT))
-            (set! gp-0 (the-as (pointer uint8) #f))
+            (set! gp-0 (the-as vector #f))
             )
         (when (not (-> (the-as camera-master (view-get-active-camera)) settings mouse-input))
           (if *amy-cam*
@@ -383,7 +383,7 @@
             (the-as camera-master (view-get-active-camera))
             (-> self tracking)
             (-> self trans)
-            (the-as vector gp-0)
+            gp-0
             (view-get-active-index)
             )
           (when *amy-cam*
