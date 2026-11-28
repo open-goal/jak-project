@@ -2935,7 +2935,7 @@
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
-   (command uint16  :offset-assert 2) ;; sound-command
+   (command sound-command  :offset-assert 2) ;; sound-command
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2956,7 +2956,7 @@
   )
 
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
-  ((bank-name uint128  :offset-assert 16) ;; sound-name
+  ((bank-name sound-name  :offset-assert 16) ;; sound-name
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -7041,10 +7041,10 @@
     (update-warp-and-hud (_type_) none) ;; 19
     (update-sprites (_type_) none) ;; 20
     (mark-hud-warp-sprite-dirty (_type_ (pointer int32)) symbol) ;; 21 a guess on the second arg until we find a caller
-    (lay-out-car-tex (_type_ level) none) ;; 22 
-    (lay-out-driver-tex (_type_ level) none) ;; 23 
-    (lay-out-sprite-tex (_type_) none) ;; 24 ;; 
-    (lay-out-hud-tex (_type_) none) ;; 25 ;; 
+    (lay-out-car-tex (_type_ level) int) ;; 22
+    (lay-out-driver-tex (_type_ level) none) ;; 23
+    (lay-out-sprite-tex (_type_) none) ;; 24
+    (lay-out-hud-tex (_type_) none) ;; 25
     (lay-out-warp-tex (_type_) none) ;; 26
     (clear-ids (_type_) none) ;; 27
     )
@@ -16134,6 +16134,7 @@
 
 (declare-type car-info-save structure)
 
+(declare-type car-hsv-color vector)
 (deftype car-rgb-color (vector4w)
   ((red   int32  :offset 0)
    (green int32  :offset 4)
@@ -16144,9 +16145,9 @@
   :size-assert         #x10
   :flag-assert         #xc00000010
   (:methods
-    (car-rgb-color-method-9 () none) ;; 9
-    (car-rgb-color-method-10 (_type_) rgba) ;; 10
-    (car-rgb-color-method-11 (_type_ rgba) none) ;; 11
+    (from-hsv! (_type_ car-hsv-color) none) ;; 9
+    (to-rgba (_type_) rgba) ;; 10
+    (from-rgba! (_type_ rgba) none) ;; 11
     )
   )
 
@@ -16159,14 +16160,14 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (car-hsv-color-method-9 () none) ;; 9
+    (from-rgb! (_type_ car-rgb-color) float) ;; 9
     )
   )
 
 (deftype car-part-info (structure)
-  ((short-name-id uint32  :offset-assert 0)
-   (name-id       uint32  :offset-assert 4)
-   (task          uint16  :offset-assert 8)
+  ((short-name-id text-id :offset-assert 0)
+   (name-id       text-id :offset-assert 4)
+   (task          game-task-node :offset-assert 8)
    (flags         uint8   :offset-assert 10)
    (medal         uint8   :offset-assert 11)
    (part-id       uint8   :offset-assert 12)
@@ -16296,14 +16297,46 @@
   :flag-assert         #x900000020
   )
 
+;; +++car-info-h:car-texture-part
+(defenum car-texture-part
+  :type int32
+  (lf-fender 0)
+  (rf-fender 1)
+  (lr-fender 2)
+  (rr-fender 3)
+  (l-door 4)
+  (r-door 5)
+  (f-bumper 6)
+  (r-bumper 7)
+  (hood 8)
+  (trunk 9)
+  (roof 10)
+  (wheel 11)
+  (antenna 12)
+  (helmet 13)
+  )
+;; ---car-info-h:car-texture-part
+
+;; +++car-info-h:car-texture-layer
+(defenum car-texture-layer
+  :type int32
+  (dest 0)
+  (base 1)
+  (stripe 2)
+  (detail 3)
+  (damage 4)
+  )
+;; ---car-info-h:car-texture-layer
+
 (deftype car-info-full (car-info)
   ((level              level                :offset-assert 52)
    (wheel-blur         float                :offset-assert 56)
-   (tread-texture      basic                :offset-assert 60)
+   (tread-texture      texture              :offset-assert 60)
    (textures           car-textures         :offset-assert 64)
    (first-tbp          uint32               :offset-assert 68)
    (last-tbp           uint32               :offset-assert 72)
-   (damage             int8        14      :offset-assert 76)
+   (damage             int8         14      :offset-assert 76)
+   (damage-u8          uint8        14      :overlay-at damage)
    (lights             vu-lights    :inline :offset-assert 96)
    (shield-vu-lights   vu-lights    :inline :offset-assert 208)
    (shield-light-group light-group  :inline :offset-assert 320)
@@ -16312,19 +16345,19 @@
   :size-assert         #x200
   :flag-assert         #x1600000200
   (:methods
-    (car-info-full-method-9 (_type_) none) ;; 9
-    (car-info-full-method-10 (_type_) none) ;; 10
-    (car-info-full-method-11 (_type_) none) ;; 11
-    (car-info-full-method-12 (_type_) none) ;; 12
-    (car-info-full-method-13 (_type_) none) ;; 13
-    (car-info-full-method-14 (_type_) none) ;; 14
-    (car-info-full-method-15 (_type_) none) ;; 15
-    (car-info-full-method-16 (_type_ bucket-id) none) ;; 16
-    (car-info-full-method-17 (_type_) none) ;; 17
-    (car-info-full-method-18 (_type_ vector) none) ;; 18
-    (car-info-full-method-19 (_type_ vector vector) none) ;; 19
-    (car-info-full-method-20 (_type_) none) ;; 20
-    (car-info-full-method-21 (_type_) none) ;; 21
+    (set-base-color-hsv! (_type_ car-hsv-color) none) ;; 9
+    (set-stripe-color-hsv! (_type_ car-hsv-color) none) ;; 10
+    (get-base-color-hsv (_type_ car-hsv-color) none) ;; 11
+    (get-stripe-color-hsv (_type_ car-hsv-color) none) ;; 12
+    (clear-damage! (_type_) none) ;; 13
+    (set-part-damaged! (_type_ car-texture-part) none) ;; 14
+    (lookup-textures! (_type_) none) ;; 15
+    (draw-textures (_type_ bucket-id) none) ;; 16
+    (update-shield-lights (_type_) none) ;; 17
+    (set-shield-light-color! (_type_ vector) none) ;; 18
+    (add-shield-hit-light (_type_ vector vector) none) ;; 19
+    (draw-body-layer (_type_ dma-buffer texture car-texture-layer int int) none) ;; 20
+    (draw-wheel-layer (_type_ dma-buffer texture car-texture-layer int int) none) ;; 21
     )
   )
 
@@ -16344,7 +16377,7 @@
   :size-assert         #x13f0
   :flag-assert         #xa000013f0
   (:methods
-    (car-level-array-method-9 () none) ;; 9
+    (init! (_type_) none) ;; 9
     )
   )
 
@@ -16433,15 +16466,15 @@
   )
 
 (deftype screen-shot-work (structure)
-  ((count                  int16   :offset-assert 0)
-   (size                   int16   :offset-assert 2)
-   (name                   string  :offset-assert 4) ;; guessed by decompiler
-   (highres-enable         symbol  :offset-assert 8) ;; guessed by decompiler
+  ((count                  int16    :offset-assert 0)
+   (size                   int16    :offset-assert 2)
+   (name                   string   :offset-assert 4) ;; guessed by decompiler
+   (highres-enable         symbol   :offset-assert 8) ;; guessed by decompiler
    (highres-objects-enable symbol   :offset-assert 12)
-   (hud-enable             symbol  :offset-assert 16) ;; guessed by decompiler
+   (hud-enable             symbol   :offset-assert 16) ;; guessed by decompiler
    (letterbox-enable       symbol   :offset-assert 20)
    (debug-enable           symbol   :offset-assert 24)
-   (dir                    basic   :offset-assert 28)
+   (dir                    string   :offset-assert 28)
    (dir-checked?           symbol   :offset-assert 32)
    )
   :method-count-assert 9
@@ -16451,7 +16484,7 @@
 
 (define-extern *screen-shot-work* screen-shot-work)
 (define-extern *image-name* string)
-(define-extern *capture-tga-buffer* object)
+(define-extern *capture-tga-buffer* (pointer uint8))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; math-camera-h                  ;;
@@ -16664,7 +16697,7 @@
   :flag-assert         #xc00000820
   (:methods
     (new (symbol type) _type_) ;; 0
-    (viewport-array-method-9 (_type_ viewport) none) ;; 9
+    (viewport-array-method-9 (_type_ int) none) ;; 9
     (set-current-viewport (_type_ uint) viewport) ;; 10
     (get-current-viewport (_type_) viewport) ;; 11
     )
@@ -18802,11 +18835,11 @@
   )
 
 (deftype car-name-info (structure)
-  ((name             basic  :offset-assert 0)
-   (part-dest-name   basic  :offset-assert 4)
-   (part-source-name basic  :offset-assert 8)
-   (look-name        basic  :offset-assert 12)
-   (layer-name       basic  :offset-assert 16)
+  ((name             string :offset-assert 0)
+   (part-dest-name   string :offset-assert 4)
+   (part-source-name string :offset-assert 8)
+   (look-name        string :offset-assert 12)
+   (layer-name       string :offset-assert 16)
    (damage           int32  :offset-assert 20)
    )
   :method-count-assert 9
@@ -21831,7 +21864,7 @@
    (turbo-factor                         float                                  :offset-assert 1468)
    (turbo-disabled                       int8                                   :offset-assert 1472)
    (turbo-last-disabled                  int32                                  :offset-assert 1476)
-   (fragile-vehicle                      basic                                  :offset-assert 1480)
+   (fragile-vehicle                      symbol                                 :offset-assert 1480)
    (music-data                           uint32                         4       :offset-assert 1484)
    (music-data-bytes                           uint8                          16       :offset 1484)
    (byte0                                int8                                   :offset 1484)
@@ -22005,6 +22038,7 @@
   (fo-min 3)
   (fo-max 4)
   (volume 5)
+  (gcf6 6)
   )
 ;; ---gui-h:gui-connection-flags
 
@@ -30371,8 +30405,8 @@
     (update-proximity-ownership (_type_ vector) none) ;; 31
     (link-entity-more-perm (_type_ entity-actor) none) ;; 32 (method 13 entity-more-perm-hash)
     (unlink-entity-more-perm (_type_ entity-actor) none) ;; 33 entity-more-perm-hash-method-14
-    (register (_type_ int int) none)
-    (init-remote (_type_ mem-buffer) none)
+    (register (_type_ int int) none) ;; 34
+    (init-remote (_type_ mem-buffer) none) ;; 35
     (post-init-remote (_type_) none) ;; 36
     (write-msg-map (_type_ net-process-class-info) none) ;; 37
     (msg-map-val->idx (_type_ symbol) int) ;; 38
@@ -30460,14 +30494,14 @@
   :size-assert         #xf8
   :flag-assert         #x32007000f8
   (:methods
-    (process-drawable-method-42 (_type_ art-group int) draw-control) ;; 42
-    (process-drawable-method-43 (_type_ string) draw-control) ;; 43
-    (process-drawable-method-44 (_type_) none) ;; 44
+    (initialize-skeleton (_type_ art-group int) draw-control) ;; 42
+    (initialize-skeleton-by-name (_type_ string) draw-control) ;; 43
+    (cleanup-for-death (_type_) none) ;; 44
     (relocate-nav (_type_ int) none) ;; 45
     (process-drawable-method-46 (_type_ float float float symbol) symbol) ;; 46
-    (process-drawable-method-47 (_type_) none) ;; 47
-    (process-drawable-method-48 () int) ;; 48
-    (process-drawable-method-49 (_type_) none) ;; 49
+    (remove-from-nav-mesh (_type_) none) ;; 47
+    (process-drawable-method-48 (_type_) float) ;; 48
+    (evaluate-joint-control (_type_) none) ;; 49
     )
   (:states
     process-drawable-idle ;; associated process guessed by decompiler, old: (state process-drawable)
@@ -35778,7 +35812,7 @@
    (slope-quat                    quaternion            :inline :offset-assert 2752)
    (vehicle-up                    vector                :inline :offset-assert 2768)
    (vehicle-at                    vector                :inline :offset-assert 2784)
-   (intro-handle                  uint64                        :offset-assert 2800)
+   (intro-handle                  handle                        :offset-assert 2800)
    (slow-mo-sound-id              uint32                        :offset-assert 2808)
    )
   :method-count-assert 15
@@ -35794,6 +35828,8 @@
     cam-endlessfall
     cam-free-floating
     cam-point-watch
+    cam-battle-intro
+    cam-event-intro
     )
   )
 
@@ -37022,7 +37058,7 @@
   ;; field nav-mesh-flag is likely a value type.
   (:methods
     (debug-draw (_type_) none) ;; OK
-    (nav-mesh-method-10 (_type_ vector vector nav-poly int) none) ;; 10 ;; (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly)
+    (nav-mesh-method-10 (_type_ vector vector nav-poly int) nav-poly) ;; 10 ;; (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly)
     (nav-mesh-method-11 () none) ;; 11 ;; (nav-mesh-method-11 (_type_ vector) nav-poly)
     (nav-mesh-method-12 (_type_ vector float vector) symbol) ;; 12 ;; (nav-mesh-method-12 (_type_ vector float nav-poly) symbol)
     (nav-mesh-method-13 (_type_ nav-poly vector) vector) ;; 13 ;; (poly-centroid (_type_ nav-poly vector) vector)
@@ -37040,7 +37076,7 @@
     (nav-mesh-method-25 () none) ;; 25 ;; (init-from-entity (_type_ entity-nav-mesh) none)
     (remove-nav-control (_type_ nav-control) none) ;; 26 ;; (handle-birth (_type_) none) ;; OK
     (nav-mesh-method-27 (_type_ process-drawable symbol) none) ;; 27 ;; (handle-kill (_type_) none) ;; likely add-process-drawable-to-nav-mesh
-    (nav-mesh-method-28 () none) ;; 28 ;; 
+    (remove-process-drawable (_type_ process-drawable) none) ;; 28 ;; 
     (nav-mesh-method-29 () none) ;; 29 ;; (new-nav-control (_type_) nav-control)
     (nav-mesh-method-30 () none) ;; 30 ;; 
     (nav-mesh-method-31 () none) ;; 31 ;; (add-process-drawable-to-nav-mesh (_type_ process-drawable symbol) none)
@@ -37730,7 +37766,7 @@
 (define-extern release-sound-handle (function sound-handle none))
 (define-extern get-sound-handle (function handle sound-handle :behavior process))
 (define-extern *sound-instances* (array sound-instance))
-(define-extern find-sound-instance (function object symbol sound-instance))
+(define-extern find-sound-instance (function sound-id symbol sound-instance))
 (define-extern remove-sound-instance-by-index (function int none))
 (define-extern remove-sound-instance-by-sound-id (function sound-id object))
 (define-extern make-sound-instance (function sound-info sound-id handle sound-instance))
@@ -39741,24 +39777,24 @@
   :size-assert         #x1080
   :flag-assert         #x1a00001080
   (:methods
-    (new (symbol type int) _type_) ;; 0 ;; (new (symbol type int) _type_)
+    (new (symbol type int) _type_) ;; 0
     (add-process (_type_ process gui-channel gui-action string float time-frame) sound-id) ;; 9
-    (gui-control-method-10 () none) ;; 10 ;; (remove-process (_type_ process gui-channel) int)
-    (gui-control-method-11 () none) ;; 11 ;; (stop-str (_type_ gui-connection) int)
+    (remove-process (_type_ process gui-channel) int) ;; 10
+    (stop-str (_type_ gui-connection) int) ;; 11
     (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id) ;; 12
     (update (_type_ symbol) int) ;; 13
     (lookup-gui-connection-id (_type_ string gui-channel gui-action) sound-id) ;; 14
     (lookup-gui-connection (_type_ process gui-channel string sound-id) gui-connection) ;; 15
     (set-action! (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int) ;; 16
     (get-status (_type_ sound-id) gui-status) ;; 17
-    (gui-control-method-18 (_type_ gui-channel) symbol) ;; 18 ;; (gui-control-method-18 (_type_ gui-channel) symbol)
+    (gui-control-method-18 (_type_ gui-channel) symbol) ;; 18
     (handle-command-list (_type_ gui-channel gui-connection) symbol) ;; 19
     (sound-params-set! (_type_ sound-id symbol float float float float symbol) gui-connection) ;; 20
-    (gui-control-method-21 () none) ;; 21 ;; (gui-control-method-21 (_type_ gui-connection) int)
-    (gui-control-method-22 () none) ;; 22 ;; (gui-control-method-22 (_type_ gui-connection vector) int)
-    (gui-control-method-23 () none) ;; 23 ;; (update-connection (_type_ gui-connection process symbol) none)
-    (gui-control-method-24 (_type_ gui-channel gui-channel symbol gui-connection) symbol) ;; 24 ;; (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol)
-    (gui-control-method-25 () none) ;; 25 ;; (channel-id-set! (_type_ gui-connection sound-id) int)
+    (gui-control-method-21 (_type_ gui-connection) int) ;; 21
+    (gui-control-method-22 (_type_ gui-connection) int) ;; 22
+    (update-connection (_type_ gui-connection process symbol) none) ;; 23
+    (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol) ;; 24
+    (channel-id-set! (_type_ gui-connection sound-id) int) ;; 25
     )
   )
 
@@ -42995,7 +43031,7 @@
     (disable-collision (_type_) none) ;; 75
     (on-impact (_type_) none) ;; 76
     (rigid-body-object-method-77 (_type_) none) ;; 77
-    (rigid-body-object-method-78 (_type_) none) ;; 78
+    (apply-damage (_type_ float rigid-body-impact) none) ;; 78
     (rigid-body-object-method-79 (_type_ rigid-body-impact attack-info) none) ;; 79
     (rigid-body-object-method-80 (_type_ rigid-body-impact) symbol) ;; 80
     (rigid-body-object-method-81 (_type_ process int symbol event-message-block) object) ;; 81
@@ -43423,7 +43459,7 @@
 ;; (define-extern *draw-hook* object) ;; (function none)
 ;; (define-extern init-init-buffer function)
 ;; (define-extern init-end-buffer function)
-(define-extern screen-shot-scale (function int string none))
+(define-extern screen-shot-scale (function int string symbol none))
 ;; (define-extern screen-shot-debug function)
 ;; (define-extern screen-shot function) ;; (function none)
 ;; (define-extern display-frame-start function) ;; (function display int float none)
@@ -43838,7 +43874,7 @@
 (define-extern get-nav-mesh (function actor-id nav-mesh)) ;; 
 (define-extern find-nearest-nav-mesh (function vector float int nav-mesh)) ;; 
 ;; (define-extern point-to-poly-boundary function) ;; (function nav-poly vector vector float)
-(define-extern find-first-containing-nav-mesh (function object int symbol nav-mesh))
+(define-extern find-first-containing-nav-mesh (function object float symbol nav-mesh))
 (define-extern find-nav-mesh (function collide-query vector float float float collide-cache nav-mesh))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44070,13 +44106,13 @@
 (define-extern stats-weapon-used (function int))
 (define-extern stats-player-died (function int))
 (define-extern stats-player-medal (function int))
-(define-extern stats-player-ranking (function int))
-(define-extern stats-player-score (function int))
-(define-extern stats-player-end-mode (function int))
-(define-extern stats-player-time (function int))
-(define-extern stats-player-duration (function int))
-(define-extern stats-player-vehicle (function int))
-(define-extern stats-player-cash (function int))
+(define-extern stats-player-ranking (function int int))
+(define-extern stats-player-score (function float int))
+(define-extern stats-player-end-mode (function int int))
+(define-extern stats-player-time (function float int))
+(define-extern stats-player-duration (function float int))
+(define-extern stats-player-vehicle (function vehicle-type int))
+(define-extern stats-player-cash (function int int))
 (define-extern get-medal-reward-ignore-medal (function float int))
 (define-extern get-medal-reward (function float int))
 (define-extern update-high-scores (function float object))
@@ -46206,8 +46242,7 @@
    (health                          float                                       :offset-assert 688)
    (damage-factor                   float                                       :offset-assert 692)
    (speed-factor                    float                                       :offset 700)
-   (unk-float0                      float                                       :offset-assert 704)
-   (unk-float1                      float                                       :offset-assert 708)
+   (unk-float1                      float                                       :offset 708)
    (unk-vehicle-float-5             float                                       :offset 724)
    (behavior                        uint64                                      :offset-assert 728)
    (cam-view                        int8                                        :offset-assert 736)
@@ -46994,6 +47029,25 @@
   :flag-assert         #x900000040
   )
 
+;; +++wvehicle-h:wvehicle-ai-state-flag
+(defenum wvehicle-ai-state-flag
+  :type uint32
+  :bitfield #t
+  (bit0 0)
+  (bit1 1)
+  (bit2 2)
+  (bit3 3)
+  (bit4 4)
+  (bit5 5)
+  (bit6 6)
+  (bit7 7)
+  (no-left-weapon 8)
+  (health-not-full 9)
+  (no-right-weapon 10)
+  (turbo-not-full 11)
+  )
+;; ---wvehicle-h:wvehicle-ai-state-flag
+
 (deftype wvehicle-ai-state (structure)
   ((destination             wvehicle-ai-destination :inline :offset-assert 0)
    (nav-location            nav-location            :inline :offset-assert 64)
@@ -47002,7 +47056,7 @@
    (no-physics-speed        float                           :offset-assert 100)
    (blocked-timer           float                           :offset-assert 104)
    (reverse-timer           float                           :offset-assert 108)
-   (flags                   uint32                          :offset-assert 112)
+   (flags                   wvehicle-ai-state-flag          :offset-assert 112)
    (desired-speed           float                           :offset-assert 116)
    (weapon-timer            uint64                          :offset-assert 120)
    (weapon-aggression       float                           :offset-assert 128)
@@ -47258,17 +47312,17 @@
 (deftype vehicle-antenna-init-params (structure)
   ((pos     vector :inline :offset-assert 0)
    (tilt    float          :offset-assert 16)
-   (vehicle basic          :offset-assert 20)
-   (skel    basic          :offset-assert 24)
-   (level   basic          :offset-assert 28)
+   (vehicle vehicle        :offset-assert 20)
+   (skel    skeleton-group :offset-assert 24)
+   (level   level          :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
 
-(define-extern rpm->radians-per-sec (function float degrees)) ;; 
-(define-extern radians-per-sec->rpm (function degrees float)) ;; 
+(define-extern rpm->radians-per-sec (function float degrees))
+(define-extern radians-per-sec->rpm (function degrees float))
 (define-extern vehicle-shielded? (function wvehicle symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47368,13 +47422,13 @@
     (respawn (_type_) symbol) ;; 53
     (get-respawn-info (_type_ net-player-respawn-info) symbol) ;; 54
     (net-player-method-55 (_type_) none) ;; 55
-    (vehicle-update (_type_ process-drawable) none) ;; 56
+    (vehicle-update (_type_ wvehicle) none) ;; 56
     (find-nav-mesh-pos (_type_ vector vector float float) nav-mesh) ;; 57
     (adjust-spawn-position (_type_ vector vector vector vector vector) symbol) ;; 58
     (init-spawn-params (_type_ vehicle-spawn-params) none) ;; 59
-    (on-vehicle-spawn (_type_ process) none) ;; 60
+    (on-vehicle-spawn (_type_ wvehicle) none) ;; 60
     (player-score-higher? (_type_ net-player) symbol) ;; 61
-    (total-grand-prix-score-higher? (_type_) none) ;; 62
+    (total-grand-prix-score-higher? (_type_ net-player) symbol) ;; 62
     (write-score-change (_type_) none) ;; 63
     (write-stats-change (_type_) none) ;; 64
     (update-best-hang-time (_type_ int) none) ;; 65
@@ -47382,12 +47436,12 @@
     (add-death (_type_) none) ;; 67
     (add-kill (_type_) none) ;; 68
     (net-player-method-69 (_type_) none) ;; 69
-    (net-player-method-70 (_type_) symbol) ;; 70
+    (finish-scheduled? (_type_) symbol) ;; 70
     (net-player-method-71 (_type_) int) ;; 71
     (speak-start (_type_) none) ;; 72
-    (net-player-method-73 (_type_) none) ;; 73
+    (play-win-speech (_type_) none) ;; 73
     (generate-random-stats (_type_) none) ;; 74
-    (net-player-method-75 (_type_) none) ;; 75
+    (play-lose-speech (_type_) none) ;; 75
     (play-crash-speech (_type_) none) ;; 76
     (net-player-method-77 (_type_ net-player-respawn-info vehicle-spawn-params) none) ;; 77
     (net-player-method-78 (_type_ object) symbol) ;; 78
@@ -47408,7 +47462,7 @@
     (net-player-method-93 (_type_) none) ;; 93
     (setup-car-colors (_type_) none) ;; 94
     (net-player-method-95 (_type_ process event-message-block) none) ;; 95
-    (net-player-method-96 (_type_) none) ;; 96
+    (score-kill (_type_ int) none) ;; 96
     (net-player-method-97 (_type_ object) none) ;; 97
     )
   )
@@ -47751,8 +47805,9 @@
 ;; net-powerup-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type net-powerup process-nettable)
 (deftype net-powerup-motion-info (basic)
-  ((motion-hook     basic          :offset-assert 4)
+  ((motion-hook     (function net-powerup-motion-info net-powerup object) :offset-assert 4)
    (flight-end-time int32          :offset-assert 8)
    (vel             vector :inline :offset-assert 16)
    (rest-pos        vector :inline :offset-assert 32)
@@ -47761,93 +47816,96 @@
   :size-assert         #x30
   :flag-assert         #xd00000030
   (:methods
-    (net-powerup-motion-info-method-9 () none) ;; 9
-    (net-powerup-motion-info-method-10 () none) ;; 10
-    (net-powerup-motion-info-method-11 () none) ;; 11
-    (net-powerup-motion-info-method-12 () none) ;; 12
+    (setup-parabola! (_type_ vector vector time-frame) none) ;; 9
+    (eval-position (_type_ int vector) none) ;; 10
+    (write-to-buffer (_type_ mem-buffer) none) ;; 11
+    (read-from-buffer (_type_ mem-buffer) none) ;; 12
     )
   )
 
 (deftype net-powerup-spawn-params (structure)
-  ((tp            basic          :offset-assert 0)
+  ((tp            type           :offset-assert 0)
    (pos           vector :inline :offset-assert 16)
    (lifetime      int32          :offset-assert 32)
    (initial-owner int8           :offset-assert 36)
-   (motion-info   basic          :offset-assert 40)
+   (motion-info   net-powerup-motion-info :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
 
+(declare-type powerup-draw process-drawable)
 (deftype net-powerup (process-nettable)
-  ((child-proc          handle         :offset-assert 192)
+  ((child-proc          handle         :offset-assert 192 :handle-type powerup-draw)
    (die-or-respawn-time int32          :offset-assert 200)
    (touched-time        int32          :offset-assert 204)
    (touched-by          int8           :offset-assert 208)
    (ignore-frames       int8           :offset-assert 209)
    (hash-id             int16          :offset-assert 210)
    (pos                 vector :inline :offset-assert 224)
-   (motion-info         basic          :offset-assert 240)
+   (motion-info         net-powerup-motion-info :offset-assert 240)
    )
   :method-count-assert 56
   :size-assert         #xf4
   :flag-assert         #x38007000f4
   (:state-methods
-    net-powerup-s1
-    net-powerup-s2)
+    idle ;; 42
+    wait-respawn ;; 43
+    die ;; 44
+    )
   (:methods
-    (net-powerup-method-44 () none) ;; 44
-    (net-powerup-method-45 () none) ;; 45
-    (net-powerup-method-46 (_type_ object object) none) ;; 46
-    (net-powerup-method-47 (_type_) none) ;; 47
-    (net-powerup-method-48 (_type_) none) ;; 48
-    (net-powerup-method-49 (_type_) none) ;; 49
-    (net-powerup-method-50 (_type_) none) ;; 50
-    (net-powerup-method-51 (_type_) none) ;; 51
-    (net-powerup-method-52 (_type_ process) none) ;; 52
-    (net-powerup-method-53 (_type_) none) ;; 53
-    (net-powerup-method-54 (_type_) none) ;; 54
-    (net-powerup-method-55 () none) ;; 55
+    (init! (_type_ net-powerup-spawn-params) none) ;; 45
+    (spawn-draw-proc (_type_ vector entity) none) ;; 46
+    (kill-draw-proc (_type_) none) ;; 47
+    (on-touched (_type_ process) none) ;; 48
+    (get-pos! (_type_ vector) none) ;; 49
+    (get-collision-sphere (_type_ vector entity-actor) none) ;; 50
+    (visible? (_type_) symbol) ;; 51
+    (do-pickup (_type_ process) none) ;; 52
+    (can-pick-up? (_type_) symbol) ;; 53
+    (on-pickup (_type_) none) ;; 54
+    (get-respawn-time (_type_ time-frame) time-frame) ;; 55
     )
   )
 
 (deftype powerup-draw (process-drawable)
-  ((parent-proc handle  :offset-assert 248)
-   (glow-sound  basic   :offset-assert 256)
+  ((parent-proc handle  :offset-assert 248 :handle-type net-powerup)
+   (glow-sound  ambient-sound :offset-assert 256)
    (part-time   int32   :offset-assert 260)
    )
   :method-count-assert 57
   :size-assert         #x108
   :flag-assert         #x3900800108
   (:state-methods
-    idle)
+    idle ;; 50
+    die ;; 51
+    )
   (:methods
-    (powerup-draw-method-51 () none) ;; 51
-    (powerup-draw-method-52 (_type_ float) none) ;; 52
-    (powerup-draw-method-53 (_type_ object vector) none) ;; 53
-    (powerup-draw-method-54 (_type_ process-drawable) none) ;; 54
-    (powerup-draw-method-55 (_type_) none) ;; 55
-    (powerup-draw-method-56 (_type_) none) ;; 56
+    (init-root! (_type_ float) none) ;; 52
+    (init! (_type_ net-powerup vector) none) ;; 53
+    (spawn-pickup-effect (_type_ process-drawable) none) ;; 54
+    (update-draw (_type_) none) ;; 55
+    (set-pos! (_type_ vector) none) ;; 56
     )
   )
 
 (define-extern *powerup-static-hash* spatial-hash)
 (define-extern *powerup-dynamic-hash* spatial-hash)
-(define-extern net-powerup-init-remote (function mem-buffer none :behavior net-powerup))
+(define-extern net-powerup-init-remote (function mem-buffer object :behavior net-powerup))
 (define-extern *msg-map-net-powerup* (array symbol))
 (define-extern *net-process-class-info-net-powerup* net-process-class-info)
-(define-extern powerup-draw-init-by-other (function process vector process none :behavior powerup-draw))
+(define-extern powerup-draw-init-by-other (function process vector entity object :behavior powerup-draw))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-mgr-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype net-game-mgr-vehicle-info (structure)
-  ((all-vehicles         uint32 6 :offset-assert 0)
-   (local-vehicles       uint32 6 :offset-assert 24)
-   (ai-vehicles          uint32 6 :offset-assert 48)
-   (player-vehicles      uint32 6 :offset-assert 72)
+  ((all-vehicles         wvehicle 6 :offset-assert 0)
+   (local-vehicles       wvehicle 6 :offset-assert 24)
+   (ai-vehicles          wvehicle 6 :offset-assert 48)
+   (player-vehicles      wvehicle 6 :offset-assert 72)
    (all-vehicle-count    int8      :offset-assert 96)
    (local-vehicle-count  int8      :offset-assert 97)
    (ai-vehicle-count     int8      :offset-assert 98)
@@ -47871,54 +47929,57 @@
    (stats-hud             handle  2  :offset-assert 256)
    (intro-handle          handle  2  :offset-assert 272)
    (cheats                uint16  4  :offset-assert 288)
+   (cheats-s8             int8    8  :overlay-at cheats)
    (state-time            time-frame :offset-assert 296)
    )
   :method-count-assert 80
   :size-assert         #x130
   :flag-assert         #x5000a00130
+  (:state-methods
+    startup ;; 42
+    running ;; 43
+    waiting-to-die ;; 44
+    )
   (:methods
-    (net-game-mgr-method-42 () none) ;; 42
-    (net-game-mgr-method-43 () none) ;; 43
-    (net-game-mgr-method-44 () none) ;; 44
-    (net-game-mgr-method-45 () none) ;; 45
-    (net-game-mgr-method-46 () none) ;; 46
-    (net-game-mgr-method-47 () none) ;; 47
-    (net-game-mgr-method-48 () none) ;; 48
-    (net-game-mgr-method-49 () none) ;; 49
-    (net-game-mgr-method-50 () none) ;; 50
-    (net-game-mgr-method-51 () none) ;; 51
-    (net-game-mgr-method-52 (_type_ object) none) ;; 52
-    (net-game-mgr-method-53 () none) ;; 53
-    (net-game-mgr-method-54 () none) ;; 54
-    (net-game-mgr-method-55 () none) ;; 55
-    (net-game-mgr-method-56 (_type_) none) ;; 56
-    (net-game-mgr-method-57 () none) ;; 57
-    (net-game-mgr-method-58 () none) ;; 58
-    (net-game-mgr-method-59 () none) ;; 59
-    (net-game-mgr-method-60 () none) ;; 60
-    (net-game-mgr-method-61 () none) ;; 61
-    (net-game-mgr-method-62 () none) ;; 62
-    (net-game-mgr-method-63 () none) ;; 63
-    (net-game-mgr-method-64 () none) ;; 64
-    (net-game-mgr-method-65 () none) ;; 65
-    (net-game-mgr-method-66 () none) ;; 66
-    (net-game-mgr-method-67 () none) ;; 67
-    (net-game-mgr-method-68 () none) ;; 68
-    (net-game-mgr-method-69 () none) ;; 69
-    (net-game-mgr-method-70 () none) ;; 70
-    (net-game-mgr-method-71 (_type_) none) ;; 71
-    (net-game-mgr-method-72 () none) ;; 72
-    (net-game-mgr-method-73 () none) ;; 73
-    (net-game-mgr-method-74 () none) ;; 74
-    (net-game-mgr-method-75 () none) ;; 75
-    (net-game-mgr-method-76 () none) ;; 76
-    (net-game-mgr-method-77 () none) ;; 77
-    (net-game-mgr-method-78 () none) ;; 78
-    (net-game-mgr-method-79 () none) ;; 79
+    (sort-players (_type_ symbol) none) ;; 45
+    (generate-random-player-stats (_type_) none) ;; 46
+    (spawn-hud-map (_type_) none) ;; 47
+    (net-game-mgr-method-48 (_type_) symbol) ;; 48
+    (running-post (_type_) none) ;; 49
+    (net-game-mgr-method-50 (_type_) symbol) ;; 50
+    (net-game-mgr-method-51 (_type_) symbol) ;; 51
+    (spawn-net-player (_type_ int) net-player) ;; 52
+    (spawn-hud-indicators (_type_ vehicle) none) ;; 53
+    (game-mgr-event-handler (_type_ process int symbol event-message-block) object) ;; 54
+    (get-intro-duration (_type_) float) ;; 55
+    (init-local (_type_) none) ;; 56
+    (init-common (_type_) none) ;; 57
+    (spawn-huds (_type_) none) ;; 58
+    (get-finish-delay (_type_) int) ;; 59
+    (spawn-local-players (_type_) none) ;; 60
+    (finish-game (_type_ symbol) none) ;; 61
+    (include-in-ranking? (_type_ net-player) symbol) ;; 62
+    (init-settings (_type_) none) ;; 63
+    (net-game-mgr-method-64 (_type_) none) ;; 64
+    (net-game-mgr-method-65 (_type_ int) string) ;; 65
+    (set-ai-player-name (_type_ int) none) ;; 66
+    (update-vehicles (_type_ net-game-mgr-vehicle-info) none) ;; 67
+    (update-vehicle-info (_type_) none) ;; 68
+    (set-vehicle-force-lod (_type_ int) none) ;; 69
+    (check-cheat-code (_type_) none) ;; 70
+    (get-counter-texture (_type_) texture) ;; 71
+    (net-game-mgr-method-72 (_type_ vector int) symbol) ;; 72
+    (end-intro (_type_) none) ;; 73
+    (show-intro-text (_type_ int) none) ;; 74
+    (set-intro-camera (_type_) none) ;; 75
+    (stats-begin-event (_type_) none) ;; 76
+    (stats-end-event (_type_ symbol) none) ;; 77
+    (finish-startup (_type_) none) ;; 78
+    (setup-viewports (_type_) none) ;; 79
     )
   )
 
-(define-extern net-game-mgr-init-remote (function mem-buffer none :behavior net-game-mgr))
+(define-extern net-game-mgr-init-remote (function mem-buffer object :behavior net-game-mgr))
 (define-extern *msg-map-net-game-mgr* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr* net-process-class-info)
 (define-extern *net-game-mgr* net-game-mgr)
@@ -47971,24 +48032,26 @@
   )
 
 (deftype net-game-mgr-race (net-game-mgr)
-  ((lap-count       int8       :offset-assert 304)
-   (racer-ct        int8       :offset-assert 305)
-   (racer-ids       int8    24 :offset-assert 306)
-   (ngmr-1 uint32 :offset 312)
-   (race-count-down int8       :offset-assert 330)
-   (unknown-uint32-1  uint32     :offset-assert 332)
-   (unknown-uint32-2  uint32     :offset-assert 336)
-   (unknown-uint32-3  uint32     :offset-assert 340)
-   (banner          uint64     :offset-assert 344)
-   (hud-clock       uint64     :offset-assert 352)
-   (auto-end-time   int32      :offset-assert 360)
+  ((lap-count        int8       :offset-assert 304)
+   (racer-ct         int8       :offset-assert 305)
+   (racer-ids        int8    24 :offset-assert 306)
+   (ngmr-1           uint32     :offset 312)
+   (race-count-down  int8       :offset-assert 330)
+   (unknown-uint32-1 uint32     :offset-assert 332)
+   (unknown-uint32-2 uint32     :offset-assert 336)
+   (unknown-uint32-3 uint32     :offset-assert 340)
+   (banner           handle     :offset-assert 344)
+   (hud-clock        handle     :offset-assert 352)
+   (auto-end-time    int32      :offset-assert 360)
    )
   :method-count-assert 88
   :size-assert         #x16c
   :flag-assert         #x5800e0016c
+  (:state-methods
+    waiting-race-start ;; 80
+    racing ;; 81
+    )
   (:methods
-    (net-game-mgr-race-method-80 () none) ;; 80
-    (net-game-mgr-race-method-81 () none) ;; 81
     (net-game-mgr-race-method-82 () none) ;; 82
     (net-game-mgr-race-method-83 () none) ;; 83
     (net-game-mgr-race-method-84 () none) ;; 84
@@ -48010,7 +48073,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype deathmatch-spawner (structure)
-  ((entity          entity   :offset-assert 0)
+  ((entity          entity-actor   :offset-assert 0)
    (next-spawn-time time-frame  :offset-assert 8)
    )
   :method-count-assert 9
@@ -48019,8 +48082,7 @@
   )
 
 (deftype deathmatch-spawner-array (inline-array-class)
-  (
-   (data             deathmatch-spawner :dynamic :inline :offset-assert 16)
+  ((data deathmatch-spawner :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -48028,20 +48090,20 @@
   )
 
 (deftype net-player-deathmatch (net-player)
-  ((target-vehicle     uint64  :offset-assert 400)
-   (last-attack-time   uint64  :offset-assert 408)
-   (last-attacker      uint64  :offset-assert 416)
-   (dropdown-score     uint64  :offset-assert 424)
+  ((target-vehicle     handle  :offset-assert 400 :handle-type vehicle)
+   (last-attack-time   time-frame :offset-assert 408)
+   (last-attacker      handle  :offset-assert 416)
+   (dropdown-score     handle  :offset-assert 424)
    (next-spawn-seed    int32   :offset-assert 432)
    (last-push-time     int32   :offset-assert 436)
-   (free-powerup-timer uint64  :offset-assert 440)
+   (free-powerup-timer time-frame :offset-assert 440)
    )
   :method-count-assert 100
   :size-assert         #x1c0
   :flag-assert         #x64013001c0
   (:methods
-    (net-player-deathmatch-method-98 () none) ;; 98
-    (net-player-deathmatch-method-99 () none) ;; 99
+    (pick-target (_type_ vector vector) wvehicle) ;; 98
+    (find-spawn-pos (_type_ vector quaternion) symbol) ;; 99
     )
   )
 
@@ -48052,16 +48114,20 @@
   :method-count-assert 84
   :size-assert         #x135
   :flag-assert         #x5400b00135
+  (:state-methods
+    waiting-game-start ;; 80
+    )
   (:methods
-    (net-game-mgr-deathmatch-method-80 () none) ;; 80
-    (net-game-mgr-deathmatch-method-81 () none) ;; 81
-    (net-game-mgr-deathmatch-method-82 () none) ;; 82
-    (net-game-mgr-deathmatch-method-83 () none) ;; 83
+    (init-spawners (_type_) none) ;; 81
+    (pick-spawner (_type_ process int int int) int) ;; 82
+    (get-spawn-transform (_type_ vector quaternion process int) symbol) ;; 83
     )
   )
 
+(declare-type net-game-mgr-assassin net-game-mgr-deathmatch)
 (deftype net-player-assassin (net-player-deathmatch)
-  ()
+  ((mgr net-game-mgr-assassin :override)
+   )
   :method-count-assert 100
   :size-assert         #x1c0
   :flag-assert         #x64013001c0
@@ -48074,8 +48140,8 @@
   :size-assert         #x14d
   :flag-assert         #x5600c0014d
   (:methods
-    (net-game-mgr-assassin-method-84 () none) ;; 84
-    (net-game-mgr-assassin-method-85 () none) ;; 85
+    (net-game-mgr-assassin-method-84 (_type_) none) ;; 84
+    (net-game-mgr-assassin-method-85 (_type_ int) int) ;; 85
     )
   )
 
@@ -48151,7 +48217,7 @@
   )
 
 (deftype powercell-footie (rigid-body-object)
-  ((owner      uint64         :offset-assert 288)
+  ((owner      handle         :offset-assert 288)
    (plyid      int8           :offset-assert 296)
    (tip-vel    vector :inline :offset-assert 304)
    (spring-pos vector :inline :offset-assert 320)
@@ -48168,8 +48234,10 @@
     )
   )
 
+(declare-type net-game-mgr-artifact net-game-mgr)
 (deftype net-player-artifact (net-player-deathmatch)
-  ((seek-after int32  :offset-assert 448)
+  ((mgr net-game-mgr-artifact :override)
+   (seek-after int32  :offset-assert 448)
    )
   :method-count-assert 100
   :size-assert         #x1c4
@@ -48177,29 +48245,29 @@
   )
 
 (deftype artifact-location-array (inline-array-class)
-  ;; for some reason not inline
-  ((data             net-player-artifact :dynamic :offset-assert 16)
+  ((data vector :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
 
+(declare-type artifact net-powerup)
 (deftype net-game-mgr-artifact (net-game-mgr-deathmatch)
-  ((artifact-location-array basic     :offset-assert 312)
+  ((artifact-location-array artifact-location-array :offset-assert 312)
    (artifact-location-count int8      :offset-assert 316)
-   (artifact                handle 6 :offset-assert 320)
+   (artifact                handle  6 :offset-assert 320)
    (num-artifacts           int32     :offset-assert 368)
    (last-artifact-index     int32     :offset-assert 372)
-   (last-position-index     int32 6 :offset-assert 376)
-   (special-rule            basic     :offset-assert 400)
+   (last-position-index     int32   6 :offset-assert 376)
+   (special-rule            symbol    :offset-assert 400)
    )
   :method-count-assert 86
   :size-assert         #x194
   :flag-assert         #x5601100194
   (:methods
-    (net-game-mgr-artifact-method-84 () none) ;; 84
-    (net-game-mgr-artifact-method-85 () none) ;; 85
+    (net-game-mgr-artifact-method-84 (_type_ int int) artifact) ;; 84
+    (net-game-mgr-artifact-method-85 (_type_) none) ;; 85
     )
   )
 
@@ -48207,7 +48275,7 @@
   ((prev-send-score      int32  :offset-assert 448)
    (last-score-send-time int32  :offset-assert 452)
    (big-air-launch-time  int32  :offset-assert 456)
-   (in-big-air           basic  :offset-assert 460)
+   (in-big-air           symbol :offset-assert 460)
    (last-fly-time        int32  :offset-assert 464)
    )
   :method-count-assert 100
@@ -48237,55 +48305,55 @@
   :flag-assert         #x5400b0013c
   )
 
-(define-extern net-player-deathmatch-init-remote (function mem-buffer none :behavior net-player-deathmatch))
+(define-extern net-player-deathmatch-init-remote (function mem-buffer object :behavior net-player-deathmatch))
 (define-extern *msg-map-net-player-deathmatch* (array symbol))
 (define-extern *net-process-class-info-net-player-deathmatch* net-process-class-info)
-(define-extern net-game-mgr-deathmatch-init-remote (function mem-buffer none :behavior net-game-mgr-deathmatch))
+(define-extern net-game-mgr-deathmatch-init-remote (function mem-buffer object :behavior net-game-mgr-deathmatch))
 (define-extern *msg-map-net-game-mgr-deathmatch* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-deathmatch* net-process-class-info)
-(define-extern net-player-assassin-init-remote (function mem-buffer none :behavior net-player-assassin))
+(define-extern net-player-assassin-init-remote (function mem-buffer object :behavior net-player-assassin))
 (define-extern *msg-map-net-player-assassin* (array symbol))
 (define-extern *net-process-class-info-net-player-assassin* net-process-class-info)
-(define-extern net-game-mgr-assassin-init-remote (function mem-buffer none :behavior net-game-mgr-assassin))
+(define-extern net-game-mgr-assassin-init-remote (function mem-buffer object :behavior net-game-mgr-assassin))
 (define-extern *msg-map-net-game-mgr-assassin* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-assassin* net-process-class-info)
-(define-extern net-player-deathrace-init-remote (function mem-buffer none :behavior net-player-deathrace))
+(define-extern net-player-deathrace-init-remote (function mem-buffer object :behavior net-player-deathrace))
 (define-extern *msg-map-net-player-deathrace* (array symbol))
 (define-extern *net-process-class-info-net-player-deathrace* net-process-class-info)
-(define-extern net-game-mgr-deathrace-init-remote (function mem-buffer none :behavior net-game-mgr-deathrace))
+(define-extern net-game-mgr-deathrace-init-remote (function mem-buffer object :behavior net-game-mgr-deathrace))
 (define-extern *msg-map-net-game-mgr-deathrace* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-deathrace* net-process-class-info)
-(define-extern net-game-mgr-football-init-remote (function mem-buffer none :behavior net-game-mgr-football))
+(define-extern net-game-mgr-football-init-remote (function mem-buffer object :behavior net-game-mgr-football))
 (define-extern *msg-map-net-game-mgr-football* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-football* net-process-class-info)
-(define-extern net-player-football-init-remote (function mem-buffer none :behavior net-player-football))
+(define-extern net-player-football-init-remote (function mem-buffer object :behavior net-player-football))
 (define-extern *msg-map-net-player-football* (array symbol))
 (define-extern *net-process-class-info-net-player-football* net-process-class-info)
-(define-extern powercell-dispenser-init-remote (function mem-buffer none :behavior powercell-dispenser))
+(define-extern powercell-dispenser-init-remote (function mem-buffer object :behavior powercell-dispenser))
 (define-extern *msg-map-powercell-dispenser* (array symbol))
 (define-extern *net-process-class-info-powercell-dispenser* net-process-class-info)
-(define-extern powercell-dispenser-draw-init-remote (function mem-buffer none :behavior powercell-dispenser-draw))
+(define-extern powercell-dispenser-draw-init-remote (function mem-buffer object :behavior powercell-dispenser-draw))
 (define-extern *msg-map-powercell-dispenser-draw* (array symbol))
 (define-extern *net-process-class-info-powercell-dispenser-draw* net-process-class-info)
-(define-extern powercell-footie-init-remote (function mem-buffer none :behavior powercell-footie))
+(define-extern powercell-footie-init-remote (function mem-buffer object :behavior powercell-footie))
 (define-extern *msg-map-powercell-footie* (array symbol))
 (define-extern *net-process-class-info-powercell-footie* net-process-class-info)
-(define-extern net-player-artifact-init-remote (function mem-buffer none :behavior net-player-artifact))
+(define-extern net-player-artifact-init-remote (function mem-buffer object :behavior net-player-artifact))
 (define-extern *msg-map-net-player-artifact* (array symbol))
 (define-extern *net-process-class-info-net-player-artifact* net-process-class-info)
-(define-extern net-game-mgr-artifact-init-remote (function mem-buffer none :behavior net-game-mgr-artifact))
+(define-extern net-game-mgr-artifact-init-remote (function mem-buffer object :behavior net-game-mgr-artifact))
 (define-extern *msg-map-net-game-mgr-artifact* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-artifact* net-process-class-info)
-(define-extern net-player-beasthunt-init-remote (function mem-buffer none :behavior net-player-beasthunt))
+(define-extern net-player-beasthunt-init-remote (function mem-buffer object :behavior net-player-beasthunt))
 (define-extern *msg-map-net-player-beasthunt* (array symbol))
 (define-extern *net-process-class-info-net-player-beasthunt* net-process-class-info)
-(define-extern net-game-mgr-beasthunt-init-remote (function mem-buffer none :behavior net-game-mgr-beasthunt))
+(define-extern net-game-mgr-beasthunt-init-remote (function mem-buffer object :behavior net-game-mgr-beasthunt))
 (define-extern *msg-map-net-game-mgr-beasthunt* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-beasthunt* net-process-class-info)
-(define-extern net-player-collectable-init-remote (function mem-buffer none :behavior net-player-collectable))
+(define-extern net-player-collectable-init-remote (function mem-buffer object :behavior net-player-collectable))
 (define-extern *msg-map-net-player-collectable* (array symbol))
 (define-extern *net-process-class-info-net-player-collectable* net-process-class-info)
-(define-extern net-game-mgr-collectable-init-remote (function mem-buffer none :behavior net-game-mgr-collectable))
+(define-extern net-game-mgr-collectable-init-remote (function mem-buffer object :behavior net-game-mgr-collectable))
 (define-extern *msg-map-net-game-mgr-collectable* (array symbol))
 (define-extern *net-process-class-info-net-game-mgr-collectable* net-process-class-info)
 
@@ -48302,9 +48370,9 @@
   :size-assert         #x1d4
   :flag-assert         #x67015001d4
   (:methods
-    (net-player-ctf-method-100 () none) ;; 100
-    (net-player-ctf-method-101 () none) ;; 101
-    (net-player-ctf-method-102 () none) ;; 102
+    (draw-info-text (_type_) none) ;; 100
+    (draw-flag-event (_type_) none) ;; 101
+    (set-flag-event! (_type_ int) none) ;; 102
     )
   )
 
@@ -48317,7 +48385,7 @@
   )
 
 (deftype ctf-flag (process-focusable)
-  ((carrier       handle         :offset-assert 256)
+  ((carrier       handle         :offset-assert 256 :handle-type wvehicle)
    (grabbed-time  int32          :offset-assert 264)
    (carried-part  handle         :offset-assert 272)
    (task-arrow    handle         :offset-assert 280)
@@ -48335,21 +48403,22 @@
     carried
     dropped
     falling
-    fade)
+    fade
+    )
   (:methods
-    (ctf-flag-method-65 () none) ;; 65
-    (ctf-flag-method-66 () none) ;; 66
-    (ctf-flag-method-67 () none) ;; 67
-    (ctf-flag-method-68 () none) ;; 68
+    (ctf-flag-method-65 (_type_ vehicle) none) ;; 65
+    (ctf-flag-method-66 (_type_) none) ;; 66
+    (ctf-flag-method-67 (_type_ wvehicle vector) none) ;; 67
+    (ctf-flag-method-68 (_type_) object) ;; 68
     (ctf-flag-method-69 (_type_) none) ;; 69
-    (ctf-flag-method-70 () none) ;; 70
-    (ctf-flag-method-71 () none) ;; 71
-    (ctf-flag-method-72 () none) ;; 72
-    (ctf-flag-method-73 () none) ;; 73
-    (ctf-flag-method-74 () none) ;; 74
-    (ctf-flag-method-75 () none) ;; 75
-    (ctf-flag-method-76 () none) ;; 76
-    (ctf-flag-method-77 () none) ;; 77
+    (ctf-flag-method-70 (_type_ vehicle) none) ;; 70
+    (ctf-flag-method-71 (_type_) none) ;; 71
+    (ctf-flag-method-72 (_type_) none) ;; 72
+    (ctf-flag-method-73 (_type_ wvehicle) none) ;; 73
+    (init-carrier-handle (_type_ mem-buffer) none) ;; 74
+    (write-carrier-net-id (_type_ mem-buffer) none) ;; 75
+    (ctf-flag-method-76 (_type_) none) ;; 76
+    (ctf-flag-method-77 (_type_) none) ;; 77
     )
   )
 
@@ -48426,7 +48495,7 @@
 
 (deftype net-game-mgr-time-box (net-game-mgr-race)
   ((total-race-time uint32  :offset-assert 364)
-   (sound-id        uint32  :offset-assert 368)
+   (sound-id        sound-id :offset-assert 368)
    )
   :method-count-assert 88
   :size-assert         #x174
@@ -48460,18 +48529,18 @@
   )
 
 (deftype net-player-boss-battle (net-player-race)
-  ((give-weapon-timer uint64  :offset-assert 496)
+  ((give-weapon-timer time-frame :offset-assert 496)
    )
   :method-count-assert 114
   :size-assert         #x1f8
   :flag-assert         #x72017001f8
   (:methods
-    (net-player-boss-battle-method-108 () none) ;; 108
-    (net-player-boss-battle-method-109 () none) ;; 109
-    (net-player-boss-battle-method-110 () none) ;; 110
-    (net-player-boss-battle-method-111 () none) ;; 111
-    (net-player-boss-battle-method-112 () none) ;; 112
-    (net-player-boss-battle-method-113 () none) ;; 113
+    (net-player-boss-battle-method-108 (_type_) none) ;; 108
+    (net-player-boss-battle-method-109 (_type_) none) ;; 109
+    (net-player-boss-battle-method-110 (_type_) none) ;; 110
+    (net-player-boss-battle-method-111 (_type_) none) ;; 111
+    (net-player-boss-battle-method-112 (_type_) none) ;; 112
+    (net-player-boss-battle-method-113 (_type_) none) ;; 113
     )
   )
 
@@ -48485,9 +48554,11 @@
   :flag-assert         #x5800f00180
   )
 
+(declare-type ctf-base process-drawable)
+
 (define-extern *ctf-flag* ctf-flag)
-(define-extern *ctf-red-base* symbol)
-(define-extern *ctf-blue-base* symbol)
+(define-extern *ctf-red-base* ctf-base)
+(define-extern *ctf-blue-base* ctf-base)
 (define-extern net-player-ctf-init-remote (function mem-buffer none :behavior net-player-ctf))
 (define-extern *msg-map-net-player-ctf* (array symbol))
 (define-extern *net-process-class-info-net-player-ctf* net-process-class-info)
@@ -48674,13 +48745,22 @@
 ;; net-eco-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+;; +++net-eco-h:eco-perm-flag
+(defenum eco-perm-flag
+  :type uint64
+  :bitfield #t
+  (owner-requested 0)
+  (nearby 1)
+  (dead 2)
+  (no-respawn 3)
+  )
+;; ---net-eco-h:eco-perm-flag
 
 (deftype eco-perm (structure)
   ((time         int32   :offset-assert 0)
    (owner        int8    :offset-assert 4)
    (hit-by-local int8    :offset-assert 5)
-   (flags        uint64  :offset-assert 8)
+   (flags        eco-perm-flag  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -48697,10 +48777,10 @@
     die ;; 51
     )
   (:methods
-    (eco-method-52 (_type_) none) ;; 52
-    (eco-method-53 (_type_) none) ;; 53
-    (eco-method-54 (_type_) none) ;; 54
-    (eco-method-55 (_type_) none) ;; 55
+    (init! (_type_) none) ;; 52
+    (on-collected (_type_ entity-actor int) none) ;; 53
+    (get-collide-sphere! (_type_ vector entity-actor) none) ;; 54
+    (get-respawn-delay (_type_) time-frame) ;; 55
     )
   )
 
@@ -48714,13 +48794,13 @@
     die ;; 43
     )
   (:methods
-    (eco-mgr-method-44 (_type_) none) ;; 44
-    (eco-mgr-method-45 (_type_) none) ;; 45
-    (eco-mgr-method-46 (_type_) none) ;; 46
-    (eco-mgr-method-47 (_type_) none) ;; 47
-    (eco-mgr-method-48 (_type_ uint) none) ;; 48
-    (eco-mgr-method-49 (_type_) none) ;; 49
-    (eco-mgr-method-50 (_type_) none) ;; 50
+    (find-nearby-eco (_type_) none) ;; 44
+    (update-release-and-respawn (_type_) none) ;; 45
+    (init! (_type_) none) ;; 46
+    (update (_type_) none) ;; 47
+    (collect-eco (_type_ uint int time-frame) none) ;; 48
+    (release-owner (_type_ int) none) ;; 49
+    (reset-owners (_type_) none) ;; 50
     )
   )
 
@@ -54539,7 +54619,6 @@
 ;; collision-editor               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collision-editor-default-proc (process-drawable)
   ()
   :method-count-assert 51
@@ -54549,9 +54628,7 @@
     idle ;; 50
     )
   )
-|#
 
-#|
 (deftype collision-editor-edited-proc (process-drawable)
   ()
   :method-count-assert 51
@@ -54561,60 +54638,57 @@
     idle ;; 50
     )
   )
-|#
 
-#|
 (deftype collision-editor (process)
-  ((proc uint64  :offset-assert 144) ;; handle
+  ((proc handle :offset-assert 144 :handle-type process-drawable)
    )
   :method-count-assert 16
   :size-assert         #x98
   :flag-assert         #x1000100098
-  (:methods
-    (collision-editor-method-9 () none) ;; 9
-    (collision-editor-method-10 () none) ;; 10
-    (collision-editor-method-11 () none) ;; 11
-    (collision-editor-method-12 () none) ;; 12
-    (collision-editor-method-13 () none) ;; 13
-    (collision-editor-method-14 () none) ;; 14 ;; (idle () _type_ :state)
-    )
   (:state-methods
     idle ;; 15
     )
   )
-|#
 
-#|
+;; +++collision-editor:collision-editor-func
+(defenum collision-editor-func
+  :type uint64
+  (analog 0)
+  (edit 1)
+  (print-collision 2)
+  (stop-editor 3)
+  )
+;; ---collision-editor:collision-editor-func
+
 (deftype collision-edit-info (structure)
-  ((editing      symbol  :offset-assert 0) ;; guessed by decompiler
-   (current-func uint64  :offset-assert 8) ;; collision-editor-func
-   (analog-func  uint64  :offset-assert 16) ;; collision-editor-func
+  ((editing      symbol  :offset-assert 0)
+   (current-func collision-editor-func  :offset-assert 8)
+   (analog-func  collision-editor-func  :offset-assert 16)
    (current-prim int32   :offset-assert 24)
    )
   :method-count-assert 12
   :size-assert         #x1c
   :flag-assert         #xc0000001c
   (:methods
-    (collision-edit-info-method-9 () none) ;; 9 ;; (handle-pad-input (_type_) none)
-    (collision-edit-info-method-10 () none) ;; 10 ;; (draw-menu (_type_ process-drawable) none)
-    (collision-edit-info-method-11 () none) ;; 11 ;; (set-current-prim! (_type_ process-drawable) none)
+    (handle-pad-input (_type_) none) ;; 9
+    (draw-menu (_type_ process-drawable) none) ;; 10
+    (set-current-prim! (_type_ process-drawable) none) ;; 11
     )
   )
-|#
 
-;; (define-extern collision-editor-default-proc-init-by-other function) ;; (function object :behavior collision-editor-default-proc)
-;; (define-extern collision-editor-edited-proc-init-by-other function) ;; (function object :behavior collision-editor-edited-proc)
-;; (define-extern *collision-editor-mesh-names* array) ;; (array string)
-;; (define-extern *collision-editor-art-group-name* string) ;; string
-;; (define-extern collision-editor-add-mesh-to-ccache function) ;; (function collide-shape-prim-group collide-cache none)
-;; (define-extern print-default-collision function) ;; (function none)
-;; (define-extern print-actual-collision function) ;; (function process-drawable none)
-;; (define-extern collision-edit-get-max-prim function) ;; (function process-drawable int)
-;; (define-extern collision-edit-get-prim function) ;; (function process-drawable int collide-shape-prim)
-;; (define-extern *collision-edit-info* object) ;; collision-edit-info
-;; (define-extern collision-editor-init-by-other function) ;; (function handle object :behavior collision-editor)
-;; (define-extern stop-collision-edit function) ;; (function none)
-;; (define-extern collision-edit function) ;; (function process (pointer process))
+(define-extern collision-editor-default-proc-init-by-other (function object :behavior collision-editor-default-proc))
+(define-extern collision-editor-edited-proc-init-by-other (function object :behavior collision-editor-edited-proc))
+(define-extern *collision-editor-mesh-names* (array string))
+(define-extern *collision-editor-art-group-name* string)
+(define-extern collision-editor-add-mesh-to-ccache (function collide-shape-prim-group collide-cache none))
+(define-extern print-default-collision (function none))
+(define-extern print-actual-collision (function process-drawable none))
+(define-extern collision-edit-get-max-prim (function process-drawable int))
+(define-extern collision-edit-get-prim (function process-drawable int collide-shape-prim))
+(define-extern *collision-edit-info* collision-edit-info)
+(define-extern collision-editor-init-by-other (function handle object :behavior collision-editor))
+(define-extern stop-collision-edit (function none))
+(define-extern collision-edit (function process (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; construction-obs-h             ;;
@@ -54991,22 +55065,22 @@
 (deftype wrong-way-linebot (process-drawable)
   ((initial-quat quaternion :inline :offset-assert 256)
    (initial-pos  vector     :inline :offset-assert 272)
-   (hover-sound  uint32             :offset-assert 288)
-   (l-control    uint32    3       :offset-assert 292)
-   (my-vehicle   uint64             :offset-assert 304)
-   (spawn-part   uint64             :offset-assert 312)
-   (vehicle-part uint64             :offset-assert 320)
-   (sound-id     uint32             :offset-assert 328)
+   (hover-sound  sound-id           :offset-assert 288)
+   (l-control    lightning-control 3 :offset-assert 292)
+   (my-vehicle   handle             :offset-assert 304)
+   (spawn-part   handle             :offset-assert 312)
+   (vehicle-part handle             :offset-assert 320)
+   (sound-id     sound-id           :offset-assert 328)
    )
   :method-count-assert 53
   :size-assert         #x14c
   :flag-assert         #x3500c0014c
   (:state-methods
     idle ;; 50
-    shoot ;; 51
+    (shoot symbol) ;; 51
     )
   (:methods
-    (wrong-way-linebot-method-52 () none) ;; 52
+    (wrong-way-linebot-method-52 (_type_) none) ;; 52
     )
   )
 
@@ -55014,22 +55088,22 @@
   ((base-y            float          :offset-assert 248)
    (height-offset     float          :offset-assert 252)
    (start-position    vector :inline :offset-assert 256)
-   (bot               uint64         :offset-assert 272)
-   (alarm-sound       uint32         :offset-assert 280)
-   (friendly          basic          :offset-assert 284)
-   (kill-player-quick basic          :offset-assert 288)
+   (bot               handle         :offset-assert 272)
+   (alarm-sound       sound-id       :offset-assert 280)
+   (friendly          symbol         :offset-assert 284)
+   (kill-player-quick symbol         :offset-assert 288)
    )
   :method-count-assert 55
   :size-assert         #x124
   :flag-assert         #x3700a00124
   (:state-methods
     idle ;; 50
-    enter ;; 52
     exit ;; 51
+    enter ;; 52
     )
   (:methods
-    (wrong-way-method-53 () none) ;; 53
-    (wrong-way-method-54 () none) ;; 54
+    (wrong-way-method-53 (_type_) none) ;; 53
+    (set-light (_type_ symbol) none) ;; 54
     )
   )
 
@@ -55037,8 +55111,8 @@
   ((initial-quat   quaternion :inline :offset-assert 256)
    (initial-pos    vector     :inline :offset-assert 272)
    (offset         vector     :inline :offset-assert 288)
-   (red-projection basic              :offset-assert 304)
-   (race-started   basic              :offset-assert 308)
+   (red-projection sparticle-launch-control :offset-assert 304)
+   (race-started   symbol             :offset-assert 308)
    )
   :method-count-assert 52
   :size-assert         #x138
@@ -55047,16 +55121,16 @@
     idle ;; 50
     )
   (:methods
-    (starting-linebot-method-51 () none) ;; 51
+    (starting-linebot-method-51 (_type_) none) ;; 51
     )
   )
 
 (deftype race-banner (process-drawable)
   ((mat             matrix  :inline :offset-assert 256)
    (end-pos         vector  :inline :offset-assert 320)
-   (explode-sound   uint32          :offset-assert 336)
+   (explode-sound   sound-id        :offset-assert 336)
    (base-y          float           :offset-assert 340)
-   (banner          uint32 5       :offset-assert 344)
+   (banner          sparticle-launch-control 5 :offset-assert 344)
    (blend-up-height float           :offset-assert 364)
    (last-index      int8            :offset-assert 368)
    (index           int8            :offset-assert 369)
@@ -55069,7 +55143,7 @@
     banner-go ;; 51
     )
   (:methods
-    (race-banner-method-52 () none) ;; 52
+    (race-banner-method-52 (_type_) none) ;; 52
     )
   )
 
@@ -55083,21 +55157,21 @@
     )
   )
 
-;; (define-extern wrong-way-linebot-init-by-other function)
-;; (define-extern wrong-way-linebot-spawn function)
-;; (define-extern set-position-and-orientation function)
-;; (define-extern set-children-position-and-orientation function)
-;; (define-extern wrong-way-event-handler function)
-;; (define-extern check-for-kill-player function)
-;; (define-extern check-for-player-dead function)
-;; (define-extern wrong-way-init-by-other function)
-;; (define-extern wrong-way-spawn function)
-;; (define-extern *race-banner-subtract* object)
-;; (define-extern starting-linebot-init-by-other function)
-;; (define-extern starting-linebot-spawn function)
-;; (define-extern race-banner-handler function)
-;; (define-extern race-banner-init-by-other function)
-;; (define-extern race-banner-spawn function)
+(define-extern wrong-way-linebot-init-by-other (function object :behavior wrong-way-linebot))
+(define-extern wrong-way-linebot-spawn (function process-tree wrong-way-linebot))
+(define-extern set-position-and-orientation (function object :behavior wrong-way))
+(define-extern set-children-position-and-orientation (function object :behavior wrong-way))
+(def-event-handler wrong-way-event-handler wrong-way)
+(define-extern check-for-kill-player (function object :behavior wrong-way))
+(define-extern check-for-player-dead (function object :behavior wrong-way))
+(define-extern wrong-way-init-by-other (function symbol symbol object :behavior wrong-way))
+(define-extern wrong-way-spawn (function symbol process-tree symbol wrong-way))
+(define-extern *race-banner-subtract* float)
+(define-extern starting-linebot-init-by-other (function vector quaternion vector object :behavior starting-linebot))
+(define-extern starting-linebot-spawn (function process-tree vector quaternion vector starting-linebot))
+(def-event-handler race-banner-handler race-banner)
+(define-extern race-banner-init-by-other (function object :behavior race-banner))
+(define-extern race-banner-spawn (function process-tree race-banner))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; camera-facing-quad             ;;
@@ -55181,14 +55255,16 @@
 ;; race-manager                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *race-state* race-state) ;; 
+(define-extern *race-state* race-state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-anim                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype net-anim-path (uint8)
-  ()
+  ((path-idx uint8 :offset 0 :size 7)
+   (reversed uint8 :offset 7 :size 1)
+   )
   :flag-assert #x900000001
   )
 
@@ -55198,10 +55274,10 @@
    (anim-offset float          :offset-assert 8)
    (anim-rate   float          :offset-assert 12)
    (vel         vector :inline :offset-assert 16)
-   (path-info   uint8          :offset-assert 32)
+   (path-info   net-anim-path  :offset-assert 32)
    (path-offset float          :offset-assert 36)
-   (anim-looped basic          :offset-assert 40)
-   (need-snap   basic          :offset-assert 44)
+   (anim-looped symbol         :offset-assert 40)
+   (need-snap   symbol         :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -55215,12 +55291,12 @@
    (path-pos-dist      float          :offset-assert 36)
    (cur-frame          float          :offset-assert 40)
    (cur-loops          int32          :offset-assert 44)
-   (anim-wrapped       basic          :offset-assert 48)
-   (path-wrapped       basic          :offset-assert 52)
+   (anim-wrapped       symbol         :offset-assert 48)
+   (path-wrapped       symbol         :offset-assert 52)
    (projected-end-time int32          :offset-assert 56)
    (total-frames       int32          :offset-assert 60)
    (moved-no-frac      vector :inline :offset-assert 64)
-   (vels               uint32         :offset-assert 80)
+   (vels               (inline-array vector) :offset-assert 80)
    (last-snap-time     int32          :offset-assert 84)
    )
   :method-count-assert 9
@@ -55231,23 +55307,23 @@
 (deftype net-anim-control (structure)
   ((active     net-anim-state  :inline :offset-assert 0)
    (result     net-anim-result :inline :offset-assert 48)
-   (path-array uint32                  :offset-assert 136)
+   (path-array (pointer path-control) :offset-assert 136)
    )
   :method-count-assert 12
   :size-assert         #x8c
   :flag-assert         #xc0000008c
   (:methods
-    (net-anim-control-method-9 () none) ;; 9
-    (net-anim-control-method-10 () none) ;; 10
-    (net-anim-control-method-11 () none) ;; 11
+    (update! (_type_ process-focusable int symbol) none) ;; 9
+    (set-path! (_type_ int int symbol float) none) ;; 10
+    (set-anim! (_type_ int int float float symbol vector) none) ;; 11
     )
   )
 
-;; (define-extern encode-net-anim-state function)
-;; (define-extern decode-net-anim-state function)
-;; (define-extern safe-mod function)
-;; (define-extern get-dist-based-path-pos function)
-;; (define-extern get-anim-offset function)
+(define-extern encode-net-anim-state (function net-anim-control mem-buffer object))
+(define-extern decode-net-anim-state (function net-anim-control mem-buffer none))
+(define-extern safe-mod (function float float))
+(define-extern get-dist-based-path-pos (function path-control float float))
+(define-extern get-anim-offset (function (inline-array vector) float float vector vector object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-enemy-h                    ;;
@@ -55255,8 +55331,8 @@
 
 (deftype net-enemy-transition (structure)
   ((timestamp int32      :offset-assert 0)
-   (name      basic      :offset-assert 4)
-   (preempt   basic      :offset-assert 8)
+   (name      symbol     :offset-assert 4)
+   (preempt   symbol     :offset-assert 8)
    (data-len  int32      :offset-assert 12)
    (buf-data  uint8   64 :offset-assert 16)
    )
@@ -55266,7 +55342,7 @@
   )
 
 (deftype net-enemy-anim-info (structure)
-  ((name        basic   :offset-assert 0)
+  ((name        symbol  :offset-assert 0)
    (anim-idx    int32   :offset-assert 4)
    (forward-vel vector  :offset-assert 8)
    )
@@ -55275,8 +55351,16 @@
   :flag-assert         #x90000000c
   )
 
+;; +++net-enemy-h:net-enemy-info-flag
+(defenum net-enemy-info-flag
+  :type uint64
+  :bitfield #t
+  (use-nav 0)
+  )
+;; ---net-enemy-h:net-enemy-info-flag
+
 (deftype net-enemy-info (structure)
-  ((flags                      uint64         :offset-assert 0)
+  ((flags                      net-enemy-info-flag :offset-assert 0)
    (inverse-mass               float          :offset-assert 8)
    (ragdoll-info               ragdoll-setup  :offset-assert 12)
    (max-health                 float          :offset-assert 16)
@@ -55288,10 +55372,10 @@
    (min-fatal-impact-enemy-vel float          :offset-assert 40)
    (time-before-evaporate      int32          :offset-assert 44)
    (time-before-respawn        int32          :offset-assert 48)
-   (anim-info                  basic          :offset-assert 52)
+   (anim-info                  (array net-enemy-anim-info) :offset-assert 52)
    (kill-score                 int32          :offset-assert 56)
    (wound-score-scale          float          :offset-assert 60)
-   (allow-vehicle-penetrate    basic          :offset-assert 64)
+   (allow-vehicle-penetrate    symbol         :offset-assert 64)
    (min-ground-offset          float          :offset-assert 68)
    (ground-probe-lod-dist      float          :offset-assert 72)
    (show-kill-score            int32          :offset-assert 76)
@@ -55301,70 +55385,94 @@
   :flag-assert         #x900000050
   )
 
+;; +++net-enemy-h:net-enemy-snap-flag
+(defenum net-enemy-snap-flag
+  :type uint64
+  :bitfield #t
+  (snap-quat 0)
+  (snap-trans 1)
+  )
+;; ---net-enemy-h:net-enemy-snap-flag
+
+;; +++net-enemy-h:net-enemy-flag
+(defenum net-enemy-flag
+  :type uint64
+  :bitfield #t
+  (bit0 0)
+  (proximity-ownership 1)
+  (snap-to-ground 2)
+  (keep-ground-offset 3)
+  (attackable 4)
+  (impactable 5)
+  (check-overlaps 6)
+  )
+;; ---net-enemy-h:net-enemy-flag
+
 (deftype net-enemy (process-focusable)
-  ((flags                  uint64                     :offset-assert 256)
+  ((flags                  net-enemy-flag             :offset-assert 256)
    (info                   net-enemy-info             :offset-assert 264)
-   (ragdoll-proc           uint64                     :offset-assert 272)
+   (ragdoll-proc           handle                     :offset-assert 272 :handle-type ragdoll-proc)
    (health                 float                      :offset-assert 280)
    (local-damage           float                      :offset-assert 284)
    (killed-by              int8                       :offset-assert 288)
    (last-health-send-time  int32                      :offset-assert 292)
    (net-anim               net-anim-control   :inline :offset-assert 304)
    (minimap                connection-minimap         :offset-assert 444)
-   (transitions            net-enemy-transition            3  :inline     :offset-assert 448)
+   (transitions            net-enemy-transition 3 :inline :offset-assert 448)
    (transition-ct          int32                      :offset-assert 688)
    (last-attack-time       int32                      :offset-assert 692)
    (vehicle-penetrate-time int32                      :offset-assert 696)
-   (paths                  basic                      :offset-assert 700)
-   (pending-impulse-valid  basic                      :offset-assert 704)
+   (paths                  (array path-control)       :offset-assert 700)
+   (pending-impulse-valid  symbol                     :offset-assert 704)
    (pending-impulse        rigid-body-impact  :inline :offset-assert 720)
    (last-transition-time   int32                      :offset-assert 788)
    (last-attack-id         int32                      :offset-assert 792)
    (vel-for-ragdoll        vector             :inline :offset-assert 800)
    (nav-poly               nav-poly                   :offset-assert 816)
-   (snap-flags             uint64                     :offset-assert 824)
+   (snap-flags             net-enemy-snap-flag        :offset-assert 824)
    (prev-pos               vector             :inline :offset-assert 832)
    (forward-path-vector    vector             :inline :offset-assert 848)
-   (enemy-link             list-link          :inline :offset-assert 864)
+   (enemy-link             linked-list        :inline :offset-assert 864)
    )
   :method-count-assert 87
   :size-assert         #x368
   :flag-assert         #x5702e00368
+  (:state-methods
+    startup ;; 59
+    in-ragdoll ;; 60
+    waiting-respawn ;; 61
+    )
   (:methods
-    (net-enemy-method-59 () none) ;; 59
-    (net-enemy-method-60 () none) ;; 60
-    (net-enemy-method-61 () none) ;; 61
-    (net-enemy-method-62 () none) ;; 62
-    (net-enemy-method-63 () none) ;; 63
-    (net-enemy-method-64 () none) ;; 64
-    (net-enemy-method-65 () none) ;; 65
-    (net-enemy-method-66 () none) ;; 66
-    (net-enemy-method-67 () none) ;; 67
-    (net-enemy-method-68 () none) ;; 68
-    (net-enemy-method-69 () none) ;; 69
-    (net-enemy-method-70 () none) ;; 70
-    (net-enemy-method-71 () none) ;; 71
-    (net-enemy-method-72 () none) ;; 72
-    (net-enemy-method-73 () none) ;; 73
-    (net-enemy-method-74 () none) ;; 74
-    (net-enemy-method-75 () none) ;; 75
-    (net-enemy-method-76 () none) ;; 76
-    (net-enemy-method-77 () none) ;; 77
-    (net-enemy-method-78 () none) ;; 78
-    (net-enemy-method-79 () none) ;; 79
-    (net-enemy-method-80 () none) ;; 80
-    (net-enemy-method-81 () none) ;; 81
-    (net-enemy-method-82 () none) ;; 82
-    (net-enemy-method-83 () none) ;; 83
-    (net-enemy-method-84 () none) ;; 84
-    (net-enemy-method-85 () none) ;; 85
-    (net-enemy-method-86 () none) ;; 86
+    (init! (_type_) none) ;; 62
+    (net-enemy-method-63 (_type_) none) ;; 63
+    (send-local-damage (_type_) none) ;; 64
+    (on-attack (_type_ attack-info) none) ;; 65
+    (on-fatal-attack (_type_ int int) none) ;; 66
+    (on-impact (_type_ rigid-body-impact) none) ;; 67
+    (on-fatal-impact (_type_ rigid-body-impact int) none) ;; 68
+    (update-transitions (_type_) none) ;; 69
+    (do-transition (_type_ mem-buffer int symbol) none) ;; 70
+    (transition-pending? (_type_) symbol) ;; 71
+    (queue-transition (_type_ net-enemy-transition) none) ;; 72
+    (clear-transitions (_type_) none) ;; 73
+    (update-trans (_type_ vector quaternion) none) ;; 74
+    (init-collision! (_type_) none) ;; 75
+    (init-skeleton! (_type_) none) ;; 76
+    (init-paths! (_type_) none) ;; 77
+    (init-info! (_type_) none) ;; 78
+    (impulse->attack-velocity (_type_ vector vector float) vector) ;; 79
+    (send-impact-attack (_type_ process-focusable rigid-body-impact) none) ;; 80
+    (common-post (_type_) none) ;; 81
+    (reset! (_type_) none) ;; 82
+    (init-nav! (_type_) none) ;; 83
+    (face-nav-heading (_type_ nav-control) none) ;; 84
+    (integrate-nav-vel (_type_ nav-control) none) ;; 85
+    (get-anim-end-time (_type_ int int) int) ;; 86
     )
   )
 
 (define-extern *tmp-construct-transition* net-enemy-transition)
-;; TODO - unknown type passed to process-nettable::35
-(define-extern net-enemy-init-remote (function mem-buffer none :behavior process-focusable))
+(define-extern net-enemy-init-remote (function mem-buffer object :behavior process-focusable))
 (define-extern *msg-map-net-enemy* (array symbol))
 (define-extern *net-process-class-info-net-enemy* net-process-class-info)
 (define-extern *net-enemy-list* linked-list)
@@ -55373,25 +55481,40 @@
 ;; net-powerup                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *tmp-powerup-motion-info* net-powerup-motion-info)
-;; (define-extern *dynamic-powerups* object)
+;; +++net-powerup:net-powerup-spawn-params-vec
+(deftype net-powerup-spawn-params-vec (structure)
+  ((vec    vector :inline)
+   (params net-powerup-spawn-params :inline)
+   )
+  )
+
+(deftype net-powerup-spawn-params-vec1 (structure)
+  ((params net-powerup-spawn-params :inline)
+   (vec vector :inline)
+   )
+  )
+;; ---net-powerup:net-powerup-spawn-params-vec
+
+(define-extern eco-green type)
+(define-extern artifact type)
+(define-extern *tmp-powerup-motion-info* net-powerup-motion-info)
+(define-extern *dynamic-powerups* (pointer handle))
 (define-extern powerup-build-static-hash (function object))
 (define-extern powerup-build-dynamic-hash (function object))
-;; (define-extern *powerup-collide-results* object)
-(define-extern powerup-check-collision (function vector object integer vehicle none))
-;; (define-extern powerup-motion-parabola function)
-;; (define-extern net-powerup-init-by-other function)
-;; (define-extern spawn-powerup function)
-(define-extern eject-powerup (function vector object int float none))
-;; (define-extern eject-test function)
+(define-extern *powerup-collide-results* object)
+(define-extern powerup-check-collision (function vector vector float vehicle none))
+(define-extern powerup-motion-parabola (function net-powerup-motion-info net-powerup object))
+(define-extern net-powerup-init-by-other (function net-powerup-spawn-params object :behavior net-powerup))
+(define-extern spawn-powerup (function net-powerup-spawn-params net-powerup))
+(define-extern eject-powerup (function net-powerup-spawn-params vector float float net-powerup))
+(define-extern eject-test (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-powerups                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eco-powerup-draw (powerup-draw)
-  ((vehicle-handle uint64  :offset-assert 264)
+  ((vehicle-handle handle :offset-assert 264 :handle-type vehicle)
    )
   :method-count-assert 57
   :size-assert         #x110
@@ -55400,57 +55523,13 @@
     idle ;; 50
     )
   )
-|#
 
-#|
 (deftype eco-light (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (view             basic                 :offset-assert 12)
-   (parent           uint32                :offset-assert 16)
-   (brother          uint32                :offset-assert 20)
-   (child            uint32                :offset-assert 24)
-   (ppointer         uint32                :offset-assert 28)
-   (self             basic                 :offset-assert 32)
-   (profile-ticks    uint32                :offset-assert 36)
-   (pool             basic                 :offset-assert 40)
-   (status           basic                 :offset-assert 44)
-   (pid              int32                 :offset-assert 48)
-   (main-thread      basic                 :offset-assert 52)
-   (top-thread       basic                 :offset-assert 56)
-   (entity           basic                 :offset-assert 60)
-   (level            basic                 :offset-assert 64)
-   (state            basic                 :offset-assert 68)
-   (prev-state       basic                 :offset-assert 72)
-   (next-state       basic                 :offset-assert 76)
-   (state-stack      basic                 :offset-assert 80)
-   (trans-hook       basic                 :offset-assert 84)
-   (post-hook        basic                 :offset-assert 88)
-   (event-hook       basic                 :offset-assert 92)
-   (allocated-length int32                 :offset-assert 96)
-   (heap-base        uint32                :offset-assert 108)
-   (heap-top         uint32                :offset-assert 112)
-   (heap-cur         uint32                :offset-assert 116)
-   (stack-frame-top  basic                 :offset-assert 120)
-   (heap             kheap        :inline  :offset-assert 108)
-   (connection-list  connectable  :inline  :offset-assert 124)
-   (stack            UNKNOWN      :dynamic :offset-assert 140)
-   )
+  ()
   :method-count-assert 15
   :size-assert         #x90
   :flag-assert         #xf00000090
-  (:methods
-    (eco-light-method-9 () none) ;; 9
-    (eco-light-method-10 () none) ;; 10
-    (eco-light-method-11 () none) ;; 11
-    (eco-light-method-12 () none) ;; 12
-    (eco-light-method-13 () none) ;; 13
-    (eco-light-method-14 () none) ;; 14
-    )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-eco                        ;;
@@ -55466,16 +55545,15 @@
 (define-extern *eco-last-processed* int)
 (define-extern eco-mgr-init-by-other (function object :behavior eco-mgr))
 (define-extern init-local-net-eco-mgr (function object))
-(define-extern compute-veh-eco-owner-score (function object))
+(define-extern compute-veh-eco-owner-score (function vector vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-eco-types                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eco-blue (eco)
-  ((launcher    UNKNOWN 5 :offset-assert 248)
-   (birth-accum UNKNOWN 5 :offset-assert 268)
+  ((launcher    sparticle-launcher 5 :offset-assert 248)
+   (birth-accum float  5 :offset-assert 268)
    )
   :method-count-assert 56
   :size-assert         #x120
@@ -55484,11 +55562,9 @@
     running ;; 50
     )
   )
-|#
 
-#|
 (deftype eco-yellow (eco)
-  ((launcher    basic  :offset-assert 248)
+  ((launcher    sparticle-launcher :offset-assert 248)
    (birth-accum float  :offset-assert 252)
    )
   :method-count-assert 56
@@ -55498,11 +55574,9 @@
     running ;; 50
     )
   )
-|#
 
-#|
 (deftype eco-red (eco)
-  ((launcher    basic  :offset-assert 248)
+  ((launcher    sparticle-launcher  :offset-assert 248)
    (birth-accum float  :offset-assert 252)
    )
   :method-count-assert 56
@@ -55512,11 +55586,9 @@
     running ;; 50
     )
   )
-|#
 
-#|
 (deftype eco-green (eco)
-  ((launcher    basic  :offset-assert 248)
+  ((launcher    sparticle-launcher  :offset-assert 248)
    (birth-accum float  :offset-assert 252)
    )
   :method-count-assert 56
@@ -55526,9 +55598,8 @@
     running ;; 50
     )
   )
-|#
 
-;; (define-extern *eco-blue-debris-params* debris-static-params)
+(define-extern *eco-blue-debris-params* debris-static-params)
 (define-extern *eco-blue-base-quat* quaternion)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -55543,17 +55614,17 @@
 ;; (define-extern count-powerups function)
 ;; (define-extern rand-spawn-pickup function)
 ;; (define-extern spawn-pickups-from-destructible function)
-;; (define-extern init-local-net-simple-destruct-mgr function)
+(define-extern init-local-net-simple-destruct-mgr (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-enemy                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern play-anim-along-path function)
-;; (define-extern advance-anim-by-motion function)
-;; (define-extern *tmp-transition* object)
-;; (define-extern net-enemy-default-handler function)
-;; (define-extern kill-all-enemies function)
+(define-extern play-anim-along-path (function symbol symbol symbol object :behavior net-enemy))
+(define-extern advance-anim-by-motion (function float int object :behavior net-enemy))
+(define-extern *tmp-transition* net-enemy-transition)
+(def-event-handler net-enemy-default-handler net-enemy)
+(define-extern kill-all-enemies (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; explosion                      ;;
@@ -55621,25 +55692,53 @@
 ;; net-hud                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type hud-manager basic)
+(declare-type basic-manager hud-manager)
+(declare-type hud-item basic)
 (deftype in-game-hud (hud)
   ((real-items           basic  :offset-assert 6364)
-   (items                basic  :offset-assert 6368)
-   (manager              basic  :offset-assert 6372)
+   (items                (array hud-item)  :offset-assert 6368)
+   (manager              basic-manager :offset-assert 6372)
    (inited-strings-count int32  :offset-assert 6376)
    )
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   (:methods
-    (in-game-hud-method-30 () none) ;; 30
-    (in-game-hud-method-31 () none) ;; 31
-    (in-game-hud-method-32 () none) ;; 32
+    (in-game-hud-method-30 (_type_) none) ;; 30
+    (in-game-hud-method-31 (_type_) none) ;; 31
+    (in-game-hud-method-32 (_type_ hud-item vector) none) ;; 32
     )
   )
-|#
 
-#|
+;; +++net-hud:hud-item-flag
+(defenum hud-item-flag
+  :type int32
+  :bitfield #t
+  (visible 0)
+  (fullscreen 1)
+  (right-of-prev 2)
+  (left-of-prev 3)
+  (above-prev 4)
+  (below-prev 5)
+  (at-prev 6)
+  (center-x 7)
+  (bit8 8)
+  (align-right 9)
+  (bit10 10)
+  (align-bottom 11)
+  (center-y 12)
+  (position-dirty 13)
+  (size-dirty 14)
+  (draw-dirty 15)
+  (bit16 16)
+  (bit17 17)
+  (bit18 18)
+  )
+;; ---net-hud:hud-item-flag
+
+(declare-type hud-effect basic)
+(declare-type hud-effect-group hud-effect)
 (deftype hud-item (basic)
   ((alpha           uint8   :offset-assert 4)
    (real-alpha      uint8   :offset-assert 5)
@@ -55654,71 +55753,65 @@
    (zval            uint16  :offset-assert 22)
    (real-scale      int16   :offset-assert 24)
    (scale           int16   :offset-assert 26)
-   (flags           int32   :offset-assert 28)
-   (effect          basic   :offset-assert 32)
-   (parent          basic   :offset-assert 36)
+   (flags           hud-item-flag :offset-assert 28)
+   (effect          hud-effect :offset-assert 32)
+   (parent          hud-item   :offset-assert 36)
    )
   :method-count-assert 24
   :size-assert         #x28
   :flag-assert         #x1800000028
   (:methods
-    (hud-item-method-9 () none) ;; 9
-    (hud-item-method-10 () none) ;; 10
-    (hud-item-method-11 () none) ;; 11
-    (hud-item-method-12 () none) ;; 12
-    (hud-item-method-13 () none) ;; 13
-    (hud-item-method-14 () none) ;; 14
-    (hud-item-method-15 () none) ;; 15
-    (hud-item-method-16 () none) ;; 16
-    (hud-item-method-17 () none) ;; 17
-    (hud-item-method-18 () none) ;; 18
-    (hud-item-method-19 () none) ;; 19
-    (hud-item-method-20 () none) ;; 20
-    (hud-item-method-21 () none) ;; 21
-    (hud-item-method-22 () none) ;; 22
-    (hud-item-method-23 () none) ;; 23
+    (init (_type_) symbol) ;; 9
+    (set-fullscreen (_type_) none) ;; 10
+    (cleanup (_type_) none) ;; 11
+    (mark-position-dirty (_type_) none) ;; 12
+    (mark-draw-dirty (_type_) none) ;; 13
+    (mark-size-dirty (_type_) none) ;; 14
+    (set-parent! (_type_ object) none) ;; 15
+    (hud-item-method-16 (_type_) none) ;; 16
+    (update-size (_type_ float) none) ;; 17
+    (update-position (_type_ hud-item vector float) symbol) ;; 18
+    (update (_type_) none) ;; 19
+    (set-real-alpha! (_type_ float) none) ;; 20
+    (hide (_type_) none) ;; 21
+    (show (_type_) none) ;; 22
+    (hud-item-method-23 (_type_ process int symbol event-message-block) object) ;; 23
     )
   )
-|#
 
-#|
 (deftype hud-effect (basic)
-  ((message      basic  :offset-assert 4)
-   (active       basic  :offset-assert 8)
-   (pending      basic  :offset-assert 12)
+  ((message      symbol :offset-assert 4)
+   (active       symbol :offset-assert 8)
+   (pending      symbol :offset-assert 12)
    (delay        int32  :offset-assert 16)
    (receive-time int32  :offset-assert 20)
-   (item         basic  :offset-assert 24)
+   (item         hud-item :offset-assert 24)
    )
   :method-count-assert 15
   :size-assert         #x1c
   :flag-assert         #xf0000001c
   (:methods
-    (hud-effect-method-9 () none) ;; 9
-    (hud-effect-method-10 () none) ;; 10
-    (hud-effect-method-11 () none) ;; 11
-    (hud-effect-method-12 () none) ;; 12
-    (hud-effect-method-13 () none) ;; 13
-    (hud-effect-method-14 () none) ;; 14
+    (apply-size (_type_) none) ;; 9
+    (apply-position (_type_) none) ;; 10
+    (update (_type_) none) ;; 11
+    (init (_type_ hud-item) none) ;; 12
+    (hud-effect-event-handler (_type_ process int symbol event-message-block) object) ;; 13
+    (trigger (_type_) none) ;; 14
     )
   )
-|#
 
-#|
 (deftype hud-manager (basic)
   ()
   :method-count-assert 12
   :size-assert         #x4
   :flag-assert         #xc00000004
   (:methods
-    (hud-manager-method-9 () none) ;; 9
-    (hud-manager-method-10 () none) ;; 10
-    (hud-manager-method-11 () none) ;; 11
+    (init (_type_) none) ;; 9
+    (update (_type_) none) ;; 10
+    (hud-mgr-event-handler (_type_ process int symbol event-message-block) object) ;; 11
     )
   )
-|#
 
-#|
 (deftype basic-manager (hud-manager)
   ((exit-start-time int32  :offset-assert 4)
    (exit-time       int32  :offset-assert 8)
@@ -55728,9 +55821,7 @@
   :size-assert         #x10
   :flag-assert         #xc00000010
   )
-|#
 
-#|
 (deftype hud-region (structure)
   ((offset-x float  :offset-assert 0)
    (offset-y float  :offset-assert 4)
@@ -55741,95 +55832,83 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype hud-item-string (hud-item)
   ((string            hud-string  :offset-assert 40)
-   (text-id           uint32      :offset-assert 44)
+   (text-id           text-id     :offset-assert 44)
    (font-effect       uint8       :offset-assert 48)
    (font-effect-color uint8       :offset-assert 49)
    (color             uint8       :offset-assert 50)
-   (font-flags        uint16      :offset-assert 52)
-   (has-outline       basic       :offset-assert 56)
+   (font-flags        hud-string-flag :offset-assert 52)
+   (has-outline       symbol      :offset-assert 56)
    )
   :method-count-assert 29
   :size-assert         #x3c
   :flag-assert         #x1d0000003c
   (:methods
-    (hud-item-string-method-24 () none) ;; 24
-    (hud-item-string-method-25 () none) ;; 25
-    (hud-item-string-method-26 () none) ;; 26
-    (hud-item-string-method-27 () none) ;; 27
-    (hud-item-string-method-28 () none) ;; 28
+    (set-string! (_type_ string) none) ;; 24
+    (set-text-id! (_type_ text-id) none) ;; 25
+    (set-int! (_type_ int) none) ;; 26
+    (set-color! (_type_ font-color) none) ;; 27
+    (alloc-string (_type_) none) ;; 28
     )
   )
-|#
 
-#|
 (deftype hud-item-sprite (hud-item)
-  ((scale-x      int16              :offset-assert 26)
-   (real-scale-x int16              :offset-assert 24)
+  ((scale-x      int16              :offset 26)
+   (real-scale-x int16              :offset 24)
    (sprite       hud-sprite         :offset-assert 40)
    (real-scale-y int16              :offset-assert 44)
    (scale-y      int16              :offset-assert 46)
    (color        vector4w   :inline :offset-assert 48)
-   (tex-id       uint32             :offset-assert 64)
-   (sprite-flags uint16             :offset-assert 68)
+   (tex-id       texture-id         :offset-assert 64)
+   (sprite-flags hud-sprite-flags   :offset-assert 68)
    (angle        float              :offset-assert 72)
    )
   :method-count-assert 25
   :size-assert         #x4c
   :flag-assert         #x190000004c
   (:methods
-    (hud-item-sprite-method-24 () none) ;; 24
+    (set-texture! (_type_ texture) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-item-group (hud-item)
-  ((items basic  :offset-assert 40)
+  ((items (array hud-item) :offset-assert 40)
    )
   :method-count-assert 24
   :size-assert         #x2c
   :flag-assert         #x180000002c
   )
-|#
 
-;; (define-extern *debug-hud* object)
-;; (define-extern *display-boxes* object)
-;; (define-extern *current-hud* object)
-;; (define-extern *default-box* object)
+(define-extern *debug-hud* symbol)
+(define-extern *display-boxes* symbol)
+(define-extern *current-hud* in-game-hud)
+(define-extern *default-box* hud-region)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-effects                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-effect-group (hud-effect)
-  ((items basic  :offset-assert 28)
+  ((items (array hud-effect) :offset-assert 28)
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   )
-|#
 
-#|
 (deftype hud-effect-slide (hud-effect)
   ((slide-type       uint64  :offset-assert 32)
    (slide-time       float   :offset-assert 40)
    (start-time       int32   :offset-assert 44)
-   (message-is-enter basic   :offset-assert 48)
+   (message-is-enter symbol  :offset-assert 48)
    )
   :method-count-assert 15
   :size-assert         #x34
   :flag-assert         #xf00000034
   )
-|#
 
-#|
 (deftype hud-effect-move (hud-effect)
   ((offset-x   float  :offset-assert 28)
    (offset-y   float  :offset-assert 32)
@@ -55840,9 +55919,7 @@
   :size-assert         #x2c
   :flag-assert         #xf0000002c
   )
-|#
 
-#|
 (deftype hud-effect-font-effect (hud-effect)
   ((font-effect uint8  :offset-assert 28)
    )
@@ -55850,9 +55927,7 @@
   :size-assert         #x1d
   :flag-assert         #xf0000001d
   )
-|#
 
-#|
 (deftype hud-effect-throb (hud-effect)
   ((start-time  int32  :offset-assert 28)
    (throb-time  int32  :offset-assert 32)
@@ -55865,35 +55940,29 @@
   :size-assert         #x34
   :flag-assert         #xf00000034
   )
-|#
 
-#|
 (deftype hud-effect-fade (hud-effect)
   ((fade-time   float  :offset-assert 28)
    (start-time  int32  :offset-assert 32)
-   (fade-out-on basic  :offset-assert 36)
+   (fade-out-on symbol :offset-assert 36)
    )
   :method-count-assert 15
   :size-assert         #x28
   :flag-assert         #xf00000028
   )
-|#
 
-#|
 (deftype hud-effect-scale (hud-effect)
   ((scale-time   float  :offset-assert 28)
    (target-scale float  :offset-assert 32)
    (start-scale  float  :offset-assert 36)
    (start-time   int32  :offset-assert 40)
-   (dont-move-me basic  :offset-assert 44)
+   (dont-move-me symbol :offset-assert 44)
    )
   :method-count-assert 15
   :size-assert         #x30
   :flag-assert         #xf00000030
   )
-|#
 
-#|
 (deftype hud-effect-emit-score-icon (hud-effect)
   ((point-value int16  :offset-assert 28)
    )
@@ -55901,9 +55970,7 @@
   :size-assert         #x1e
   :flag-assert         #xf0000001e
   )
-|#
 
-#|
 (deftype hud-effect-trigger-sound (hud-effect)
   ((soundname uint16  :offset-assert 28)
    )
@@ -55911,9 +55978,7 @@
   :size-assert         #x1e
   :flag-assert         #xf0000001e
   )
-|#
 
-#|
 (deftype hud-effect-trigger-score-sound (hud-effect)
   ((soundname uint16  :offset-assert 28)
    )
@@ -55921,9 +55986,7 @@
   :size-assert         #x1e
   :flag-assert         #xf0000001e
   )
-|#
 
-#|
 (deftype hud-text-effect-sound (hud-effect)
   ((soundname      uint16  :offset-assert 28)
    (next-play-time int32   :offset-assert 32)
@@ -55936,9 +55999,7 @@
   :size-assert         #x34
   :flag-assert         #xf00000034
   )
-|#
 
-#|
 (deftype hud-effect-offscreen (hud-effect)
   ((offscreen-type uint64  :offset-assert 32)
    )
@@ -55946,15 +56007,13 @@
   :size-assert         #x28
   :flag-assert         #xf00000028
   )
-|#
 
-;; (define-extern *last-play-time* object)
+(define-extern *last-play-time* time-frame)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-widgets                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-player-icon (hud-item-group)
   ((player-id int32  :offset-assert 44)
    )
@@ -55962,53 +56021,45 @@
   :size-assert         #x30
   :flag-assert         #x1900000030
   (:methods
-    (hud-player-icon-method-24 () none) ;; 24
+    (set-player-id! (_type_ int) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-player-icon-name (hud-player-icon)
   ()
   :method-count-assert 25
   :size-assert         #x30
   :flag-assert         #x1900000030
   )
-|#
 
-#|
 (deftype hud-clock (hud-item-group)
   ((clock-id        int8    :offset-assert 44)
-   (count-up        basic   :offset-assert 48)
-   (fixed-time?     basic   :offset-assert 52)
-   (show-before-red basic   :offset-assert 56)
+   (count-up        symbol  :offset-assert 48)
+   (fixed-time?     symbol  :offset-assert 52)
+   (show-before-red symbol  :offset-assert 56)
    (red-time        int32   :offset-assert 60)
-   (text-id         uint32  :offset-assert 64)
+   (text-id         text-id :offset-assert 64)
    (fixed-time-val  int32   :offset-assert 68)
    )
   :method-count-assert 25
   :size-assert         #x48
   :flag-assert         #x1900000048
   (:methods
-    (hud-clock-method-24 () none) ;; 24
+    (set-clock-time! (_type_ int int) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-medal (hud-item-group)
-  ((score-as-time basic  :offset-assert 44)
+  ((score-as-time symbol :offset-assert 44)
    )
   :method-count-assert 24
   :size-assert         #x30
   :flag-assert         #x1800000030
   )
-|#
 
-#|
 (deftype hud-lap (hud-item-group)
-  ((show-total-laps    basic  :offset-assert 44)
-   (is-net-player-race basic  :offset-assert 48)
+  ((show-total-laps    symbol :offset-assert 44)
+   (is-net-player-race symbol :offset-assert 48)
    (total-laps         int8   :offset-assert 52)
    (current-laps       int8   :offset-assert 53)
    )
@@ -56016,9 +56067,7 @@
   :size-assert         #x36
   :flag-assert         #x1800000036
   )
-|#
 
-#|
 (deftype hud-position (hud-item-group)
   ((race-position int32  :offset-assert 44)
    )
@@ -56026,27 +56075,21 @@
   :size-assert         #x30
   :flag-assert         #x1800000030
   )
-|#
 
-#|
 (deftype hud-item-player-name (hud-item-string)
   ()
   :method-count-assert 29
   :size-assert         #x3c
   :flag-assert         #x1d0000003c
   )
-|#
 
-#|
 (deftype hud-item-player-score (hud-item-string)
   ()
   :method-count-assert 29
   :size-assert         #x3c
   :flag-assert         #x1d0000003c
   )
-|#
 
-#|
 (deftype hud-item-number (hud-item-string)
   ((value int32  :offset-assert 60)
    )
@@ -56054,125 +56097,104 @@
   :size-assert         #x40
   :flag-assert         #x1d00000040
   )
-|#
 
-#|
 (deftype hud-item-score (hud-item-group)
   ((player-id          int32   :offset-assert 44)
    (initial-player-id  int32   :offset-assert 48)
    (previous-score     int32   :offset-assert 52)
-   (initial-texture-id uint32  :offset-assert 56)
+   (initial-texture-id texture-id :offset-assert 56)
    )
   :method-count-assert 24
   :size-assert         #x3c
   :flag-assert         #x180000003c
   )
-|#
 
-#|
 (deftype hud-score-single (hud-item-group)
-  ((need-event-before-update basic  :offset-assert 44)
-   (other-human              basic  :offset-assert 48)
+  ((need-event-before-update symbol :offset-assert 44)
+   (other-human              symbol :offset-assert 48)
    (display-score            int32  :offset-assert 52)
    )
   :method-count-assert 25
   :size-assert         #x38
   :flag-assert         #x1900000038
   (:methods
-    (hud-score-single-method-24 () none) ;; 24
+    (find-other-player (_type_ int) net-player) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-leader-score (hud-item-group)
-  ((force-visible basic  :offset-assert 44)
-   (only-humans   basic  :offset-assert 48)
+  ((force-visible symbol :offset-assert 44)
+   (only-humans   symbol :offset-assert 48)
    )
   :method-count-assert 24
   :size-assert         #x34
   :flag-assert         #x1800000034
   )
-|#
 
-#|
 (deftype hud-item-score-list (hud-item-group)
-  ((ignore-self             basic  :offset-assert 44)
+  ((ignore-self             symbol :offset-assert 44)
    (active-net-player-count int32  :offset-assert 48)
    )
   :method-count-assert 24
   :size-assert         #x34
   :flag-assert         #x1800000034
   )
-|#
 
-#|
 (deftype hud-localized-string (hud-item-string)
   ()
   :method-count-assert 29
   :size-assert         #x3c
   :flag-assert         #x1d0000003c
   )
-|#
 
-#|
 (deftype hud-place-event (hud-item-group)
-  ((should-be-visible basic  :offset-assert 44)
-   (hide-titles       basic  :offset-assert 48)
+  ((should-be-visible symbol :offset-assert 44)
+   (hide-titles       symbol :offset-assert 48)
    )
   :method-count-assert 24
   :size-assert         #x34
   :flag-assert         #x1800000034
   )
-|#
 
-#|
 (deftype hud-item-string-big (hud-item-string)
   ()
   :method-count-assert 29
   :size-assert         #x3c
   :flag-assert         #x1d0000003c
   )
-|#
 
-#|
 (deftype hud-slowmo (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-top-split-bar (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-side-split-bar (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern team-has-local-humans? function)
-;; (define-extern get-player-id-by-team function)
-;; (define-extern *hud-slowmo* array)
-;; (define-extern *hud-slowmo-proc* object)
-(define-extern spawn-hud-slowmo (function object))
-;; (define-extern *hud-top-split-bar* array)
-;; (define-extern *hud-top-split-bar-proc* object)
-;; (define-extern spawn-hud-top-split-bar function)
-;; (define-extern *hud-side-split-bar* array)
-;; (define-extern *hud-side-split-bar-proc* object)
-;; (define-extern spawn-hud-side-split-bar function)
+(define-extern team-has-local-humans? (function int symbol))
+(define-extern get-player-id-by-team (function int integer))
+(define-extern *hud-slowmo* (array hud-item))
+(define-extern *hud-slowmo-proc* hud-slowmo)
+(define-extern spawn-hud-slowmo (function hud-slowmo))
+(define-extern *hud-top-split-bar* (array hud-item))
+(define-extern *hud-top-split-bar-proc* hud-top-split-bar)
+(define-extern spawn-hud-top-split-bar (function hud-top-split-bar))
+(define-extern *hud-side-split-bar* (array hud-item))
+(define-extern *hud-side-split-bar-proc* hud-side-split-bar)
+(define-extern spawn-hud-side-split-bar (function hud-side-split-bar))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-results                    ;;
@@ -56356,7 +56378,7 @@
 ;; (define-extern spawn-hud-results-team-view-1 function)
 ;; (define-extern spawn-hud-results-team function)
 (define-extern spawn-hud-results (function object))
-;; (define-extern calc-player-rank function)
+(define-extern calc-player-rank (function int symbol int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-results-grand-prix         ;;
@@ -57146,8 +57168,8 @@
 ;; (define-extern spawn-hud-points-icon-display4 function)
 ;; (define-extern spawn-unused-hud-points-icon-display function)
 ;; (define-extern set-to-upper-right function)
-;; (define-extern create-points-icon-from-screen-pos function)
-;; (define-extern create-points-icon function)
+(define-extern create-points-icon-from-screen-pos (function vector int symbol object))
+(define-extern create-points-icon (function process-drawable object symbol object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hud-widgets-4                  ;;
@@ -57201,7 +57223,7 @@
 ;; (define-extern *hud-headset-talker-other-proc* object)
 ;; (define-extern spawn-hud-headset-talker-other function)
 ;; (define-extern *last-talker-ids* object)
-;; (define-extern spawn-hud-headset-talker function)
+(define-extern spawn-hud-headset-talker (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; in-game-menu-hud               ;;
@@ -57422,61 +57444,55 @@
 ;; net-game-mgr                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype intro-hud-view (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype special-intro-hud-view (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *intro-hud-view* array)
-;; (define-extern *intro-hud-view-proc* object)
-;; (define-extern spawn-intro-hud-view function)
-;; (define-extern *special-intro-hud-view* array)
-;; (define-extern *special-intro-hud-view-proc* object)
-;; (define-extern spawn-special-intro-hud-view function)
-;; (define-extern spawn-special-intro-hud function)
-;; (define-extern spawn-intro-hud function)
-;; (define-extern set-battle-camera-matrix function)
-;; (define-extern cam-battle-intro-player-update function)
-;; (define-extern cam-battle-intro-update function)
-;; (define-extern update-framing function)
-;; (define-extern do-battle-intro function)
-;; (define-extern cam-battle-intro state)
-;; (define-extern print-intro-text function)
-;; (define-extern cam-event-intro-update function)
-;; (define-extern do-event-intro function)
-;; (define-extern cam-event-intro state)
+(define-extern *intro-hud-view* (array hud-item))
+(define-extern *intro-hud-view-proc* intro-hud-view)
+(define-extern spawn-intro-hud-view (function intro-hud-view))
+(define-extern *special-intro-hud-view* (array hud-item))
+(define-extern *special-intro-hud-view-proc* object)
+(define-extern spawn-special-intro-hud-view (function special-intro-hud-view))
+(define-extern spawn-special-intro-hud (function special-intro-hud-view))
+(define-extern spawn-intro-hud (function intro-hud-view))
+(define-extern set-battle-camera-matrix (function vector quaternion symbol float float float object :behavior camera-slave))
+(define-extern cam-battle-intro-player-update (function float vehicle symbol object :behavior camera-slave))
+(define-extern cam-battle-intro-update (function time-frame vector vector object :behavior camera-slave))
+(define-extern update-framing (function int object :behavior camera-slave))
+(define-extern do-battle-intro (function object :behavior camera-slave))
+(define-extern print-intro-text (function text-id object))
+(define-extern cam-event-intro-update (function time-frame vector symbol object :behavior camera-slave))
+(define-extern do-event-intro (function symbol :behavior camera-slave))
 (define-extern calc-team-score (function int int))
-;; (define-extern net-game-mgr-default-handler function)
-;; (define-extern reset-game-now function)
-;; (define-extern check-body-part-award function)
-;; (define-extern net-game-mgr-init-local function)
+(def-event-handler net-game-mgr-default-handler net-game-mgr)
+(define-extern reset-game-now (function object :behavior net-game-mgr))
+(define-extern check-body-part-award (function object))
+(define-extern net-game-mgr-init-local (function object :behavior net-game-mgr))
 (define-extern late-join-spawn-players (function object))
-;; (define-extern wait-for-all-net-players function)
-;; (define-extern play-mode-startup-hook function)
-;; (define-extern get-game-mgr-type function)
-(define-extern spawn-game-mgr (function symbol object))
-;; (define-extern *backup-player-ladder-stats* object)
-;; (define-extern *tmp-awards* object)
-;; (define-extern *award-table* array)
-;; (define-extern overall-score-amount-to-gamble function)
-;; (define-extern award-overall-score function)
-;; (define-extern got-other-players function)
-;; (define-extern quit-game-stats-update function)
-;; (define-extern current-level-difficulty function)
-;; (define-extern difficulty-stats function)
+(define-extern wait-for-all-net-players (function object))
+(define-extern play-mode-startup-hook (function net-play-mode object))
+(define-extern get-game-mgr-type (function net-play-mode type))
+(define-extern spawn-game-mgr (function type object))
+(define-extern *backup-player-ladder-stats* net-player-ladder-stats)
+(define-extern *tmp-awards* (pointer uint32))
+(define-extern *award-table* (array (array int32)))
+(define-extern overall-score-amount-to-gamble (function int int))
+(define-extern award-overall-score (function symbol object))
+(define-extern got-other-players (function object))
+(define-extern quit-game-stats-update (function object))
+(define-extern current-level-difficulty (function float))
+(define-extern difficulty-stats (function object))
 (define-extern are-we-in-time-trial-mode? (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57734,7 +57750,6 @@
 ;; net-boss-battle                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-boss-meter (hud-item-group)
   ((player-id int32  :offset-assert 44)
    (health    float  :offset-assert 48)
@@ -57743,23 +57758,20 @@
   :size-assert         #x34
   :flag-assert         #x1800000034
   )
-|#
 
-#|
 (deftype boss-hud (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *boss-hud* array)
-;; (define-extern *boss-hud-proc* object)
-;; (define-extern spawn-boss-hud function)
-;; (define-extern *boss-battle-continue-busy* object)
-;; (define-extern boss-battle-continue function)
-;; (define-extern boss-battle-task function)
+(define-extern *boss-hud* (array hud-item))
+(define-extern *boss-hud-proc* boss-hud)
+(define-extern spawn-boss-hud (function boss-hud))
+(define-extern *boss-battle-continue-busy* object)
+(define-extern boss-battle-continue function)
+(define-extern boss-battle-task function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-sabotage                  ;;
@@ -57852,145 +57864,89 @@
 ;; net-deathmatch                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype spawn-point (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (view             basic                 :offset-assert 12)
-   (parent           uint32                :offset-assert 16)
-   (brother          uint32                :offset-assert 20)
-   (child            uint32                :offset-assert 24)
-   (ppointer         uint32                :offset-assert 28)
-   (self             basic                 :offset-assert 32)
-   (profile-ticks    uint32                :offset-assert 36)
-   (pool             basic                 :offset-assert 40)
-   (status           basic                 :offset-assert 44)
-   (pid              int32                 :offset-assert 48)
-   (main-thread      basic                 :offset-assert 52)
-   (top-thread       basic                 :offset-assert 56)
-   (entity           basic                 :offset-assert 60)
-   (level            basic                 :offset-assert 64)
-   (state            basic                 :offset-assert 68)
-   (prev-state       basic                 :offset-assert 72)
-   (next-state       basic                 :offset-assert 76)
-   (state-stack      basic                 :offset-assert 80)
-   (trans-hook       basic                 :offset-assert 84)
-   (post-hook        basic                 :offset-assert 88)
-   (event-hook       basic                 :offset-assert 92)
-   (allocated-length int32                 :offset-assert 96)
-   (heap-base        uint32                :offset-assert 108)
-   (heap-top         uint32                :offset-assert 112)
-   (heap-cur         uint32                :offset-assert 116)
-   (stack-frame-top  basic                 :offset-assert 120)
-   (heap             kheap        :inline  :offset-assert 108)
-   (connection-list  connectable  :inline  :offset-assert 124)
-   (stack            UNKNOWN      :dynamic :offset-assert 140)
-   )
+  ()
   :method-count-assert 15
   :size-assert         #x90
   :flag-assert         #xf00000090
-  (:methods
-    (spawn-point-method-9 () none) ;; 9
-    (spawn-point-method-10 () none) ;; 10
-    (spawn-point-method-11 () none) ;; 11
-    (spawn-point-method-12 () none) ;; 12
-    (spawn-point-method-13 () none) ;; 13
-    (spawn-point-method-14 () none) ;; 14
-    )
   )
-|#
 
-#|
 (deftype hud-deathmatch-single (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-split-view-0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-split-view-1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-score-drop-view-10 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-score-drop-view-11 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-score-drop-view-20 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-deathmatch-score-drop-view-21 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *hud-deathmatch-single* array)
-;; (define-extern *hud-deathmatch-single-proc* object)
-;; (define-extern spawn-hud-deathmatch-single function)
-;; (define-extern *hud-deathmatch-split-view-0* array)
-;; (define-extern *hud-deathmatch-split-view-0-proc* object)
-;; (define-extern spawn-hud-deathmatch-split-view-0 function)
-;; (define-extern *hud-deathmatch-split-view-1* array)
-;; (define-extern *hud-deathmatch-split-view-1-proc* object)
-;; (define-extern spawn-hud-deathmatch-split-view-1 function)
-;; (define-extern spawn-hud-deathmatch-split function)
-;; (define-extern *hud-deathmatch-score-drop-view-10* array)
-;; (define-extern *hud-deathmatch-score-drop-view-10-proc* object)
-;; (define-extern spawn-hud-deathmatch-score-drop-view-10 function)
-;; (define-extern *hud-deathmatch-score-drop-view-11* array)
-;; (define-extern *hud-deathmatch-score-drop-view-11-proc* object)
-;; (define-extern spawn-hud-deathmatch-score-drop-view-11 function)
-;; (define-extern spawn-unused-hud-deathmatch-score-drop-view-1 function)
-;; (define-extern *hud-deathmatch-score-drop-view-20* array)
-;; (define-extern *hud-deathmatch-score-drop-view-20-proc* object)
-;; (define-extern spawn-hud-deathmatch-score-drop-view-20 function)
-;; (define-extern *hud-deathmatch-score-drop-view-21* array)
-;; (define-extern *hud-deathmatch-score-drop-view-21-proc* object)
-;; (define-extern spawn-hud-deathmatch-score-drop-view-21 function)
-;; (define-extern spawn-unused-hud-deathmatch-score-drop-view-2 function)
-;; (define-extern spawn-hud-deathmatch-score-drop function)
-;; (define-extern spawn-hud-deathmatch function)
-;; (define-extern get-best-defensive-powerup function)
+(define-extern *hud-deathmatch-single* (array hud-item))
+(define-extern *hud-deathmatch-single-proc* hud-deathmatch-single)
+(define-extern spawn-hud-deathmatch-single (function hud-deathmatch-single))
+(define-extern *hud-deathmatch-split-view-0* (array hud-item))
+(define-extern *hud-deathmatch-split-view-0-proc* hud-deathmatch-split-view-0)
+(define-extern spawn-hud-deathmatch-split-view-0 (function hud-deathmatch-split-view-0))
+(define-extern *hud-deathmatch-split-view-1* (array hud-item))
+(define-extern *hud-deathmatch-split-view-1-proc* hud-deathmatch-split-view-1)
+(define-extern spawn-hud-deathmatch-split-view-1 (function hud-deathmatch-split-view-1))
+(define-extern spawn-hud-deathmatch-split (function in-game-hud))
+(define-extern *hud-deathmatch-score-drop-view-10* (array hud-item))
+(define-extern *hud-deathmatch-score-drop-view-10-proc* hud-deathmatch-score-drop-view-10)
+(define-extern spawn-hud-deathmatch-score-drop-view-10 (function hud-deathmatch-score-drop-view-10))
+(define-extern *hud-deathmatch-score-drop-view-11* (array hud-item))
+(define-extern *hud-deathmatch-score-drop-view-11-proc* hud-deathmatch-score-drop-view-11)
+(define-extern spawn-hud-deathmatch-score-drop-view-11 (function hud-deathmatch-score-drop-view-11))
+(define-extern spawn-unused-hud-deathmatch-score-drop-view-1 (function in-game-hud))
+(define-extern *hud-deathmatch-score-drop-view-20* (array hud-item))
+(define-extern *hud-deathmatch-score-drop-view-20-proc* hud-deathmatch-score-drop-view-20)
+(define-extern spawn-hud-deathmatch-score-drop-view-20 (function hud-deathmatch-score-drop-view-20))
+(define-extern *hud-deathmatch-score-drop-view-21* (array hud-item))
+(define-extern *hud-deathmatch-score-drop-view-21-proc* hud-deathmatch-score-drop-view-21)
+(define-extern spawn-hud-deathmatch-score-drop-view-21 (function hud-deathmatch-score-drop-view-21))
+(define-extern spawn-unused-hud-deathmatch-score-drop-view-2 (function in-game-hud))
+(define-extern spawn-hud-deathmatch-score-drop (function in-game-hud))
+(define-extern spawn-hud-deathmatch (function in-game-hud))
+(define-extern get-best-defensive-powerup (function wvehicle vector float float entity-actor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-assassin                   ;;
@@ -58891,7 +58847,6 @@
 ;; hud-player-indicators          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-health (hud-item-group)
   ((health float  :offset-assert 44)
    )
@@ -58899,142 +58854,121 @@
   :size-assert         #x30
   :flag-assert         #x1900000030
   (:methods
-    (hud-health-method-24 () none) ;; 24
+    (hud-health-method-24 (_type_ float symbol) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-indicator (hud-item-group)
-  ((target                 uint64         :offset-assert 48)
+  ((target                 handle         :offset-assert 48 :handle-type net-enemy)
    (target-position        vector :inline :offset-assert 64)
    (id                     int32          :offset-assert 80)
    (enemy-distance         float          :offset-assert 84)
    (hud-direction-arrow-01 basic          :offset-assert 88)
    (hud-namebar-shape-01   basic          :offset-assert 92)
    (offscreen              basic          :offset-assert 96)
-   (only-direction-arrows  basic          :offset-assert 100)
-   (fade-at-distance       basic          :offset-assert 104)
-   (no-direction-indicator basic          :offset-assert 108)
+   (only-direction-arrows  symbol         :offset-assert 100)
+   (fade-at-distance       symbol         :offset-assert 104)
+   (no-direction-indicator symbol         :offset-assert 108)
    (indicator-alpha        float          :offset-assert 112)
    )
   :method-count-assert 27
   :size-assert         #x74
   :flag-assert         #x1b00000074
   (:methods
-    (hud-indicator-method-24 () none) ;; 24
-    (hud-indicator-method-25 () none) ;; 25
-    (hud-indicator-method-26 () none) ;; 26
+    (hud-indicator-method-24 (_type_) none) ;; 24
+    (hud-indicator-method-25 (_type_ rgba int) none) ;; 25
+    (hud-indicator-method-26 (_type_) none) ;; 26
     )
   )
-|#
 
-#|
 (deftype hud-player-indicators (hud-item-group)
   ()
   :method-count-assert 25
   :size-assert         #x2c
   :flag-assert         #x190000002c
   (:methods
-    (hud-player-indicators-method-24 () none) ;; 24
+    (show-indicator-for? (_type_ net-player) symbol) ;; 24
     )
   )
-|#
 
-#|
 (deftype hud-artifact-indicators (hud-player-indicators)
   ()
   :method-count-assert 25
   :size-assert         #x2c
   :flag-assert         #x190000002c
   )
-|#
 
-#|
 (deftype hud-assassin-indicators (hud-item-group)
   ()
   :method-count-assert 24
   :size-assert         #x2c
   :flag-assert         #x180000002c
   )
-|#
 
-#|
 (deftype hud-player-indicators-view0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-player-indicators-view1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-artifact-indicators-view0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-artifact-indicators-view1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-assassin-indicators-view0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-assassin-indicators-view1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *hud-player-indicators-view0* array)
-;; (define-extern *hud-player-indicators-view0-proc* object)
-;; (define-extern spawn-hud-player-indicators-view0 function)
-;; (define-extern *hud-player-indicators-view1* array)
-;; (define-extern *hud-player-indicators-view1-proc* object)
-;; (define-extern spawn-hud-player-indicators-view1 function)
-;; (define-extern spawn-unused-hud-player-indicators-view function)
-;; (define-extern *hud-artifact-indicators-view0* array)
-;; (define-extern *hud-artifact-indicators-view0-proc* object)
-;; (define-extern spawn-hud-artifact-indicators-view0 function)
-;; (define-extern *hud-artifact-indicators-view1* array)
-;; (define-extern *hud-artifact-indicators-view1-proc* object)
-;; (define-extern spawn-hud-artifact-indicators-view1 function)
-;; (define-extern spawn-unused-hud-artifact-indicators-view function)
-;; (define-extern *hud-assassin-indicators-view0* array)
-;; (define-extern *hud-assassin-indicators-view0-proc* object)
-;; (define-extern spawn-hud-assassin-indicators-view0 function)
-;; (define-extern *hud-assassin-indicators-view1* array)
-;; (define-extern *hud-assassin-indicators-view1-proc* object)
-;; (define-extern spawn-hud-assassin-indicators-view1 function)
-;; (define-extern spawn-unused-hud-assassin-indicators-view function)
-;; (define-extern hud-indicators-spawn function)
+(define-extern *hud-player-indicators-view0* array)
+(define-extern *hud-player-indicators-view0-proc* object)
+(define-extern spawn-hud-player-indicators-view0 function)
+(define-extern *hud-player-indicators-view1* array)
+(define-extern *hud-player-indicators-view1-proc* object)
+(define-extern spawn-hud-player-indicators-view1 function)
+(define-extern spawn-unused-hud-player-indicators-view function)
+(define-extern *hud-artifact-indicators-view0* array)
+(define-extern *hud-artifact-indicators-view0-proc* object)
+(define-extern spawn-hud-artifact-indicators-view0 function)
+(define-extern *hud-artifact-indicators-view1* array)
+(define-extern *hud-artifact-indicators-view1-proc* object)
+(define-extern spawn-hud-artifact-indicators-view1 function)
+(define-extern spawn-unused-hud-artifact-indicators-view function)
+(define-extern *hud-assassin-indicators-view0* array)
+(define-extern *hud-assassin-indicators-view0-proc* object)
+(define-extern spawn-hud-assassin-indicators-view0 function)
+(define-extern *hud-assassin-indicators-view1* array)
+(define-extern *hud-assassin-indicators-view1-proc* object)
+(define-extern spawn-hud-assassin-indicators-view1 function)
+(define-extern spawn-unused-hud-assassin-indicators-view function)
+(define-extern hud-indicators-spawn (function process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-race                  ;;
@@ -59710,7 +59644,7 @@
   )
 |#
 
-;; (define-extern mine-compute-landing-point! function)
+(define-extern mine-compute-landing-point! (function vector vector vector symbol vector float object))
 ;; (define-extern spawn-mine function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59767,7 +59701,7 @@
 ;; (define-extern v-wpn-choose-increasing-lethality function)
 ;; (define-extern v-wpn-get-mask function)
 ;; (define-extern v-wpn-num-available function)
-;; (define-extern v-wpn-choose-random function)
+(define-extern v-wpn-choose-random (function object))
 ;; (define-extern v-wpn-get-available-types functiöon)
 ;; (define-extern race-player-behind-more-than function)
 ;; (define-extern v-wpn-get-selection-table function)
@@ -59812,7 +59746,29 @@
 ;; vehicle-antenna                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++vehicle-antenna:vehicle-antenna-sim-stack
+(deftype vehicle-antenna-sim-stack (structure)
+  "vehicle-antenna::52"
+  ((vehicle-vel     vector     :inline)
+   (tip-pos         vector     :inline)
+   (attach-pos      vector     :inline)
+   (accel           vector     :inline)
+   (tail-dir        vector     :inline :offset 80)
+   (tip-rot         quaternion :inline)
+   (inv-tip-rot     quaternion :inline)
+   (inv-root-mat    matrix     :inline)
+   (dt              float)
+   (spring-k        float)
+   (damping         float)
+   (tail-dist       float)
+   (rot             quaternion :inline)
+   (rot2            quaternion :inline)
+   (bend-axis       vector     :inline :offset 304)
+   (max-bend        float)
+   )
+  )
+;; ---vehicle-antenna:vehicle-antenna-sim-stack
+
 (deftype joint-mod-set-rot-local (joint-mod-base)
   ((rotation quaternion :inline :offset-assert 16)
    )
@@ -59820,53 +59776,48 @@
   :size-assert         #x20
   :flag-assert         #xc00000020
   )
-|#
 
-#|
 (deftype vehicle-antenna-state (structure)
-  ((data UNKNOWN 6 :offset-assert 0)
+  ((data vector 6 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype vehicle-antenna (process-drawable)
-  ((vehicle          uint64                          :offset-assert 248)
+  ((vehicle          handle                          :offset-assert 248 :handle-type vehicle)
    (attach-local-pos vector                  :inline :offset-assert 256)
    (attach-rot       quaternion              :inline :offset-assert 272)
-   (jmod-antenna     UNKNOWN                 4       :offset-assert 288)
+   (jmod-antenna     joint-mod-set-rot-local 4 :inline :offset-assert 288)
    (jmod-tail        joint-mod-set-rot-local :inline :offset-assert 416)
    (sim-state        vehicle-antenna-state   :inline :offset-assert 448)
-   (ant-tip-pos      vector                  :inline :offset-assert 448)
-   (ant-tip-vel      vector                  :inline :offset-assert 464)
-   (spring-pos       vector                  :inline :offset-assert 480)
-   (spring-vel       vector                  :inline :offset-assert 496)
-   (tail-pos         vector                  :inline :offset-assert 512)
-   (tail-vel         vector                  :inline :offset-assert 528)
+   (ant-tip-pos      vector                  :inline :offset 448)
+   (ant-tip-vel      vector                  :inline :offset 464)
+   (spring-pos       vector                  :inline :offset 480)
+   (spring-vel       vector                  :inline :offset 496)
+   (tail-pos         vector                  :inline :offset 512)
+   (tail-vel         vector                  :inline :offset 528)
    (i-tip-node       int8                            :offset-assert 544)
-   (use-tail?        basic                           :offset-assert 548)
+   (use-tail?        symbol                          :offset-assert 548)
    )
   :method-count-assert 55
   :size-assert         #x228
   :flag-assert         #x3701a00228
-  (:methods
-    (vehicle-antenna-method-52 () none) ;; 52
-    (vehicle-antenna-method-53 () none) ;; 53
-    (vehicle-antenna-method-54 () none) ;; 54
-    )
   (:state-methods
     idle ;; 50
     die ;; 51
     )
+  (:methods
+    (update-sim (_type_) none) ;; 52
+    (snap-to-vehicle (_type_) none) ;; 53
+    (modify-draw-status (_type_ draw-control-status draw-control-status) none) ;; 54
+    )
   )
-|#
 
-;; (define-extern *vehicle-antenna-state* object)
-;; (define-extern vehicle-antenna-init-by-other function)
-;; (define-extern vehicle-antenna-spawn function)
+(define-extern *vehicle-antenna-state* vehicle-antenna-state)
+(define-extern vehicle-antenna-init-by-other (function vehicle-antenna-init-params object :behavior vehicle-antenna))
+(define-extern vehicle-antenna-spawn (function vehicle-antenna-init-params vehicle-antenna))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-base                      ;;
@@ -60079,55 +60030,45 @@
 ;; drift                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype drive-data (structure)
-  ((angles vector :inline :offset-assert 0)
-   (pos    vector :inline :offset-assert 16)
+  ((angles euler-angles :inline :offset-assert 0)
+   (pos    vector       :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype drift-editor (process)
-  ((angles                       euler-angles :inline :offset-assert 144)
-   (counter                      int32                :offset-assert 160)
-   (editor-start-time            uint32               :offset-assert 164)
-   (all-data-array               UNKNOWN      5       :offset-assert 168)
-   (drive-data-array             uint32               :offset-assert 168)
-   (wheel-front-left-data-array  uint32               :offset-assert 172)
-   (wheel-front-right-data-array uint32               :offset-assert 176)
-   (wheel-rear-left-data-array   uint32               :offset-assert 180)
-   (wheel-rear-right-data-array  uint32               :offset-assert 184)
-   (release-start-trigger        basic                :offset-assert 188)
-   (odd-even                     int8                 :offset-assert 192)
+  ((angles                       euler-angles        :inline :offset-assert 144)
+   (counter                      int32                       :offset-assert 160)
+   (editor-start-time            uint32                      :offset-assert 164)
+   (all-data-array               (inline-array drive-data) 5 :offset-assert 168)
+   (drive-data-array             (inline-array drive-data)   :overlay-at (-> all-data-array 0))
+   (wheel-front-left-data-array  (inline-array drive-data)   :overlay-at (-> all-data-array 1))
+   (wheel-front-right-data-array (inline-array drive-data)   :overlay-at (-> all-data-array 2))
+   (wheel-rear-left-data-array   (inline-array drive-data)   :overlay-at (-> all-data-array 3))
+   (wheel-rear-right-data-array  (inline-array drive-data)   :overlay-at (-> all-data-array 4))
+   (release-start-trigger        symbol                      :offset-assert 188)
+   (odd-even                     int8                        :offset-assert 192)
    )
   :method-count-assert 19
   :size-assert         #xc1
   :flag-assert         #x13004000c1
-  (:methods
-    (drift-editor-method-9 () none) ;; 9
-    (drift-editor-method-10 () none) ;; 10
-    (drift-editor-method-11 () none) ;; 11
-    (drift-editor-method-12 () none) ;; 12
-    (drift-editor-method-13 () none) ;; 13
-    (drift-editor-method-14 () none) ;; 14
-    (drift-editor-method-18 () none) ;; 18
-    )
   (:state-methods
     init-state ;; 15
     run-state ;; 16
     write-file ;; 17
     )
+  (:methods
+    (write-drift-file (_type_ string int) none) ;; 18
+    )
   )
-|#
 
-;; (define-extern *drift-file-stream* file-stream)
-;; (define-extern *drift-editor* object)
-;; (define-extern drift-editor-init-by-other function)
-(define-extern start-drift (function none))
+(define-extern *drift-file-stream* file-stream)
+(define-extern *drift-editor* (pointer drift-editor))
+(define-extern drift-editor-init-by-other (function object :behavior drift-editor))
+(define-extern start-drift (function object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-mesh                      ;;
@@ -60264,9 +60205,8 @@
 ;; net-artifact                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype artifact (net-powerup)
-  ((high-value     basic  :offset-assert 244)
+  ((high-value     symbol :offset-assert 244)
    (original-owner int32  :offset-assert 248)
    )
   :method-count-assert 56
@@ -60276,9 +60216,7 @@
     idle ;; 42
     )
   )
-|#
 
-#|
 (deftype artifact-draw (eco-powerup-draw)
   ()
   :method-count-assert 57
@@ -60288,16 +60226,15 @@
     idle ;; 50
     )
   )
-|#
 
-;; (define-extern artifact-init-remote function)
-;; (define-extern *msg-map-artifact* array)
-;; (define-extern *net-process-class-info-artifact* net-process-class-info)
-;; (define-extern artifact-draw-init-remote function)
-;; (define-extern *msg-map-artifact-draw* array)
-;; (define-extern *net-process-class-info-artifact-draw* net-process-class-info)
-;; (define-extern get-artifact-position function)
-;; (define-extern get-artifact-color function)
+(define-extern artifact-init-remote (function mem-buffer object :behavior artifact))
+(define-extern *msg-map-artifact* (array symbol))
+(define-extern *net-process-class-info-artifact* net-process-class-info)
+(define-extern artifact-draw-init-remote (function mem-buffer object :behavior artifact-draw))
+(define-extern *msg-map-artifact-draw* (array symbol))
+(define-extern *net-process-class-info-artifact-draw* net-process-class-info)
+(define-extern get-artifact-position (function vector int object))
+(define-extern get-artifact-color (function int rgba))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctf-part                       ;;
@@ -60344,10 +60281,10 @@
 (deftype ctf-captured-flag (process-drawable)
   ((pos            vector :inline :offset-assert 256)
    (end            vector :inline :offset-assert 272)
-   (l-control      basic          :offset-assert 288)
+   (l-control      lightning-control :offset-assert 288)
    (lightning-time int32          :offset-assert 292)
-   (arc-sound      uint32         :offset-assert 296)
-   (lightning-on   basic          :offset-assert 300)
+   (arc-sound      sound-id       :offset-assert 296)
+   (lightning-on   symbol         :offset-assert 300)
    (index          int8           :offset-assert 304)
    )
   :method-count-assert 51
@@ -60358,18 +60295,18 @@
     )
   )
 
-(define-extern ctf-base-b-init-by-other (function ctf-base uint none :behavior ctf-base-b))
+(define-extern ctf-base-b-init-by-other (function ctf-base uint object :behavior ctf-base-b))
 (define-extern ctf-base-b-spawn (function ctf-base uint ctf-base-b))
-(define-extern ctf-base-c-init-by-other (function ctf-base uint none :behavior ctf-base-c))
+(define-extern ctf-base-c-init-by-other (function ctf-base uint object :behavior ctf-base-c))
 (define-extern ctf-base-c-spawn (function ctf-base uint ctf-base-c))
-;; (define-extern flag-at-base? function)
-;; (define-extern seek-default-size function)
-;; (define-extern move-captured-flag function)
-;; (define-extern ctf-captured-flag-init-by-other function)
-;; (define-extern ctf-captured-flag-spawn function)
-;; (define-extern ctf-flag-init-by-other function)
-;; (define-extern ctf-flag-spawn function)
-(define-extern flag-post (function none))
+(define-extern flag-at-base? (function symbol :behavior ctf-base))
+(define-extern seek-default-size (function none :behavior ctf-captured-flag))
+(define-extern move-captured-flag (function object :behavior ctf-captured-flag))
+(define-extern ctf-captured-flag-init-by-other (function vector vector uint uint object :behavior ctf-captured-flag))
+(define-extern ctf-captured-flag-spawn (function ctf-flag vector vector uint uint object))
+(define-extern ctf-flag-init-by-other (function object :behavior ctf-flag))
+(define-extern ctf-flag-spawn (function process ctf-flag))
+(define-extern flag-post (function none :behavior ctf-flag))
 (define-extern movement-post (function none :behavior ctf-flag))
 (define-extern seek-size (function float vector :behavior ctf-flag))
 (define-extern place-on-car (function none :behavior ctf-flag))
@@ -60384,48 +60321,41 @@
 ;; net-ctf                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-ctf-indicators (hud-player-indicators)
   ()
   :method-count-assert 25
   :size-assert         #x2c
   :flag-assert         #x190000002c
   )
-|#
 
-#|
 (deftype hud-ctf-indicators-view0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-ctf-indicators-view1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *hud-ctf-indicators-view0* array)
-;; (define-extern *hud-ctf-indicators-view0-proc* object)
-;; (define-extern spawn-hud-ctf-indicators-view0 function)
-;; (define-extern *hud-ctf-indicators-view1* array)
-;; (define-extern *hud-ctf-indicators-view1-proc* object)
-;; (define-extern spawn-hud-ctf-indicators-view1 function)
-;; (define-extern spawn-unused-hud-ctf-indicators-view function)
-;; (define-extern net-player-ctf-init-local function)
-;; (define-extern set-flag-event function)
+(define-extern *hud-ctf-indicators-view0* (array hud-item))
+(define-extern *hud-ctf-indicators-view0-proc* hud-ctf-indicators-view0)
+(define-extern spawn-hud-ctf-indicators-view0 (function hud-ctf-indicators-view0))
+(define-extern *hud-ctf-indicators-view1* (array hud-item))
+(define-extern *hud-ctf-indicators-view1-proc* hud-ctf-indicators-view1)
+(define-extern spawn-hud-ctf-indicators-view1 (function hud-ctf-indicators-view1))
+(define-extern spawn-unused-hud-ctf-indicators-view (function in-game-hud))
+(define-extern net-player-ctf-init-local (function int none :behavior net-player-ctf))
+(define-extern set-flag-event (function int object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-beasthunt                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-hunt-indicators (hud-item-group)
   ((last-position vector :inline :offset-assert 48)
    )
@@ -60433,92 +60363,86 @@
   :size-assert         #x40
   :flag-assert         #x1800000040
   )
-|#
 
-#|
 (deftype hud-hunt-indicators-view0 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-#|
 (deftype hud-hunt-indicators-view1 (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern *hud-hunt-indicators-view0* array)
-;; (define-extern *hud-hunt-indicators-view0-proc* object)
-;; (define-extern spawn-hud-hunt-indicators-view0 function)
-;; (define-extern *hud-hunt-indicators-view1* array)
-;; (define-extern *hud-hunt-indicators-view1-proc* object)
-;; (define-extern spawn-hud-hunt-indicators-view1 function)
-;; (define-extern spawn-unused-hud-hunt-indicators-view function)
+(define-extern *hud-hunt-indicators-view0* (array hud-item))
+(define-extern *hud-hunt-indicators-view0-proc* hud-hunt-indicators-view0)
+(define-extern spawn-hud-hunt-indicators-view0 (function hud-hunt-indicators-view0))
+(define-extern *hud-hunt-indicators-view1* (array hud-item))
+(define-extern *hud-hunt-indicators-view1-proc* hud-hunt-indicators-view1)
+(define-extern spawn-hud-hunt-indicators-view1 (function hud-hunt-indicators-view1))
+(define-extern spawn-unused-hud-hunt-indicators-view (function in-game-hud))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; plow                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype plow (net-enemy)
-  ((tracking-player      uint64  :offset-assert 872)
-   (do-flip-anim         basic   :offset-assert 880)
-   (been-hit             basic   :offset-assert 884)
-   (thruster-left        basic   :offset-assert 888)
-   (thruster-right       basic   :offset-assert 892)
-   (thruster-left-small  basic   :offset-assert 896)
-   (thruster-right-small basic   :offset-assert 900)
-   (thruster-main        basic   :offset-assert 904)
-   (eye-left             basic   :offset-assert 908)
-   (eye-right            basic   :offset-assert 912)
-   (eye-left-small       basic   :offset-assert 916)
-   (eye-right-small      basic   :offset-assert 920)
-   (smoke                basic   :offset-assert 924)
-   (smoke2               basic   :offset-assert 928)
-   (engine-sound-id      uint32  :offset-assert 932)
+  ((root collide-shape-moving :override)
+   (tracking-player      handle  :offset-assert 872 :handle-type net-player)
+   (do-flip-anim         symbol  :offset-assert 880)
+   (been-hit             symbol  :offset-assert 884)
+   (thruster-left        sparticle-launch-control :offset-assert 888)
+   (thruster-right       sparticle-launch-control :offset-assert 892)
+   (thruster-left-small  sparticle-launch-control :offset-assert 896)
+   (thruster-right-small sparticle-launch-control :offset-assert 900)
+   (thruster-main        sparticle-launch-control :offset-assert 904)
+   (eye-left             sparticle-launch-control :offset-assert 908)
+   (eye-right            sparticle-launch-control :offset-assert 912)
+   (eye-left-small       sparticle-launch-control :offset-assert 916)
+   (eye-right-small      sparticle-launch-control :offset-assert 920)
+   (smoke                sparticle-launch-control :offset-assert 924)
+   (smoke2               sparticle-launch-control :offset-assert 928)
+   (engine-sound-id      sound-id :offset-assert 932)
    )
   :method-count-assert 90
   :size-assert         #x3a8
   :flag-assert         #x5a032003a8
   (:state-methods
     startup ;; 59
+    waiting-respawn ;; 61
     intro-path ;; 87
     following-path ;; 88
     reverse ;; 89
-    waiting-respawn ;; 61
     )
   )
-|#
 
-;; (define-extern *plow-debris-params* debris-static-params)
-;; (define-extern *plow-enemy-info* object)
-;; (define-extern plow-init-remote function)
-;; (define-extern *msg-map-plow* array)
-;; (define-extern *net-process-class-info-plow* net-process-class-info)
-;; (define-extern *range-plowexplo-color* curve-color-fast)
-;; (define-extern *range-plowexplo-alpha* curve2d-fast)
-;; (define-extern *range-plowexplo-scale-x* curve2d-fast)
-;; (define-extern *range-plowexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-plowexplo-alpha* curve2d-fast)
-;; (define-extern *curve-plowexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-plowexplo-scale-y* curve2d-fast)
-;; (define-extern *part-plow-explosion-texture-curve-settings* object)
-;; (define-extern do-bob function)
-;; (define-extern *plow-avoidance-bbox-rad* object)
-;; (define-extern *plow-ignore-if-above* object)
-;; (define-extern check-collision-with-other-plows function)
-;; (define-extern probe-hits-stuff function)
-;; (define-extern do-launch function)
-;; (define-extern launch-nearby-players function)
-;; (define-extern *flip-speed* object)
-;; (define-extern *flip-blend* object)
-;; (define-extern plow-trans function)
+(define-extern *plow-debris-params* debris-static-params)
+(define-extern *plow-enemy-info* net-enemy-info)
+(define-extern plow-init-remote (function mem-buffer object :behavior plow))
+(define-extern *msg-map-plow* (array symbol))
+(define-extern *net-process-class-info-plow* net-process-class-info)
+(define-extern *range-plowexplo-color* curve-color-fast)
+(define-extern *range-plowexplo-alpha* curve2d-fast)
+(define-extern *range-plowexplo-scale-x* curve2d-fast)
+(define-extern *range-plowexplo-scale-y* curve2d-fast)
+(define-extern *curve-plowexplo-alpha* curve2d-fast)
+(define-extern *curve-plowexplo-scale-x* curve2d-fast)
+(define-extern *curve-plowexplo-scale-y* curve2d-fast)
+(define-extern *part-plow-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern do-bob (function process-drawable object :behavior plow))
+(define-extern *plow-avoidance-bbox-rad* vector)
+(define-extern *plow-ignore-if-above* float)
+(define-extern check-collision-with-other-plows (function plow object :behavior plow))
+(define-extern probe-hits-stuff (function vector vector symbol :behavior plow))
+(define-extern do-launch (function vehicle object :behavior plow))
+(define-extern launch-nearby-players (function object :behavior plow))
+(define-extern *flip-speed* float)
+(define-extern *flip-blend* float)
+(define-extern plow-trans (function object :behavior plow))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; brdroom-obs                    ;;
@@ -61080,116 +61004,109 @@
 ;; net-time-box                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-time-collected (hud-item-group)
   ()
   :method-count-assert 24
   :size-assert         #x2c
   :flag-assert         #x180000002c
   )
-|#
 
-#|
 (deftype time-freeze-clock (hud-clock)
   ()
   :method-count-assert 25
   :size-assert         #x48
   :flag-assert         #x1900000048
   )
-|#
 
-#|
 (deftype hud-time-box-stats (in-game-hud)
   ()
   :method-count-assert 33
   :size-assert         #x18ec
   :flag-assert         #x21186018ec
   )
-|#
 
-;; (define-extern freeze-fade-func function)
-;; (define-extern *hud-time-collected-items* array)
-;; (define-extern *hud-time-box-stats* array)
-;; (define-extern *hud-time-box-stats-proc* object)
-;; (define-extern spawn-hud-time-box-stats function)
+(define-extern freeze-fade-func (function object))
+(define-extern *hud-time-collected-items* (array hud-item))
+(define-extern *hud-time-box-stats* (array hud-item))
+(define-extern *hud-time-box-stats-proc* hud-time-box-stats)
+(define-extern spawn-hud-time-box-stats (function hud-time-box-stats))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time-box-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype time-freeze-short-draw (powerup-draw)
-;;   ((base-y         float   :offset-assert 264)
-;;    (vehicle-handle handle  :offset-assert 272)
-;;    )
-;;   :method-count-assert 58
-;;   :size-assert         #x118
-;;   :flag-assert         #x3a00900118
-;;   (:state-methods
-;;     idle ;; 50
-;;     )
-;;   )
+(deftype time-freeze-short-draw (powerup-draw)
+  ((base-y         float   :offset-assert 264)
+   (vehicle-handle handle  :offset-assert 272)
+   )
+  :method-count-assert 58
+  :size-assert         #x118
+  :flag-assert         #x3a00900118
+  (:state-methods
+    idle ;; 50
+    )
+  (:methods (tfsd (_type_) object))
+  )
 
-;; (deftype time-freeze-short (net-powerup)
-;;   ((freeze-time uint32  :offset-assert 244)
-;;    )
-;;   :method-count-assert 56
-;;   :size-assert         #xf8
-;;   :flag-assert         #x38007000f8
-;;   )
+(deftype time-freeze-short (net-powerup)
+  ((freeze-time uint32  :offset-assert 244)
+   )
+  :method-count-assert 56
+  :size-assert         #xf8
+  :flag-assert         #x38007000f8
+  )
 
-;; (deftype time-freeze-long-draw (time-freeze-short-draw)
-;;   ()
-;;   :method-count-assert 58
-;;   :size-assert         #x128
-;;   :flag-assert         #x3a00a00128
-;;   )
-
-;; (deftype time-freeze-long (time-freeze-short)
-;;   ()
-;;   :method-count-assert 56
-;;   :size-assert         #xf8
-;;   :flag-assert         #x38007000f8
-;;   )
-
-#|
-(deftype time-freeze-med-draw (time-freeze-short-draw)
-  ()
+(deftype time-freeze-long-draw (time-freeze-short-draw)
+  ((pad uint8 16)
+   )
   :method-count-assert 58
   :size-assert         #x128
   :flag-assert         #x3a00a00128
   )
-|#
 
-#|
+(deftype time-freeze-long (time-freeze-short)
+  ()
+  :method-count-assert 56
+  :size-assert         #xf8
+  :flag-assert         #x38007000f8
+  )
+
+(deftype time-freeze-med-draw (time-freeze-short-draw)
+  ((pad uint8 16)
+   )
+  :method-count-assert 58
+  :size-assert         #x128
+  :flag-assert         #x3a00a00128
+  )
+
 (deftype time-freeze-med (time-freeze-short)
   ()
   :method-count-assert 56
   :size-assert         #xf8
   :flag-assert         #x38007000f8
   )
-|#
 
-;; (define-extern *time-freeze-short-debris-params* debris-static-params)
-;; (define-extern *time-freeze-med-debris-params* debris-static-params)
-;; (define-extern *time-freeze-long-debris-params* debris-static-params)
-;; (define-extern time-freeze-short-draw-init-remote function)
-;; (define-extern *msg-map-time-freeze-short-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-short-draw* net-process-class-info)
-;; (define-extern time-freeze-short-init-remote function)
-;; (define-extern *msg-map-time-freeze-short* array)
-;; (define-extern *net-process-class-info-time-freeze-short* net-process-class-info)
-;; (define-extern time-freeze-long-draw-init-remote function)
-;; (define-extern *msg-map-time-freeze-long-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-long-draw* net-process-class-info)
-;; (define-extern time-freeze-long-init-remote function)
-;; (define-extern *msg-map-time-freeze-long* array)
-;; (define-extern *net-process-class-info-time-freeze-long* net-process-class-info)
-;; (define-extern time-freeze-med-draw-init-remote function)
-;; (define-extern *msg-map-time-freeze-med-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-med-draw* net-process-class-info)
-;; (define-extern time-freeze-med-init-remote function)
-;; (define-extern *msg-map-time-freeze-med* array)
-;; (define-extern *net-process-class-info-time-freeze-med* net-process-class-info)
+(define-extern *time-freeze-short-debris-params* debris-static-params)
+(define-extern *time-freeze-med-debris-params* debris-static-params)
+(define-extern *time-freeze-long-debris-params* debris-static-params)
+(define-extern time-freeze-short-draw-init-remote (function mem-buffer object :behavior time-freeze-short-draw))
+(define-extern *msg-map-time-freeze-short-draw* (array symbol))
+(define-extern *net-process-class-info-time-freeze-short-draw* net-process-class-info)
+(define-extern time-freeze-short-init-remote (function mem-buffer object :behavior time-freeze-short))
+(define-extern *msg-map-time-freeze-short* (array symbol))
+(define-extern *net-process-class-info-time-freeze-short* net-process-class-info)
+(define-extern time-freeze-long-draw-init-remote (function mem-buffer object :behavior time-freeze-long-draw))
+(define-extern *msg-map-time-freeze-long-draw* (array symbol))
+(define-extern *net-process-class-info-time-freeze-long-draw* net-process-class-info)
+(define-extern time-freeze-long-init-remote (function mem-buffer object :behavior time-freeze-long))
+(define-extern *msg-map-time-freeze-long* (array symbol))
+(define-extern *net-process-class-info-time-freeze-long* net-process-class-info)
+(define-extern time-freeze-med-draw-init-remote (function mem-buffer object :behavior time-freeze-med-draw))
+(define-extern *msg-map-time-freeze-med-draw* (array symbol))
+(define-extern *net-process-class-info-time-freeze-med-draw* net-process-class-info)
+(define-extern time-freeze-med-init-remote (function mem-buffer object :behavior time-freeze-med))
+(define-extern *msg-map-time-freeze-med* (array symbol))
+(define-extern *net-process-class-info-time-freeze-med* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-time-trial                 ;;
@@ -61350,7 +61267,6 @@
 ;; raptor                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype raptor (net-enemy)
   ()
   :method-count-assert 91
@@ -61359,16 +61275,15 @@
   (:state-methods
     startup ;; 59
     following-path ;; 87
-    reverse ;; 89
     idle-wait ;; 88
+    reverse ;; 89
     chase ;; 90
     )
   )
-|#
 
-;; (define-extern *raptor-ragdoll-info* object)
-;; (define-extern *raptor-enemy-info* object)
-;; (define-extern spt-birth-func-brightness-raptor-blood (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *raptor-ragdoll-info* ragdoll-setup)
+(define-extern *raptor-enemy-info* net-enemy-info)
+(define-extern spt-birth-func-brightness-raptor-blood (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-training                   ;;
@@ -61711,7 +61626,7 @@
    (orientation           quaternion :inline :offset-assert 336)
    (blend-position        vector     :inline :offset-assert 352)
    (last-position         vector     :inline :offset-assert 368)
-   (rolling-sound         uint32             :offset-assert 384)
+   (rolling-sound         sound-id           :offset-assert 384)
    (rolling-speed         float              :offset-assert 388)
    (last-bounce-time      int32              :offset-assert 392)
    (last-sync-time        int32              :offset-assert 396)
@@ -62136,13 +62051,13 @@
   )
 
 (deftype train (train-object)
-  ((curve          curve-control           :offset-assert 304)
+  ((curve          curve-control   :offset-assert 304)
    (head-car       int32           :offset-assert 308)
    (number-of-cars int32           :offset-assert 312)
-   (cars           handle 10      :offset-assert 320)
+   (cars           handle  10      :offset-assert 320)
    (length         float           :offset-assert 400)
-   (train-sound-id uint32          :offset-assert 404)
-   (horn-id        uint32          :offset-assert 408)
+   (train-sound-id sound-id        :offset-assert 404)
+   (horn-id        sound-id        :offset-assert 408)
    (next-horn-time int32           :offset-assert 412)
    (start          vector  :inline :offset-assert 416)
    (end            vector  :inline :offset-assert 432)
@@ -62161,12 +62076,12 @@
 
 (define-extern *train-constants* rigid-body-object-constants)
 (define-extern *train-headlight-glow-template* sprite-glow-data)
-(define-extern train-car-init-by-other (function none :behavior train-car))
-(define-extern train-car-spawn (function none :behavior train-car))
+(define-extern train-car-init-by-other (function object art-group object :behavior train-car))
+(define-extern train-car-spawn (function process-tree art-group train-car))
 (define-extern *desired-number-of-cars* int)
-(define-extern position-train-car (function none :behavior train-car))
+(define-extern position-train-car (function train float float symbol object :behavior train))
 (define-extern train-move (function none :behavior train))
-(define-extern cars-spawn (function none :behavior train-car))
+(define-extern cars-spawn (function symbol :behavior train))
 (define-extern play-horn (function none :behavior train))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62308,7 +62223,7 @@
   )
 
 (deftype kras-pump-break-proxy (process-focusable)
-  ((actor-group       (pointer actor-group)         :offset-assert 256)
+  ((actor-group       (pointer actor-group) :offset-assert 256)
    (actor-group-count int32          :offset-assert 260)
    (impact-velocity   vector :inline :offset-assert 272)
    (hit-points        float          :offset-assert 288)
@@ -62323,16 +62238,16 @@
     explode ;; 60
     )
   (:methods
-    (kras-pump-break-proxy-method-61 (_type_ object attack-info) object) ;; 61
-    (kras-pump-break-proxy-method-62 (_type_ entity-actor) none) ;; 62
-    (kras-pump-break-proxy-method-63 (_type_ entity-actor) none) ;; 63
-    (kras-pump-break-proxy-method-64 (_type_) none) ;; 64
+    (on-attack (_type_ object attack-info) object) ;; 61
+    (on-impact (_type_ rigid-body-impact) object) ;; 62
+    (collide-init (_type_ entity-actor) none) ;; 63
+    (spawn-debris-and-parts (_type_) none) ;; 64
     )
   )
 
 (deftype kras-pump-break-draw (kras-pump-break-proxy)
   ((root        collide-shape-moving :override)
-   (flame-sound uint32  :offset-assert 304)
+   (flame-sound sound-id :offset-assert 304)
    )
   :method-count-assert 65
   :size-assert         #x134
@@ -62343,8 +62258,8 @@
   )
 
 (deftype kras-pump-break (process-nettable)
-  ((exploded basic   :offset-assert 188)
-   (drawable handle  :offset-assert 192)
+  ((exploded symbol :offset-assert 188)
+   (drawable handle :offset-assert 192)
    )
   :method-count-assert 46
   :size-assert         #xc8
@@ -62353,14 +62268,14 @@
     idle ;; 42
     )
   (:methods
-    (kras-pump-break-method-43 (_type_) none) ;; 43
-    (kras-pump-break-method-44 (_type_) none) ;; 44
-    (kras-pump-break-method-45 (_type_) symbol) ;; 45
+    (kill-drawable (_type_) none) ;; 43
+    (spawn-drawable (_type_) none) ;; 44
+    (in-vis? (_type_) symbol) ;; 45
     )
   )
 
-(define-extern kras-pump-break-draw-init-by-other (function kras-pump-break entity-actor basic none :behavior kras-pump-break-draw))
-(define-extern kras-pump-break-init-remote (function int none :behavior kras-pump-break))
+(define-extern kras-pump-break-draw-init-by-other (function kras-pump-break entity-actor symbol object :behavior kras-pump-break-draw))
+(define-extern kras-pump-break-init-remote (function mem-buffer object :behavior kras-pump-break))
 (define-extern *msg-map-kras-pump-break* (array symbol))
 (define-extern *net-process-class-info-kras-pump-break* net-process-class-info)
 (define-extern *kras-pump-debris-params* debris-static-params)
